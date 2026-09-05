@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -50,11 +51,26 @@ func main() {
 		runListingBootstrapSubcommand(os.Args[2:])
 		return
 	}
+	// The listing signer holds the narrow authority that normal publishes need
+	// to register one exact StoreReleaseListing before selecting a catalog. It
+	// is local-only and has no HTTP surface.
+	if len(os.Args) > 1 && os.Args[1] == "listing-signer" {
+		runListingSignerSubcommand(os.Args[2:])
+		return
+	}
 	// A catalog retirement is a Store-governed visibility transition, not an
 	// app republish. It creates a fresh sealed generation and leaves the
 	// retired release's immutable chain history intact.
 	if len(os.Args) > 1 && os.Args[1] == "catalog-retire" {
 		runCatalogRetireSubcommand(os.Args[2:])
+		return
+	}
+	// A signed, no-public-byte-change reconciliation for one durable rollout
+	// that is already absent from the current immutable catalog. This is not an
+	// app publish or a catalog editor; it makes that exact visibility fact
+	// durable so unrelated governed publishes can proceed safely.
+	if len(os.Args) > 1 && os.Args[1] == "catalog-reconcile-unserved" {
+		runCatalogReconcileUnservedSubcommand(os.Args[2:])
 		return
 	}
 	// A bounded, operator-signed recovery rail for a Store whose historical
@@ -148,6 +164,7 @@ func main() {
 		log.Fatalf("catalog bootstrap: %v", err)
 	}
 	catalogState.ui = ui
+	catalogState.listingRegistrationRequired = strings.TrimSpace(cfg.StoreAuthority) != ""
 
 	// RESELLER ROOT-MIRROR worker (FEDERATED-STORE-MVP §C2.6). Active only when
 	// mirror.enabled is set in config AND a chain reader is wired (the worker
@@ -173,10 +190,18 @@ func main() {
 		log.Printf("reseller root-mirror worker started (interval %s)", mirror.interval())
 	}
 
+	publicHandler, controlHandler := newGovernedRouterSurfaces(cfg, operator, cr, mirror, catalogState, cfg.StoreLinkControlMTLS.configured())
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           newGovernedRouterWithCatalogRuntime(cfg, operator, cr, mirror, catalogState),
+		Handler:           publicHandler,
 		ReadHeaderTimeout: 10 * time.Second,
+	}
+	var storeLinkControlServer *http.Server
+	if cfg.StoreLinkControlMTLS.configured() {
+		storeLinkControlServer, err = newStoreLinkControlServer(cfg.StoreLinkControlMTLS, controlHandler)
+		if err != nil {
+			log.Fatalf("Store Link control mTLS: %v", err)
+		}
 	}
 
 	idleClosed := make(chan struct{})
@@ -187,19 +212,33 @@ func main() {
 		cancelRoot()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if err := srv.Shutdown(ctx); err != nil {
-			log.Printf("graceful shutdown: %v", err)
+		for _, server := range []*http.Server{srv, storeLinkControlServer} {
+			if server != nil {
+				if err := server.Shutdown(ctx); err != nil {
+					log.Printf("graceful shutdown: %v", err)
+				}
+			}
 		}
 		close(idleClosed)
 	}()
 
-	if cfg.TLS.CertPath != "" && cfg.TLS.KeyPath != "" {
-		log.Printf("listening (TLS) on %s", cfg.ListenAddr)
-		err = srv.ListenAndServeTLS(cfg.TLS.CertPath, cfg.TLS.KeyPath)
-	} else {
+	serveErrors := make(chan error, 2)
+	go func() {
+		if cfg.TLS.CertPath != "" && cfg.TLS.KeyPath != "" {
+			log.Printf("listening (TLS) on %s", cfg.ListenAddr)
+			serveErrors <- srv.ListenAndServeTLS(cfg.TLS.CertPath, cfg.TLS.KeyPath)
+			return
+		}
 		log.Printf("WARNING: listening WITHOUT TLS on %s — production stores MUST set tls.cert_path/key_path", cfg.ListenAddr)
-		err = srv.ListenAndServe()
+		serveErrors <- srv.ListenAndServe()
+	}()
+	if storeLinkControlServer != nil {
+		go func() {
+			log.Printf("listening (Store Link control mTLS) on %s", storeLinkControlServer.Addr)
+			serveErrors <- storeLinkControlServer.ListenAndServeTLS("", "")
+		}()
 	}
+	err = <-serveErrors
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("serve: %v", err)
 	}

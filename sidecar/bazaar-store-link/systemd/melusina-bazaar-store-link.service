@@ -1,0 +1,42 @@
+[Unit]
+Description=Melusina Bazaar Store Link
+Documentation=https://github.com/hrbrlife/melusina-static-store/tree/main/sidecar/bazaar-store-link
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/bazaar-store-link/config.json
+ConditionPathExists=/opt/melusina-bazaar-control/bin/bazaar-store-link
+
+[Service]
+Type=simple
+User=bazaar-store-link
+Group=bazaar-store-link
+UMask=0077
+# The binary accepts only its validated, fixed route vocabulary. The config
+# names the one sidecar and four mutually pinned worker origins; no environment
+# variable can add a target, signer, or publishing credential.
+ExecStart=/opt/melusina-bazaar-control/bin/bazaar-store-link -config /etc/bazaar-store-link/config.json
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=30s
+TimeoutStopSec=15s
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/etc/bazaar-store-link
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=melusina-bazaar-store-link
+
+[Install]
+WantedBy=multi-user.target

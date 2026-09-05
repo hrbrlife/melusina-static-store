@@ -276,6 +276,84 @@ func TestPrepareAppRollout_QuarantinesMismatchedRetainedStageAndRecapturesPublic
 	}
 }
 
+func TestPrepareAppRollout_QuarantinesUnpublishedMissingStage(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0).UTC()
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.PrivateStageDir = t.TempDir()
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	master := randPubkeyB58(t)
+	prior := makeRolloutFixture(t, master, "unpublished-missing-stage", "1.0.0", "prior", now.Add(-time.Hour))
+	current := makeRolloutFixture(t, master, "unpublished-missing-stage", "2.0.0", "current", now)
+	if err := persistStagedApp(cfg.PrivateStageDir, current.manifest, current.spk, current.metadata, current.release); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeAppRollout(cfg, appRolloutState{
+		Schema: appRolloutSchema, AppID: prior.manifest.AppID,
+		CurrentStageID: prior.manifest.StageID, CurrentAppHash: prior.manifest.AppHash,
+		CurrentVersion: prior.manifest.Version,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	state, err := prepareAppRollout(cfg, current.manifest, now)
+	if err != nil {
+		t.Fatalf("unpublished missing stage blocked replacement: %v", err)
+	}
+	if state.CurrentStageID != current.manifest.StageID || state.PreviousStageID != "" {
+		t.Fatalf("missing unpublished stage was not quarantined: %+v", state)
+	}
+}
+
+func TestPrepareAppRollout_RefusesToQuarantineCatalogCurrentMissingStage(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0).UTC()
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.PrivateStageDir = t.TempDir()
+	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cfg.PrivateStageDir, "rollouts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	master := randPubkeyB58(t)
+	prior := makeRolloutFixture(t, master, "served-missing-stage", "1.0.0", "prior", now.Add(-time.Hour))
+	current := makeRolloutFixture(t, master, "served-missing-stage", "2.0.0", "current", now)
+	writeRolloutDist(t, cfg, prior)
+	indexBytes, err := os.ReadFile(filepath.Join(cfg.DistDir, "apps", "index.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexHash := sha256.Sum256(indexBytes)
+	pointer := AppCatalogPointer{
+		AppID: prior.manifest.AppID, PackageID: prior.packageID,
+		Version: prior.manifest.Version, AppHash: prior.manifest.AppHash,
+		StageID: prior.manifest.StageID, CatalogSHA256: hex.EncodeToString(indexHash[:]),
+	}
+	if err := os.MkdirAll(filepath.Join(cfg.DistDir, "apps", "pointers"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.DistDir, "apps", "pointers", prior.manifest.AppID+".json"), mustJSON(t, pointer), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeAppRollout(cfg, appRolloutState{
+		Schema: appRolloutSchema, AppID: prior.manifest.AppID,
+		CurrentStageID: prior.manifest.StageID, CurrentAppHash: prior.manifest.AppHash,
+		CurrentVersion: prior.manifest.Version,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := prepareAppRollout(cfg, current.manifest, now); err == nil || !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("catalog-current missing stage was quarantined: %v", err)
+	}
+}
+
 func TestPrepareAppRollout_RefusesToReplacePendingFailedPromotion(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0).UTC()
 	cfg, _ := testConfig(t)

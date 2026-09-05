@@ -69,7 +69,15 @@ func run(args []string) error {
 	sub := args[0]
 	rest := args[1:]
 
-	cfg, err := loadConfig()
+	var (
+		cfg Config
+		err error
+	)
+	if sub == "preflight" {
+		cfg, err = loadPreflightConfig()
+	} else {
+		cfg, err = loadConfig()
+	}
 	if err != nil {
 		return err
 	}
@@ -82,6 +90,20 @@ func run(args []string) error {
 	}
 
 	switch sub {
+	case "preflight":
+		fs := flag.NewFlagSet("preflight", flag.ContinueOnError)
+		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
+		version := fs.String("version", "", "requested release version (required)")
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		path, err := runPreflight(cfg, catalog, *app, *version)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("PREFLIGHT_OK evidence=%s\n", path)
+		return nil
+
 	case "publish":
 		fs := flag.NewFlagSet("publish", flag.ContinueOnError)
 		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
@@ -184,10 +206,10 @@ func run(args []string) error {
 	case "-h", "--help", "help":
 		return usageErr()
 	default:
-		return fmt.Errorf("unknown subcommand %q (want publish|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed)", sub)
+		return fmt.Errorf("unknown subcommand %q (want preflight|publish|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed)", sub)
 	}
 }
 
 func usageErr() error {
-	return fmt.Errorf("usage: mel-release publish --app <appId|slug|name> --version <v> | approve|repair-catalog|abandon-init|reject-proposed --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
+	return fmt.Errorf("usage: mel-release preflight|publish --app <appId|slug|name> --version <v> | approve|repair-catalog|abandon-init|reject-proposed --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
 }

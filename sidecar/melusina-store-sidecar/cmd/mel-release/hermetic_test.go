@@ -45,7 +45,8 @@ import (
 type Ref struct{ PDA, AppHash, Version string }
 type Version struct {
 	AppHash, PkgID, MasterMint, SpkPath, MetadataPath, ArtifactSha string
-	ArtifactSize                                                   int64
+	RuntimeContractPath, RuntimeContractSHA256                     string
+	ArtifactSize, RuntimeContractSize                              int64
 	PdaNew, PreviousSha256, PreviousVersion                        string
 }
 type Fixture struct {
@@ -183,6 +184,7 @@ func main() {
 			"masterNftMint": v.MasterMint,
 			"spkPath":       v.SpkPath,
 			"metadataPath":  v.MetadataPath,
+			"runtimeContract": map[string]any{"sha256": v.RuntimeContractSHA256, "size": v.RuntimeContractSize, "path": v.RuntimeContractPath},
 		}
 		if v.PreviousSha256 != "" {
 			rec["previousSha256"] = v.PreviousSha256

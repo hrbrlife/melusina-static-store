@@ -42,10 +42,57 @@ func TestStoreGenerationUnitConsumesControllerRuntimeMarker(t *testing.T) {
 	}
 }
 
+func TestStoreGenerationBundleCarriesConstrainedListingSignerUnit(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", ".."))
+	unitPath := filepath.Join(root, "deploy", "store-generation", "melusina-store-listing-signer.service")
+	unit, err := os.ReadFile(unitPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", unitPath, err)
+	}
+	for _, required := range []string{
+		"listing-signer -config /etc/melusina/store/store.config.json",
+		"RuntimeDirectory=melusina",
+		"RuntimeDirectoryMode=0700",
+		"ReadOnlyPaths=/etc/melusina/store /var/lib/melusina-store-private",
+		"ReadWritePaths=/run/melusina",
+		"NoNewPrivileges=yes",
+	} {
+		if !strings.Contains(string(unit), required) {
+			t.Fatalf("%s omits constrained-listing-signer setting %q", unitPath, required)
+		}
+	}
+	if strings.Contains(string(unit), "Requires=melusina-store-sidecar.service") {
+		t.Fatalf("%s must not make catalog serving depend on the listing signer", unitPath)
+	}
+
+	buildPath := filepath.Join(root, "scripts", "build-store-generation-release.sh")
+	build, err := os.ReadFile(buildPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", buildPath, err)
+	}
+	if !strings.Contains(string(build), "melusina-store-listing-signer.service") {
+		t.Fatalf("%s does not package the listing signer unit", buildPath)
+	}
+	contractPath := filepath.Join(root, "deploy", "store-generation", "DEPLOYMENT-CONTRACT.md")
+	contract, err := os.ReadFile(contractPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", contractPath, err)
+	}
+	for _, required := range []string{"listing_signer_socket", "enabled **only**", "without taking the\n   currently served catalog offline"} {
+		if !strings.Contains(string(contract), required) {
+			t.Fatalf("%s omits listing-signer activation contract %q", contractPath, required)
+		}
+	}
+}
+
 func TestCurrentRuntimeReleaseInfoRequiresExactLocalMarker(t *testing.T) {
 	valid := map[string]string{
 		"RRS_RUNTIME_SCHEMA":  componentrelease.RuntimeReleaseInfoSchema,
-		"RRS_COMPONENT_ID":    "rrs-store",
+		"RRS_COMPONENT_ID":    storeRuntimeComponentID,
 		"RRS_GENERATION_ID":   "41",
 		"RRS_SIDECAR_VERSION": "gen-41-aabbccdd",
 		"RRS_ARTIFACT_SHA256": strings.Repeat("a", 64),
@@ -55,14 +102,15 @@ func TestCurrentRuntimeReleaseInfoRequiresExactLocalMarker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("valid marker refused: %v", err)
 	}
-	if info.GenerationID != 41 || info.PID != 1234 || info.ComponentID != "rrs-store" {
+	if info.GenerationID != 41 || info.PID != 1234 || info.ComponentID != storeRuntimeComponentID {
 		t.Fatalf("valid marker decoded incorrectly: %+v", info)
 	}
 	for name, mutate := range map[string]func(map[string]string){
-		"missing schema":   func(m map[string]string) { m["RRS_RUNTIME_SCHEMA"] = "" },
-		"zero generation":  func(m map[string]string) { m["RRS_GENERATION_ID"] = "0" },
-		"unsafe component": func(m map[string]string) { m["RRS_COMPONENT_ID"] = "rrs-store\nBAD=x" },
-		"bad hash":         func(m map[string]string) { m["RRS_ARTIFACT_SHA256"] = strings.Repeat("z", 64) },
+		"missing schema":    func(m map[string]string) { m["RRS_RUNTIME_SCHEMA"] = "" },
+		"zero generation":   func(m map[string]string) { m["RRS_GENERATION_ID"] = "0" },
+		"foreign component": func(m map[string]string) { m["RRS_COMPONENT_ID"] = "fineract-sidecar" },
+		"unsafe component":  func(m map[string]string) { m["RRS_COMPONENT_ID"] = "melusina-store-sidecar\nBAD=x" },
+		"bad hash":          func(m map[string]string) { m["RRS_ARTIFACT_SHA256"] = strings.Repeat("z", 64) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			candidate := make(map[string]string, len(valid))
@@ -90,7 +138,7 @@ func TestRuntimeReleaseInfoHTTPNeverFabricatesIdentity(t *testing.T) {
 	}
 
 	t.Setenv("RRS_RUNTIME_SCHEMA", componentrelease.RuntimeReleaseInfoSchema)
-	t.Setenv("RRS_COMPONENT_ID", "rrs-store")
+	t.Setenv("RRS_COMPONENT_ID", storeRuntimeComponentID)
 	t.Setenv("RRS_GENERATION_ID", "42")
 	t.Setenv("RRS_SIDECAR_VERSION", "gen-42-bbbbbbbb")
 	t.Setenv("RRS_ARTIFACT_SHA256", strings.Repeat("b", 64))

@@ -154,6 +154,69 @@ func TestComposeRejectsEmptyUpdateSet(t *testing.T) {
 	}
 }
 
+func TestComposeRenamesOneSidecarIdentityWithoutCarryingAnAlias(t *testing.T) {
+	old := sidecarComp("fineract-v2", strings.Repeat("a", 64), "0.0.83")
+	old.Chain.SidecarID = "fineract-v2"
+	current := componentrelease.DesiredGeneration{
+		GenerationID: 204,
+		Components: []componentrelease.ComponentRelease{
+			old,
+			shellComp("sandstorm-shell", strings.Repeat("b", 64), "build-104"),
+		},
+	}
+	replacement := old
+	replacement.ComponentID = "fineract-sidecar"
+	replacement.ArtifactName = "fineract-sidecar-" + replacement.SHA256[:8] + ".bin"
+	replacement.BundleURL = "https://bazaar.melusina-os.org/releases/sidecar/" + replacement.ArtifactName
+	replacement.PreviousSHA256 = strings.Repeat("c", 64)
+	replacement.PreviousVersion = "legacy-105ae22b"
+
+	next, err := composeNextGeneration(&current, composePolicy(), 1788066000, []componentrelease.ComponentRelease{replacement})
+	if err != nil {
+		t.Fatalf("compose sidecar identity rename: %v", err)
+	}
+	if len(next.Components) != 2 {
+		t.Fatalf("rename must replace, not duplicate, the sidecar component: %#v", next.Components)
+	}
+	if _, found := next.Component("fineract-v2"); found {
+		t.Fatal("historical component alias survived the identity-bound rename")
+	}
+	got, found := next.Component("fineract-sidecar")
+	if !found {
+		t.Fatal("renamed sidecar component is absent")
+	}
+	if got.Chain.SidecarID != "fineract-v2" || got.PreviousSHA256 != replacement.PreviousSHA256 || got.PreviousVersion != replacement.PreviousVersion {
+		t.Fatalf("renamed component lost its chain identity or explicit physical rollback floor: %#v", got)
+	}
+}
+
+func TestComposeRejectsTwoComponentNamesForOneSidecarIdentity(t *testing.T) {
+	first := sidecarComp("fineract-v2", strings.Repeat("a", 64), "0.0.83")
+	first.Chain.SidecarID = "fineract-v2"
+	second := first
+	second.ComponentID = "fineract-sidecar"
+	second.ArtifactName = "fineract-sidecar-" + second.SHA256[:8] + ".bin"
+	second.BundleURL = "https://bazaar.melusina-os.org/releases/sidecar/" + second.ArtifactName
+
+	if _, err := composeNextGeneration(nil, composePolicy(), 1788066000, []componentrelease.ComponentRelease{first, second}); err == nil || !strings.Contains(err.Error(), "same sidecar authority identity") {
+		t.Fatalf("duplicate sidecar authority updates were not refused: %v", err)
+	}
+}
+
+func TestComposeRejectsAmbiguousCurrentAliasesDuringRename(t *testing.T) {
+	first := sidecarComp("fineract-v2", strings.Repeat("a", 64), "0.0.83")
+	first.Chain.SidecarID = "fineract-v2"
+	second := first
+	second.ComponentID = "fineract-old-alias"
+	current := componentrelease.DesiredGeneration{GenerationID: 204, Components: []componentrelease.ComponentRelease{first, second}}
+	replacement := first
+	replacement.ComponentID = "fineract-sidecar"
+
+	if _, err := composeNextGeneration(&current, composePolicy(), 1788066000, []componentrelease.ComponentRelease{replacement}); err == nil || !strings.Contains(err.Error(), "ambiguously matches current aliases") {
+		t.Fatalf("ambiguous current aliases were not refused: %v", err)
+	}
+}
+
 func TestGenerationCAS(t *testing.T) {
 	current := &componentrelease.DesiredGeneration{GenerationID: 63}
 	next := componentrelease.DesiredGeneration{GenerationID: 64, PreviousGeneration: 63}

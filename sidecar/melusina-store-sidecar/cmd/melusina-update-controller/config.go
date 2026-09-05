@@ -18,6 +18,8 @@ import (
 
 const controllerConfigSchema = "melusina-update-controller-config-v1"
 
+const oneShotApplyPolicySchema = "melusina-one-shot-apply-policy-v1"
+
 // maxControllerConfigBytes bounds the root-owned config file (small typed JSON).
 const maxControllerConfigBytes = 1 << 20
 
@@ -69,6 +71,49 @@ type ControllerConfig struct {
 	// NotifyPath receives the admin-visible pending-update notification when
 	// auto-apply is OFF. Default <stateDir>/pending-update.json.
 	NotifyPath string `json:"notifyPath,omitempty"`
+
+	// OneShotApply is an optional root-owned scope pin for the deliberately
+	// narrow receipt-authorized Fineract migration path.  It is not a generic
+	// override: when present it is valid only with AutoApply=false and an exact
+	// singleton local registry for its named component.
+	OneShotApply *OneShotApplyPolicy `json:"oneShotApply,omitempty"`
+}
+
+// OneShotApplyPolicy names the one controller identity and one local component
+// that may be admitted through a Store-signed one-shot receipt.  The live
+// migration is intentionally fixed to Fineract rather than becoming a reusable
+// host-application backdoor.
+type OneShotApplyPolicy struct {
+	Schema       string `json:"schema"`
+	ControllerID string `json:"controllerId"`
+	ComponentID  string `json:"componentId"`
+}
+
+func safeOneShotToken(s string) bool {
+	if s == "" || len(s) > 128 || strings.Contains(s, "..") || s[0] == '.' {
+		return false
+	}
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-', r == '_', r == '.':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func (p OneShotApplyPolicy) validate() error {
+	if p.Schema != oneShotApplyPolicySchema {
+		return fmt.Errorf("oneShotApply schema mismatch: %q", p.Schema)
+	}
+	if !safeOneShotToken(p.ControllerID) || !safeOneShotToken(p.ComponentID) {
+		return errors.New("oneShotApply controllerId and componentId must be safe identity tokens")
+	}
+	if p.ComponentID != "fineract-sidecar" {
+		return fmt.Errorf("oneShotApply componentId %q is not the narrowly authorized fineract-sidecar", p.ComponentID)
+	}
+	return nil
 }
 
 // policy derives the shell-writable-equivalent UpdatePolicy from the config, using
@@ -158,6 +203,14 @@ func (c ControllerConfig) validate() error {
 	if c.ReceiptDir != filepath.Join(c.StateDir, "receipts") {
 		return fmt.Errorf("receiptDir must be %q (the WAL's stateDir/receipts)", filepath.Join(c.StateDir, "receipts"))
 	}
+	if c.OneShotApply != nil {
+		if c.AutoApply {
+			return errors.New("oneShotApply requires autoApply=false")
+		}
+		if err := c.OneShotApply.validate(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -217,8 +270,10 @@ func loadControllerConfigOwned(path string, expectedUID uint32) (ControllerConfi
 	return cfg, nil
 }
 
-// assertNoDuplicateTopLevelKeys rejects a config object with a repeated top-level
-// key (a decoy that json.Decode would silently last-wins).
+// assertNoDuplicateTopLevelKeys retains its historical name, but scans every
+// nested object too.  OneShotApply is a nested trust-root object; accepting a
+// duplicate key there would make json.Decoder's last-wins behavior a policy
+// widening primitive.
 func assertNoDuplicateTopLevelKeys(raw []byte) error {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	tok, err := dec.Token()
@@ -228,58 +283,71 @@ func assertNoDuplicateTopLevelKeys(raw []byte) error {
 	if delim, ok := tok.(json.Delim); !ok || delim != '{' {
 		return errors.New("controller config must be a JSON object")
 	}
-	seen := map[string]bool{}
-	depth := 0
-	for dec.More() || depth > 0 {
-		t, err := dec.Token()
-		if err != nil {
-			return fmt.Errorf("scan config tokens: %w", err)
-		}
-		switch v := t.(type) {
-		case json.Delim:
-			switch v {
-			case '{', '[':
-				depth++
-			case '}', ']':
-				depth--
-			}
-		case string:
-			if depth == 0 {
-				if seen[v] {
-					return fmt.Errorf("controller config has duplicate key %q", v)
-				}
-				seen[v] = true
-				// consume this key's value token/subtree
-				if err := skipJSONValue(dec); err != nil {
-					return err
-				}
-			}
-		}
+	if err := scanJSONObjectKeys(dec); err != nil {
+		return fmt.Errorf("scan config tokens: %w", err)
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return errors.New("controller config has trailing data")
 	}
 	return nil
 }
 
-func skipJSONValue(dec *json.Decoder) error {
+func scanJSONObjectKeys(dec *json.Decoder) error {
+	seen := map[string]bool{}
+	for dec.More() {
+		t, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		key, ok := t.(string)
+		if !ok {
+			return errors.New("object key is not a string")
+		}
+		if seen[key] {
+			return fmt.Errorf("controller config has duplicate key %q", key)
+		}
+		seen[key] = true
+		if err := scanJSONValueKeys(dec); err != nil {
+			return err
+		}
+	}
 	t, err := dec.Token()
 	if err != nil {
 		return err
 	}
-	if delim, ok := t.(json.Delim); ok && (delim == '{' || delim == '[') {
-		depth := 1
-		for depth > 0 {
-			tt, err := dec.Token()
-			if err != nil {
-				return err
-			}
-			if d, ok := tt.(json.Delim); ok {
-				switch d {
-				case '{', '[':
-					depth++
-				case '}', ']':
-					depth--
-				}
-			}
-		}
+	if d, ok := t.(json.Delim); !ok || d != '}' {
+		return errors.New("object did not terminate")
 	}
 	return nil
+}
+
+func scanJSONValueKeys(dec *json.Decoder) error {
+	t, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	d, ok := t.(json.Delim)
+	if !ok {
+		return nil
+	}
+	switch d {
+	case '{':
+		return scanJSONObjectKeys(dec)
+	case '[':
+		for dec.More() {
+			if err := scanJSONValueKeys(dec); err != nil {
+				return err
+			}
+		}
+		end, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		if endDelim, ok := end.(json.Delim); !ok || endDelim != ']' {
+			return errors.New("array did not terminate")
+		}
+		return nil
+	default:
+		return errors.New("unexpected JSON delimiter")
+	}
 }

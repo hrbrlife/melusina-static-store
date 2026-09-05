@@ -89,7 +89,12 @@ type catalogRuntime struct {
 	catalogGenerations AppCatalogGenerationStore
 	expectedUID        uint32
 	expectedGID        uint32
-	ui                 http.Handler
+	// listingRegistrationRequired is set only after write-mode bootstrap has
+	// acquired the process-lifetime writer lock. It keeps focused/read-only test
+	// runtimes from accidentally exercising the networked listing signer while
+	// making the production listener fail closed before a selector switch.
+	listingRegistrationRequired bool
+	ui                          http.Handler
 }
 
 type catalogBootstrapOptions struct {

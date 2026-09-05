@@ -349,7 +349,7 @@ func runCatalogRetire(cfg Config, operator *identity.Private, opts catalogRetire
 	if !ok {
 		return report, fmt.Errorf("app %s has no servable durable rollout", opts.appID)
 	}
-	if err := validateRetirementSnapshot(current, classified.serving, operatorKey, cfg, authority); err != nil {
+	if err := validateCatalogSnapshotAgainstRollouts(current, classified.serving, operatorKey, cfg, authority); err != nil {
 		return report, fmt.Errorf("validate current catalog before retirement: %w", err)
 	}
 
@@ -372,7 +372,7 @@ func runCatalogRetire(cfg Config, operator *identity.Private, opts catalogRetire
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
 	servingDomainHash := hex.EncodeToString(domainHash[:])
 	validate := func(snapshot AppCatalogSnapshot) error {
-		return validateRetirementSnapshot(snapshot, remaining, operatorKey, cfg, authority)
+		return validateCatalogSnapshotAgainstRollouts(snapshot, remaining, operatorKey, cfg, authority)
 	}
 	candidate, err := store.BuildCommittedFrom(current.Root, func(root string) error {
 		if err := removeQuarantinedCatalogEntries(root, excluded); err != nil {
@@ -426,7 +426,7 @@ func runCatalogRetire(cfg Config, operator *identity.Private, opts catalogRetire
 	return report, nil
 }
 
-func validateRetirementSnapshot(snapshot AppCatalogSnapshot, rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, cfg Config, authority configuredSquadsAuthority) error {
+func validateCatalogSnapshotAgainstRollouts(snapshot AppCatalogSnapshot, rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, cfg Config, authority configuredSquadsAuthority) error {
 	appIDs := make([]string, 0, len(rollouts))
 	for appID := range rollouts {
 		appIDs = append(appIDs, appID)

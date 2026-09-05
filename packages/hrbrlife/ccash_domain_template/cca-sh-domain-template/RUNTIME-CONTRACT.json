@@ -1,0 +1,40 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "app": {
+    "appHash": "e1d33694bb0c257e5daae9b6e1bbabf8c4ec30a4a81534f9fa9084a5c2c3d626",
+    "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
+    "spkSha256": "f3f0641bef1201f81f724ff18c4b2eb7d7196bcd80b44251b583e58526bd254c",
+    "version": "0.5.90"
+  },
+  "cleanup": {
+    "steps": [
+      "Use the visible grain menu to move both disposable grains to Sandstorm Trash.",
+      "Do not retain an endpoint configuration, a PowerBox egress grant, customer data, a release record, or scheduled work from this probe."
+    ]
+  },
+  "fixtures": [],
+  "launchProbe": {
+    "expectedResult": "A clean DomainTemplate authority grain can serve its configuration to another Pearl only through explicit, scoped PowerBox consent; optional sidecars begin absent and require a visible administrator configuration plus a separate user grant.",
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Install this candidate through the rendered Melusina Store, then use the visible 'New DomainTemplate' action to create a fresh disposable grain and open it as its owner.",
+        "expectedResult": "The new grain reaches the rendered DomainTemplate setup surface without a blank page, supervisor reset, tenant-specific preconfiguration, or outbound sidecar dependency."
+      },
+      {
+        "action": "Use the visible setup and dashboard surfaces to inspect the fresh embedded domain inventory and open one disposable, non-customer configuration profile without submitting a provisioning or release action.",
+        "expectedResult": "The authority grain visibly serves its packaged configuration inventory while clearly showing that external sidecars and station provisioning remain unconfigured until an administrator acts."
+      },
+      {
+        "action": "From a separate fresh compatible consumer grain, start its rendered DomainTemplate PowerBox flow, select this disposable authority, and grant only the scoped template capability requested by that consumer.",
+        "expectedResult": "The consumer reads only its selected domain/profile through the explicit user grant. Neither grain claims an ambient connection, broad sidecar authority, customer record, or write capability."
+      },
+      {
+        "action": "NEGATIVE CONTROL \u2014 before configuring any endpoint, inspect the fresh setup sidecar rows and attempt no PowerBox grant; then use the visible endpoint control only with a disposable compatible HTTPS service and explicitly cancel the PowerBox picker.",
+        "expectedResult": "No hidden target is preselected, no outbound request is made, and cancellation leaves no held egress capability. A non-HTTPS, credential-bearing, query, or fragment URL is visibly rejected by the configuration control."
+      }
+    ]
+  },
+  "schema": "melusina-app-runtime-contract-v1",
+  "sidecars": []
+}

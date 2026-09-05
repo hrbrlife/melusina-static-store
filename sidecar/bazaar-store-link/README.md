@@ -1,0 +1,162 @@
+# Bazaar Store Link
+
+`bazaar-store-link` is the small, host-operated connector between a contained
+Bazaar Control Pearl and the Store sidecar's private control listener. It makes
+the release flow human-sized without turning the Store into a public signing or
+transaction service.
+
+```text
+terminal agent --submit capability--> Bazaar Control Pearl
+human offline approval -------------> Bazaar Control Pearl
+Pearl --selected Sandstorm HTTP-out capability--> Bazaar Store Link
+Bazaar Store Link --pinned mTLS--> Store sidecar
+Store sidecar --Unix socket--> listing signer
+Bazaar Store Link --mutually pinned mTLS--> fixed release workers
+```
+
+The connector currently exposes exactly this fixed vocabulary:
+
+- `POST /v1/release-commands/<24-lower-hex>/prepare`
+- `POST /v1/release-commands/<24-lower-hex>/publish`
+- `GET /v1/authority/<configured-store>/<app>/<publisher>`
+- `GET /v1/store-status` (read-only control-path readiness only)
+- `GET /v1/store-policy` (read-only active policy ID, revision, and public Pearl command-key binding)
+- `POST /v1/build-jobs`, `GET /v1/build-jobs/<24-lower-hex>`
+- `POST /v1/release-preparation-jobs`, `GET /v1/release-preparation-jobs/<24-lower-hex>`
+- `POST /v1/release-finalization-jobs`, `GET /v1/release-finalization-jobs/<24-lower-hex>`
+- `POST /v1/tenant-proof-jobs`, `GET /v1/tenant-proof-jobs/<24-lower-hex>`
+- `POST /v1/tenant-proof-jobs/<24-lower-hex>/resume`
+
+It cannot accept a caller-chosen URL, method, sidecar path, transaction,
+signing request, artifact body/path/URL, publisher lifecycle request, generic
+RPC call, or listing instruction. It maps release/authority operations to the
+typed sidecar routes only, and forwards build/proof jobs to separately
+configured worker origins only. Finalization jobs carry a committed candidate
+SHA-256 and byte count, not candidate bytes; the finalizer retrieves that exact
+object from its fixed content-addressed artifact vault. For release commands it forwards only `Content-Type`, the Pearl command,
+Pearl signature, and—for publication—the offline approval. The sidecar still
+verifies the same command, publisher grant, artifact, chain facts, predecessor,
+and listing-before-selector rule independently.
+
+`GET /v1/store-status` is not a generic health proxy. It maps only to the
+sidecar's private mTLS control status, requires the exact configured Store ID,
+and relays only its fixed `ready` schema. It neither claims the public catalog
+is readable nor exposes release, chain, endpoint, or key facts.
+
+`GET /v1/store-policy` is equally bounded. It maps only to the private active
+policy snapshot, requires the same exact configured Store ID, and relays only
+that policy's identifier, nonzero revision, and public Pearl command-key
+binding. Bazaar Control must compare that public key to its durable routing key
+before it shows Ready or fills a publisher-enrolment request; a caller cannot
+select a Store, policy, or Pearl identity, obtain a transaction/signature, or
+activate a publisher through this route.
+
+The proof-resume route is deliberately not a generic job action. It accepts
+only the exact `bazaar-control-tenant-proof-resume-request-v1` body containing
+the existing dossier ID and release digest, and forwards it only to the pinned
+proof worker. The worker independently requires that the named job is already
+`Needs attention` and that those facts match its durable record. It returns a
+job acknowledgement or the same visible `Needs attention` state; the Pearl
+must poll the signed attestation separately before marking a release live.
+
+## Deployment boundary
+
+The connector is an operator service next to the Store, not code inside the
+Pearl SPK. Its configuration names a private listener and the private sidecar
+origin plus paths to its client certificate, private key, and sidecar CA. Those
+credentials must be created by the Store operator and are never copied into a
+Pearl, terminal, build worker, browser, or package.
+
+The source asset `systemd/melusina-bazaar-store-link.service` runs the connector
+as the dedicated `bazaar-store-link` account. Its config, certificate, and CA
+must be root- or service-account-owned real regular files with no group/world
+write permission; the client key must be owned by that service account and
+mode `0600`. The connector verifies those properties, refuses symlinks, and
+loads the certificate/key from the checked bytes. The unit has no writable
+state directory, no capabilities, no home access, and no environmental target
+or credential inputs.
+
+Example shape (use real protected paths; do not commit this file):
+
+```json
+{
+  "listenAddr": "10.53.155.42:9460",
+  "storeId": "melusina-os-root-store",
+  "sidecarUrl": "https://127.0.0.1:9443",
+  "clientCertPath": "/etc/bazaar-store-link/client.pem",
+  "clientKeyPath": "/etc/bazaar-store-link/client.key",
+  "sidecarCaPath": "/etc/bazaar-store-link/sidecar-ca.pem",
+  "sidecarCertSha256": "<lowercase sha256 of Store sidecar certificate DER>",
+  "buildWorkerUrl": "https://127.0.0.1:9461",
+  "releasePreparationWorkerUrl": "https://127.0.0.1:9463",
+  "releaseFinalizationWorkerUrl": "https://127.0.0.1:9464",
+  "tenantProofWorkerUrl": "https://127.0.0.1:9462",
+  "workerCaPath": "/etc/bazaar-store-link/worker-ca.pem",
+  "buildWorkerCertSha256": "<lowercase sha256 of build worker certificate DER>",
+  "releasePreparationWorkerCertSha256": "<lowercase sha256 of preparation worker certificate DER>",
+  "releaseFinalizationWorkerCertSha256": "<lowercase sha256 of finalization worker certificate DER>",
+  "tenantProofWorkerCertSha256": "<lowercase sha256 of tenant-proof worker certificate DER>"
+}
+```
+
+The listener must be restricted at the host firewall to Sandstorm's outbound
+service path. That network rule protects availability; it is not release
+authority. The actual mutation gate is the independently verified, expiring,
+single-use Pearl command plus the exact offline approval.
+
+`sidecarCaPath` establishes the Store-control trust root. It is deliberately
+not sufficient by itself: `sidecarCertSha256` is mandatory and pins the exact
+sidecar serving certificate DER before Store Link sends a private control
+request. The sidecar must in turn require TLS 1.3 and pin this Store Link
+client leaf. A same-CA sidecar certificate is not an acceptable substitute.
+
+`workerCaPath` establishes the worker-serving trust root. It is deliberately
+not sufficient by itself: the four `*WorkerCertSha256` values are mandatory
+per-worker SHA-256 digests over the serving certificate DER. Store Link pins
+each digest on its own fixed route; a different certificate from the same
+worker CA is refused before any job HTTP request. Conversely, every worker
+must require TLS 1.3, verify the Store Link client CA, and pin the configured
+Store Link client leaf. The same Store Link client key may be presented to all
+four workers, but each worker result key and serving certificate is distinct.
+
+The example digests are placeholders and fail closed. The deployer must replace
+the sidecar and all four worker pins alongside the private origins, CAs, and
+Store Link client key; a missing finalization origin or any missing/invalid pin
+prevents the relevant connector from starting.
+
+Before enabling the service for a pilot, the deployer runs the one fixed,
+read-only control-plane preflight:
+
+```text
+bazaar-store-link -config /etc/bazaar-store-link/config.json -verify-control-plane
+```
+
+It first makes one mutually authenticated `GET /control/v1/status` through the
+pinned sidecar and requires its exact `ready` Store snapshot. Only then does it
+send four TLS-authenticated `GET`s for a reserved nonexistent job ID and require
+`404 Not Found` from build, preparation, finalization, and proof. It cannot
+create a job, build an artifact, start a browser, or publish a release. Any
+status, schema, TLS, or leaf-pin failure is a deployment hold. This is not part
+of the human release screen or a recovery shortcut. `-verify-workers` remains a
+lower-level route diagnostic; it does not establish sidecar readiness.
+
+Run the service only after the sidecar has a dedicated TLS-1.3 control listener
+configured with this connector's exact client-leaf digest:
+
+```text
+bazaar-store-link -config /etc/bazaar-store-link/config.json
+```
+
+## Current status
+
+This source is a verified connector boundary and durable-job relay, **not a
+deployed Golden MVP**. It requires separately implemented and deployed bounded
+build, release-preparation, release-finalization, and tenant-proof workers,
+which must persist their own jobs and return release-bound signed results. The
+finalizer also needs a configured immutable content-addressed artifact vault;
+the relay must never become its artifact transport. The relay intentionally
+rejects startup without the worker origins, their CA, and their exact leaf
+pins. Do not switch
+`require_pearl_control_for_app_publish` on a live Store until the complete
+provisioning and one-app pilot in Bazaar Control's deployment requirements have
+passed.

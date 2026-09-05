@@ -35,7 +35,15 @@ type mockChainReader struct {
 
 	// rawAccounts backs fetchRawAccount (the cascade raw-read capability): base58
 	// address -> account data. Owner is always programID for seeded accounts.
-	rawAccounts map[string][]byte
+	rawAccounts      map[string][]byte
+	rawAccountOwners map[string]string
+
+	// hostApplyTransactions and hostApplyContextSlot back the deliberately
+	// narrow finalized Squads proof reader. They are separate from rawAccounts so
+	// normal publish tests cannot accidentally gain transaction-history behavior.
+	hostApplyTransactions map[string]hostApplyFinalizedTransaction
+	hostApplyContextSlot  uint64
+	hostApplyErr          error
 
 	// global error injection: if set, the named Fetch returns this error.
 	releaseErr    error
@@ -103,14 +111,17 @@ type mockFoundationApp struct {
 
 func newMockChainReader() *mockChainReader {
 	return &mockChainReader{
-		releaseEntry:    map[string]mockReleaseEntry{},
-		storeAuthz:      map[string]mockStoreAuthz{},
-		storeListing:    map[string]mockStoreReleaseListing{},
-		blacklist:       map[string]mockBlacklist{},
-		installerEntry:  map[string]mockInstallerEntry{},
-		foundationApp:   map[string]mockFoundationApp{},
-		sidecarIdentity: map[string]mockSidecarIdentity{},
-		rawAccounts:     map[string][]byte{},
+		releaseEntry:          map[string]mockReleaseEntry{},
+		storeAuthz:            map[string]mockStoreAuthz{},
+		storeListing:          map[string]mockStoreReleaseListing{},
+		blacklist:             map[string]mockBlacklist{},
+		installerEntry:        map[string]mockInstallerEntry{},
+		foundationApp:         map[string]mockFoundationApp{},
+		sidecarIdentity:       map[string]mockSidecarIdentity{},
+		rawAccounts:           map[string][]byte{},
+		rawAccountOwners:      map[string]string{},
+		hostApplyTransactions: map[string]hostApplyFinalizedTransaction{},
+		hostApplyContextSlot:  100,
 	}
 }
 

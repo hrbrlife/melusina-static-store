@@ -55,6 +55,13 @@ import (
 const (
 	DesiredGenerationSchema = "melusina-desired-generation-v1"
 	ComponentRegistrySchema = "melusina-component-registry-v1"
+	// OneShotApplyAuthorizationSchema is a short-lived, Store-operator-signed
+	// authorization to apply exactly one already-signed DesiredGeneration while
+	// a controller's ordinary AutoApply policy remains OFF.  It is deliberately
+	// a separate document from DesiredGeneration: the latter says WHAT is
+	// published, while this receipt says WHEN one specifically pinned controller
+	// may execute one specifically pinned component update.
+	OneShotApplyAuthorizationSchema = "melusina-one-shot-apply-authorization-v1"
 	// RuntimeReleaseInfoSchema is the exact, structured self-report emitted by
 	// a running release component. It is intentionally distinct from the
 	// signed DesiredGeneration schema: it binds a local process to a desired
@@ -69,7 +76,15 @@ const (
 var (
 	desiredGenerationDomain = []byte("melusina-desired-generation-v1\x00")
 	componentReleaseDomain  = []byte("melusina-component-release-v1\x00")
+	oneShotApplyDomain      = []byte("melusina-one-shot-apply-authorization-v1\x00")
 )
+
+// MaxOneShotApplyAuthorizationTTLSeconds bounds the bearer lifetime of a
+// one-shot receipt.  The host's whole discovery+promote budget is already
+// capped at fifteen minutes; a longer receipt would become a second, latent
+// auto-apply policy.  Once a receipt has passed the controller's pre-mutation
+// gate, its durable WAL binding carries the in-flight recovery proof instead.
+const MaxOneShotApplyAuthorizationTTLSeconds int64 = 15 * 60
 
 // Component classes select the ON-CHAIN AUTHORITY model a consumer verifies; a
 // class is NOT an apply strategy (that is the registry's ApplyKind, chosen
@@ -293,6 +308,15 @@ func componentReleaseDigest(c ComponentRelease) [32]byte {
 		msg = writeU64(msg, d.MinGeneration)
 	}
 	return sha256.Sum256(msg)
+}
+
+// ComponentReleaseDigestHex returns the canonical, domain-separated digest of
+// one component entry.  It is exported for narrow, signed adjunct protocols
+// such as a one-shot apply receipt; callers must still validate the enclosing
+// DesiredGeneration before treating the digest as an authorized release fact.
+func ComponentReleaseDigestHex(c ComponentRelease) string {
+	d := componentReleaseDigest(c)
+	return hex.EncodeToString(d[:])
 }
 
 // sortedComponents returns a copy of the components sorted by ComponentID, with

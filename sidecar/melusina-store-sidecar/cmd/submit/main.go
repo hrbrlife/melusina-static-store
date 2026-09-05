@@ -39,7 +39,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
@@ -62,9 +64,12 @@ const programIDB58 = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 const defaultChainID = "solana:devnet"
 
 const (
-	appPromoteTarget         = "/publish"
-	appStageTarget           = "/publish/stage"
-	preparedSubmissionSchema = "melusina-submit-prepared-v1"
+	appPromoteTarget           = "/publish"
+	appStageTarget             = "/publish/stage"
+	controlPublishTargetPrefix = "/control/v1/releases/"
+	controlPublishTargetSuffix = "/publish"
+	controlRequestEnvelopeTTL  = 15 * time.Minute
+	preparedSubmissionSchema   = "melusina-submit-prepared-v1"
 )
 
 // Receipt mirrors the store-signed provenance receipt JSON returned by the C2.3
@@ -237,7 +242,13 @@ type options struct {
 	verifyReceiptPath   string
 	prepareOut          string
 	preparedSubmission  string
-	timeout             time.Duration
+	// requestOut and controlDossier enable a constrained, file-only worker
+	// primitive. It signs an exact future Pearl control request, but never
+	// opens a network connection, stages bytes, or changes chain/catalog state.
+	// Both fields must occur together; the target is derived rather than supplied.
+	requestOut     string
+	controlDossier string
+	timeout        time.Duration
 }
 
 func parseFlags(args []string) (options, error) {
@@ -263,6 +274,8 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.verifyReceiptPath, "verify-receipt", "", "verify a saved promotion or app-publish receipt against the on-chain store authority without publishing")
 	fs.StringVar(&o.prepareOut, "prepare-out", "", "write a signed publish handoff and exit without POSTing; use --verify-receipt --prepared-submission to accept the returned receipt")
 	fs.StringVar(&o.preparedSubmission, "prepared-submission", "", "prepared handoff to bind a --verify-receipt result to the exact submitted candidate")
+	fs.StringVar(&o.requestOut, "request-out", "", "owner-only path for one 15-minute exact Pearl control publish request; performs no HTTP call")
+	fs.StringVar(&o.controlDossier, "control-dossier", "", "24-character lower-hex Bazaar Control dossier id; required with --request-out")
 	fs.DurationVar(&o.timeout, "timeout", 60*time.Second, "HTTP request timeout")
 	if err := fs.Parse(args); err != nil {
 		return o, err
@@ -270,10 +283,11 @@ func parseFlags(args []string) (options, error) {
 
 	var missing []string
 	verifyMode := o.verifyReceiptPath != ""
+	requestMode := o.requestOut != "" || o.controlDossier != ""
 	if verifyMode {
 		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" || o.runtimeContractPath != "" ||
 			o.publisherKey != "" || o.storePubkey != "" || o.stageOnly || o.useMultipart ||
-			o.developer != "" || o.repo != "" || o.slug != "" || o.receiptOut != "" || o.prepareOut != "" {
+			o.developer != "" || o.repo != "" || o.slug != "" || o.receiptOut != "" || o.prepareOut != "" || requestMode {
 			return o, errors.New("--verify-receipt cannot be combined with publish, stage, catalog, or receipt-output flags")
 		}
 		if o.licenseMint == "" {
@@ -298,6 +312,26 @@ func parseFlags(args []string) (options, error) {
 	}
 	if o.prepareOut != "" && o.receiptOut != "" {
 		return o, errors.New("--prepare-out cannot be combined with --receipt-out")
+	}
+	if requestMode {
+		if o.requestOut == "" || !validControlDossierID(o.controlDossier) {
+			return o, errors.New("--request-out and a 24-character lower-hex --control-dossier are required together")
+		}
+		if o.prepareOut != "" || o.stageOnly || o.useMultipart || o.receiptOut != "" || o.store != "" || o.licenseMint != "" || o.domain != "" || o.rpcURL != "" {
+			return o, errors.New("--request-out is file-only and cannot be combined with store, stage, multipart, receipt, or chain-verification flags")
+		}
+		for label, value := range map[string]string{"--spk": o.spkPath, "--metadata": o.metadataPath, "--release": o.releasePath, "--publisher-key": o.publisherKey, "--store-pubkey": o.storePubkey} {
+			if strings.TrimSpace(value) == "" {
+				missing = append(missing, label)
+			}
+		}
+		if len(missing) > 0 {
+			return o, fmt.Errorf("missing required flag(s): %s", strings.Join(missing, " "))
+		}
+		if err := validateSlotHint(o); err != nil {
+			return o, err
+		}
+		return o, nil
 	}
 	if o.store == "" {
 		missing = append(missing, "--store")
@@ -330,6 +364,16 @@ func parseFlags(args []string) (options, error) {
 		// envelope.ChainEvidence.Validate rejects verified_slot==0.
 		return o, errors.New("--verified-slot must be > 0 (envelope chain evidence requires it)")
 	}
+	if err := validateSlotHint(o); err != nil {
+		return o, err
+	}
+	if o.domain == "" {
+		o.domain = hostFromURL(o.store)
+	}
+	return o, nil
+}
+
+func validateSlotHint(o options) error {
 	slotFields := 0
 	for _, value := range []string{o.developer, o.repo, o.slug} {
 		if strings.TrimSpace(value) != "" {
@@ -337,12 +381,9 @@ func parseFlags(args []string) (options, error) {
 		}
 	}
 	if slotFields != 0 && slotFields != 3 {
-		return o, errors.New("--developer, --repo, and --slug must be supplied together")
+		return errors.New("--developer, --repo, and --slug must be supplied together")
 	}
-	if o.domain == "" {
-		o.domain = hostFromURL(o.store)
-	}
-	return o, nil
+	return nil
 }
 
 func run(args []string, stdout, stderr io.Writer) error {
@@ -408,9 +449,17 @@ func run(args []string, stdout, stderr io.Writer) error {
 
 	// Select the purpose before signing. App envelopes are never route-less and
 	// a stage envelope is cryptographically distinct from a promotion envelope.
+	// The file-only control mode derives its target from the Pearl dossier; it
+	// never accepts a route supplied by a worker or terminal.
 	target := appPromoteTarget
 	if o.stageOnly {
 		target = appStageTarget
+	}
+	if o.requestOut != "" {
+		target, err = controlPublishTarget(o.controlDossier)
+		if err != nil {
+			return fmt.Errorf("control target: %w", err)
+		}
 	}
 
 	// Build the signed publish-request envelope: KindPublishRequest addressed
@@ -427,6 +476,12 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if envTTL < 5*time.Minute {
 		envTTL = 5 * time.Minute
 	}
+	// A control request is a final transport envelope, not a durable approval
+	// object. It is intentionally fixed at the command window so a worker cannot
+	// make an effectively long-lived publisher capability by inflating timeout.
+	if o.requestOut != "" {
+		envTTL = controlRequestEnvelopeTTL
+	}
 	sig, err := buildEnvelope(pubPriv, dst, target, spk, releaseBytes, claims, o.verifiedSlot, envTTL)
 	if err != nil {
 		return fmt.Errorf("envelope: %w", err)
@@ -439,6 +494,19 @@ func run(args []string, stdout, stderr io.Writer) error {
 			return err
 		}
 		fmt.Fprintf(stdout, "PREPARED OK — signed publish handoff written to %s; no POST was made\n", o.prepareOut)
+		return nil
+	}
+	if o.requestOut != "" {
+		body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, runtimeContract, o.developer, o.repo, o.slug)
+		if err != nil {
+			return fmt.Errorf("control request: %w", err)
+		}
+		output, err := writeOwnerOnlyControlRequest(o.requestOut, body)
+		if err != nil {
+			return fmt.Errorf("control request: %w", err)
+		}
+		digest := sha256.Sum256(body)
+		fmt.Fprintf(stdout, "CONTROL REQUEST PREPARED — exact request written to %s (sha256 %x); no network, chain, stage, or catalog action occurred\n", output, digest)
 		return nil
 	}
 
@@ -711,8 +779,8 @@ func decodeReceiptForVerification(raw []byte) (Receipt, error) {
 // Destination==operator, RequestHash==sha256(SPK), and sha256(Body)==BodyHash;
 // we set all of them here.
 func buildEnvelope(src *identity.Private, dst identity.Public, target string, spk, releaseBytes []byte, claims ReleaseClaims, verifiedSlot uint64, ttl time.Duration) (envelope.Signed, error) {
-	if target != appPromoteTarget && target != appStageTarget {
-		return envelope.Signed{}, fmt.Errorf("app publish target must be exactly %q or %q", appPromoteTarget, appStageTarget)
+	if !isAllowedPublisherEnvelopeTarget(target) {
+		return envelope.Signed{}, fmt.Errorf("publisher envelope target must be exactly %q, %q, or a Pearl dossier publish route", appPromoteTarget, appStageTarget)
 	}
 	spkSum := sha256.Sum256(spk)
 	relSum := sha256.Sum256(releaseBytes)
@@ -744,6 +812,135 @@ func buildEnvelope(src *identity.Private, dst identity.Public, target string, sp
 		TTL:         ttl,
 		Chain:       chain,
 	})
+}
+
+func controlPublishTarget(dossierID string) (string, error) {
+	if !validControlDossierID(dossierID) {
+		return "", errors.New("dossier id must be exactly 24 lowercase hexadecimal characters")
+	}
+	return controlPublishTargetPrefix + dossierID + controlPublishTargetSuffix, nil
+}
+
+func validControlDossierID(value string) bool {
+	if len(value) != 24 {
+		return false
+	}
+	for _, r := range value {
+		if !(r >= '0' && r <= '9') && !(r >= 'a' && r <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func isControlPublishTarget(target string) bool {
+	if !strings.HasPrefix(target, controlPublishTargetPrefix) || !strings.HasSuffix(target, controlPublishTargetSuffix) {
+		return false
+	}
+	dossierID := strings.TrimSuffix(strings.TrimPrefix(target, controlPublishTargetPrefix), controlPublishTargetSuffix)
+	return validControlDossierID(dossierID)
+}
+
+func isAllowedPublisherEnvelopeTarget(target string) bool {
+	return target == appPromoteTarget || target == appStageTarget || isControlPublishTarget(target)
+}
+
+// marshalControlPublishRequest emits the exact normal JSON publish wire body
+// that the Pearl will later send through the Store Link. It is deliberately a
+// pure function: a worker can prepare the candidate without receiving a store
+// URL, RPC URL, or any way to call the sidecar directly.
+func marshalControlPublishRequest(sig envelope.Signed, releaseBytes, spk, metadata, runtimeContract []byte, developer, repo, slug string) ([]byte, error) {
+	if sig.Payload.Method != http.MethodPost || !isControlPublishTarget(sig.Payload.Target) {
+		return nil, errors.New("signed envelope is not for one exact Pearl control publish route")
+	}
+	body, err := json.Marshal(publishRequest{
+		Envelope:           sig,
+		ReleaseB64:         stdB64(releaseBytes),
+		SPKB64:             stdB64(spk),
+		MetadataB64:        stdB64(metadata),
+		RuntimeContractB64: stdB64(runtimeContract),
+		Developer:          developer,
+		Repo:               repo,
+		Slug:               slug,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal JSON wire body: %w", err)
+	}
+	return body, nil
+}
+
+// writeOwnerOnlyControlRequest writes a prepared control request exactly once.
+// The request includes a short-lived publisher envelope, so it must not be
+// left in /tmp, made group-readable, or overwrite an existing candidate. The
+// enclosing worker directory is part of the custody boundary: it must be a
+// real, owner-only directory rather than a symlinked shared workspace.
+func writeOwnerOnlyControlRequest(path string, body []byte) (string, error) {
+	if strings.TrimSpace(path) == "" || !filepath.IsAbs(path) {
+		return "", errors.New("--request-out must be an absolute path")
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("canonicalize output path: %w", err)
+	}
+	if err := rejectTemporaryPath(abs); err != nil {
+		return "", err
+	}
+	parent := filepath.Dir(abs)
+	resolvedParent, err := filepath.EvalSymlinks(parent)
+	if err != nil {
+		return "", fmt.Errorf("resolve output directory: %w", err)
+	}
+	if resolvedParent != parent {
+		return "", errors.New("output directory must not contain a symlink")
+	}
+	info, err := os.Lstat(parent)
+	if err != nil {
+		return "", fmt.Errorf("stat output directory: %w", err)
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm() != 0o700 {
+		return "", errors.New("output directory must be a real owner-only (0700) directory")
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || int(stat.Uid) != os.Geteuid() {
+		return "", errors.New("output directory must be owned by the invoking user")
+	}
+	f, err := os.OpenFile(abs, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0o600)
+	if err != nil {
+		return "", fmt.Errorf("create exclusive owner-only output: %w", err)
+	}
+	keep := false
+	defer func() {
+		if !keep {
+			_ = f.Close()
+			_ = os.Remove(abs)
+		}
+	}()
+	if _, err := f.Write(body); err != nil {
+		return "", fmt.Errorf("write output: %w", err)
+	}
+	if err := f.Sync(); err != nil {
+		return "", fmt.Errorf("sync output: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return "", fmt.Errorf("close output: %w", err)
+	}
+	keep = true
+	return abs, nil
+}
+
+func rejectTemporaryPath(path string) error {
+	tmp, err := filepath.Abs(os.TempDir())
+	if err != nil {
+		return fmt.Errorf("resolve temporary directory: %w", err)
+	}
+	rel, err := filepath.Rel(tmp, path)
+	if err != nil {
+		return fmt.Errorf("compare temporary directory: %w", err)
+	}
+	if rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))) {
+		return errors.New("--request-out must not be inside the temporary directory")
+	}
+	return nil
 }
 
 // releaseEntryPDA derives the ReleaseEntry PDA base58 from the masterNftMint and

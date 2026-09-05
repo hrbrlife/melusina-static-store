@@ -224,10 +224,8 @@ groups:
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: dueprocess
-        # v0.1.78/appVersion-82 is the paired controlled-newborn-handoff
-        # producer consumed by CCA v94. Its app-local ordinal baseline makes
-        # the release contract self-contained and independently reproducible.
-        source_commit: 0deb7b9878285b20ccf335ce71c50e5fd68a19a3
+        # 0.1.79/v83 restores templated wallet custody and durable process startup.
+        source_commit: 0b2a7687a00754cb420fdcf88c018187588b034e
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -237,7 +235,7 @@ groups:
         source_repository: https://github.com/hrbrlife/AITX-Procedures
         publish_slug: dueprocess
         catalog_name: DueProcess
-        live_version: "0.1.77"
+        live_version: 0.1.79
         catalog_developer: hrbrlife
         catalog_repo: DueProcess
         catalog_slug: dueprocess
@@ -294,7 +292,7 @@ groups:
         source_repository: https://github.com/hrbrlife/cyberteller
         publish_slug: cyberteller
         catalog_name: CyberTeller
-        live_version: "0.1.99"
+        live_version: 0.1.99
         catalog_developer: hrbrlife
         catalog_repo: cyberteller
         catalog_slug: cyberteller
@@ -693,8 +691,8 @@ groups:
         # and reproducible packages. The served release remains 0.6.1 until
         # the governed candidate is approved and independently read back.
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
-        source_path: INSTASYS_MAIL-main
-        source_commit: b24608f2217cfc8e10c819bc8d447a19b54556c8
+        source_path: INSTASYS_MAIL
+        source_commit: cbc4cdc4c73c7c37dc52f79f8e03fdc2e62c77e0
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -702,7 +700,7 @@ groups:
         source_repository: https://github.com/hrbrlife/INSTASYS_MAIL
         publish_slug: mermail
         catalog_name: MerMail
-        live_version: "0.6.1"
+        live_version: 0.6.3
         catalog_developer: hrbrlife
         catalog_repo: INSTASYS_MAIL
         catalog_slug: mermail
@@ -819,13 +817,10 @@ groups:
         admin_surface: hidden-authority
       ccash-domain-template:
         appId: hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h
-        # v0.5.88/appVersion-110 is the current dev-publish tip. It incorporates
-        # the package-bound release-identity health control, passes recovery
-        # checks from both the source and a fresh remote clone, and packs
-        # byte-identically. The clean release source root contains this
-        # repository at the named relative path.
+        # v0.5.90/v112 repairs the DueProcess permissions contract and preserves
+        # main history. Tested with actual consumers, race checks and two clones.
         source_path: ccash-domain-template
-        source_commit: 4d81c5f269947cdcedfd0eb1259e91ca255223aa
+        source_commit: 5b95e3346052c4cd24e3866d19d6b268dd827112
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -834,7 +829,7 @@ groups:
         source_selection_receipt: prepublish-selections/hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h.json
         publish_slug: cca-sh-domain-template
         catalog_name: DomainTemplate
-        live_version: 0.5.89
+        live_version: 0.5.90
         catalog_developer: hrbrlife
         catalog_repo: ccash_domain_template
         catalog_slug: cca-sh-domain-template

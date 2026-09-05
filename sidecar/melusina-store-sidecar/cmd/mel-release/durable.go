@@ -157,9 +157,52 @@ func decodeOneJSON(raw []byte, dst any) error {
 	return nil
 }
 
+func encodeCanonicalJSON(value any) ([]byte, error) {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) == 0 || len(raw)+1 > maxNativeReceiptBytes {
+		return nil, errors.New("encoded receipt is outside its size bound")
+	}
+	return append(raw, '\n'), nil
+}
+
 func sha256Hex(raw []byte) string {
 	h := sha256.Sum256(raw)
 	return hex.EncodeToString(h[:])
+}
+
+// regularFileSHA256 hashes one bounded, regular, non-symlink source artifact.
+// Build receipts contain paths produced by the provider, but a preflight must
+// still reject a path replacement before surfacing a digest to Bazaar Control.
+func regularFileSHA256(path string, limit int64) (string, int64, error) {
+	if !filepath.IsAbs(path) || filepath.Clean(path) != path || limit < 1 {
+		return "", 0, errors.New("file path or size limit is invalid")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() < 0 || info.Size() > limit {
+		return "", 0, errors.New("file must be a bounded regular non-symlink")
+	}
+	// O_NOFOLLOW closes the Lstat/Open replacement window. Validate the opened
+	// descriptor too: a same-sized regular file swapped after Lstat must not be
+	// allowed to acquire an evidence digest under the old path's identity.
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return "", 0, err
+	}
+	defer f.Close()
+	opened, err := f.Stat()
+	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(info, opened) || opened.Size() != info.Size() {
+		return "", 0, errors.New("file changed before hashing")
+	}
+	h := sha256.New()
+	n, err := io.Copy(h, io.LimitReader(f, limit+1))
+	final, statErr := f.Stat()
+	if err != nil || statErr != nil || n != info.Size() || n > limit || !os.SameFile(opened, final) || final.Size() != opened.Size() {
+		return "", 0, errors.New("file changed or exceeds its size limit while hashing")
+	}
+	return hex.EncodeToString(h.Sum(nil)), n, nil
 }
 
 // ── per-app exclusive lock (flock) ─────────────────────────────────────────────

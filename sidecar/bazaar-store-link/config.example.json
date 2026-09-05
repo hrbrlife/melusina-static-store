@@ -1,0 +1,18 @@
+{
+  "listenAddr": "10.53.155.42:9460",
+  "storeId": "melusina-os-root-store",
+  "sidecarUrl": "https://127.0.0.1:9443",
+  "clientCertPath": "/etc/bazaar-store-link/client.pem",
+  "clientKeyPath": "/etc/bazaar-store-link/client.key",
+  "sidecarCaPath": "/etc/bazaar-store-link/sidecar-ca.pem",
+  "sidecarCertSha256": "<lowercase sha256 of Store sidecar certificate DER>",
+  "buildWorkerUrl": "https://127.0.0.1:9461",
+  "releasePreparationWorkerUrl": "https://127.0.0.1:9463",
+  "releaseFinalizationWorkerUrl": "https://127.0.0.1:9464",
+  "tenantProofWorkerUrl": "https://127.0.0.1:9462",
+  "workerCaPath": "/etc/bazaar-store-link/worker-ca.pem",
+  "buildWorkerCertSha256": "<lowercase sha256 of build worker certificate DER>",
+  "releasePreparationWorkerCertSha256": "<lowercase sha256 of preparation worker certificate DER>",
+  "releaseFinalizationWorkerCertSha256": "<lowercase sha256 of finalization worker certificate DER>",
+  "tenantProofWorkerCertSha256": "<lowercase sha256 of tenant-proof worker certificate DER>"
+}

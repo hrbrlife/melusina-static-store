@@ -42,6 +42,19 @@ func buildPollDeps(cfg ControllerConfig, expectedUID uint32) (hostupdate.PollDep
 	if err != nil {
 		return hostupdate.PollDeps{}, fmt.Errorf("load component registry allowlist: %w", err)
 	}
+	if cfg.OneShotApply != nil {
+		// A one-shot receipt is scoped to the dedicated Fineract controller,
+		// not a general escape hatch for every future registry member.  Requiring
+		// an exact singleton registry means a later local registry expansion
+		// cannot silently broaden what the receipt path can project/apply.
+		if len(registry.Components) != 1 {
+			return hostupdate.PollDeps{}, fmt.Errorf("oneShotApply requires an exact singleton component registry, got %d entries", len(registry.Components))
+		}
+		install, ok := registry.Components[cfg.OneShotApply.ComponentID]
+		if !ok || install.ComponentID != cfg.OneShotApply.ComponentID || install.ComponentClass != componentrelease.ClassSidecar {
+			return hostupdate.PollDeps{}, fmt.Errorf("oneShotApply registry must contain exactly the configured Fineract sidecar %q", cfg.OneShotApply.ComponentID)
+		}
+	}
 	wal, err := hostupdate.NewWALStore(cfg.StateDir)
 	if err != nil {
 		return hostupdate.PollDeps{}, fmt.Errorf("open WAL store: %w", err)

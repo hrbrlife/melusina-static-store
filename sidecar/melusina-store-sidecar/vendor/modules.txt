@@ -16,6 +16,9 @@ github.com/hrbrlife/melusina-attest/sidecarresult
 github.com/hrbrlife/melusina-identity-gate/bundle
 github.com/hrbrlife/melusina-identity-gate/envelope
 github.com/hrbrlife/melusina-identity-gate/verify
+# github.com/melusina-os/melusina-artifact-vault v0.0.0 => ../../../Melusina/shared/melusina-artifact-vault
+## explicit; go 1.24.0
+github.com/melusina-os/melusina-artifact-vault
 # github.com/melusina-os/melusina-solana-primitives v0.0.0 => ../../../Melusina/shared/melusina-solana-primitives
 ## explicit; go 1.24.0
 github.com/melusina-os/melusina-solana-primitives
@@ -24,4 +27,5 @@ github.com/melusina-os/melusina-solana-primitives
 golang.org/x/crypto/hkdf
 # github.com/hrbrlife/melusina-attest => ../../../Melusina/shared/melusina-attest
 # github.com/hrbrlife/melusina-identity-gate => ../../../Melusina/shared/melusina-identity-gate
+# github.com/melusina-os/melusina-artifact-vault => ../../../Melusina/shared/melusina-artifact-vault
 # github.com/melusina-os/melusina-solana-primitives => ../../../Melusina/shared/melusina-solana-primitives

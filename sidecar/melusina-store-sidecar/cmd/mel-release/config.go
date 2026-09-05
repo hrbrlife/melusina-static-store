@@ -58,7 +58,19 @@ type Config struct {
 	AllowGlobalReleaseRevoke bool // MEL_RELEASE_ALLOW_GLOBAL_REVOKE=yes
 }
 
-func loadConfig() (Config, error) {
+// loadConfig is the existing mutation-capable configuration. Keep this strict
+// default so adding a new command cannot accidentally inherit a less-privileged
+// configuration mode.
+func loadConfig() (Config, error) { return loadConfigForMutation(true) }
+
+// loadPreflightConfig is the sole read-only configuration profile. Preflight
+// verifies source/package facts and reads active releases, but it must not
+// require a Store operator identity, a publisher envelope, or any Squads key.
+// The configured provider receives the same absence: callers do not merely
+// promise not to use credentials they happened to inherit.
+func loadPreflightConfig() (Config, error) { return loadConfigForMutation(false) }
+
+func loadConfigForMutation(needsMutationInputs bool) (Config, error) {
 	c := Config{
 		ConfigPath:       os.Getenv("MEL_RELEASE_CONFIG"),
 		RPCURL:           os.Getenv("MEL_RELEASE_RPC_URL"),
@@ -106,14 +118,17 @@ func loadConfig() (Config, error) {
 	}
 
 	var missing []string
-	for name, val := range map[string]string{
-		"MEL_RELEASE_CONFIG":             c.ConfigPath,
-		"MEL_RELEASE_SIGNER_PROVIDER":    c.SignerProvider,
-		"MEL_RELEASE_STORE_URL":          c.StoreURL,
-		"MEL_RELEASE_STORE_PUBKEY":       c.StorePubkey,
-		"MEL_RELEASE_STORE_LICENSE_MINT": c.StoreLicenseMint,
-		"MEL_RELEASE_PUBLISHER_KEY":      c.PublisherKey,
-	} {
+	required := map[string]string{
+		"MEL_RELEASE_CONFIG":          c.ConfigPath,
+		"MEL_RELEASE_SIGNER_PROVIDER": c.SignerProvider,
+		"MEL_RELEASE_STORE_URL":       c.StoreURL,
+	}
+	if needsMutationInputs {
+		required["MEL_RELEASE_STORE_PUBKEY"] = c.StorePubkey
+		required["MEL_RELEASE_STORE_LICENSE_MINT"] = c.StoreLicenseMint
+		required["MEL_RELEASE_PUBLISHER_KEY"] = c.PublisherKey
+	}
+	for name, val := range required {
 		if strings.TrimSpace(val) == "" {
 			missing = append(missing, name)
 		}

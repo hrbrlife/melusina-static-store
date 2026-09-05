@@ -1,18 +1,19 @@
 {
   "$schema": "melusina-release-v1",
-  "programId": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
-  "appHash": "c1ae2d9413301a890c760a7e5a3ff01aac82030de3ed408d831222939cad5e5a",
-  "releaseHash": "5f333cce531bfd162ca762b5c5e8e094e5d3a919683373d1ee6e6c7f60f8f653",
-  "version": "0.5.56",
-  "signedAtUnix": 1784115189,
-  "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+  "appHash": "e1d33694bb0c257e5daae9b6e1bbabf8c4ec30a4a81534f9fa9084a5c2c3d626",
+  "authorSig": "I0tyOYMaWztv9QQKt/8TDpN1YWYCo9YpU4DH0StgXQFY9I8QJ8PST75T5scvUASxXDP5upT5Qp91OTs1aHoBCQ==",
   "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-  "releaseEntryPda": "4EUPLu5vxSZr61mKMvZ91YLV831hMcZjLNgT8PPRVhwi",
-  "authorSig": "cs7P0xbNuwCBTHmgFBYxOVz5AOZ2ozyA1MQND17N6s0L4HVy/+FB7nTMGmS3HMgQQuy7ryUVtHw8Szlu4eRzCQ==",
+  "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
   "quorumPolicy": {
-    "threshold": 3,
     "memberCount": 4,
-    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+    "threshold": 3
   },
-  "releaseNonce": "35b21328730feab123ab804ed2ec3ab5"
+  "releaseEntryPda": "73dFNNsoYHWpQ6c73XMfaGDnUsaRc3KjerhFZE39Nmgi",
+  "releaseHash": "69eb5dfee46e41ee1cf8591416770ae55aa1ca4963cabc0e96fefc79da5f94b9",
+  "releaseNonce": "a17781d99d58555b81d0f8a31edd90b4",
+  "runtimeContractSchema": "melusina-app-runtime-contract-v1",
+  "runtimeContractSha256": "f2a64adc3130ef4c5a7b18701e50e91bdebb0d3858ac2ac121a8a5fe25f2c6bb",
+  "signedAtUnix": 1788591901,
+  "version": "0.5.90"
 }

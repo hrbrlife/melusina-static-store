@@ -31,6 +31,29 @@ func TestLoadConfigRequiresStoreLicenseMint(t *testing.T) {
 	}
 }
 
+func TestLoadPreflightConfigDoesNotRequireOrRetainMutationCredentials(t *testing.T) {
+	for key, value := range map[string]string{
+		"MEL_RELEASE_CONFIG":             "/tmp/bazaar-catalog.yaml",
+		"MEL_RELEASE_SIGNER_PROVIDER":    "provider",
+		"MEL_RELEASE_STORE_URL":          defaultBazaarOrigin,
+		"MEL_RELEASE_STORE_PUBKEY":       "",
+		"MEL_RELEASE_STORE_LICENSE_MINT": "",
+		"MEL_RELEASE_PUBLISHER_KEY":      "",
+	} {
+		t.Setenv(key, value)
+	}
+	preflight, err := loadPreflightConfig()
+	if err != nil {
+		t.Fatalf("loadPreflightConfig(): %v", err)
+	}
+	if preflight.StorePubkey != "" || preflight.StoreLicenseMint != "" || preflight.PublisherKey != "" {
+		t.Fatalf("preflight config retained mutation credential paths: %+v", preflight)
+	}
+	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "MEL_RELEASE_STORE_PUBKEY") {
+		t.Fatalf("loadConfig() without mutation credentials error = %v", err)
+	}
+}
+
 func TestLoadConfigRejectsAlternateStore(t *testing.T) {
 	for key, value := range map[string]string{
 		"MEL_RELEASE_CONFIG":             "/tmp/bazaar-catalog.yaml",

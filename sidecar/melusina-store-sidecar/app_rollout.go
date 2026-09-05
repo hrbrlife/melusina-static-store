@@ -263,6 +263,20 @@ func rolloutCurrentStageIsQuarantined(cfg Config, state appRolloutState, now tim
 	if isQuarantinableStagedCandidateError(err) {
 		return true, nil
 	}
+	if errors.Is(err, os.ErrNotExist) {
+		// A missing private stage may be discarded only after the signed public
+		// catalog proves that this rollout never became installable.  Treating a
+		// catalog-current stage as disposable would silently destroy the only
+		// rollback source for a served release; retain the ordinary validation
+		// failure in that case.
+		catalogCurrent, catalogErr := rolloutStateIsCatalogCurrent(cfg, state)
+		if catalogErr != nil {
+			return false, fmt.Errorf("prove missing rollout unserved: %w", catalogErr)
+		}
+		if !catalogCurrent {
+			return true, nil
+		}
+	}
 	if err != nil {
 		return false, fmt.Errorf("validate current rollout selection: %w", err)
 	}

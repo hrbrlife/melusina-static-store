@@ -19,6 +19,7 @@ SPEC = importlib.util.spec_from_file_location("provider", HERE / "mel-release-pr
 provider = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(provider)
+TEST_NODE_BIN = provider.node_bin()
 
 
 CYBERTELLER_CONFIG_APP_ID = "3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10"
@@ -424,7 +425,7 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
         finally:
             provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy = old_run, old_ctx, old_rewrite, old_index, old_policy
             restore_env(old)
-        assert captured == [["node", str(executor), "propose", str(state_path)]], captured
+        assert captured == [[TEST_NODE_BIN, str(executor), "propose", str(state_path)]], captured
         assert json.loads(out_receipt.read_text())["recovery"]["recoveredVaultTransaction"] is True
 
 
@@ -488,7 +489,7 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
                 if args[0] == "/tmp/melusina-pearl-tool":
                     state_path.write_text(json.dumps(new_state) + "\n")
                     return ""
-                node_calls = [item for item in captured if item[0] == "node"]
+                node_calls = [item for item in captured if item[0] == TEST_NODE_BIN]
                 if len(node_calls) == 1:
                     return json.dumps({
                         "status": "ForeignTransactionIndex", "transactionPda": "old-transaction",
@@ -665,7 +666,7 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
         finally:
             provider.run = old_run
             restore_env(old)
-        assert captured == [["node", str(executor), "next-index"]], captured
+        assert captured == [[TEST_NODE_BIN, str(executor), "next-index"]], captured
 
         state = root / "state.json"
         state.write_text(json.dumps({
@@ -729,7 +730,7 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
             provider.release_entry_exists = old_exists
             provider.finalize_release = old_finalize
             restore_env(old)
-        assert captured == [["node", str(executor), "approve-execute", str(state)]], captured
+        assert captured == [[TEST_NODE_BIN, str(executor), "approve-execute", str(state)]], captured
         result = json.loads(receipt.read_text())
         assert result["transactionSignatures"][-1] == "execute", result
         assert final_release.read_text() == release.read_text()
@@ -2128,7 +2129,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "prepublish-selections/40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0.json"
     ), dashboard
     domain_template = entries["hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h"]
-    assert domain_template["source_commit"] == "4d81c5f269947cdcedfd0eb1259e91ca255223aa", domain_template
+    assert domain_template["source_commit"] == "5b95e3346052c4cd24e3866d19d6b268dd827112", domain_template
     assert domain_template["source_baseline_branch"] == "main", domain_template
     assert domain_template["runtime_contract_path"] == "RUNTIME-CONTRACT.json", domain_template
     assert domain_template["reconciliation_state"] == "source-pinned", domain_template
@@ -2247,7 +2248,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
             ("botmother", "403e526976e700cba7c5671526c788d5b7d86f49", "MELUSINA_BOTMOTHER", "botmother"),
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
-            ("dueprocess", "0deb7b9878285b20ccf335ce71c50e5fd68a19a3", "DueProcess", "dueprocess"),
+            ("dueprocess", "0b2a7687a00754cb420fdcf88c018187588b034e", "DueProcess", "dueprocess"),
         "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h":
             ("fineract-setup/fineract-sidecar", "f9dd15ab5646b761d8ec46809c091fe5f171f749", "fineract-setup", "fineract-setup"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
@@ -2255,9 +2256,9 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
             ("GoldKey", "4c1f0b8746e98c06e7d9f78f71ff30dfdc2df915", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
-            ("INSTASYS_MAIL-main", "2f140345da03e3a756c91a96c1c2f7d12ec4c913", "INSTASYS_MAIL", "mermail"),
+            ("INSTASYS_MAIL", "cbc4cdc4c73c7c37dc52f79f8e03fdc2e62c77e0", "INSTASYS_MAIL", "mermail"),
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
-            ("ccash-domain-template", "4d81c5f269947cdcedfd0eb1259e91ca255223aa", "ccash_domain_template", "cca-sh-domain-template"),
+            ("ccash-domain-template", "5b95e3346052c4cd24e3866d19d6b268dd827112", "ccash_domain_template", "cca-sh-domain-template"),
         "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":
             ("instaco", "838a3729df2bde5c3cbfef094f914992e17c61ce", "instaco-app", "instaco"),
         CYBERTELLER_CONFIG_APP_ID:
@@ -2278,7 +2279,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     dueprocess = entries["47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0"]
     assert dueprocess["source_path"] == "dueprocess", dueprocess
     assert dueprocess["source_repository"] == "https://github.com/hrbrlife/AITX-Procedures", dueprocess
-    assert dueprocess["source_commit"] == "0deb7b9878285b20ccf335ce71c50e5fd68a19a3", dueprocess
+    assert dueprocess["source_commit"] == "0b2a7687a00754cb420fdcf88c018187588b034e", dueprocess
     assert dueprocess["source_baseline_branch"] == "main", dueprocess
     assert dueprocess["runtime_contract_path"] == "RUNTIME-CONTRACT.json", dueprocess
     assert dueprocess["reconciliation_state"] == "source-pinned", dueprocess
@@ -2400,7 +2401,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert canboard["source_commit"] == "f1e5c5b43c93b02b0491fad44d4f291c2e2b2300", canboard
     opensanctions = entries["msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh"]
     assert opensanctions["source_path"] == "melusina-app-opensanctions", opensanctions
-    assert opensanctions["source_commit"] == "74b48ee573d278d853d380430ab0ba23d4576958", opensanctions
+    assert opensanctions["source_commit"] == "a4ab5a12aaa877105c93bec8bdcf8d5bfa934401", opensanctions
     assert opensanctions["source_baseline_branch"] == "main", opensanctions
     assert opensanctions["runtime_contract_path"] == "RUNTIME-CONTRACT.json", opensanctions
     assert opensanctions["reconciliation_state"] == "source-pinned", opensanctions

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
@@ -156,20 +157,48 @@ func (c *borshCursor) skipOptionPubkey() {
 
 // skipString skips a borsh string (u32 length prefix + bytes).
 func (c *borshCursor) skipString() {
-	n := c.u32()
-	if n < 0 || n > len(c.b) {
-		c.fail("cascade string length out of range")
-		return
-	}
-	c.skip(n)
+	_ = c.readString()
 }
 
 // skipVecStrings skips a borsh Vec<String>.
 func (c *borshCursor) skipVecStrings() {
+	_ = c.readVecStrings()
+}
+
+// readString reads a Borsh string without trusting its length prefix.  Cascade
+// account data is chain-controlled input, so a malformed length must fail the
+// gate rather than let a later field be interpreted at the wrong offset.
+func (c *borshCursor) readString() string {
 	n := c.u32()
-	for i := 0; i < n; i++ {
-		c.skipString()
+	if c.err != nil {
+		return ""
 	}
+	if n < 0 || n > len(c.b)-c.off {
+		c.fail("cascade string length out of range")
+		return ""
+	}
+	v := string(c.b[c.off : c.off+n])
+	c.off += n
+	return v
+}
+
+// readVecStrings reads a Borsh Vec<String>. Each element has at least its
+// four-byte length prefix, which bounds the count before allocating. This keeps
+// an adversarial on-chain blob from creating an unbounded allocation or loop.
+func (c *borshCursor) readVecStrings() []string {
+	n := c.u32()
+	if c.err != nil {
+		return nil
+	}
+	if n < 0 || n > (len(c.b)-c.off)/4 {
+		c.fail("cascade string vector length out of range")
+		return nil
+	}
+	values := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		values = append(values, c.readString())
+	}
+	return values
 }
 
 // readOptionHash reads a borsh Option<[32]byte>: 1-byte flag, then 32 bytes if 1.
@@ -195,6 +224,77 @@ func requireDiscAndOwner(name string, data []byte, owner string) error {
 	}
 	if owner != programID.Base58() {
 		return fmt.Errorf("%s: account owner %s != pinned program %s", name, owner, programID.Base58())
+	}
+	return nil
+}
+
+// Sidecar scopes are part of the on-chain authority contract. A Global
+// approval names its intended plane through SANs, while a Local approval names
+// the plane through this numeric enum. A host controller must never infer
+// host-tier authority merely because both approvals are Active.
+const (
+	sidecarScopeHost byte = iota
+	sidecarScopeHypervisor
+	sidecarScopeLocal
+	sidecarScopeRemote
+)
+
+// sidecarSANTier maps one canonical GlobalSidecarApproval SAN to its local
+// scope enum. It mirrors SidecarScope::from_san() in the deployed registry:
+// DNS names are case-insensitive, while the canonical sidecar suffix and a
+// non-empty prefix remain mandatory.
+func sidecarSANTier(san string) (byte, error) {
+	canonical := strings.ToLower(san)
+	for _, candidate := range []struct {
+		suffix string
+		scope  byte
+	}{
+		{".sidecar.host.shared", sidecarScopeHost},
+		{".sidecar.host", sidecarScopeHost},
+		{".sidecar.hypervisor.shared", sidecarScopeHypervisor},
+		{".sidecar.hypervisor", sidecarScopeHypervisor},
+		{".sidecar.local.shared", sidecarScopeLocal},
+		{".sidecar.local", sidecarScopeLocal},
+		{".sidecar.remote.shared", sidecarScopeRemote},
+		{".sidecar.remote", sidecarScopeRemote},
+	} {
+		if strings.HasSuffix(canonical, candidate.suffix) && len(canonical) > len(candidate.suffix) {
+			return candidate.scope, nil
+		}
+	}
+	return 0, fmt.Errorf("unrecognized sidecar SAN %q", san)
+}
+
+// uniformGlobalSANTier rejects an empty, unknown, or cross-plane SAN vector.
+// A cross-plane Global approval is ambiguous for a component that will be
+// applied by one concrete controller plane, so it is not an authorization.
+func uniformGlobalSANTier(sans []string) (byte, error) {
+	if len(sans) == 0 {
+		return 0, errors.New("GlobalSidecarApproval SAN list is empty")
+	}
+	var tier byte
+	for i, san := range sans {
+		got, err := sidecarSANTier(san)
+		if err != nil {
+			return 0, fmt.Errorf("GlobalSidecarApproval SAN[%d]: %w", i, err)
+		}
+		if i == 0 {
+			tier = got
+			continue
+		}
+		if got != tier {
+			return 0, fmt.Errorf("GlobalSidecarApproval SANs span multiple scope tiers (%d and %d)", tier, got)
+		}
+	}
+	return tier, nil
+}
+
+func requireGlobalSANTierMatchesLocalScope(globalTier, localScope byte) error {
+	if localScope > sidecarScopeRemote {
+		return fmt.Errorf("LocalSidecarApproval scope %d is unknown", localScope)
+	}
+	if globalTier != localScope {
+		return fmt.Errorf("GlobalSidecarApproval SAN tier %d != LocalSidecarApproval scope %d", globalTier, localScope)
 	}
 	return nil
 }
@@ -276,15 +376,19 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 		copy(globalHash[:], gc.b[gc.off:gc.off+32])
 		gc.off += 32
 	}
-	gc.skipString()     // version
-	gc.skipVecStrings() // domains
-	gc.skipU64()        // required_permissions
-	gc.skipPubkey()     // author
-	gc.skipPubkey()     // master
-	gc.skipPubkey()     // approved_by
+	gc.skipString()                   // version
+	globalSANs := gc.readVecStrings() // san_list
+	gc.skipU64()                      // required_permissions
+	gc.skipPubkey()                   // author
+	gc.skipPubkey()                   // master
+	gc.skipPubkey()                   // approved_by
 	gStatus := gc.u8()
 	if gc.err != nil {
 		return fmt.Errorf("parse GlobalSidecarApproval: %w", gc.err)
+	}
+	globalSANTier, err := uniformGlobalSANTier(globalSANs)
+	if err != nil {
+		return err
 	}
 	if gStatus != 0 {
 		return fmt.Errorf("GlobalSidecarApproval status %d not Active", gStatus)
@@ -312,11 +416,14 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	lcl.skipString() // sidecar_id
 	lcl.skipPubkey() // license
 	hasHash, localHash := lcl.readOptionHash()
-	lcl.skip(1)      // scope
-	lcl.skipPubkey() // approved_by
+	localScope := lcl.u8() // scope
+	lcl.skipPubkey()       // approved_by
 	lStatus := lcl.u8()
 	if lcl.err != nil {
 		return fmt.Errorf("parse LocalSidecarApproval: %w", lcl.err)
+	}
+	if err := requireGlobalSANTierMatchesLocalScope(globalSANTier, localScope); err != nil {
+		return err
 	}
 	if lStatus != 0 {
 		return fmt.Errorf("LocalSidecarApproval status %d not Active", lStatus)

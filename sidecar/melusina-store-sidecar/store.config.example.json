@@ -16,7 +16,8 @@
   "policy": {
     "allowed_tiers": ["regular"],
     "require_scan_report": true,
-    "accept_publishers": ["<allowed publisher base58 signing pubkey>"]
+    "accept_publishers": ["<allowed publisher base58 signing pubkey>"],
+    "require_pearl_control_for_app_publish": false
   },
   "rpc_url": "<primary trusted Solana RPC endpoint>",
   "rpc_fallback_urls": ["<independently trusted endpoint for the same cluster>"],
@@ -32,8 +33,16 @@
     "cert_path": "/etc/melusina/store/tls/cert.pem",
     "key_path": "/etc/melusina/store/tls/key.pem"
   },
+  "_comment_store_link_control_mtls": "REQUIRED when policy.require_pearl_control_for_app_publish=true. This is a private listener for the Store Link; do not route it through the public catalog edge. The SHA-256 is over the Store Link client certificate DER, not a Pearl public key or CA certificate.",
+  "store_link_control_mtls": {
+    "listen_addr": "store-control.internal.example:9443",
+    "cert_path": "/etc/melusina/store/control-tls/cert.pem",
+    "key_path": "/etc/melusina/store/control-tls/key.pem",
+    "client_ca_path": "/etc/melusina/store/control-tls/store-link-client-ca.pem",
+    "store_link_client_cert_sha256": "<lowercase sha256 of Store Link client certificate DER>"
+  },
   "boot_identity": {
-    "_comment": "OMIT this block for a READ-ONLY store (operator nil, /publish 503). Set it to enable gated /publish (B1-02). DEPLOYER MUST also register an Active on-chain SidecarIdentityEntry (register_sidecar_identity) pinning the derived signing/encryption pubkeys + this store's domain hash, sha256(tls cert DER), and the binary hash.",
+    "_comment": "OMIT this block for a READ-ONLY store (operator nil, legacy /publish 503 or 410 after Pearl cutover). Set it to enable governed app publishing (B1-02). DEPLOYER MUST also register an Active on-chain SidecarIdentityEntry (register_sidecar_identity) pinning the derived signing/encryption pubkeys + this store's domain hash, sha256(tls cert DER), and the binary hash.",
     "shards_dir": "/etc/melusina/store/shards",
     "sidecar_id": "store",
     "chain_id": "solana:devnet",

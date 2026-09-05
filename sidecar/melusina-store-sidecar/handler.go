@@ -39,17 +39,25 @@ const (
 // cache. The mutex enforces the SINGLE WRITER invariant — one in-flight publish
 // at a time.
 type publishService struct {
-	cfg                Config
-	cr                 chainReader
-	operator           *identity.Private
-	assembler          *CatalogAssembler
-	nonces             envelope.NonceCache // installer route only; app routes use appNonces
-	appNonces          *publishNonceLedger
-	catalogGenerations AppCatalogGenerationStore
-	catalogExpectedUID uint32
-	catalogExpectedGID uint32
-	now                func() time.Time
-	afterAppMutation   func(string) error // test-only crash seam; production nil
+	cfg                         Config
+	cr                          chainReader
+	operator                    *identity.Private
+	assembler                   *CatalogAssembler
+	nonces                      envelope.NonceCache // installer route only; app routes use appNonces
+	appNonces                   *publishNonceLedger
+	controlReceipts             *controlReceiptLedger
+	controlReceiptErr           error
+	hostApplyIssuances          *hostApplyIssuanceLedger
+	hostApplyIssuanceErr        error
+	hostApplyPlans              *hostApplyPlanStore
+	hostApplyPlanErr            error
+	listingRegistrar            listingRegistrar
+	listingRegistrationRequired bool
+	catalogGenerations          AppCatalogGenerationStore
+	catalogExpectedUID          uint32
+	catalogExpectedGID          uint32
+	now                         func() time.Time
+	afterAppMutation            func(string) error // test-only crash seam; production nil
 
 	mu sync.Mutex // SINGLE WRITER: serializes the verify→assemble→receipt path
 }
@@ -73,6 +81,24 @@ type appPublishPreflight struct {
 	release         ReleaseJSON
 }
 
+// appPublisherResolver is the narrow injection point between a signed
+// publisher envelope and the source of publisher authority.  The legacy
+// /publish route resolves its signer from the static migration allowlist;
+// Bazaar Control resolves the exact signer from a verified, app-scoped
+// on-chain grant.  The rest of the publish gate is deliberately shared.
+type appPublisherResolver func(appPublishPreflight, identity.Public) (string, error)
+
+// appPublishCriticalCheck re-reads dynamic authorization inside the single
+// writer just before the ordinary chain gate. It closes the interval between a
+// control-command preflight and mutation: a grant or policy retired while a
+// request waits for the writer lock cannot still authorize the publish.
+type appPublishCriticalCheck func(appPublishPreflight, time.Time) error
+
+// appPublishSnapshotCheck binds a control action to the currently selected
+// catalog only after the writer lock is held. It is separate from the chain
+// checks because the selector is a local, mutable concurrency boundary.
+type appPublishSnapshotCheck func(AppCatalogSnapshot, appPublishPreflight) error
+
 func (s *publishService) currentTime() time.Time {
 	if s.now != nil {
 		return s.now().UTC()
@@ -85,11 +111,29 @@ func (s *publishService) currentTime() time.Time {
 // the route-specific critical section, so a refusal cannot allocate replay
 // state and no plan made outside the lock can later commit.
 func (s *publishService) preflightAppPublish(r *http.Request, route string) (appPublishPreflight, error) {
+	return s.preflightAppPublishWithPublisher(r, route, func(_ appPublishPreflight, claimed identity.Public) (string, error) {
+		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
+		if !ok {
+			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
+		}
+		return signerKey, nil
+	})
+}
+
+// preflightAppPublishWithPublisher verifies an exact publisher envelope after
+// its signer has been resolved from a caller-owned authority source. It never
+// claims the durable nonce or changes catalog state.
+func (s *publishService) preflightAppPublishWithPublisher(r *http.Request, route string, resolvePublisher appPublisherResolver) (appPublishPreflight, error) {
 	var out appPublishPreflight
 	sig, releaseBytes, spk, metadata, runtimeContract, hint, err := parsePublishBody(r)
 	if err != nil {
 		return out, fmt.Errorf("check=request: %w", err)
 	}
+	var rel ReleaseJSON
+	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
+		return out, fmt.Errorf("check=release_json: %w", err)
+	}
+	out = appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel}
 	now := s.currentTime()
 	if s.appNonces == nil {
 		return out, errors.New("check=nonce_ledger: durable app nonce ledger is not initialized")
@@ -114,9 +158,12 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 	// own diagnostic and never reaches envelope.Verify. The resolved key —
 	// never the blob's own claimed key — is what the signature is verified
 	// against below.
-	signerKey, ok := s.resolveAcceptedPublisherKey(sig.Payload.Source)
-	if !ok {
-		return out, errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
+	if resolvePublisher == nil {
+		return out, errors.New("check=publisher_authority: publisher authority resolver is not configured")
+	}
+	signerKey, err := resolvePublisher(out, sig.Payload.Source)
+	if err != nil {
+		return out, err
 	}
 	if err := envelope.Verify(sig, envelope.VerifyOptions{
 		Now:                     now,
@@ -147,11 +194,7 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 	if !strings.EqualFold(bodyHashHex, sig.Payload.BodyHashHex) {
 		return out, fmt.Errorf("check=body_hash: sha256(release)=%s != envelope.body_hash=%s", bodyHashHex, sig.Payload.BodyHashHex)
 	}
-	var rel ReleaseJSON
-	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
-		return out, fmt.Errorf("check=release_json: %w", err)
-	}
-	return appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel}, nil
+	return out, nil
 }
 
 func verifyTightAppEnvelopeWindow(payload envelope.Payload, now time.Time) error {
@@ -244,34 +287,73 @@ type installerPublishRequest struct {
 // When non-nil, its verified snapshot is served under /root/ (X-Store-Origin:
 // root). The root operator passes nil (it originates, never mirrors).
 func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror) http.Handler {
-	return newRouterWithCatalogRuntime(cfg, operator, cr, mirror, catalogRuntime{})
+	return newRouterWithCatalogRuntime(cfg, operator, cr, mirror, catalogRuntime{
+		listingRegistrationRequired: strings.TrimSpace(cfg.StoreAuthority) != "",
+	})
 }
 
 func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
-	return newRouterWithCatalogRuntimeAndAssembler(cfg, operator, cr, mirror, runtime, NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir))
+	// Unit and local-development callers retain the combined shape. The real
+	// process uses newRouterSurfaces with isolateControl=true once the dedicated
+	// Pearl mTLS listener is configured.
+	public, _ := newRouterSurfaces(cfg, operator, cr, mirror, runtime, false)
+	return public
 }
 
-// newGovernedRouterWithCatalogRuntime is the production server constructor.
-// It has no configuration switch: a first app publish must match a policy
-// compiled into this Store release before a generation can be materialized.
-func newGovernedRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
-	return newRouterWithCatalogRuntimeAndAssembler(cfg, operator, cr, mirror, runtime, NewGovernedCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir))
+// newRouterSurfaces creates exactly one publish service, then presents it on
+// the public catalog surface and (when enabled by main) a distinct private
+// Pearl-control surface. Sharing the service preserves one nonce, receipt, and
+// single-writer state machine; constructing two routers independently would
+// create an unsafe split brain.
+func newRouterSurfaces(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, isolateControl bool) (http.Handler, http.Handler) {
+	return newRouterSurfacesWithAssembler(cfg, operator, cr, mirror, runtime, isolateControl, NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir))
 }
 
-func newRouterWithCatalogRuntimeAndAssembler(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, assembler *CatalogAssembler) http.Handler {
-	mux := http.NewServeMux()
+// Production always enforces the reviewed first-publish installation policy
+// on the shared service behind both the public and private control listeners.
+func newGovernedRouterSurfaces(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, isolateControl bool) (http.Handler, http.Handler) {
+	return newRouterSurfacesWithAssembler(cfg, operator, cr, mirror, runtime, isolateControl, NewGovernedCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir))
+}
+
+func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, isolateControl bool, assembler *CatalogAssembler) (http.Handler, http.Handler) {
+	var controlReceipts *controlReceiptLedger
+	var controlReceiptErr error
+	if operator != nil && runtime.appNonces != nil {
+		controlReceipts, controlReceiptErr = openOrInitializeControlReceiptLedger(cfg.PrivateStageDir)
+	}
+	var hostApplyIssuances *hostApplyIssuanceLedger
+	var hostApplyIssuanceErr error
+	var hostApplyPlans *hostApplyPlanStore
+	var hostApplyPlanErr error
+	if operator != nil {
+		hostApplyIssuances, hostApplyIssuanceErr = openOrInitializeHostApplyIssuanceLedger(cfg.PrivateStageDir)
+		hostApplyPlans, hostApplyPlanErr = openOrInitializeHostApplyPlanStore(cfg.PrivateStageDir)
+	}
 
 	svc := &publishService{
-		cfg:                cfg,
-		cr:                 cr,
-		operator:           operator,
-		assembler:          assembler,
-		nonces:             envelope.NewMemoryNonceCache(),
-		appNonces:          runtime.appNonces,
-		catalogGenerations: runtime.catalogGenerations,
-		catalogExpectedUID: runtime.expectedUID,
-		catalogExpectedGID: runtime.expectedGID,
+		cfg:                         cfg,
+		cr:                          cr,
+		operator:                    operator,
+		assembler:                   assembler,
+		nonces:                      envelope.NewMemoryNonceCache(),
+		appNonces:                   runtime.appNonces,
+		controlReceipts:             controlReceipts,
+		controlReceiptErr:           controlReceiptErr,
+		hostApplyIssuances:          hostApplyIssuances,
+		hostApplyIssuanceErr:        hostApplyIssuanceErr,
+		hostApplyPlans:              hostApplyPlans,
+		hostApplyPlanErr:            hostApplyPlanErr,
+		listingRegistrar:            newBoundedListingRegistrar(cfg, cr, operator),
+		listingRegistrationRequired: runtime.listingRegistrationRequired,
+		catalogGenerations:          runtime.catalogGenerations,
+		catalogExpectedUID:          runtime.expectedUID,
+		catalogExpectedGID:          runtime.expectedGID,
 	}
+	return newPublicRouterWithService(cfg, operator, cr, mirror, runtime, svc, !isolateControl), newControlReleaseRouter(svc)
+}
+
+func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, svc *publishService, exposeControl bool) http.Handler {
+	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -279,7 +361,7 @@ func newRouterWithCatalogRuntimeAndAssembler(cfg Config, operator *identity.Priv
 			"status":  "ok",
 			"store":   cfg.StoreID,
 			"domain":  cfg.Domain,
-			"surface": "read + gated /publish (on-chain verified, single writer)",
+			"surface": "read + governed app publishing (on-chain verified, single writer)",
 		})
 	})
 	// Runtime identity is intentionally a separate exact route, ahead of the
@@ -298,8 +380,34 @@ func newRouterWithCatalogRuntimeAndAssembler(cfg Config, operator *identity.Priv
 	}
 	mux.Handle(rootTrustBundlePath, rootTrust)
 
-	mux.HandleFunc("/publish", svc.handlePublish)
-	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
+	if cfg.Policy.RequirePearlControlForAppPublish {
+		mux.HandleFunc("/publish", retiredLegacyAppPublish)
+		mux.HandleFunc("/publish/stage", retiredLegacyAppPublish)
+	} else {
+		mux.HandleFunc("/publish", svc.handlePublish)
+		mux.HandleFunc("/publish/stage", svc.handleStagePublish)
+	}
+	// During migration the typed control route remains on the combined test and
+	// local-development surface. A Golden configuration removes it from the
+	// public listener entirely; only the dedicated mTLS listener owns it.
+	// Store status remains private even in local combined-mode development.
+	// Otherwise a development convenience would turn the Home observation into a
+	// public sidecar probe when a production listener is configured.
+	mux.HandleFunc(controlStatusPath, privateControlRouteOnly)
+	mux.HandleFunc(controlPolicyPath, privateControlRouteOnly)
+	// A host-apply decision is never a browser/catalog API, even in the
+	// combined development router. The actual private mTLS listener owns this
+	// prefix below; the public listener must not disclose that it exists.
+	mux.HandleFunc(hostApplyIssuePathPrefix, privateControlRouteOnly)
+	// Controller replacement is a distinct governed action. Its private
+	// plan/proof route must never be reachable through the browser/catalog
+	// listener or the historical sidecar-apply surface.
+	mux.HandleFunc(controllerUpgradeIssuePathPrefix, privateControlRouteOnly)
+	if exposeControl {
+		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
+	} else {
+		mux.HandleFunc("/control/v1/", privateControlRouteOnly)
+	}
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 	// POST /publish/generation: envelope-authorized promote of the next signed
 	// desired generation (canonical publisher's promote step). Re-verifies the
@@ -320,6 +428,14 @@ func newRouterWithCatalogRuntimeAndAssembler(cfg Config, operator *identity.Priv
 	// verified document on every request, never maintained as a second pointer.
 	mux.HandleFunc("/update/generation.json", svc.handleDesiredGeneration)
 	mux.HandleFunc("/update/manifest.json", svc.handleLegacyManifest)
+	// One-shot receipts are intentionally public-but-unforgeable bearer
+	// documents: the root-owned controller is pinned to this exact origin and
+	// verifies the Store signature. Serve them through the issuance ledger,
+	// rather than letting arbitrary stale files under DistDir become receipts.
+	mux.HandleFunc(hostApplyReceiptPathPrefix, svc.handleHostApplyPlanReceipt)
+	// Controller receipts are generated only after a receiver-local freshness
+	// challenge and a fresh revalidation of the retained plan/proof.
+	mux.HandleFunc(controllerUpgradeReceiptPathPrefix, svc.handleControllerUpgradeReceipt)
 
 	// RESELLER ROOT-MIRROR surface (§C2.6) — serve the verified snapshot of the
 	// root's installer + basic apps under /root/, fail-closed (503) until a cycle
@@ -359,11 +475,52 @@ func newRouterWithCatalogRuntimeAndAssembler(cfg Config, operator *identity.Priv
 	return mux
 }
 
+func newControlReleaseRouter(svc *publishService) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc(controlStatusPath, svc.handleControlStatus)
+	mux.HandleFunc(controlPolicyPath, svc.handleControlPolicy)
+	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
+	mux.HandleFunc("/control/v1/authority/", svc.handleControlAuthority)
+	mux.HandleFunc(hostApplyIssuePathPrefix, svc.handleHostApplyPlanRoute)
+	mux.HandleFunc(controllerUpgradeIssuePathPrefix, svc.handleControllerUpgradeRoute)
+	return mux
+}
+
+// privateControlRouteOnly prevents a control endpoint from existing at all on
+// the browser/catalog listener. It intentionally returns a plain 404 rather
+// than advertising the private listener or its authentication method.
+func privateControlRouteOnly(w http.ResponseWriter, r *http.Request) {
+	http.NotFound(w, r)
+}
+
+// retiredLegacyAppPublish is a routing cutover, not an additional publish
+// check. It runs before body parsing, envelope handling, nonce allocation, and
+// stage access, so a direct caller cannot turn a retired endpoint into a
+// partially-completed release. The exact Bazaar Control routes remain separate
+// registrations above.
+func retiredLegacyAppPublish(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, "Direct app publishing is retired. Prepare and approve the release in Bazaar Control.", http.StatusGone)
+}
+
 // handleStagePublish durably stores a candidate in the private content-addressed
 // stage before its ReleaseEntry exists. It verifies the signed publisher
 // envelope, exact app hash, store operator authority, path policy, and
 // blacklists, but deliberately does not assemble or expose the candidate.
 func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
+	s.handleAppStage(w, r, "/publish/stage", func(_ appPublishPreflight, claimed identity.Public) (string, error) {
+		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
+		if !ok {
+			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
+		}
+		return signerKey, nil
+	}, nil, nil)
+}
+
+// handleAppStage is the one private-candidate implementation. Route-specific
+// authority selects the publisher resolver, but every caller shares the same
+// envelope, chain/store, blacklist, capacity, nonce, persistence, and signed
+// stage-receipt checks. A successful stage never selects catalog content.
+func (s *publishService) handleAppStage(w http.ResponseWriter, r *http.Request, route string, resolvePublisher appPublisherResolver, criticalCheck appPublishCriticalCheck, control *controlExecution) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -376,7 +533,7 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	preflight, err := s.preflightAppPublish(r, "/publish/stage")
+	preflight, err := s.preflightAppPublishWithPublisher(r, route, resolvePublisher)
 	if err != nil {
 		http.Error(w, err.Error(), appPreflightErrorStatus(err))
 		return
@@ -394,6 +551,12 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 	if s.appNonces == nil {
 		http.Error(w, "check=nonce_ledger: durable app nonce ledger is not initialized", http.StatusServiceUnavailable)
 		return
+	}
+	if criticalCheck != nil {
+		if err := criticalCheck(preflight, lockedNow); err != nil {
+			http.Error(w, "check=control_command: "+err.Error(), http.StatusForbidden)
+			return
+		}
 	}
 	operatorPub, err := signPubkey32(s.operator.Public())
 	if err != nil {
@@ -432,6 +595,28 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "check=stage_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
+	if control != nil {
+		if control.receipts == nil {
+			http.Error(w, "check=control_receipt: durable receipt storage is unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		record, created, err := control.receipts.Begin(control.command, lockedNow)
+		if err != nil {
+			http.Error(w, "check=control_receipt: "+err.Error(), http.StatusConflict)
+			return
+		}
+		if !created {
+			if record.State == controlReceiptCompleted && record.Stage != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(record.Stage)
+				return
+			}
+			_, _ = control.receipts.MarkNeedsAttention(control.command, "reconcile_required", lockedNow)
+			http.Error(w, "Publishing paused: a prior attempt needs safe reconciliation in Bazaar Control.", http.StatusConflict)
+			return
+		}
+	}
 	claimNow := s.currentTime()
 	if err := s.claimAppEnvelope(preflight.sig, claimNow); err != nil {
 		http.Error(w, err.Error(), appClaimErrorStatus(err))
@@ -446,15 +631,37 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "check=stage_receipt: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if control != nil {
+		stored, err := control.receipts.CompleteStage(control.command, receipt, s.currentTime())
+		if err != nil || stored.Stage == nil {
+			http.Error(w, "check=control_receipt: could not durably record preparation", http.StatusInternalServerError)
+			return
+		}
+		receipt = *stored.Stage
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(receipt)
 }
 
-// handlePublish is the gated write path. It fails closed and names the failing
-// check on any rejection (4xx). On success it returns 200 + the store-signed
-// provenance Receipt JSON.
+// handlePublish retains the legacy transport surface while Bazaar Control is
+// piloted. Its static allowlist is explicitly a migration path; it is not used
+// by the typed Pearl route.
 func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
+	s.handleAppPublish(w, r, "/publish", func(_ appPublishPreflight, claimed identity.Public) (string, error) {
+		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
+		if !ok {
+			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
+		}
+		return signerKey, nil
+	}, nil, nil, nil)
+}
+
+// handleAppPublish is the one gated write implementation. Route-specific
+// authority selects the accepted publisher key, but every caller shares the
+// same chain, stage, listing-before-selector, nonce, catalog, and receipt
+// controls below.
+func (s *publishService) handleAppPublish(w http.ResponseWriter, r *http.Request, route string, resolvePublisher appPublisherResolver, criticalCheck appPublishCriticalCheck, snapshotCheck appPublishSnapshotCheck, control *controlExecution) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -471,7 +678,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preflight, err := s.preflightAppPublish(r, "/publish")
+	preflight, err := s.preflightAppPublishWithPublisher(r, route, resolvePublisher)
 	if err != nil {
 		http.Error(w, err.Error(), appPreflightErrorStatus(err))
 		return
@@ -491,6 +698,12 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	operatorPub := s.operator.Public()
+	if criticalCheck != nil {
+		if err := criticalCheck(preflight, lockedNow); err != nil {
+			http.Error(w, "check=control_command: "+err.Error(), http.StatusForbidden)
+			return
+		}
+	}
 
 	// THE TRUST GATE: re-verify on-chain. No env bypass is reachable here. The
 	// FoundationApp tier ceiling (B1-05/B2-05) is resolved INSIDE VerifyPublish
@@ -516,6 +729,12 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "check=catalog_generation: resolve current: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if snapshotCheck != nil {
+		if err := snapshotCheck(activeGeneration, preflight); err != nil {
+			http.Error(w, "check=control_command: "+err.Error(), http.StatusConflict)
+			return
+		}
 	}
 	activeCfg := s.cfg
 	activeCfg.DistDir = activeGeneration.Root
@@ -611,6 +830,28 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=catalog_member_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
+	if control != nil {
+		if control.receipts == nil {
+			http.Error(w, "check=control_receipt: durable receipt storage is unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		record, created, err := control.receipts.Begin(control.command, lockedNow)
+		if err != nil {
+			http.Error(w, "check=control_receipt: "+err.Error(), http.StatusConflict)
+			return
+		}
+		if !created {
+			if record.State == controlReceiptCompleted && record.Publish != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(record.Publish)
+				return
+			}
+			_, _ = control.receipts.MarkNeedsAttention(control.command, "reconcile_required", lockedNow)
+			http.Error(w, "Publishing paused: a prior attempt needs safe reconciliation in Bazaar Control.", http.StatusConflict)
+			return
+		}
+	}
 
 	// No semantic or trust read may occur after this exact instant. The durable
 	// claim is the last gate and precedes retained rollout state, source persist,
@@ -647,6 +888,32 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	if err := s.appMutationStep("after-generation-commit"); err != nil {
 		http.Error(w, "check=fault_after_generation_commit: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+	// A listing is a serve-time prerequisite, not post-publish repair work. When
+	// listing enforcement is active, verify/create the one exact on-chain
+	// projection before retaining rollout state or moving the public selector.
+	// A failure therefore leaves the prior catalog generation live and usable.
+	var listingReceipt *listingRegistrationReceipt
+	if s.listingRegistrationRequired {
+		if s.listingRegistrar == nil {
+			http.Error(w, "check=store_release_listing: listing enforcement is enabled but no bounded registrar is initialized", http.StatusServiceUnavailable)
+			return
+		}
+		registered, err := s.listingRegistrar.EnsureActive(r.Context(), listingRegistrationIntent{
+			StageID:       staged.StageID,
+			AppID:         staged.AppID,
+			AppHash:       staged.AppHash,
+			MasterNFTMint: preflight.release.MasterNftMint,
+		})
+		if err != nil {
+			http.Error(w, "check=store_release_listing: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		listingReceipt = &registered
+		if err := s.appMutationStep("after-listing-verified"); err != nil {
+			http.Error(w, "check=fault_after_listing_verified: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	if err := commitAppRollout(s.cfg, rollout); err != nil {
 		http.Error(w, "check=rollout_commit: "+err.Error(), http.StatusInternalServerError)
@@ -700,6 +967,15 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	receipt.Stage = &stageReceipt
 	receipt.Rollout = &rolloutReceipt
 	receipt.Catalog = &catalogPointer
+	receipt.Listing = listingReceipt
+	if control != nil {
+		stored, err := control.receipts.CompletePublish(control.command, receipt, s.currentTime())
+		if err != nil || stored.Publish == nil {
+			http.Error(w, "check=control_receipt: could not durably record publication", http.StatusInternalServerError)
+			return
+		}
+		receipt = *stored.Publish
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Melusina-Stage-ID", staged.StageID)

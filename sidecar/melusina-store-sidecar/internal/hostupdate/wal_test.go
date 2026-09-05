@@ -173,6 +173,62 @@ func TestWALCompleteRefusesMissingTerminalProofBindings(t *testing.T) {
 	}
 }
 
+func TestTerminalDeadlineRefusesLateSuccessButAllowsHonestLateRollback(t *testing.T) {
+	newStore := func(t *testing.T) (*WALStore, WALEntry) {
+		t.Helper()
+		w, err := NewWALStore(secureWALRoot(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		e := sampleEntry()
+		e.DeadlineUnix = e.OpenedAtUnix + 600
+		if err := w.Open(e); err != nil {
+			t.Fatal(err)
+		}
+		for _, state := range []WALState{StateApplying, StateRestarted, StateHealthyUnstable} {
+			if err := w.Advance(e.ComponentID, state, func(current *WALEntry) {
+				if state == StateHealthyUnstable {
+					current.AppliedAtUnix = e.OpenedAtUnix + 10
+				}
+			}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return w, e
+	}
+
+	appliedStore, applied := newStore(t)
+	late := applied.DeadlineUnix + 1
+	if _, err := appliedStore.Complete(applied.ComponentID, late); err == nil {
+		t.Fatal("late terminal success was accepted")
+	}
+	if _, ok, err := appliedStore.Load(applied.ComponentID); err != nil || !ok {
+		t.Fatalf("refused late success did not retain its WAL: ok=%v err=%v", ok, err)
+	}
+
+	rollbackStore, rollback := newStore(t)
+	receipt, err := rollbackStore.Rollback(rollback.ComponentID, rollback.DeadlineUnix+30, "promotion deadline expired; prior artifact restored")
+	if err != nil {
+		t.Fatalf("honest late rollback was refused: %v", err)
+	}
+	if receipt.State != StateRolledBack || receipt.TerminalAtUnix <= receipt.DeadlineUnix {
+		t.Fatalf("late rollback receipt does not preserve its real timing: %+v", receipt)
+	}
+}
+
+func TestRecoveryDecisionRollsBackHealthyTargetAfterDeadline(t *testing.T) {
+	entry := sampleEntry()
+	entry.State = StateHealthyUnstable
+	entry.AppliedAtUnix = entry.OpenedAtUnix + 10
+	entry.DeadlineUnix = entry.OpenedAtUnix + 600
+	if got := RecoveryDecision(entry, entry.ToHash, true, entry.DeadlineUnix); got != RecoverComplete {
+		t.Fatalf("decision at deadline = %s, want %s", got, RecoverComplete)
+	}
+	if got := RecoveryDecision(entry, entry.ToHash, true, entry.DeadlineUnix+1); got != RecoverRollback {
+		t.Fatalf("decision after deadline = %s, want %s", got, RecoverRollback)
+	}
+}
+
 func TestWALCompleteRefusesUnboundRuntimeEvidence(t *testing.T) {
 	w, err := NewWALStore(secureWALRoot(t))
 	if err != nil {

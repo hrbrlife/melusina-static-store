@@ -107,6 +107,28 @@ func collectAppRetentionPlan(cfg Config, store AppCatalogGenerationStore, rollou
 		switch {
 		case name == publishNonceLedgerDirName || name == "rollouts":
 			continue
+		case name == controlReceiptDirName:
+			if _, err := openOrInitializeControlReceiptLedger(cfg.PrivateStageDir); err != nil {
+				return plan, fmt.Errorf("validate control receipt ledger: %w", err)
+			}
+			continue
+		case name == hostApplyIssuanceDirName:
+			// Host-apply issuance evidence is append-only, short-lived authority
+			// plus durable audit evidence. It is not an app candidate and must
+			// never be swept by app-stage retention, but a corrupt ledger still
+			// fails the whole retention plan closed.
+			if _, err := openOrInitializeHostApplyIssuanceLedger(cfg.PrivateStageDir); err != nil {
+				return plan, fmt.Errorf("validate host apply issuance ledger: %w", err)
+			}
+			continue
+		case name == hostApplyPlanDirName, name == hostApplyProofDirName, name == hostApplyPlanIssuanceDir, name == controllerUpgradeReceiptDir:
+			// The typed plan/proof/reference ledger is equally append-only and
+			// is validated as one coherent store. The controller receipt reference
+			// namespace must never be mistaken for an expendable app stage.
+			if _, err := openOrInitializeHostApplyPlanStore(cfg.PrivateStageDir); err != nil {
+				return plan, fmt.Errorf("validate host apply plan store: %w", err)
+			}
+			continue
 		case validStageID(name):
 			if err := validateCommittedStageTree(path, expectedUID, expectedGID); err != nil {
 				return plan, fmt.Errorf("validate retained stage %s: %w", name, err)

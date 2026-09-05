@@ -31,6 +31,13 @@ policy:
     # field the publisher writes into RELEASE.json, and a self-asserted value has
     # no business deciding whether to trust the thing that asserted it.
     - "<allowed publisher base58 signing pubkey>"
+  # Golden-MVP cutover. Leave false until a named pilot has completed the Pearl
+  # prepare -> offline approval -> typed sidecar command -> tenant proof flow.
+  # Once true, legacy app POST /publish and /publish/stage return 410 before
+  # accepting a body or changing state. Typed /control/v1/releases/* remains
+  # the only app-release write route. Installer and generation update routes
+  # are intentionally unaffected.
+  require_pearl_control_for_app_publish: false
 
 rpc_url: "<primary trusted Solana RPC endpoint>"   # e.g. the Helius devnet endpoint
 # Optional, explicitly trusted endpoints for the SAME cluster. They are tried only
@@ -48,8 +55,19 @@ tls:
   cert_path: "/etc/melusina/store/tls/cert.pem"
   key_path: "/etc/melusina/store/tls/key.pem"
 
+# REQUIRED when require_pearl_control_for_app_publish is true. Keep this
+# listener off the public catalog edge. It requires TLS 1.3, a certificate
+# trusted by client_ca_path, and this exact Pearl client certificate digest.
+pearl_control_mtls:
+  listen_addr: "store-control.internal.example:9443"
+  cert_path: "/etc/melusina/store/control-tls/cert.pem"
+  key_path: "/etc/melusina/store/control-tls/key.pem"
+  client_ca_path: "/etc/melusina/store/control-tls/pearl-client-ca.pem"
+  pearl_client_cert_sha256: "<lowercase sha256 of Pearl client certificate DER>"
+
 boot_identity:
-  # Omit this block for a read-only store (/publish 503).
+  # Omit this block for a read-only store (legacy /publish 503, or 410 after
+  # the Bazaar Control cutover).
   shards_dir: "/etc/melusina/store/shards"
   sidecar_id: "store"
   chain_id: "solana:devnet"

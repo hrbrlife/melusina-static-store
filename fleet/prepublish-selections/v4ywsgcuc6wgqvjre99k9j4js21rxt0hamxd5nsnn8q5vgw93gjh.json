@@ -2,17 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
     "sourceRepository": "https://github.com/hrbrlife/ai-lagoon",
-    "sourceCommit": "30abb2973fd20bb0e3d7e0b4fce069585ddda5f5",
+    "sourceCommit": "02f849742f048acccc49e9d5d3ddec3cb16245f3",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "AiLagoon v0.7.29/appVersion 37 is the current canonical dev-publish source for the generic OCR/vision dependency. It makes local provider readiness and provenance explicit, preserves tenant binding as shell-owned, and returns structured unavailability rather than an identity verdict. Main remains the reviewed baseline.",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "AiLagoon 0.7.30/appVersion 38 on dev-publish speaks the authz daemon's grain-auth v3 wire; main was fast-forwarded to the same commit so it again contains the live cut.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "release-source check and focused vision readiness/refusal controls pass at the selected commit",
-            "metadata.json and sandstorm-pkgdef.capnp agree on version 0.7.29 and appVersion 37",
-            "raw-image transport is restricted to the canonical same-host Ollama PowerBox sidecar; unavailable or misconfigured providers fail closed"
+            "clean recursive checkout at 02f849742f048acccc49e9d5d3ddec3cb16245f3",
+            "go vet and full go test pass including the release cohort guard",
+            "built grain binary carries v3 wire markers; the live 0.7.28 bytes on the tenant carry none and carry the v2 marker instead"
         ]
     },
     "reviewedRefs": [
@@ -43,7 +42,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "30abb2973fd20bb0e3d7e0b4fce069585ddda5f5",
+            "commit": "02f849742f048acccc49e9d5d3ddec3cb16245f3",
             "outcome": "selected"
         },
         {
@@ -63,7 +62,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "e7f8ab98eb70576993145f725146c0c48974e9c0",
+            "commit": "02f849742f048acccc49e9d5d3ddec3cb16245f3",
             "outcome": "baseline"
         },
         {
@@ -223,5 +222,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "same"
 }

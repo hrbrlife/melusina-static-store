@@ -402,3 +402,31 @@ func TestLoadCatalogRejectsMissingOrNonCanonicalSourceRepository(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadCatalogAcceptsClaudeMelusinaPackagedRuntimeProfileForItsOwnApp(t *testing.T) {
+	const m = "schema: melusina-bazaar-catalog/v1\ncatalog_origin: https://bazaar.melusina-os.org\nexpected_live_app_count: 1\ndefault_release_state: hold\ndefault_reconciliation_state: source-pinned\nrelease_squads_authority:\n  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V\n  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3\n  program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf\n  threshold: 3\n  member_count: 4\ngroups:\n  group:\n    apps:\n      claude-melusina:\n        appId: svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h\n        publish_slug: claude-melusina\n        catalog_name: Claude-Melusina\n        live_version: 0.1.0\n        catalog_developer: hrbrlife\n        catalog_repo: Claude-Melusina\n        catalog_slug: claude-melusina\n        source_repository: https://github.com/hrbrlife/Claude-Melusina\n        role: workspace\n        pack_profile: claude-melusina-packaged-runtime\n"
+	dir := t.TempDir()
+	path := filepath.Join(dir, "m.yaml")
+	if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadCatalog(path); err != nil {
+		t.Fatalf("Claude-Melusina's own packaged-runtime profile must load: %v", err)
+	}
+}
+
+func TestLoadCatalogRejectsClaudePackagedRuntimeProfileForAnyOtherApp(t *testing.T) {
+	// Both a stranger and NamedCoin (which owns the only other reviewed
+	// profile) are refused: a profile binds to exactly one app identity.
+	for name, appID := range map[string]string{"stranger": "other-app", "namedcoin": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"} {
+		m := "schema: melusina-bazaar-catalog/v1\ncatalog_origin: https://bazaar.melusina-os.org\nexpected_live_app_count: 1\ndefault_release_state: hold\ndefault_reconciliation_state: source-pinned\ngroups:\n  group:\n    apps:\n      app:\n        appId: " + appID + "\n        publish_slug: app\n        catalog_name: App\n        live_version: 1\n        catalog_developer: hrbrlife\n        catalog_repo: app\n        catalog_slug: app\n        source_repository: https://github.com/hrbrlife/app\n        role: app\n        pack_profile: claude-melusina-packaged-runtime\n"
+		dir := t.TempDir()
+		path := filepath.Join(dir, "m.yaml")
+		if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "only Claude-Melusina") {
+			t.Fatalf("%s declaring the Claude packaged-runtime profile: err = %v, want fail-closed Claude-Melusina refusal", name, err)
+		}
+	}
+}

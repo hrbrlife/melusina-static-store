@@ -2,22 +2,27 @@
     "schema": "melusina-source-selection-v1",
     "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
     "sourceRepository": "https://github.com/hrbrlife/melusina_canboard_app",
-    "sourceCommit": "f1e5c5b43c93b02b0491fad44d4f291c2e2b2300",
+    "sourceCommit": "2895a5ee5caef4eec0beda33963dd9583b8f9ba8",
     "selectionMethod": "direct-dev",
-    "decisionSummary": "CanBoard 0.2.6 is a remediation cut for an owner-filed runtime diagnostic bundle (melusina-test-diagnostics, 2026-08-22). The defect, the measurement that identified it, and the mutation-proven guard that keeps it fixed are recorded in the commit message on this exact dev-publish tip. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "CanBoard 0.2.7/appVersion 14 on dev-publish speaks the authz daemon's grain-auth v3 wire and its cohort guard is satisfiable again (cohortPackageID had equalled livePackageID).",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "cohort guard suite passes apart from the post-pack packageId resync the rail itself performs",
-            "the package declares the install license binding in both commands and the installation seed still overrides it",
-            "root cause measured in the owner's grain log: card/create and boards/create each answered 'grainauth deny: no-license'"
+            "clean recursive checkout at 2895a5ee5caef4eec0beda33963dd9583b8f9ba8",
+            "go vet and full go test pass; packageId 1b0affc3fa43c2e1a8e4fb248f1a00a6 reproduced on two packs",
+            "grain binary carries v3 wire markers and zero v2 markers"
         ]
     },
     "reviewedRefs": [
         {
+            "ref": "refs/heads/archive/codex-20260827-canboard-v0.2.1",
+            "commit": "74d80af99d2c286088354b33173cb954c4e6e3cb",
+            "outcome": "archive"
+        },
+        {
             "ref": "refs/heads/dev-publish",
-            "commit": "f1e5c5b43c93b02b0491fad44d4f291c2e2b2300",
+            "commit": "2895a5ee5caef4eec0beda33963dd9583b8f9ba8",
             "outcome": "selected"
         },
         {

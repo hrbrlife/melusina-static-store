@@ -76,14 +76,22 @@ type SquadsAuthority struct {
 const (
 	namedCoinAppID            = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
 	namedCoinMSBDevnetProfile = "namedcoin-msb-devnet"
-	defaultBazaarOrigin       = "https://bazaar.melusina-os.org"
-	bazaarCatalogSchema       = "melusina-bazaar-catalog/v1"
-	defaultSquadsMultisig     = "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-	defaultSquadsVault        = "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3"
-	defaultSquadsProgramID    = "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
-	defaultSquadsThreshold    = 3
-	defaultSquadsMemberCount  = 4
-	installationPolicyVersion = 1
+	// Claude-Melusina embeds Claude Code and its shared-library closure inside
+	// the signed SPK. That ~100 MB archive is deliberately untracked, so the
+	// build needs it handed in; this reviewed profile is the only sanctioned
+	// way. The provider accepts the archive for this appId alone and only when
+	// its digest equals the pin tracked in the app source. The CLI enforces the
+	// same appId binding here so a catalog edit cannot point another app at it.
+	claudeMelusinaAppID                  = "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"
+	claudeMelusinaPackagedRuntimeProfile = "claude-melusina-packaged-runtime"
+	defaultBazaarOrigin                  = "https://bazaar.melusina-os.org"
+	bazaarCatalogSchema                  = "melusina-bazaar-catalog/v1"
+	defaultSquadsMultisig                = "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+	defaultSquadsVault                   = "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3"
+	defaultSquadsProgramID               = "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+	defaultSquadsThreshold               = 3
+	defaultSquadsMemberCount             = 4
+	installationPolicyVersion            = 1
 )
 
 // LoadCatalog parses the manifest at path. The manifest has one fixed shape
@@ -328,8 +336,8 @@ func LoadCatalog(path string) (*Catalog, error) {
 		if a.ReleaseState == "ready" && (!sourceSelectionReady(a.SourceSelectionState) || strings.TrimSpace(a.SourceSelectionReceipt) == "") {
 			return nil, fmt.Errorf("ready catalog app %q must declare a reviewed source selection receipt", a.AppID)
 		}
-		if a.PackProfile != "" && (a.AppID != namedCoinAppID || a.PackProfile != namedCoinMSBDevnetProfile) {
-			return nil, fmt.Errorf("app %q has unsupported pack_profile %q; only NamedCoin may declare %q", a.AppID, a.PackProfile, namedCoinMSBDevnetProfile)
+		if a.PackProfile != "" && !reviewedPackProfile(a.AppID, a.PackProfile) {
+			return nil, fmt.Errorf("app %q has unsupported pack_profile %q; only NamedCoin may declare %q and only Claude-Melusina may declare %q", a.AppID, a.PackProfile, namedCoinMSBDevnetProfile, claudeMelusinaPackagedRuntimeProfile)
 		}
 		if a.SourceCommit != "" && !isLowerHexCommit(a.SourceCommit) {
 			return nil, fmt.Errorf("app %q has invalid source_commit %q; want a lowercase 40-hex commit", a.AppID, a.SourceCommit)
@@ -654,4 +662,17 @@ func isBlockScalarIndicator(v string) bool {
 		}
 	}
 	return true
+}
+
+// reviewedPackProfile reports whether a non-default package recipe is one of
+// the reviewed, appId-bound profiles. A profile is never a free-form string
+// an operator can attach to any app: each one names exactly one app identity.
+func reviewedPackProfile(appID, profile string) bool {
+	switch profile {
+	case namedCoinMSBDevnetProfile:
+		return appID == namedCoinAppID
+	case claudeMelusinaPackagedRuntimeProfile:
+		return appID == claudeMelusinaAppID
+	}
+	return false
 }

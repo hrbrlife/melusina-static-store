@@ -1,10 +1,10 @@
 {
   "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
-  "packageId": "7265efd64888dc5258f7df9713598ac3",
+  "packageId": "54761805b94bd0b94cd813bc698275aa",
   "name": "Fineract Configurator",
-  "version": "0.2.21",
-  "versionNumber": 21,
-  "marketingVersion": "0.2.21",
+  "version": "0.2.22",
+  "versionNumber": 22,
+  "marketingVersion": "0.2.22",
   "shortDescription": "Bootstrap wizard for Apache Fineract integration and signed trust-bundle export.",
   "description": "Fineract Configurator is the Sandstorm companion wizard for the MSB's Fineract sidecar. It verifies the ledger positions required by the MSB, acquires a scoped HTTP-out capability to the configured sidecar, provisions the selected Fineract configuration through the signed bootstrap bridge, and exports the trust bundle used by the sidecar and upstream filter. It does not accept provider credentials or bypass the tenant-lease and bundle-root authorization gates.",
   "categories": [
@@ -31,5 +31,5 @@
   "domains": [
     "*"
   ],
-  "sha256": "7265efd64888dc5258f7df9713598ac343007654e2d9ffd8fdd8fd443894c19e"
+  "sha256": "54761805b94bd0b94cd813bc698275aafa4ee162bce5a70bb52e6b69781122cc"
 }

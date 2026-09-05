@@ -2250,7 +2250,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
             ("dueprocess", "0b2a7687a00754cb420fdcf88c018187588b034e", "DueProcess", "dueprocess"),
         "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h":
-            ("fineract-setup/fineract-sidecar", "1519b7849e6b9879cfa9dd37f8781f4667a30fbf", "fineract-setup", "fineract-setup"),
+            ("fineract-setup/fineract-sidecar", "14011aaece6087b87a30d4e7748cf0328c23e407", "fineract-setup", "fineract-setup"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
             ("teleport", "9b8f137dc65d85b8a4b423af73ba416677eb143e", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":

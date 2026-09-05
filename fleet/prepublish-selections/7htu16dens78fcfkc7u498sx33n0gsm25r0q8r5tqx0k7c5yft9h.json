@@ -2,17 +2,15 @@
     "schema": "melusina-source-selection-v1",
     "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
     "sourceRepository": "https://github.com/hrbrlife/cca-tc-operator",
-    "sourceCommit": "1519b7849e6b9879cfa9dd37f8781f4667a30fbf",
+    "sourceCommit": "14011aaece6087b87a30d4e7748cf0328c23e407",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "same",
-    "decisionSummary": "Select dev-publish 1519b78 for Configurator 0.2.21: exact inner API signatures preserve independent Go and Java enforcement; lease credentials stay server-side.",
+    "decisionSummary": "Publish the reviewed 0.2.22 native provider and canonical file-delivered trust credentials. main and dev-publish select the same tested source.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "Clean detached source at 1519b7849e6b9879cfa9dd37f8781f4667a30fbf; main and dev-publish independently read back at the same commit.",
-            "Full Go sidecar and wizard tests and vet pass; focused sidecar race checks pass.",
-            "71 Java security tests pass on pinned Apache Fineract 1.15.0, including actual Go bridge to production Java filter, replay, tamper and missing-signature controls.",
-            "Six compiling guard mutations caught; release cohort verifies 0.2.21/v21; no live provider or account result claimed."
+            "Sidecar, setup, watcher and native provider tests pass; the full provider boots against a disposable PostgreSQL database and rejects unsigned writes.",
+            "Provider and credential mutations fail their named controls; version cohort is 0.2.22 / 22."
         ]
     },
     "reviewedRefs": [
@@ -28,12 +26,12 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "1519b7849e6b9879cfa9dd37f8781f4667a30fbf",
+            "commit": "14011aaece6087b87a30d4e7748cf0328c23e407",
             "outcome": "selected"
         },
         {
             "ref": "refs/heads/main",
-            "commit": "1519b7849e6b9879cfa9dd37f8781f4667a30fbf",
+            "commit": "14011aaece6087b87a30d4e7748cf0328c23e407",
             "outcome": "baseline"
         },
         {

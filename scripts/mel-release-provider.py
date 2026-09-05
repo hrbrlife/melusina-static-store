@@ -62,6 +62,13 @@ ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "sidecar" / "melusina-store-sidecar"
 NAMEDCOIN_APP_ID = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
 NAMEDCOIN_MSB_DEVNET_PROFILE = "namedcoin-msb-devnet"
+CLAUDE_MELUSINA_APP_ID = "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"
+CLAUDE_MELUSINA_PACKAGED_RUNTIME_PROFILE = "claude-melusina-packaged-runtime"
+# Source-relative, tracked digest pin for the reviewed Claude Code runtime
+# archive. The app verifies this pin again itself at pack time; the rail
+# verifies it BEFORE handing the path over, so an operator cannot substitute
+# an unreviewed archive through the release environment.
+CLAUDE_MELUSINA_RUNTIME_PIN = "tools/claude-runtime.sha256"
 DEFAULT_BAZAAR_ORIGIN = "https://bazaar.melusina-os.org"
 BAZAAR_CATALOG_SCHEMA = "melusina-bazaar-catalog/v1"
 DEV_PUBLISH_BRANCH = "dev-publish"
@@ -1612,6 +1619,67 @@ def audit_source_cohort(receipt_out: Path, scoped_cohort: str | None = None) -> 
     return result
 
 
+def claude_packaged_runtime_env(app_id: str) -> dict[str, str]:
+    """Resolve the reviewed Claude Code runtime archive as a DECLARED build input.
+
+    Claude-Melusina embeds Claude Code, its loader and its full shared-library
+    closure inside the signed SPK, so a grain never uploads a binary and never
+    borrows one from the build host. That archive is ~100 MB of third-party
+    bytes: it is deliberately not tracked in Git, and the app's build refuses
+    to run without it.
+
+    The rail therefore has to hand the path in, and the one thing it must not
+    become is an ambient operator environment variable that silently changes
+    what a governed candidate contains. So the path is accepted only for this
+    exact appId, only under this app's reviewed pack profile, and only when the
+    archive's SHA-256 already equals the digest tracked IN THAT APP'S OWN
+    SOURCE at the pinned release commit. A substituted or drifted archive is
+    refused here, before any build, package, chain or store call happens.
+
+    This keeps the greenfield reproducibility property intact: a clean clone at
+    the pinned commit plus the one archive named by its tracked digest produces
+    the same bytes on any host.
+    """
+    source = source_path(app_id)
+    pin_file = source / CLAUDE_MELUSINA_RUNTIME_PIN
+    if pin_file.is_symlink() or not pin_file.is_file():
+        raise ProviderError(
+            f"{app_id} declares the packaged-runtime profile but its source does not "
+            f"track the digest pin {CLAUDE_MELUSINA_RUNTIME_PIN}"
+        )
+    expected = ""
+    for line in pin_file.read_text(encoding="utf-8").splitlines():
+        token = line.strip().split(" ")[0].strip()
+        if token and not token.startswith("#"):
+            expected = token.lower()
+            break
+    if not re.fullmatch(r"[0-9a-f]{64}", expected):
+        raise ProviderError(
+            f"{CLAUDE_MELUSINA_RUNTIME_PIN} does not carry a SHA-256 digest for {app_id}"
+        )
+
+    bundle = clean_abs(
+        env("MEL_RELEASE_CLAUDE_RUNTIME_BUNDLE", required=True),
+        "MEL_RELEASE_CLAUDE_RUNTIME_BUNDLE",
+    )
+    if bundle.is_symlink() or not bundle.is_file() or bundle.resolve() != bundle:
+        raise ProviderError(
+            "MEL_RELEASE_CLAUDE_RUNTIME_BUNDLE must name a canonical, non-symlink regular file: "
+            f"{bundle}"
+        )
+    digest = hashlib.sha256()
+    with bundle.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    actual = digest.hexdigest()
+    if actual != expected:
+        raise ProviderError(
+            "the reviewed Claude runtime archive does not match the digest tracked in "
+            f"{CLAUDE_MELUSINA_RUNTIME_PIN}: expected {expected}, got {actual}"
+        )
+    return {"CLAUDE_RUNTIME_BUNDLE": str(bundle)}
+
+
 def pack_profile_env(app_id: str) -> dict[str, str]:
     """Select the only reviewed non-default package recipe.
 
@@ -1635,9 +1703,17 @@ def pack_profile_env(app_id: str) -> dict[str, str]:
         if target:
             raise ProviderError("NamedCoin's reviewed pack profile owns its package target")
         return {"MEL_RELEASE_PACK_PROFILE": NAMEDCOIN_MSB_DEVNET_PROFILE}
+    if (profile == CLAUDE_MELUSINA_PACKAGED_RUNTIME_PROFILE
+            and app_id == CLAUDE_MELUSINA_APP_ID):
+        result = {"MEL_RELEASE_PACK_PROFILE": CLAUDE_MELUSINA_PACKAGED_RUNTIME_PROFILE}
+        if target:
+            result["MEL_RELEASE_PACK_TARGET"] = target
+        result.update(claude_packaged_runtime_env(app_id))
+        return result
     raise ProviderError(
         f"unsupported pack_profile {profile!r} for {app_id}; "
-        "only NamedCoin may use the reviewed MSB devnet profile"
+        "only NamedCoin may use the reviewed MSB devnet profile, and only "
+        "Claude-Melusina may use the reviewed packaged-runtime profile"
     )
 
 

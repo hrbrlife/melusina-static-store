@@ -531,6 +531,18 @@ groups:
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h.json
         source_repository: https://github.com/hrbrlife/Claude-Melusina
+        # This app embeds Claude Code, its loader and its full shared-library
+        # closure INSIDE the signed SPK, so an installed grain never uploads a
+        # binary and never borrows one from the build host. That archive is
+        # ~100 MB of third-party bytes and is deliberately untracked in Git,
+        # so the build cannot run without it being handed in. This reviewed
+        # profile is the only sanctioned way to do that: the provider accepts
+        # MEL_RELEASE_CLAUDE_RUNTIME_BUNDLE for this appId alone, and refuses
+        # it unless the archive's SHA-256 already equals the digest tracked in
+        # the app's own tools/claude-runtime.sha256 at the pinned commit. An
+        # ambient environment variable therefore cannot change what a governed
+        # candidate contains.
+        pack_profile: claude-melusina-packaged-runtime
         publish_slug: claude-melusina
         catalog_name: Claude-Melusina
         live_version: "0.1.0"

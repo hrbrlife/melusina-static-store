@@ -1,10 +1,10 @@
 {
   "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
   "app": {
-    "appHash": "b456896456d52f06e5d11cd1943f861a8ef3e8caddb8ebe525fde7e1ca2d8628",
+    "appHash": "46d39e3f8fc1599f4016c0d2c679c082ab134d99643bb57ffa81fc2eb0644ded",
     "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-    "spkSha256": "c9366a1d74de9ebe415715752a55d7a52816a74fc1ab3856655efd9e27e2efd5",
-    "version": "0.7.21"
+    "spkSha256": "566baf2a7f43f88837ec815c91a87f76f7ac4ccfb0132c76b14093722d564489",
+    "version": "0.7.30"
   },
   "cleanup": {
     "steps": [
@@ -24,11 +24,15 @@
     "steps": [
       {
         "action": "Install the candidate through the governed Bazaar path and launch a new AiLagoon grain through its normal app action.",
-        "expectedResult": "The normal UI and Connections view render without a grainauth unknown-action denial, blank page, reset loop, or process failure."
+        "expectedResult": "The normal UI and Connections view render without a grainauth unknown-action denial, blank page, reset loop, or process failure. A properly configured default-Bazaar shell supplies this tenant's MELUSINA_TENANT_LICENSE_NFT only at grain exec; immutable package bytes must not contain any tenant license binding."
       },
       {
         "action": "Configure a provider connection through the normal PowerBox HTTP-out flow; do not use a direct network bypass.",
         "expectedResult": "The connection is saved through the grain UI and requests use the configured capability."
+      },
+      {
+        "action": "From a permitted disposable peer, obtain an AiLagoon bundle through the normal PowerBox flow, make one bounded request, then revoke or drop that bundle and restart the grain.",
+        "expectedResult": "The bundle works only while its consumer-bound grant is active. A failed fulfillment, revoked or dropped bundle, and an unresolved pending grant after restart are unusable rather than silently retaining capability access."
       },
       {
         "action": "Attempt a mutating action with the grain authz socket or valid license authority unavailable.",

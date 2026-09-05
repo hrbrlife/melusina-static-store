@@ -106,6 +106,29 @@ PY
       exit 2
     }
     ;;
+  claude-melusina-packaged-runtime)
+    profile_app_id="$(python3 - "$METADATA" <<'PY'
+import json, sys
+print(json.load(open(sys.argv[1], encoding="utf-8")).get("appId", ""))
+PY
+)"
+    [[ "$profile_app_id" = "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h" ]] || {
+      echo "MEL_RELEASE_PACK_PROFILE=claude-melusina-packaged-runtime is valid only for the Claude-Melusina appId" >&2
+      exit 2
+    }
+    # The rail has already verified this archive against the digest tracked in
+    # the app's own source at the pinned commit. Re-check its shape here so a
+    # direct invocation of this script cannot quietly pack a runtime-less
+    # package that would ship without the Claude Code binary.
+    [[ -n "${CLAUDE_RUNTIME_BUNDLE:-}" ]] || {
+      echo "claude-melusina-packaged-runtime profile requires CLAUDE_RUNTIME_BUNDLE (the reviewed runtime archive)" >&2
+      exit 2
+    }
+    [[ -f "$CLAUDE_RUNTIME_BUNDLE" && ! -L "$CLAUDE_RUNTIME_BUNDLE" ]] || {
+      echo "CLAUDE_RUNTIME_BUNDLE must be a regular, non-symlink file: $CLAUDE_RUNTIME_BUNDLE" >&2
+      exit 2
+    }
+    ;;
   *)
     echo "unknown MEL_RELEASE_PACK_PROFILE: $PACK_PROFILE" >&2
     exit 2
@@ -187,6 +210,27 @@ case "$PACK_PROFILE" in
       fi
     fi
     make -C "$APP_DIR" "${MAKE_VARS[@]}" "SPK_OUT=$SPK_OUT" "$PACK_TARGET"
+    ;;
+  claude-melusina-packaged-runtime)
+    # Same build/pack shape as `standard`, with one declared extra input: the
+    # reviewed Claude Code runtime archive. It is passed as an explicit make
+    # variable rather than left to ambient environment, so what the package
+    # embeds is decided by the catalog and the app's tracked digest pin.
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" "CLAUDE_RUNTIME_BUNDLE=$CLAUDE_RUNTIME_BUNDLE" \
+      "SPK_OUT=$SPK_OUT" build
+    PACK_TARGET="${MEL_RELEASE_PACK_TARGET:-}"
+    if [[ -z "$PACK_TARGET" ]]; then
+      if make_target_exists pack-local; then
+        PACK_TARGET="pack-local"
+      elif make_target_exists pack; then
+        PACK_TARGET="pack"
+      else
+        echo "app Makefile declares neither pack-local nor pack; set MEL_RELEASE_PACK_TARGET explicitly" >&2
+        exit 2
+      fi
+    fi
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" "CLAUDE_RUNTIME_BUNDLE=$CLAUDE_RUNTIME_BUNDLE" \
+      "SPK_OUT=$SPK_OUT" "$PACK_TARGET"
     ;;
   namedcoin-msb-devnet)
     # Do NOT run `make build` first: that untagged production target is meant

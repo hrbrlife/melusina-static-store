@@ -261,7 +261,7 @@ groups:
         source_repository: https://github.com/hrbrlife/ai-lagoon
         publish_slug: ai-lagoon
         catalog_name: AiLagoon
-        live_version: "0.7.30"
+        live_version: "0.7.31"
         catalog_developer: hrbrlife
         # This is the existing historical Store target. Its retained metadata
         # is never source authority; the provider validates/copies metadata
@@ -549,7 +549,7 @@ groups:
         pack_profile: claude-melusina-packaged-runtime
         publish_slug: claude-melusina
         catalog_name: Claude-Melusina
-        live_version: "0.2.1"
+        live_version: "0.2.2"
         catalog_developer: hrbrlife
         catalog_repo: Claude-Melusina
         catalog_slug: claude-melusina
@@ -572,7 +572,7 @@ groups:
         source_selection_receipt: prepublish-selections/ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h.json
         publish_slug: cratelink
         catalog_name: CrateLink
-        live_version: 0.3.5
+        live_version: "0.3.6"
         # The canonical GitHub repository uses an underscore while the
         # historical Store slot uses a hyphen. Bind the preserved slot
         # explicitly rather than inventing a second public product.
@@ -790,7 +790,7 @@ groups:
         reconciliation_state: source-pinned
         publish_slug: canboard
         catalog_name: CanBoard
-        live_version: "0.2.7"
+        live_version: "0.2.8"
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh.json

@@ -1,10 +1,10 @@
 {
   "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
   "app": {
-    "appHash": "46d39e3f8fc1599f4016c0d2c679c082ab134d99643bb57ffa81fc2eb0644ded",
+    "appHash": "8a7077b4bcc8e0fb8afb0f708380d48c42a6113bbfa33c23e07e47df05d52c3f",
     "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
-    "spkSha256": "566baf2a7f43f88837ec815c91a87f76f7ac4ccfb0132c76b14093722d564489",
-    "version": "0.7.30"
+    "spkSha256": "8a3335044d54731c47cff97dfa39c85064e4663006a58776eb91366cb4f41ee7",
+    "version": "0.7.31"
   },
   "cleanup": {
     "steps": [

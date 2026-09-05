@@ -1,9 +1,9 @@
 {
   "appId": "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h",
   "name": "Claude-Melusina",
-  "version": "0.2.1",
-  "versionNumber": 3,
-  "marketingVersion": "0.2.1",
+  "version": "0.2.2",
+  "versionNumber": 4,
+  "marketingVersion": "0.2.2",
   "shortDescription": "A self-contained Claude Code workspace, streamed to the browser.",
   "description": "EXPERIMENTAL. Claude-Melusina ships Claude Code, its loader, and its exact shared-library closure in the signed package. A grain has no network, so one PowerBox HTTP-out capability grants api.anthropic.com through a loopback proxy. After that, users sign in through Claude Code\u2019s browser-link flow; this app never requests an API key. Its governed DiagnosticProbe v1 can only validate an exact target package through read-only contract and health methods; it is not a generic Pearl connector. /var holds only the persistent workspace and Claude Code\u2019s own login/session state.",
   "categories": [
@@ -27,6 +27,6 @@
   "license": "Melusina Public License v3.0 (MPL-MEL-3.0) \u2014 source-available, not open source",
   "tier": "experimental",
   "domains": [],
-  "packageId": "057953a237541702b26d345dc3834762",
-  "sha256": "057953a237541702b26d345dc3834762cd8a6d4486383a699ca33f6b0e35393c"
+  "packageId": "58033f0e1a2d0002959aef6fdddd76b1",
+  "sha256": "58033f0e1a2d0002959aef6fdddd76b12db6dde2613ef7315d99f49c626d5de8"
 }

@@ -2,22 +2,44 @@
   "schema": "melusina-source-selection-v1",
   "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
   "sourceRepository": "https://github.com/hrbrlife/AITX-Procedures",
-  "sourceCommit": "fe8f0b076b4ec996ca0a6be1de366e39343a7315",
+  "sourceCommit": "0b2a7687a00754cb420fdcf88c018187588b034e",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 19 v0.1.76/appVersion-80 dev-publish tip is the newest valid forward DueProcess source. It retains the versioned autonomous-share baseline and adds the receiver-bound, idempotent signed service path required by CyberTeller; older divergent lines remain reviewed evidence rather than release authority. The selected source locks the shared Bazaar release authority while retaining DueProcess\u2019s distinct SPK identity. Main is an ancestor and all selected app-relevant work is integrated in dev-publish.",
+  "baselineRelation": "same",
+  "decisionSummary": "Selected 0.1.79/v83 for two observed runtime failures: templated wallet-control locking and missing process-engine storage. Both main documentation commits are merged without dropping the current controlled handoff source; main and dev-publish agree. The golden-mvp-protocol-align tip is an ancestor of the selected source. Renamed archive refs retain their previously reviewed commits. The preserved Aug. 27 main snapshot carries a separate protocol 1.18/Sails capability migration and is retained as historical work. This release keeps the installed v82 protocol cohort; it does not claim to integrate or validate that separate migration.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "exact-head make ci passed for v0.1.76/appVersion-80",
-      "clean-start make pack-local produced SHA-256 6a065e43163cf1455d45c5a0bb9e5842c531258028b2426ee145219537cfbc5e twice",
-      "fresh recursive dev-publish clone reproduced the identical SPK bytes and metadata packageId",
-      "two governed provider builds bound that SPK to appHash d4eae5626e25d1cd2a1a3b5115bed517a256aa42eb9066e3093ec4b1b266ff05",
-      "shared-authority regression tests reject a substituted development Squads authority while preserving the app-specific SPK identity"
+      "make ci passed",
+      "go test -race ./pkg/process ./pkg/station ./pkg/users passed",
+      "production Users DOM test: four identity/permission fixtures passed",
+      "missing-directory durable workflow test failed before fix, passed after fix",
+      "contract receiver mutation tests still reject status aliases",
+      "main and dev-publish advertised the selected commit after ordinary merge",
+      "two fresh recursive remote clones, SOURCE_DATE_EPOCH=1788589150, identical 35122324-byte SPKs: 96e9cd9f64233c3c6ff6f03fe98723b5e727b788551b3e2ed39f81c29bddca39"
     ]
   },
   "reviewedRefs": [
+    {
+      "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-dueprocess-0158-clean-release-20260711",
+      "commit": "70268edb6cbe1b870ec5cdafcc180e3df9d9b3d8",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-wp2-case-mint-bridge-20260715",
+      "commit": "68a12361486b9f0014edf1c8b48ed7b484b2c931",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-wp2-issuance-template-20260715",
+      "commit": "844dc351c0d23e7e5ac3e644d69564e7eb135f7d",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/publish",
+      "commit": "d88596ddba51f6f3d4cb1b119d5d8c564e0c7579",
+      "outcome": "archive"
+    },
     {
       "ref": "refs/heads/archive/chore/v0.1.10-pre-stage-2026-05-21-20260814",
       "commit": "f8c73a60a27487cbdee9b0854481081b50d27fdb",
@@ -69,53 +91,18 @@
       "outcome": "archive"
     },
     {
-      "ref": "refs/heads/codex/dueprocess-0158-clean-release-20260711",
-      "commit": "70268edb6cbe1b870ec5cdafcc180e3df9d9b3d8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/dueprocess-candidate-pack-20260719",
-      "commit": "97a6064c6fa3697a6a2b62278e21d95867e61725",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/product-path-readiness-20260713",
-      "commit": "81bda6fecff1b7f06adfd073cc1b47a9e9bfe438",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/telescreen-ux-20260713",
-      "commit": "ff753b4e82c92743bbd45df81bc6c9331ae448d6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/wp2-case-mint-bridge-20260715",
-      "commit": "68a12361486b9f0014edf1c8b48ed7b484b2c931",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/wp2-issuance-template-20260715",
-      "commit": "844dc351c0d23e7e5ac3e644d69564e7eb135f7d",
-      "outcome": "archive"
-    },
-    {
       "ref": "refs/heads/dev-publish",
-      "commit": "fe8f0b076b4ec996ca0a6be1de366e39343a7315",
+      "commit": "0b2a7687a00754cb420fdcf88c018187588b034e",
       "outcome": "selected"
     },
     {
-      "ref": "refs/heads/feat/build-p0-c5.2-root",
-      "commit": "bacee63f98038e16106729f23fc0421b53b96ca6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/mel-release-health-dueprocess",
-      "commit": "e849b487baa5a362c72649e0d2ac2d2d6a4e0815",
+      "ref": "refs/heads/fix/golden-mvp-protocol-align",
+      "commit": "27dcd5f37f0a3d223f9f640ee12f894b5e4a3e8f",
       "outcome": "retained"
     },
     {
       "ref": "refs/heads/main",
-      "commit": "a4f27e9737529c360782458d1ab9ed3563e7544b",
+      "commit": "0b2a7687a00754cb420fdcf88c018187588b034e",
       "outcome": "baseline"
     },
     {
@@ -454,6 +441,11 @@
       "outcome": "archive"
     },
     {
+      "ref": "refs/heads/preserve-local-20260827/dueprocess-main-msb",
+      "commit": "3e427f1e3ae88e9bdc49a3857b726b6a0881e4aa",
+      "outcome": "archive"
+    },
+    {
       "ref": "refs/heads/preserve/local-main-ahead2-20260814",
       "commit": "69d6341283369c30e10d02831180ccb924a82507",
       "outcome": "archive"
@@ -461,16 +453,6 @@
     {
       "ref": "refs/heads/preserve/v18-worktree-detached-20260814",
       "commit": "f6865c970f2d47f53d12ed54daa859731ecaa1f6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/publish",
-      "commit": "d88596ddba51f6f3d4cb1b119d5d8c564e0c7579",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/team1/a14-corrective-20260804",
-      "commit": "e55dc0abed3c8194a04db557dd54c4cdc98eb1d8",
       "outcome": "archive"
     }
   ]

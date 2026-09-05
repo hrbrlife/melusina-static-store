@@ -198,11 +198,8 @@ groups:
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: dueprocess
-        # v0.1.76/appVersion-80 is the current dev-publish tip. It adds the
-        # receiver-bound, idempotent signed service path required for a
-        # governed CyberTeller integration. Its fresh clone, test suite,
-        # deterministic package, and shared-authority controls have passed.
-        source_commit: fe8f0b076b4ec996ca0a6be1de366e39343a7315
+        # 0.1.79/v83 restores templated wallet custody and durable process startup.
+        source_commit: 0b2a7687a00754cb420fdcf88c018187588b034e
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

@@ -106,6 +106,34 @@ d = json.load(open(sys.argv[1]))
 assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/dev-publish", d
 PY
 
+# Refreshing source history must not fetch gitlinks from unrelated archive
+# branches. The current selected submodule is real and initialized; only the
+# archive points to an unavailable commit, as in the live DueProcess failure.
+CHILD="$WORK/child"
+mkdir -p "$CHILD"
+git -C "$CHILD" init -q
+git -C "$CHILD" config user.email test@example.invalid
+git -C "$CHILD" config user.name test
+printf 'selected submodule\n' > "$CHILD/current.txt"
+git -C "$CHILD" add current.txt
+git -C "$CHILD" commit -qm current-submodule
+git clone --bare -q "$CHILD" "$WORK/child.git"
+git -C "$APP" -c protocol.file.allow=always submodule add -q "$WORK/child.git" fixture-submodule
+git -C "$APP" commit -qam selected-submodule
+git -C "$APP" push -qu origin HEAD:main
+ARCHIVE="$WORK/archive"
+git clone -q --branch main "$WORK/origin.git" "$ARCHIVE"
+git -C "$ARCHIVE" config user.email test@example.invalid
+git -C "$ARCHIVE" config user.name test
+git -C "$ARCHIVE" update-index --cacheinfo 160000,1111111111111111111111111111111111111111,fixture-submodule
+git -C "$ARCHIVE" commit -qm archived-unavailable-submodule
+git -C "$ARCHIVE" push -q origin HEAD:archive/unavailable-submodule
+git -C "$APP" config fetch.recurseSubmodules true
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/archive-history-receipt.json"
+[[ "$(git -C "$APP/fixture-submodule" rev-parse HEAD)" == "$(git -C "$CHILD" rev-parse HEAD)" ]]
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
 # A requested output path must reach the app's Make target. This is important
 # for isolated candidate staging: silently writing APP/app.spk instead makes
 # the caller verify a path that was never built.

@@ -371,12 +371,53 @@ def canonical_source_selection_state(value: str) -> str:
     return normalized
 
 
+# A node helper here can finish its work, print its terminal JSON, and THEN
+# segfault while tearing down its Solana/Squads native handles. Exit status is
+# not the outcome: the receipt on stdout is. Measured on this rail —
+#   node mel-release-squads-register.mjs policy
+#     -> {"multisig":"4sPNmdc…","threshold":3,…}  then exit=139 (SIGSEGV)
+#   node mel-release-squads-register.mjs next-index
+#     -> 1942                                     then exit=139 (SIGSEGV)
+# which the caller reported as `command failed (…): {"multisig":…}` — a
+# refusal quoting a perfectly good result. This is the third instance of one
+# class in this estate: squads-vault-exec (LEDGER 9f49ad7, where retrying on
+# exit status wrote the same on-chain transaction five times) and
+# reattest-sidecar-binhash.py (2fde931) were the first two.
+#
+# So: a crash AFTER a complete result is not a failure. A crash with no usable
+# output still is, and every other non-zero exit is untouched.
+_POST_RESULT_CRASH_CODES = {139, -11}  # SIGSEGV, raw and as a negative signal
+
+
+def _looks_like_terminal_output(text: str) -> bool:
+    """True when the helper emitted something a caller can actually consume:
+    a terminal JSON object, or a bare integer (next-index)."""
+    for line in reversed(text.splitlines()):
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("{") and line.endswith("}"):
+            try:
+                return isinstance(json.loads(line), dict)
+            except json.JSONDecodeError:
+                return False
+        return line.isdigit()
+    return False
+
+
 def run(cmd: list[str], *, cwd: Path | None = None, extra_env: dict[str, str] | None = None) -> str:
     run_env = os.environ.copy()
     if extra_env:
         run_env.update(extra_env)
     proc = subprocess.run(cmd, cwd=cwd, env=run_env, text=True, capture_output=True)
     if proc.returncode:
+        if proc.returncode in _POST_RESULT_CRASH_CODES and _looks_like_terminal_output(proc.stdout):
+            sys.stderr.write(
+                f"mel-release-provider: {' '.join(cmd[:2])} produced a complete result "
+                f"then crashed on exit (rc={proc.returncode}); accepting the receipt "
+                "rather than the exit status\n"
+            )
+            return proc.stdout
         detail = (proc.stderr or proc.stdout).strip()
         raise ProviderError(f"command failed ({' '.join(cmd[:2])}): {detail[-3000:]}")
     return proc.stdout

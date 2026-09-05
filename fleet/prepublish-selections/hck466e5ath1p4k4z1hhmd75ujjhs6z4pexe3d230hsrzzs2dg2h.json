@@ -2,23 +2,27 @@
   "schema": "melusina-source-selection-v1",
   "appId": "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h",
   "sourceRepository": "https://github.com/hrbrlife/ccash_domain_template",
-  "sourceCommit": "98aa6c7a905364c33c916cf1e64495da41204e3f",
+  "sourceCommit": "5b95e3346052c4cd24e3866d19d6b268dd827112",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The Aug. 19 v0.5.88/appVersion-110 dev-publish tip is the newest valid forward DomainTemplate source. It incorporates the missing package-bound release-identity health control, retains the current signed DomainRouter and evidence ownership model, and supersedes the older divergent UX, lease, sanctions, and historic release lines after focused comparison. Main is an ancestor. The retained health and v109 lines are evidence for the forward integration; the remaining preserved and historical refs do not contain a newer valid application source.",
+  "baselineRelation": "same",
+  "decisionSummary": "0.5.90/v112 corrects three live DueProcess profile permission contracts and advances their revisions. Ordinary merge preserves main DAO pack and onboarding documents. Main and dev-publish agree. Unchanged archived refs retain their prior review; the renamed archived ref retains the same reviewed bytes, and the new Golden protocol-alignment ref is an ancestor of the selected source. No optional pack is enabled by this source selection.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "fresh recursive clone resolved dev-publish 98aa6c7a905364c33c916cf1e64495da41204e3f and the declared SPK module gitlink",
-      "complete current remote-head snapshot reviewed, including divergent and preserved refs",
-      "make verify-recovery passed from the selected source",
-      "a fresh remote clone independently passed make verify-recovery at the same commit",
-      "two package runs matched SHA-256 9cfbe6b3441413960cf6656c9e6d1c92ba446c23ae8f8bc683a8ab809ac1a7a4",
-      "release identity is package-bound and exposes no mutable package digest field"
+      "make check-greenfield check-release-metadata check-packs-strict vet test passed after main merge",
+      "go test -race ./pkg/template passed in 541.153 seconds",
+      "actual DueProcess parsers and section-access checks accept all three profiles and deny collaborator administration",
+      "two independent fresh remote clones with recursive selected gitlinks packed using SOURCE_DATE_EPOCH=1788590618; 5841692-byte SPKs both SHA-256 bfd532e3d9854a92690efc60b8e4d0a5a147428458217fd893be00a262b39d4c",
+      "40 current remote heads reconciled against previous review and selected ancestry; main and dev-publish independently remote-verified"
     ]
   },
   "reviewedRefs": [
+    {
+      "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-product-path-readiness-20260713",
+      "commit": "2c8522135c7bc7721316aa10683aed6bfe0551e0",
+      "outcome": "archive"
+    },
     {
       "ref": "refs/heads/archive/feat/killlist-dtg-b2-provider-routes-20260509",
       "commit": "9dc1ae6a9a8119fc6d9becc3f1391bda19e0b490",
@@ -40,43 +44,18 @@
       "outcome": "archive"
     },
     {
-      "ref": "refs/heads/codex/domain-template-ux-20260713",
-      "commit": "c3b715eb9679647046885938006554a28a685660",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/dtg-lease-issuer-20260721",
-      "commit": "5f2704528bb57a09e9e741fe772db906b7ae2a04",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/codex/product-path-readiness-20260713",
-      "commit": "2c8522135c7bc7721316aa10683aed6bfe0551e0",
-      "outcome": "archive"
-    },
-    {
       "ref": "refs/heads/dev-publish",
-      "commit": "98aa6c7a905364c33c916cf1e64495da41204e3f",
+      "commit": "5b95e3346052c4cd24e3866d19d6b268dd827112",
       "outcome": "selected"
     },
     {
-      "ref": "refs/heads/dtg-redeploy-0.5.58",
-      "commit": "b8e240a597504cfd61e2128bc55d5c1437816bc8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/feat/mel-release-health-ccash-domain-template",
-      "commit": "1fa4c5404b7c4e9bd702c9e64dbf303f64d52b66",
-      "outcome": "retained"
-    },
-    {
-      "ref": "refs/heads/fix/prelaunch-domain-template-v109-greenfield",
-      "commit": "f21c77615fe3bd2b3ce7c8a1d889000fe75b4f3a",
+      "ref": "refs/heads/fix/golden-mvp-protocol-align",
+      "commit": "04c905d6577eaf877502d526137ef936e815f2bf",
       "outcome": "retained"
     },
     {
       "ref": "refs/heads/main",
-      "commit": "e4132f2148fc7dd9c737f7fb3e2015d17a23f55c",
+      "commit": "5b95e3346052c4cd24e3866d19d6b268dd827112",
       "outcome": "baseline"
     },
     {
@@ -237,11 +216,6 @@
     {
       "ref": "refs/heads/preserve-local-20260814/wt/kb-3-domain-template-fix",
       "commit": "d54d7e38d386ab50877a0a8f620daabed31e02f1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/publish",
-      "commit": "7ef8315235e3cd873683284fe963e4461eaae2bb",
       "outcome": "archive"
     }
   ]

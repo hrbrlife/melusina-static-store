@@ -2,20 +2,19 @@
   "schema": "melusina-source-selection-v1",
   "appId": "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h",
   "sourceRepository": "https://github.com/hrbrlife/INSTASYS_MAIL",
-  "sourceCommit": "55e276e3a5aef4e0f5605c191759c5fdce781fdc",
+  "sourceCommit": "cbc4cdc4c73c7c37dc52f79f8e03fdc2e62c77e0",
   "selectionMethod": "direct-dev",
   "baselineBranch": "main",
   "baselineRelation": "same",
-  "decisionSummary": "Selected the current MerMail dev-publish v0.5.5/version-20 source after a complete remote-head and focus-file comparison. Its HTTP-out readiness, session, object authorization, admin, delete-flow, and out-of-box behavior match the relevant preserved work, while it adds mailbox authorization/readiness, canonical Station endpoint targeting, and the author-key rotation/release-input gate. Older preserved snapshots carry stale release-input and key state and are retained as Git evidence rather than merged.",
+  "decisionSummary": "0.6.3/v26 separates compose draft autosave from explicit send and retains the 0.6.2 Station response-lifetime fix. Main/dev-publish agree. The additional publish and archived catalog refs carry release artifacts; their htmx_uiview_mail tree f2ccf28e10a978dfdfac5b4f14df43da742900f2 is byte-identical to previously reviewed catalog refs. They add no forward application source. Other unchanged refs retain their previous review.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "clean exact checkout at the selected commit",
-      "origin dev-publish and main both advertise the selected commit",
-      "all advertised remote heads recorded and reviewed for current source selection",
-      "make release-inputs test pack-local",
-      "unified package and product metadata verification",
-      "runtime contract matches immutable app identity and remains build-bound in source"
+      "actual Go-rendered HTML and shipped HTMX reproduced typing POST /send before fix, then pass new/reply/draft-only/repeated-submit-during-autosave controls",
+      "full mailbox and Station Go suites, race checks and vet pass",
+      "0.6.3/v26 source input and package verification pass",
+      "two fresh remote clones at SOURCE_DATE_EPOCH=1788591800 produce identical 10601216-byte SPKs SHA-256 7eda52cf6807b420af1c93176278bae1675bb5834de60dd89f5623a03fd97e04",
+      "27 current remote heads reviewed; main/dev-publish independently verified"
     ]
   },
   "reviewedRefs": [
@@ -32,6 +31,11 @@
     {
       "ref": "refs/heads/agent/mermail-source-metadata-20260812",
       "commit": "255fb87d93153f37c1d9b8813f0dd5be893bea1d",
+      "outcome": "archive"
+    },
+    {
+      "ref": "refs/heads/archive/codex-20260827-mermail-v0.5.1",
+      "commit": "e2601396ae4d354222e631d28be3fbbf5ec15f00",
       "outcome": "archive"
     },
     {
@@ -71,7 +75,7 @@
     },
     {
       "ref": "refs/heads/dev-publish",
-      "commit": "55e276e3a5aef4e0f5605c191759c5fdce781fdc",
+      "commit": "cbc4cdc4c73c7c37dc52f79f8e03fdc2e62c77e0",
       "outcome": "selected"
     },
     {
@@ -81,7 +85,7 @@
     },
     {
       "ref": "refs/heads/main",
-      "commit": "55e276e3a5aef4e0f5605c191759c5fdce781fdc",
+      "commit": "cbc4cdc4c73c7c37dc52f79f8e03fdc2e62c77e0",
       "outcome": "baseline"
     },
     {
@@ -146,7 +150,7 @@
     },
     {
       "ref": "refs/heads/publish",
-      "commit": "83cc8616cc97e257d22f0a40c752245eb8b6ad27",
+      "commit": "5c3c8cae2a0816aec07a968ee39a6ef9904d5196",
       "outcome": "archive"
     }
   ]

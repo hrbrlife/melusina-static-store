@@ -629,8 +629,8 @@ groups:
         admin_surface: same-pearl
       mermail:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
-        source_path: INSTASYS_MAIL-main
-        source_commit: 55e276e3a5aef4e0f5605c191759c5fdce781fdc
+        source_path: INSTASYS_MAIL
+        source_commit: cbc4cdc4c73c7c37dc52f79f8e03fdc2e62c77e0
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -727,13 +727,10 @@ groups:
         admin_surface: same-pearl
       ccash-domain-template:
         appId: hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h
-        # v0.5.88/appVersion-110 is the current dev-publish tip. It incorporates
-        # the package-bound release-identity health control, passes recovery
-        # checks from both the source and a fresh remote clone, and packs
-        # byte-identically. The clean release source root contains this
-        # repository at the named relative path.
+        # v0.5.90/v112 repairs the DueProcess permissions contract and preserves
+        # main history. Tested with actual consumers, race checks and two clones.
         source_path: ccash-domain-template
-        source_commit: 98aa6c7a905364c33c916cf1e64495da41204e3f
+        source_commit: 5b95e3346052c4cd24e3866d19d6b268dd827112
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

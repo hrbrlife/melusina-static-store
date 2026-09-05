@@ -2166,12 +2166,12 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert canboard["source_selection_state"] == "direct-dev-verified", canboard
     contacts = entries["trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh"]
     assert contacts["reconciliation_state"] == "source-pinned", contacts
-    assert contacts["source_commit"] == "af378d96765f8041c4c51a80e803377256a91f6d", contacts
+    assert contacts["source_commit"] == "67a27a48d9adcf8c26cf5880aec0d40cc2fb1f20", contacts
     assert contacts["release_state"] == "ready", contacts
     assert contacts["source_selection_state"] == "direct-dev-verified", contacts
     calendar = entries["p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0"]
     assert calendar["reconciliation_state"] == "source-pinned", calendar
-    assert calendar["source_commit"] == "fafcf3c7536495b08dad59229ceb8b2d519541b9", calendar
+    assert calendar["source_commit"] == "b2865491f725452e58745c2660bb0d03ab65f78c", calendar
     assert calendar["release_state"] == "ready", calendar
     assert calendar["source_selection_state"] == "direct-dev-verified", calendar
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]

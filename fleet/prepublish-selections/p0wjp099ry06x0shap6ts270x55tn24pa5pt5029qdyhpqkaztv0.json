@@ -2,15 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0",
     "sourceRepository": "https://github.com/hrbrlife/melusina_bureau_cal_app",
-    "sourceCommit": "fafcf3c7536495b08dad59229ceb8b2d519541b9",
+    "sourceCommit": "b2865491f725452e58745c2660bb0d03ab65f78c",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "same",
-    "decisionSummary": "Current Calendar release adds the same bundled 60 FOSS fonts and six icon families as every Bureau app; both release branches preserve their histories at this source cut.",
+    "decisionSummary": "Calendar 0.22.4 preserves personal font choices across shell origins while retaining the common bundled 60 FOSS text families and six icon fonts.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "Complete Go tests and vet pass; HTTP mux verifies every embedded font and license hash.",
-            "Two independent clean clone paths produce identical SPKs at the source commit epoch."
+            "Full Go race suite, vet, native HTTP user-scope tests and old-schema upgrade preservation pass.",
+            "Rendered browser audit verifies origin changes, separate users, transient anonymous appearance and recovery from failed load/save requests.",
+            "Two independent clean packages at b2865491f725452e58745c2660bb0d03ab65f78c match SHA256 1abfe5b99894f7faca5bd77904fe513b3cce4d207ca7f467cd3e66c9b5c5ebf9."
         ]
     },
     "reviewedRefs": [
@@ -26,7 +27,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "fafcf3c7536495b08dad59229ceb8b2d519541b9",
+            "commit": "b2865491f725452e58745c2660bb0d03ab65f78c",
             "outcome": "selected"
         },
         {
@@ -41,7 +42,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "fafcf3c7536495b08dad59229ceb8b2d519541b9",
+            "commit": "b2865491f725452e58745c2660bb0d03ab65f78c",
             "outcome": "baseline"
         },
         {
@@ -66,7 +67,7 @@
         },
         {
             "ref": "refs/heads/publish",
-            "commit": "40182bc78cb0db0eb5ee77123a85cc87f1842e3d",
+            "commit": "1e5086aba7b847ca6bc4f3157bc51e854d70eb93",
             "outcome": "retained"
         }
     ],

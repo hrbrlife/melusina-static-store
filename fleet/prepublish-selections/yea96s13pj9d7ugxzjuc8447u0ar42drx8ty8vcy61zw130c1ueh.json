@@ -1,43 +1,121 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
-  "sourceRepository": "https://github.com/hrbrlife/vintage-test-dec",
-  "sourceCommit": "0b0f6d96c620acb1eb6feaeea6bca82e0079cb36",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The v1.3.4/appVersion-23 dev-publish tip is the newest valid forward Vintage source. It is a focused public-identity and version-forward cut over the previously reviewed v1.3.3 tip: signed Bazaar metadata, the Sandstorm package title, the runtime contract wording, changelog, and release guard now agree on Vintage. The complete 20-ref remote snapshot is unchanged except for this selected dev-publish advance; main remains its reviewed ancestor. The governed release is terminally accepted and the public Bazaar catalog, signed pointer, package bytes, and runtime contract all now resolve to Vintage v1.3.4/appVersion-23. Every archive, preserved, salvage, and historic publish ref remains reviewed evidence rather than a newer valid release source.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "the selected dev-publish commit matches the current advertised remote tip and main is its reviewed ancestor",
-      "the complete 20-ref remote-head snapshot is unchanged except for the selected dev-publish advance",
-      "the clean source checkout passed make test, go test ., and go vet ./...",
-      "two independent package runs matched SHA-256 74f4eed5e307215e6482e3db11fc14ea9023e592516f3a79afa22291763665a4 and packageId 74f4eed5e307215e6482e3db11fc14ea",
-      "spk verify confirmed the immutable Vintage appId, title Vintage, appVersion 23, and marketing version 1.3.4",
-      "the public Bazaar catalog, signed pointer, release record, package bytes, and runtime contract all resolve to Vintage v1.3.4/appVersion 23"
-    ]
-  },
-  "reviewedRefs": [
-    {"ref": "refs/heads/archive/codex/vintage-graincontext-browser-session", "commit": "f273f47b364eedd2a8bfa93ed25e91dae802706e", "outcome": "archive"},
-    {"ref": "refs/heads/archive/fix/imp17-canonical-url-host-port", "commit": "97dbdbeb175e9de104e82624e098440e14993afa", "outcome": "archive"},
-    {"ref": "refs/heads/archive/fix/imp17-revert-to-sid-query-auth-2026-05-01", "commit": "52b75873de0036ef30b15388f11df64d31201dd3", "outcome": "archive"},
-    {"ref": "refs/heads/archive/fix/imp17b-rlimit-as-and-defect5-polled-retry", "commit": "75315c025df24936654751883cad6e25ea128d50", "outcome": "archive"},
-    {"ref": "refs/heads/codex/vintage-pointer-20260715", "commit": "40fd3502cecf793a3777335edb2c93c6f99d7d1c", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "0b0f6d96c620acb1eb6feaeea6bca82e0079cb36", "outcome": "selected"},
-    {"ref": "refs/heads/main", "commit": "da1bfdcef7455bf62920a8952e22e77476f5fd68", "outcome": "baseline"},
-    {"ref": "refs/heads/polish/golden-mvp-2026-05-06", "commit": "caecc808efe8028c4530d099a84c12f3382f18b8", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/_detached/f9891544a344", "commit": "f9891544a3442ae1f3af7378877df81a21c78d77", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/codex/vintage-graincontext-browser-session", "commit": "92fe0546ad098474ee6512a3a65d42c3e29f5896", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/codex/vintage-pointer-20260715", "commit": "40fd3502cecf793a3777335edb2c93c6f99d7d1c", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/imp17-canonical-url-host-port", "commit": "97dbdbeb175e9de104e82624e098440e14993afa", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/imp17-revert-to-sid-query-auth-2026-05-01", "commit": "52b75873de0036ef30b15388f11df64d31201dd3", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/imp17b-rlimit-as-and-defect5-polled-retry", "commit": "75315c025df24936654751883cad6e25ea128d50", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "7831fdfa2e4cd2c3ed71310eea14f99d293dbe50", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "dccd042465ad7bdc6f840097144f73ca0bee58cf", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/polish/golden-mvp-2026-05-06", "commit": "caecc808efe8028c4530d099a84c12f3382f18b8", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/publish", "commit": "4e36533aeda815d1ccf18a54ef5c20475ab054c2", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801", "commit": "7e4c4d2ee3fd12e0fffd493c1ac3368e2b1a304f", "outcome": "archive"},
-    {"ref": "refs/heads/publish", "commit": "4e36533aeda815d1ccf18a54ef5c20475ab054c2", "outcome": "archive"}
-  ]
+    "schema": "melusina-source-selection-v1",
+    "appId": "yea96s13pj9d7ugxzjuc8447u0ar42drx8ty8vcy61zw130c1ueh",
+    "sourceRepository": "https://github.com/hrbrlife/vintage-test-dec",
+    "sourceCommit": "096a73926586d7841594d831263bb3b0f0db426a",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "Vintage1.3.5/v24 source includes scoped native Chrome capability, durable lifecycle UI, matching runtime6a3c3f9 and refusal of unsupported Chrome key rotation.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "All selected source and recursively initialized Gitlinks are clean and match pushed dev-publish096a739; historical main remains ancestor.",
+            "Chrome key-rotation regression reproduces old mutation and current full desktop race/vet passes; root release cohort passes.",
+            "Canonical two-path package preflight is required before publication; no live sidecar or app installation is implied."
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/codex/vintage-graincontext-browser-session",
+            "commit": "f273f47b364eedd2a8bfa93ed25e91dae802706e",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/fix/imp17-canonical-url-host-port",
+            "commit": "97dbdbeb175e9de104e82624e098440e14993afa",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/fix/imp17-revert-to-sid-query-auth-2026-05-01",
+            "commit": "52b75873de0036ef30b15388f11df64d31201dd3",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/fix/imp17b-rlimit-as-and-defect5-polled-retry",
+            "commit": "75315c025df24936654751883cad6e25ea128d50",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/codex/vintage-pointer-20260715",
+            "commit": "40fd3502cecf793a3777335edb2c93c6f99d7d1c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "096a73926586d7841594d831263bb3b0f0db426a",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "da1bfdcef7455bf62920a8952e22e77476f5fd68",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/polish/golden-mvp-2026-05-06",
+            "commit": "caecc808efe8028c4530d099a84c12f3382f18b8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/f9891544a344",
+            "commit": "f9891544a3442ae1f3af7378877df81a21c78d77",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/vintage-graincontext-browser-session",
+            "commit": "92fe0546ad098474ee6512a3a65d42c3e29f5896",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/vintage-pointer-20260715",
+            "commit": "40fd3502cecf793a3777335edb2c93c6f99d7d1c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/imp17-canonical-url-host-port",
+            "commit": "97dbdbeb175e9de104e82624e098440e14993afa",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/imp17-revert-to-sid-query-auth-2026-05-01",
+            "commit": "52b75873de0036ef30b15388f11df64d31201dd3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/imp17b-rlimit-as-and-defect5-polled-retry",
+            "commit": "75315c025df24936654751883cad6e25ea128d50",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+            "commit": "7831fdfa2e4cd2c3ed71310eea14f99d293dbe50",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "dccd042465ad7bdc6f840097144f73ca0bee58cf",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/polish/golden-mvp-2026-05-06",
+            "commit": "caecc808efe8028c4530d099a84c12f3382f18b8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "4e36533aeda815d1ccf18a54ef5c20475ab054c2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
+            "commit": "7e4c4d2ee3fd12e0fffd493c1ac3368e2b1a304f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "4e36533aeda815d1ccf18a54ef5c20475ab054c2",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

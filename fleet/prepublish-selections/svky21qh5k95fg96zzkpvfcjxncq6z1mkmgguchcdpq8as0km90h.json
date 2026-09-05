@@ -2,21 +2,22 @@
     "schema": "melusina-source-selection-v1",
     "appId": "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h",
     "sourceRepository": "https://github.com/hrbrlife/Claude-Melusina",
-    "sourceCommit": "185ca3c5df28ff1a33429ef32969090ce443f01b",
+    "sourceCommit": "61ea1f5e3d661114010b7fbeeda83313a22e585e",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "same",
-    "decisionSummary": "v0.2.2/appVersion-4 on main==dev-publish at 185ca3c5: ships the proc/melusina-requires-procfs opt-in marker (inert until the shell honours it) and a claude shell builtin so the packaged runtime is reachable from the grain shell; the packaged runtime bundle is pinned by digest as before.",
+    "decisionSummary": "Release 0.2.3/v5 from the common main and dev-publish head: protected setup-token sign-in, descriptor-only runtime credential delivery, persistent private directories, and safe sign-out. Shell 105 supplies the declared private procfs. Publication and installation require governed terminal receipts and live UI acceptance.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean recursive checkout at 185ca3c5df28ff1a33429ef32969090ce443f01b",
-            "go vet and full go test pass; pkgdef alwaysInclude lists the marker; the claude builtin resolves the packaged /runtime/bin/claude"
+            "Full app tests, race detector, vet and module verification passed; vulnerability scan found no vulnerabilities.",
+            "Five compiling mutations rejected unsafe credential files, shell secret echo, public directory modes, rejected-token reset and viewer writes.",
+            "Actual packaged Claude consumed a synthetic token descriptor with private procfs and no network; local rendered sign-in, restart persistence and sign-out passed."
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "185ca3c5df28ff1a33429ef32969090ce443f01b",
+            "commit": "61ea1f5e3d661114010b7fbeeda83313a22e585e",
             "outcome": "selected"
         },
         {
@@ -26,7 +27,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "185ca3c5df28ff1a33429ef32969090ce443f01b",
+            "commit": "61ea1f5e3d661114010b7fbeeda83313a22e585e",
             "outcome": "baseline"
         }
     ],

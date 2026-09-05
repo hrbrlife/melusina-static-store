@@ -515,17 +515,12 @@ groups:
         admin_surface: same-pearl
       claude-melusina:
         appId: svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h
-        # The selected v0.2.1/appVersion 3 source is the governed
-        # DiagnosticProbe v1 candidate. It succeeds the v0.1.0 source cut,
-        # whose ReleaseEntry/package evidence remains historical. This source
-        # pin is provenance only: it does not claim a v0.2.1 package, listing,
-        # public pointer, install, or target-Pearl response exists yet.
         source_path: claude-melusina
-        # v0.2.2/appVersion-4: ships the proc/melusina-requires-procfs opt-in marker
-        # (inert until the shell honours it) and a `claude` shell builtin so the
-        # packaged runtime is reachable from the grain shell. Provenance only: it
-        # does not claim a package, listing or install exists until the rail says so.
-        source_commit: 185ca3c5df28ff1a33429ef32969090ce443f01b
+        # v0.2.3/appVersion 5 uses a protected setup-token field, passes the
+        # credential by descriptor, and maintains private persistent /var state.
+        # The bundled runtime requires the package-declared private procfs of
+        # shell build 105. This pin selects source; the rail proves publication.
+        source_commit: 61ea1f5e3d661114010b7fbeeda83313a22e585e
         source_baseline_branch: main
         reconciliation_state: source-pinned
         release_state: ready

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "app": {
+    "appHash": "3b9495d0ab7ce769edf4a8d88e1eb1661bd500b30917e20ea5720b00db50d427",
+    "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
+    "spkSha256": "7265efd64888dc5258f7df9713598ac343007654e2d9ffd8fdd8fd443894c19e",
+    "version": "0.2.21"
+  },
+  "cleanup": {
+    "steps": [
+      "Delete the probe grains created for the launch probe; each is a fresh grain created solely for this probe.",
+      "If step 4 changed FINERACT_SIDECAR_PORT, restore the deployment's value to 8443 and re-run the connectivity step once so the install is left reachable.",
+      "The connectivity probe itself is read-only. If the provisioning probe was run, retain its exact office, currency, and payment-type records as the intended idempotent setup state; a second visible submit must reuse them rather than duplicate them."
+    ]
+  },
+  "fixtures": [],
+  "launchProbe": {
+    "expectedResult": "A fresh grain of this release renders the Fineract Sidecar Setup Wizard, completes its Connectivity Check, and can provision through the bundle-root-signed bootstrap bridge on the configured sidecar port.",
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Install this release from the store and launch a new grain through the app's create action, then open it as the grain owner.",
+        "expectedResult": "The grain serves the wizard titled \"Fineract Sidecar Setup Wizard v1\" with its step rail visible: \"Verify ledger positions\", \"Connectivity Check\", \"Tenant & Install Identity\", and the organisation step. It is served with a normal success status: no 403, no blank iframe, no supervisor reset."
+      },
+      {
+        "action": "Read the version the grain reports and confirm it is this release, not the one it replaced.",
+        "expectedResult": "The grain reports 0.2.21. A grain still showing an earlier version means the userAction pin was not advanced and the app is not upgraded regardless of what the catalog serves."
+      },
+      {
+        "action": "Open the \"Connectivity Check\" step and run the sidecar reachability probe (see sidecars[0].safeProbe).",
+        "expectedResult": "The step shows both Sidecar and Fineract secure connection as Connected through the granted capability, and Continue is enabled. The second row proves the configured upstream TLS identity. A separately signed API preflight must pass the installed signer policy before any provisioning operation."
+      },
+      {
+        "action": "Enter the install's bundle-signing seed in Tenant & Install Identity. In Organization, visibly select USD and USDC, advance to the Payment Types panel, visibly select Bank Transfer and Crypto, then use the final Provision all action once.",
+        "expectedResult": "Before the first write, the grain signs an outer POST /api/v1/bootstrap/fineract and a separate exact inner GET /Fineract-provider/api/v1/offices. The installed API policy must independently authorize the signer, and Go Gate 1 and Java Gate 2 must verify the same inner bytes. A bundle-root key is not automatically an API signer. The Payment Types panel submission retains the currency selections from its sibling panel, and the wizard sends Fineract the exact string array {\"currencies\":[\"USD\",\"USDC\"]}; both currencies and payment types are created or reused. A wrong seed, unregistered inner signer, missing policy/quorum, altered inner signature, replay, tenant mismatch, unlisted operation, or unavailable currency is visibly rejected and produces no partial success claim."
+      },
+      {
+        "action": "Select MSB Standard without adding custom GL rows, then enter a decimal Savings charge such as 0.50 and provision Products & Charges, including one USD and one USDC savings product.",
+        "expectedResult": "The preset provisions its canonical ledger without hidden custom-row errors. The decimal value remains visible, the signed bootstrap request creates or reuses a Fineract charge with chargeTimeType 2 (specified due date), and both the USD and USDC products read back in their selected currencies."
+      },
+      {
+        "action": "Set FINERACT_SIDECAR_PORT to a value other than 8443 in the sidecar's deployment environment, relaunch, and re-run the connectivity step.",
+        "expectedResult": "The wizard dials the overridden port. This is the negative control: it proves the port is configuration rather than a constant. Restore the deployment to 8443 afterwards."
+      }
+    ]
+  },
+  "schema": "melusina-app-runtime-contract-v1",
+  "sidecars": [
+    {
+      "capabilities": [
+        "http-out"
+      ],
+      "host": "fineract.sidecar.host",
+      "id": "fineract",
+      "port": 8443,
+      "safeProbe": {
+        "action": "In the wizard's \"Connectivity Check\" step, grant the visible sidecar PowerBox connection and press \"Re-check\". The grain must issue GET /__health and GET /__health/fineract through that claimed capability. Observe the requests in the sidecar access log as well as the two visible endpoint rows.",
+        "expectedResult": "Both endpoint rows report Connected, Continue is enabled, and the sidecar receives both reads on port 8443 (or whatever FINERACT_SIDECAR_PORT names). The Fineract row must use the verified TLS connection probe; it sends no unsigned API request and does not claim API authorization."
+      },
+      "tls": {
+        "minimumVersion": "TLS1.2",
+        "required": true,
+        "serverName": "fineract.sidecar.host",
+        "trust": "system-ca"
+      },
+      "transport": "https"
+    }
+  ]
+}

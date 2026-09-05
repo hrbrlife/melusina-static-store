@@ -315,7 +315,7 @@ groups:
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: fineract-setup
         catalog_name: Fineract Configurator
-        live_version: 0.2.20
+        live_version: 0.2.21
         catalog_developer: hrbrlife
         catalog_repo: fineract-setup
         catalog_slug: fineract-setup

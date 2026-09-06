@@ -1,0 +1,36 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "app": {
+    "appHash": "cca22b3c474cc632410c79d74e690402d9f6beb3c8b02d43eef6cf8c24798d12",
+    "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
+    "spkSha256": "75f2ea7acea42a02ec83be58450d94bf3114db46268a641e690aa5c05baaade7",
+    "version": "0.1.12"
+  },
+  "cleanup": {
+    "steps": [
+      "Use the visible grain menu to move the disposable Shell Tester grain to Sandstorm Trash.",
+      "Do not retain a wallet signature, OTP request, RPC request, production secret, release record, or scheduled task from this probe."
+    ]
+  },
+  "fixtures": [],
+  "launchProbe": {
+    "expectedResult": "A fresh Shell Tester grain visibly provides a safe local diagnostic surface; real shell-extension actions require an explicit operator interaction and are not exercised by this launch probe.",
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Install this candidate through the rendered Bazaar and use the visible 'New Shell Tester session' action to create and open a fresh disposable grain as its owner.",
+        "expectedResult": "The owner reaches the rendered Shell Tester tabs without a blank page, supervisor reset, tenant-specific preconfiguration, or outbound sidecar dependency."
+      },
+      {
+        "action": "Inspect the visible passive and active shell-extension diagnostic controls without entering a wallet address, requesting an OTP, signing a message, or submitting a Solana RPC request.",
+        "expectedResult": "The fresh diagnostic grain explains its test surfaces without initiating a wallet, OTP, RPC, or email operation and without claiming an ambient credential or external connection."
+      },
+      {
+        "action": "Open the visible E2E status surface using only its disposable grain-local state; do not enter a production secret.",
+        "expectedResult": "The grain reports only its isolated test state and keeps any test record within the disposable grain. It never represents the diagnostic keybox as customer custody or a production vault."
+      }
+    ]
+  },
+  "schema": "melusina-app-runtime-contract-v1",
+  "sidecars": []
+}

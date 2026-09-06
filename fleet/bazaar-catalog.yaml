@@ -383,7 +383,7 @@ groups:
         source_selection_receipt: prepublish-selections/u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh.json
         publish_slug: instaco
         catalog_name: InstaCo
-        live_version: 0.1.10
+        live_version: 0.1.11
         catalog_developer: hrbrlife
         # The app's GitHub repository uses the melusina- prefix, but its
         # already-active Store slot predates that rename.  This exact slot is

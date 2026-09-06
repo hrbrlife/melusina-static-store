@@ -1,0 +1,32 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "app": {
+    "appHash": "91e8c1e9a506c6c1fd4a7cff10409527b6c6eb0cdd200f62a0e18cdfd63b3ea3",
+    "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
+    "spkSha256": "fcae8c78b134d4bcabde9dfa91ca40eb1097d5da4747e41919558e0df06ceb75",
+    "version": "0.1.11"
+  },
+  "cleanup": {
+    "steps": [
+      "Delete the probe grain created for the launch probe.",
+      "No external state is created: this app declares no sidecars, so the probe reaches no network service. `go list -deps ./...` over the module resolves exactly one hrbrlife import, github.com/hrbrlife/grain-crypto-journal, and neither the Go source nor sandstorm-pkgdef.capnp references any *.sidecar.host. The grain's state lives only in its own /var."
+    ]
+  },
+  "fixtures": [],
+  "launchProbe": {
+    "expectedResult": "A human can create one InstaCo series grain and see it render its real first screen under enforced authz, with no further navigation and no PowerBox grant required to reach it.",
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Create a grain with the \"New InstaCo series\" action and open it.",
+        "expectedResult": "The series console renders its own first screen; it does not show a shell handshake or lock screen."
+      },
+      {
+        "action": "Read the role indicator on that first screen without navigating anywhere else.",
+        "expectedResult": "The grain reports the acting principal's role from its own six-bit permission model rather than leaving it blank or defaulting to admin."
+      }
+    ]
+  },
+  "schema": "melusina-app-runtime-contract-v1",
+  "sidecars": []
+}

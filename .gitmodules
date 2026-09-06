@@ -23,10 +23,6 @@
 	path = packages/hrbrlife/openclaw-main
 	url = https://github.com/hrbrlife/openclaw-melusina.git
 	branch = publish
-[submodule "packages/hrbrlife/instaco-app"]
-	path = packages/hrbrlife/instaco-app
-	url = https://github.com/hrbrlife/melusina-instaco-app.git
-	branch = publish
 [submodule "packages/hrbrlife/melusina-bureau-doc-app"]
 	path = packages/hrbrlife/melusina-bureau-doc-app
 	url = https://github.com/hrbrlife/melusina-bureau-doc-app.git

@@ -2,17 +2,18 @@
     "schema": "melusina-source-selection-v1",
     "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
     "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
-    "sourceCommit": "2f726654ae540f1c1f23dc80cd533d4deb4e0bb6",
+    "sourceCommit": "da998240dc172426223dcc05985cae80a8115df4",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The v1.0.19/appVersion-71 dev-publish cut is the selected forward InstaDAO source: it preserves the verified shared suite and attachment model while making user-correctable NamedCoin setup validation visible in the real Pearl UI.",
+    "decisionSummary": "The v1.0.19/appVersion-71 release source is preserved by its terminal catalog checkpoint: it retains the verified shared suite and attachment model while making user-correctable NamedCoin setup validation visible in the real Pearl UI.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached source checkout resolves dev-publish 2f726654ae540f1c1f23dc80cd533d4deb4e0bb6 and main is its ancestor",
-            "full Go and npm source/release suites passed at the selected cut",
+            "clean detached terminal checkpoint da998240dc172426223dcc05985cae80a8115df4 resolves dev-publish; main and the released source cut 2f726654ae540f1c1f23dc80cd533d4deb4e0bb6 are ancestors",
+            "full Go and npm source/release suites passed at the released source cut 2f726654ae540f1c1f23dc80cd533d4deb4e0bb6",
             "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 71, marketing version 1.0.19, and package SHA-256 92f87568face6256de96348c763d90f4bd6beec3766644cdd25e3b589d374eb8",
-            "unpacked signed candidate contains the NamedCoin correction and has no dynamic runtime dependency"
+            "unpacked signed candidate contains the NamedCoin correction and has no dynamic runtime dependency",
+            "terminal governed promotion was accepted and the public Bazaar plus tenant Store UI independently served version 1.0.19"
         ]
     },
     "reviewedRefs": [
@@ -28,7 +29,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "2f726654ae540f1c1f23dc80cd533d4deb4e0bb6",
+            "commit": "da998240dc172426223dcc05985cae80a8115df4",
             "outcome": "selected"
         },
         {

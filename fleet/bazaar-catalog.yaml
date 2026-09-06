@@ -401,11 +401,11 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # The v1.0.19/appVersion-71 dev-publish cut retains the verified
-        # shared suite and recoverable attachment model while making the
-        # NamedCoin setup correction visible to the Pearl user. Its signed
-        # candidate is checked from this exact source commit before staging.
-        source_commit: 2f726654ae540f1c1f23dc80cd533d4deb4e0bb6
+        # The v1.0.19/appVersion-71 source cut retains the verified shared
+        # suite and recoverable attachment model while making the NamedCoin
+        # setup correction visible to the Pearl user. This descendant
+        # checkpoint preserves the exact accepted catalog artifact and receipt.
+        source_commit: da998240dc172426223dcc05985cae80a8115df4
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

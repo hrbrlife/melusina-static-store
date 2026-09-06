@@ -2,16 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
     "sourceRepository": "https://github.com/hrbrlife/ai-lagoon",
-    "sourceCommit": "ddced6b1442676f54942319e1c563f196ac8890b",
+    "sourceCommit": "007156239f1bfdcabed978dcf4180ab909f8cd17",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "same",
-    "decisionSummary": "v0.7.31/appVersion-39 on main==dev-publish at ddced6b1: the v3 grain-auth client pins the daemon's authz identity from /run/melusina/authz-identity.pub; v38 crash-looped at connect on us.paype.cc because the v3 client refuses to construct without it.",
+    "decisionSummary": "AiLagoon0.7.32 adds a separate native AIImage capability for selected Paint references through the granted HTTP sidecar. Source0071562 is on main and dev-publish; full local race/vet/build and native RPC/provider contract tests pass. Live configured model acceptance remains pending.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean recursive checkout at ddced6b1442676f54942319e1c563f196ac8890b",
-            "go vet and full go test pass, including the identity-loader positive control and per-refusal mutation cases (two guard mutations fail by name)",
-            "unpacked candidate binary carries the v3 wire markers, the identity loader and the /run/melusina/authz-identity.pub path; zero v2 markers"
+            "Full Go race tests, vet and production build pass at007156239f1bfdcabed978dcf4180ab909f8cd17.",
+            "Two independent clean packages match a2881f04d84fce5793f684bcc8d3002e707de2ae03212c8abe754024bdbf505f at11243156bytes.",
+            "Real native RPC tests cover references, cancellation, permissions, persistence, concurrency, and known/unknown provider cost limits."
         ]
     },
     "reviewedRefs": [
@@ -42,7 +42,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "ddced6b1442676f54942319e1c563f196ac8890b",
+            "commit": "007156239f1bfdcabed978dcf4180ab909f8cd17",
             "outcome": "selected"
         },
         {
@@ -62,7 +62,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "ddced6b1442676f54942319e1c563f196ac8890b",
+            "commit": "007156239f1bfdcabed978dcf4180ab909f8cd17",
             "outcome": "baseline"
         },
         {

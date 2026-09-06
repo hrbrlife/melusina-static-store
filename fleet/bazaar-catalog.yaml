@@ -250,10 +250,10 @@ groups:
       ai-lagoon:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
-        # v0.7.31/appVersion-39: the v3 client now pins the daemon's authz identity
-        # from /run/melusina/authz-identity.pub; v38 crash-looped at connect on the
-        # tenant because the v3 client refuses to construct without it.
-        source_commit: ddced6b1442676f54942319e1c563f196ac8890b
+        # v0.7.32/appVersion-40 adds a separate AIImage PowerBox capability with
+        # bounded native HTTP streaming, cancellation, saved-capability checks,
+        # and explicit accounting for unknown provider image charges.
+        source_commit: 007156239f1bfdcabed978dcf4180ab909f8cd17
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -649,7 +649,7 @@ groups:
       diagram-bureau:
         appId: sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420
         source_path: diagram-bureau
-        source_commit: f945f07733b42889e5daf0da3c6eee8be24f85bf
+        source_commit: ba4f86af27f212314e310652de1f83861d27ec7d
         source_repository: https://github.com/hrbrlife/melusina-bureau-diagram-app
         reconciliation_state: source-pinned
         release_state: ready

@@ -2181,7 +2181,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert paint["source_selection_state"] == "direct-dev-verified", paint
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon
-    assert ai_lagoon["source_commit"] == "ddced6b1442676f54942319e1c563f196ac8890b", ai_lagoon
+    assert ai_lagoon["source_commit"] == "007156239f1bfdcabed978dcf4180ab909f8cd17", ai_lagoon
     assert ai_lagoon["release_state"] == "ready", ai_lagoon
     assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
 
@@ -2274,7 +2274,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ai_lagoon["source_path"] == "ai-lagoon-main", ai_lagoon
     assert ai_lagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ai_lagoon
-    assert ai_lagoon["source_commit"] == "ddced6b1442676f54942319e1c563f196ac8890b", ai_lagoon
+    assert ai_lagoon["source_commit"] == "007156239f1bfdcabed978dcf4180ab909f8cd17", ai_lagoon
     assert ai_lagoon["reconciliation_state"] == "source-pinned", ai_lagoon
     assert ai_lagoon["release_state"] == "ready", ai_lagoon
     assert ai_lagoon["source_selection_state"] == "direct-dev-verified", ai_lagoon
@@ -2340,7 +2340,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ailagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
     assert ailagoon["source_path"] == "ai-lagoon-main", ailagoon
     assert ailagoon["source_repository"] == "https://github.com/hrbrlife/ai-lagoon", ailagoon
-    assert ailagoon["source_commit"] == "ddced6b1442676f54942319e1c563f196ac8890b", ailagoon
+    assert ailagoon["source_commit"] == "007156239f1bfdcabed978dcf4180ab909f8cd17", ailagoon
     assert ailagoon["source_baseline_branch"] == "main", ailagoon
     assert ailagoon["runtime_contract_path"] == "RUNTIME-CONTRACT.json", ailagoon
     assert ailagoon["reconciliation_state"] == "source-pinned", ailagoon

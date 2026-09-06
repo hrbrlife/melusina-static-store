@@ -2,16 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
     "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-diagram-app",
-    "sourceCommit": "f945f07733b42889e5daf0da3c6eee8be24f85bf",
+    "sourceCommit": "ba4f86af27f212314e310652de1f83861d27ec7d",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "same",
-    "decisionSummary": "Bureau Diagram 2.0.27 packages the shared 60 text and 6 icon fonts, with the canonical catalog title and standalone build documentation.",
+    "decisionSummary": "Selected ba4f86a packages one complete served browser font bundle and omits the identical unused root browser copy. Two clean independent packages match; prior oversized HTTP400 attempt is preserved without a stage or proposal.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "Two independent clean builds at f945f077 produce exact SPK 3121e46c7d1ac3f494af7276c8a1554b50a2e147fd787ad0238dc91941e02e20.",
-            "Source gate and seven compiling refusal controls pass after correcting metadata and removing retired suite entrypoints; runtime is unchanged.",
-            "Local rendered UI font and icon save/reload acceptance passed on the retained runtime."
+            "Source gate and seven refusal controls pass.",
+            "Two independent SPKs match ace8f5435eadaa20edd72b3f05e7e115b4559a7de5eae7a116af22e877850cc6 at 176367808 bytes.",
+            "Duplicate removal manifest proves 45829408 identical bytes; served frontend font catalog is unchanged."
         ]
     },
     "reviewedRefs": [
@@ -22,7 +22,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "f945f07733b42889e5daf0da3c6eee8be24f85bf",
+            "commit": "ba4f86af27f212314e310652de1f83861d27ec7d",
             "outcome": "selected"
         },
         {
@@ -37,7 +37,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "f945f07733b42889e5daf0da3c6eee8be24f85bf",
+            "commit": "ba4f86af27f212314e310652de1f83861d27ec7d",
             "outcome": "baseline"
         },
         {

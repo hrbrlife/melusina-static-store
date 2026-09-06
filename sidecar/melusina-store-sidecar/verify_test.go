@@ -49,6 +49,67 @@ func TestVerifyServeHash_LegacyStoreSkipsListingUntilAuthorityConfigured(t *test
 	}
 }
 
+func TestVerifyServeHash_AllowsOnlyCompleteLegacyQuorumOmission(t *testing.T) {
+	cfg, _ := testConfig(t)
+	operator := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	operatorPub := operatorSignPub32(t, operator)
+
+	newFixture := func(t *testing.T) (*publishFixture, *mockChainReader) {
+		t.Helper()
+		fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+		reader := newMockChainReader()
+		fixture.pinAccept(reader, operatorPub)
+		fixture.pinServeListingActive(reader)
+		return &fixture, reader
+	}
+
+	t.Run("complete_legacy_omission_is_serve_only", func(t *testing.T) {
+		fixture, reader := newFixture(t)
+		fixture.rel.QuorumPolicy = QuorumPolicy{}
+		if err := VerifyServeHash(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err != nil {
+			t.Fatalf("historically attested release with an absent quorum claim rejected at serve time: %v", err)
+		}
+		if err := verifyCurrentStoreReleaseListing(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err != nil {
+			t.Fatalf("cached serve path rejected the same historic release: %v", err)
+		}
+		if err := VerifyPublish(context.Background(), reader, cfg, fixture.spk, fixture.metadata, fixture.rel, operatorPub); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
+			t.Fatalf("new publish accepted missing quorum claim: %v", err)
+		}
+	})
+
+	t.Run("partial_legacy_omission_refuses", func(t *testing.T) {
+		fixture, reader := newFixture(t)
+		fixture.rel.QuorumPolicy = QuorumPolicy{Threshold: cfg.ReleaseSquadsAuthority.Threshold}
+		if err := VerifyServeHash(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
+			t.Fatalf("partial quorum claim accepted at serve time: %v", err)
+		}
+
+		fixture, reader = newFixture(t)
+		fixture.rel.QuorumPolicy.Threshold--
+		if err := VerifyServeHash(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
+			t.Fatalf("explicit quorum threshold override accepted at serve time: %v", err)
+		}
+	})
+
+	t.Run("legacy_omission_still_binds_both_vaults", func(t *testing.T) {
+		fixture, reader := newFixture(t)
+		fixture.rel.QuorumPolicy = QuorumPolicy{}
+		fixture.rel.LicenseSquadsVault = randPubkeyB58(t)
+		if err := VerifyServeHash(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
+			t.Fatalf("legacy omission accepted substituted release vault: %v", err)
+		}
+
+		fixture, reader = newFixture(t)
+		fixture.rel.QuorumPolicy = QuorumPolicy{}
+		entry := reader.releaseEntry[fixture.relPDA]
+		entry.publisherSquadsVault = mustPubkey(randPubkeyB58(t))
+		reader.releaseEntry[fixture.relPDA] = entry
+		if err := VerifyServeHash(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
+			t.Fatalf("legacy omission accepted substituted on-chain vault: %v", err)
+		}
+	})
+}
+
 func TestVerifyPublish_RejectsAnyPublisherSquadsOverride(t *testing.T) {
 	cfg, _ := testConfig(t)
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)

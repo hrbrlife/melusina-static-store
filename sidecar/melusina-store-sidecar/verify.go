@@ -308,7 +308,7 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 // empty StoreAuthority deliberately retains the established ReleaseEntry-only
 // policy rather than manufacturing a partial listing projection.
 func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) error {
-	masterMint, appHash, releasePDA, _, err := verifyReleaseEntryHash(ctx, cr, cfg, appHashHex, rel)
+	masterMint, appHash, releasePDA, _, err := verifyReleaseEntryHashForServe(ctx, cr, cfg, appHashHex, rel)
 	if err != nil {
 		return err
 	}
@@ -351,7 +351,7 @@ func verifyCurrentStoreReleaseListing(ctx context.Context, cr chainReader, cfg C
 	if err != nil {
 		return fmt.Errorf("check=release_entry: fetch %s: %w", releasePDA.Base58(), err)
 	}
-	if err := verifySharedSquadsAuthority(cfg, rel, meta); err != nil {
+	if err := verifySharedSquadsAuthorityForServe(cfg, rel, meta); err != nil {
 		return err
 	}
 	return verifyStoreReleaseListing(ctx, cr, cfg, appHash, releasePDA)
@@ -484,6 +484,18 @@ func fetchInstallerReleaseMetaForHash(ctx context.Context, cr chainReader, cfg C
 // caller's downstream (blacklist) checks. FAIL-CLOSED. (The author ed25519 sig was
 // verified on-chain at register — §1; we confirm the entry, not the sig.)
 func verifyReleaseEntryHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
+	return verifyReleaseEntryHashWithAuthorityPolicy(ctx, cr, cfg, appHashHex, rel, false)
+}
+
+// verifyReleaseEntryHashForServe retains access to historically attested
+// RELEASE.json files that predate the redundant quorumPolicy claim. It never
+// relaxes the chain-bound publisher vault check, and it is intentionally not
+// used by either publish path.
+func verifyReleaseEntryHashForServe(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
+	return verifyReleaseEntryHashWithAuthorityPolicy(ctx, cr, cfg, appHashHex, rel, true)
+}
+
+func verifyReleaseEntryHashWithAuthorityPolicy(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON, allowLegacyQuorumClaim bool) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
 	var zeroMint pda.Pubkey
 	var zeroHash [32]byte
 	var zeroPDA pda.Pubkey
@@ -517,8 +529,14 @@ func verifyReleaseEntryHash(ctx context.Context, cr chainReader, cfg Config, app
 	if err := meta.Status.RequireActive(); err != nil {
 		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: status %s not Active: %w", meta.Status, err)
 	}
-	if err := verifySharedSquadsAuthority(cfg, rel, meta); err != nil {
-		return zeroMint, zeroHash, zeroPDA, zeroMeta, err
+	var authorityErr error
+	if allowLegacyQuorumClaim {
+		authorityErr = verifySharedSquadsAuthorityForServe(cfg, rel, meta)
+	} else {
+		authorityErr = verifySharedSquadsAuthority(cfg, rel, meta)
+	}
+	if authorityErr != nil {
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, authorityErr
 	}
 	if meta.PDA == "" {
 		meta.PDA = relPDA.Base58()
@@ -533,6 +551,19 @@ func verifyReleaseEntryHash(ctx context.Context, cr chainReader, cfg Config, app
 // configured multisig. App SPK keys are intentionally not consulted here: they
 // remain per-app signing keys and are verified by the package path separately.
 func verifySharedSquadsAuthority(cfg Config, rel ReleaseJSON, meta releaseEntryMeta) error {
+	return verifySharedSquadsAuthorityWithLegacyQuorumClaim(cfg, rel, meta, false)
+}
+
+// verifySharedSquadsAuthorityForServe is deliberately narrower than a publish
+// exception. A fully absent legacy quorum claim adds no authority: the active
+// ReleaseEntry's publisher vault and the Store configuration remain mandatory
+// and are still compared exactly. New publisher input must continue to provide
+// the complete, fixed quorum claim through verifySharedSquadsAuthority.
+func verifySharedSquadsAuthorityForServe(cfg Config, rel ReleaseJSON, meta releaseEntryMeta) error {
+	return verifySharedSquadsAuthorityWithLegacyQuorumClaim(cfg, rel, meta, true)
+}
+
+func verifySharedSquadsAuthorityWithLegacyQuorumClaim(cfg Config, rel ReleaseJSON, meta releaseEntryMeta, allowLegacyQuorumClaim bool) error {
 	want, err := cfg.sharedSquadsAuthority()
 	if err != nil {
 		return fmt.Errorf("check=publisher_squads_authority: %w", err)
@@ -543,6 +574,13 @@ func verifySharedSquadsAuthority(cfg Config, rel ReleaseJSON, meta releaseEntryM
 	}
 	if claimedVault != want.Vault {
 		return fmt.Errorf("check=publisher_squads_authority: release licenseSquadsVault %s != configured vault %s", claimedVault.Base58(), want.Vault.Base58())
+	}
+	if allowLegacyQuorumClaim && rel.QuorumPolicy.Threshold == 0 && rel.QuorumPolicy.MemberCount == 0 && rel.QuorumPolicy.MultisigPda == "" {
+		if meta.PublisherSquadsVault != want.Vault {
+			got := pda.Pubkey(meta.PublisherSquadsVault)
+			return fmt.Errorf("check=publisher_squads_authority: on-chain publisher_squads_vault %s != configured vault %s", got.Base58(), want.Vault.Base58())
+		}
+		return nil
 	}
 	claimedMultisig, err := canonicalSquadsPubkey("release.quorumPolicy.multisigPda", rel.QuorumPolicy.MultisigPda)
 	if err != nil {

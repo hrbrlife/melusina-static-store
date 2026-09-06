@@ -1756,8 +1756,11 @@ def catalog_package(app_id: str) -> Path | None:
         try:
             info = path.lstat()
         except FileNotFoundError:
-            if index == 0:
-                raise ProviderError(f"catalog packages root is missing: {packages}")
+            # A sparse release checkout need not materialize the packages
+            # directory at all, just as an ordinary checkout need not
+            # initialize a package submodule.  Both are an explicit
+            # first-publish/slot-bootstrap condition; do not require an
+            # untracked mkdir merely to reach the private candidate path.
             return None
         except OSError as exc:
             raise ProviderError(f"lstat declared catalog path {path}: {exc}") from exc

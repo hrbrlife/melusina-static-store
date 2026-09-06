@@ -2648,6 +2648,18 @@ def test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
         (source / "screenshots").mkdir()
         (source / "screenshots" / "source-proof.png").write_bytes(b"source screenshot")
 
+        # A clean sparse release checkout may not materialize packages/ at
+        # all.  That must be the same safe bootstrap condition as an
+        # uninitialized declared submodule, rather than requiring an
+        # untracked directory in the governed source tree.
+        old_root, old = provider.ROOT, with_env({"MEL_RELEASE_CONFIG": str(config)})
+        try:
+            provider.ROOT = root
+            assert provider.catalog_package(app_id) is None
+        finally:
+            provider.ROOT = old_root
+            restore_env(old)
+
         # Preserved stale evidence is deliberately at a different slot. The
         # bootstrap must neither use nor alter it.
         legacy = root / "packages" / "legacy" / "namedcoin" / "old"

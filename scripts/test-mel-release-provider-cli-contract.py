@@ -2153,7 +2153,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     ), paype
     instadao = entries["gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"]
     assert instadao["reconciliation_state"] == "source-pinned", instadao
-    assert instadao["source_commit"] == "c637088e8880949f2d805d4f44cda0d569319dbe", instadao
+    assert instadao["source_commit"] == "0894960ccdfb1a8aabcce1e48246968465d69cc8", instadao
     assert instadao["release_state"] == "ready", instadao
     assert instadao["source_selection_state"] == "direct-dev-verified", instadao
     assert instadao["source_selection_receipt"] == (
@@ -2390,7 +2390,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert instadao["source_path"] == "instadao", instadao
     assert instadao["source_repository"] == "https://github.com/hrbrlife/MLSNA_token", instadao
     assert instadao["runtime_contract_path"] == "RUNTIME-CONTRACT.json", instadao
-    assert instadao["source_commit"] == "c637088e8880949f2d805d4f44cda0d569319dbe", instadao
+    assert instadao["source_commit"] == "0894960ccdfb1a8aabcce1e48246968465d69cc8", instadao
     assert instadao["reconciliation_state"] == "source-pinned", instadao
     assert instadao["release_state"] == "ready", instadao
     assert instadao["source_selection_state"] == "direct-dev-verified", instadao

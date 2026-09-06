@@ -401,11 +401,10 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # v1.0.21/appVersion-73 carries recoverable approval-wallet creation,
-        # exact Squads receipts and network verification. DAO initialization
-        # remains guarded and is explicitly disclosed as unfinished in the UI.
-        # This selects source; it does not claim publication or installation.
-        source_commit: c637088e8880949f2d805d4f44cda0d569319dbe
+        # Terminal v1.0.21/appVersion-73 checkpoint retains the exact accepted
+        # artifact and signed receipts for recoverable approval-wallet setup.
+        # DAO initialization remains guarded and disclosed as unfinished.
+        source_commit: 0894960ccdfb1a8aabcce1e48246968465d69cc8
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -413,7 +412,7 @@ groups:
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: instadao
         catalog_name: InstaDAO
-        live_version: 1.0.20
+        live_version: 1.0.21
         # The historical Store package is a submodule with a legacy product
         # path.  It is the same immutable appId; bind this update there rather
         # than inventing a parallel package from the current repository name.

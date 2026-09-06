@@ -2,17 +2,17 @@
     "schema": "melusina-source-selection-v1",
     "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
     "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
-    "sourceCommit": "c637088e8880949f2d805d4f44cda0d569319dbe",
+    "sourceCommit": "0894960ccdfb1a8aabcce1e48246968465d69cc8",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Release 1.0.21/appVersion 73 includes recoverable browser-wallet Squads creation, exact initialization-plan receipts, member-count thresholds and existing-Squads network verification. Governed DAO initialization remains explicitly unfinished and guarded; this is an incremental app release, not a completed DAO journey.",
+    "decisionSummary": "Terminal 1.0.21/appVersion 73 checkpoint retains the accepted aec99aae package and signed release evidence for source cut c637088. Recoverable approval-wallet setup is shipped; governed DAO initialization remains explicitly unfinished and guarded.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "Clean source c637088e8880949f2d805d4f44cda0d569319dbe is the remote dev-publish tip; main remains an ancestor and unchanged.",
-            "Full Go tests, vet, focused race tests, npm release suite and package-config checks passed; two executed network guard mutations failed named regressions and were restored.",
-            "Two independent clean paths produced SPK SHA-256 aec99aaeaaad95122c5c07f44d541887fed0bf737d52a0fd053899630f541589, 7607416 bytes, immutable appId, appVersion 73 and marketing version 1.0.21.",
-            "Unpacked package contains exact creation template/controller/wallet assets; three corrupted-asset controls refuse. Isolated static launch reached the FD-3 server boundary. No governed DAO completion or live install is claimed."
+            "Clean checkpoint 0894960ccdfb1a8aabcce1e48246968465d69cc8 is remote dev-publish; released source c637088 and main are ancestors.",
+            "Full Go tests, vet, focused race tests, npm release suite, two matching clean-path SPK builds and unpacked exact-asset/isolated-launch checks passed at released source c637088.",
+            "Normal governed terminal accepted ReleaseEntry 2WsapnF1ATjnC559Jj4e3J36SccZbMJg67nAk8EX1MDz at app hash 84523b698277862cceeb3636acda32aa9a5ee7c417c9e210fd13a1ffbd24ba76; every native receipt hash and size rechecked.",
+            "Certificate-verified public package is 7607416 bytes with SHA-256 aec99aaeaaad95122c5c07f44d541887fed0bf737d52a0fd053899630f541589; pointer/index agree and all 33 unrelated catalog rows remain unchanged. Tenant install is in progress, not claimed complete."
         ]
     },
     "reviewedRefs": [
@@ -28,7 +28,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "c637088e8880949f2d805d4f44cda0d569319dbe",
+            "commit": "0894960ccdfb1a8aabcce1e48246968465d69cc8",
             "outcome": "selected"
         },
         {

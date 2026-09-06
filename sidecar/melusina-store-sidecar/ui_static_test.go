@@ -101,12 +101,15 @@ func TestGovernedUIClosesOverStaleDistDir(t *testing.T) {
 	if err := json.Unmarshal(policy.Body.Bytes(), &entries); err != nil {
 		t.Fatalf("decode embedded installation policy: %v", err)
 	}
-	// The governed catalog now contains the 34 planned identities, including
-	// the install-scoped Cyberteller Config provider. Keep this assertion in
+	// The governed catalog now contains 35 identities, including the restored
+	// Bureau Diagram workspace. Keep this assertion in
 	// lockstep with fleet/bazaar-catalog.yaml rather than silently serving a
 	// stale policy snapshot.
-	if len(entries) != 34 {
-		t.Fatalf("embedded installation policy count = %d, want 34", len(entries))
+	if len(entries) != 35 {
+		t.Fatalf("embedded installation policy count = %d, want 35", len(entries))
+	}
+	if got := entries["sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420"]; got["audience"] != "workspace" || got["install_mode"] != "self-service" || got["pearl_role"] != "workspace" || got["client_access"] != "self-owned" || got["admin_surface"] != "same-pearl" {
+		t.Fatalf("restored Bureau Diagram is not a self-service workspace: %#v", got)
 	}
 	if got := entries["svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"]; got["audience"] != "workspace" || got["install_mode"] != "self-service" || got["pearl_role"] != "workspace" || got["client_access"] != "self-owned" || got["admin_surface"] != "same-pearl" {
 		t.Fatalf("Claude-Melusina embedded installation policy = %#v", got)

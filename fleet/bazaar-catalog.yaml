@@ -657,9 +657,9 @@ groups:
         source_selection_receipt: prepublish-selections/sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420.json
         publish_slug: diagram-bureau
         catalog_name: Bureau Diagram
-        # Last retained governed catalog version at gitlink d29851b; currently unlisted.
-        # The release provider independently checks every active on-chain version.
-        live_version: "2.0.16"
+        # Accepted catalog package ace8f543; tenant acceptance requires the
+        # governed Store UI policy to include this restored workspace.
+        live_version: "2.0.27"
         catalog_developer: hrbrlife
         catalog_repo: melusina-bureau-diagram-app
         catalog_slug: diagram-bureau

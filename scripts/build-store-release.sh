@@ -78,7 +78,13 @@ validate_completed_output() {
   cmp -s "$OUT_DIR/SHA256SUMS" "$TMP/out-1/SHA256SUMS" || return 1
   cmp -s "$OUT_DIR/BUILD-PROVENANCE.json" "$TMP/out-1/BUILD-PROVENANCE.json" || return 1
 }
-WORK_BASE="$(dirname "$ROOT")"
+# Keep the two builds on a volume with enough space for the tracked catalog
+# archives. This changes temporary placement only; both retain the exact HEAD.
+# Non-vendored developer builds still use the historical sibling layout.
+WORK_BASE="${MELUSINA_STORE_BUILD_ROOT:-$(dirname "$ROOT")}"
+WORK_BASE="$(realpath -e -- "$WORK_BASE" 2>/dev/null || true)"
+[[ -n "$WORK_BASE" && -d "$WORK_BASE" && ! -L "$WORK_BASE" && -w "$WORK_BASE" ]] || {
+  echo "MELUSINA_STORE_BUILD_ROOT must be a writable real directory" >&2; exit 2; }
 TMP="$(mktemp -d "$WORK_BASE/.store-release-$VERSION.XXXXXX")"
 # Keep detached worktrees directly below WORK_BASE. The sidecar's vendored Go
 # module uses deliberate ../../../Melusina replacements; a nested TMP/build-N

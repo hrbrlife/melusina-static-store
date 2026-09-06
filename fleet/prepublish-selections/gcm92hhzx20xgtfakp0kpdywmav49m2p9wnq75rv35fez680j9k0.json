@@ -2,19 +2,17 @@
     "schema": "melusina-source-selection-v1",
     "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
     "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
-    "sourceCommit": "843dd1256f5347deeb615d0d2c28201830b6e21f",
+    "sourceCommit": "2f726654ae540f1c1f23dc80cd533d4deb4e0bb6",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The v1.0.18/appVersion-70 dev-publish checkpoint is the reviewed forward InstaDAO source: it preserves the verified chain-truth attachment and governed token controls while recording the exact accepted catalog artifact, signed release, and runtime contract needed to reproduce the live Store lineage.",
+    "decisionSummary": "The v1.0.19/appVersion-71 dev-publish cut is the selected forward InstaDAO source: it preserves the verified shared suite and attachment model while making user-correctable NamedCoin setup validation visible in the real Pearl UI.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "fresh clean clone resolved dev-publish 843dd1256f5347deeb615d0d2c28201830b6e21f and main is its ancestor",
-            "two independently cloned clean source trees reproduced the accepted InstaDAO 1.0.18 SPK with SHA-256 255141f55223396733c184f95591f4b2417e1eda1d6e2e46ae32ea852148b6d3 and matched the tracked catalog artifact byte-for-byte",
-            "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 70, and marketing version 1.0.18",
-            "fresh full Go suite passed from the checkpoint clone",
-            "fresh finalized devnet reads verified both the PDAO attachment and a distinct capped-token Squads fixture without a chain write",
-            "tracked catalog RELEASE and runtime contract matched the accepted terminal receipt, active release PDA, app hash, and runtime-contract digest"
+            "clean detached source checkout resolves dev-publish 2f726654ae540f1c1f23dc80cd533d4deb4e0bb6 and main is its ancestor",
+            "full Go and npm source/release suites passed at the selected cut",
+            "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 71, marketing version 1.0.19, and package SHA-256 92f87568face6256de96348c763d90f4bd6beec3766644cdd25e3b589d374eb8",
+            "unpacked signed candidate contains the NamedCoin correction and has no dynamic runtime dependency"
         ]
     },
     "reviewedRefs": [
@@ -30,7 +28,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "843dd1256f5347deeb615d0d2c28201830b6e21f",
+            "commit": "2f726654ae540f1c1f23dc80cd533d4deb4e0bb6",
             "outcome": "selected"
         },
         {

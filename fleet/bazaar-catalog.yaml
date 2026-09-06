@@ -401,13 +401,11 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # The v1.0.18/appVersion-70 dev-publish checkpoint retains the exact
-        # accepted catalog artifact alongside the verified shared suite and
-        # read-only, recoverable attachment of compatible existing DAOs. Two
-        # independent clean packages reproduced the same SPK, and both the
-        # historical PDAO and a separate capped-token fixture passed the
-        # finalized devnet attachment readback.
-        source_commit: 843dd1256f5347deeb615d0d2c28201830b6e21f
+        # The v1.0.19/appVersion-71 dev-publish cut retains the verified
+        # shared suite and recoverable attachment model while making the
+        # NamedCoin setup correction visible to the Pearl user. Its signed
+        # candidate is checked from this exact source commit before staging.
+        source_commit: 2f726654ae540f1c1f23dc80cd533d4deb4e0bb6
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -415,7 +413,7 @@ groups:
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: instadao
         catalog_name: InstaDAO
-        live_version: 1.0.18
+        live_version: 1.0.19
         # The historical Store package is a submodule with a legacy product
         # path.  It is the same immutable appId; bind this update there rather
         # than inventing a parallel package from the current repository name.

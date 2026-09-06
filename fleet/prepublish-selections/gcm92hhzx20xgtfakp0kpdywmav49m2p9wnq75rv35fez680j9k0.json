@@ -2,18 +2,17 @@
     "schema": "melusina-source-selection-v1",
     "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
     "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
-    "sourceCommit": "28506f58358e1017223f9fc5335c49840474678c",
+    "sourceCommit": "c637088e8880949f2d805d4f44cda0d569319dbe",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The terminal v1.0.20/appVersion-72 checkpoint preserves the governed accepted catalog artifact for the optional-officer correction, including the signed release evidence and the independently verified Store/Pearl result.",
+    "decisionSummary": "Release 1.0.21/appVersion 73 includes recoverable browser-wallet Squads creation, exact initialization-plan receipts, member-count thresholds and existing-Squads network verification. Governed DAO initialization remains explicitly unfinished and guarded; this is an incremental app release, not a completed DAO journey.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached terminal checkpoint 28506f58358e1017223f9fc5335c49840474678c resolves origin/dev-publish; main and released source cut 79ae4c2f411a6b17689d3febda44a98e8784d088 are ancestors",
-            "full Go app and onboarding suites plus npm release suite passed at released source cut 79ae4c2f411a6b17689d3febda44a98e8784d088",
-            "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 72, marketing version 1.0.20, and package SHA-256 ed426947fab0ce4561450f00473f9888287d4f19f6239b362ac6ebe8c30d49a3",
-            "terminal governed promotion accepted with active ReleaseEntry BaEBtXmCVmPFsRpj2kwg2EvcC5cZ3Qkw8piAfaKuRMey bound to app hash 936e2fdb91ab9cfa789989c7cdfe7e3bd20453b4864653b307370e49271d32fe",
-            "public Bazaar, signed-in Store upgrade, and a fresh v72 Pearl independently served version 1.0.20; empty Step-4 officer roster advanced normally to Templates"
+            "Clean source c637088e8880949f2d805d4f44cda0d569319dbe is the remote dev-publish tip; main remains an ancestor and unchanged.",
+            "Full Go tests, vet, focused race tests, npm release suite and package-config checks passed; two executed network guard mutations failed named regressions and were restored.",
+            "Two independent clean paths produced SPK SHA-256 aec99aaeaaad95122c5c07f44d541887fed0bf737d52a0fd053899630f541589, 7607416 bytes, immutable appId, appVersion 73 and marketing version 1.0.21.",
+            "Unpacked package contains exact creation template/controller/wallet assets; three corrupted-asset controls refuse. Isolated static launch reached the FD-3 server boundary. No governed DAO completion or live install is claimed."
         ]
     },
     "reviewedRefs": [
@@ -29,7 +28,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "28506f58358e1017223f9fc5335c49840474678c",
+            "commit": "c637088e8880949f2d805d4f44cda0d569319dbe",
             "outcome": "selected"
         },
         {

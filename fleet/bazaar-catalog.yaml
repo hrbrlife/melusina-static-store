@@ -401,11 +401,11 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # This terminal v1.0.20/appVersion-72 checkpoint preserves the exact
-        # accepted catalog artifact after its governed promotion. It includes
-        # the optional launch-time officer roster correction while preserving
-        # later director-governed appointments and the signed release receipt.
-        source_commit: 28506f58358e1017223f9fc5335c49840474678c
+        # v1.0.21/appVersion-73 carries recoverable approval-wallet creation,
+        # exact Squads receipts and network verification. DAO initialization
+        # remains guarded and is explicitly disclosed as unfinished in the UI.
+        # This selects source; it does not claim publication or installation.
+        source_commit: c637088e8880949f2d805d4f44cda0d569319dbe
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

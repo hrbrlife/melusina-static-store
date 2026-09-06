@@ -18,7 +18,7 @@
 [submodule "packages/hrbrlife/client_collection"]
 	path = packages/hrbrlife/client_collection
 	url = https://github.com/hrbrlife/clientspace.git
-	branch = publish
+	branch = dev-publish
 [submodule "packages/hrbrlife/openclaw-main"]
 	path = packages/hrbrlife/openclaw-main
 	url = https://github.com/hrbrlife/openclaw-melusina.git

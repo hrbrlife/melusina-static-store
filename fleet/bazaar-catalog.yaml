@@ -835,15 +835,15 @@ groups:
       clientspace:
         appId: kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0
         source_path: clientspace
-        # Audit-repair v0.1.8/appVersion-13 source pin only; no Store, Bazaar, or live acceptance is asserted.
-        source_commit: 51ca56b2b9c497e165d2e75ea90fca72aebab2e8
+        # Accepted v0.1.8/appVersion-13 artifact checkpoint; runtime source cut 51ca56b.
+        source_commit: c17b22bccf42b0c49da7224fb2161c63c19982c0
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0.json
         publish_slug: clientspace
         catalog_name: ClientSpace
-        live_version: 0.1.7
+        live_version: 0.1.8
         catalog_developer: hrbrlife
         catalog_repo: client_collection
         catalog_slug: clientspace

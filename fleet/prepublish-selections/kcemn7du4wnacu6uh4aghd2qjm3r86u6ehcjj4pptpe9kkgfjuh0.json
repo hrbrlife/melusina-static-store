@@ -2,22 +2,22 @@
     "schema": "melusina-source-selection-v1",
     "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
     "sourceRepository": "https://github.com/hrbrlife/clientspace",
-    "sourceCommit": "51ca56b2b9c497e165d2e75ea90fca72aebab2e8",
+    "sourceCommit": "c17b22bccf42b0c49da7224fb2161c63c19982c0",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Audit-repair source-only selection for v0.1.8/appVersion-13: canonical dev-publish binds picker, descriptor, and request, rejecting malformed or success:false results without leaking token or sturdyref data. This records source and local package evidence only; it is not a Store, Bazaar, or live acceptance.",
+    "decisionSummary": "Accepted ClientSpace 0.1.8/v13 artifact-only checkpoint c17b22b of runtime source 51ca56b, selected on canonical dev-publish; main and historical refs retained.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "go test ./... and go vet ./... passed",
-            "Package reproducibility and packageId synchronization passed",
-            "Verified package SHA-256 a47ea66d0a7df11f1621aba145307d967e6db3657c26b9a7c0388ac2aeb1d0e0"
+            "Two independent 51ca56b builds match accepted public SPK a47ea66d0a7df11f1621aba145307d967e6db3657c26b9a7c0388ac2aeb1d0e0; Go tests/vet/race and exact packaged PowerBox controller positives/refusals/mutations passed.",
+            "Ordinary Core target-pointer release 9X6vc9yQMonbtbrpzHKoFkoHBnrLtbg21S584zXqVECM accepted; six native receipts, full public bytes, pointer/index and 33 unrelated rows independently verified.",
+            "Checkpoint changes only four accepted catalog artifact files; no runtime source or main change. Tenant UI install and runtime verification are separate, not asserted by this receipt."
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "51ca56b2b9c497e165d2e75ea90fca72aebab2e8",
+            "commit": "c17b22bccf42b0c49da7224fb2161c63c19982c0",
             "outcome": "selected"
         },
         {

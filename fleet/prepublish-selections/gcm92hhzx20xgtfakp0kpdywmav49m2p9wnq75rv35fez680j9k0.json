@@ -2,18 +2,17 @@
     "schema": "melusina-source-selection-v1",
     "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
     "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
-    "sourceCommit": "da998240dc172426223dcc05985cae80a8115df4",
+    "sourceCommit": "79ae4c2f411a6b17689d3febda44a98e8784d088",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The v1.0.19/appVersion-71 release source is preserved by its terminal catalog checkpoint: it retains the verified shared suite and attachment model while making user-correctable NamedCoin setup validation visible in the real Pearl UI.",
+    "decisionSummary": "The v1.0.20/appVersion-72 source cut makes the launch-time officer roster genuinely optional, matching the rendered real-Pearl choice while preserving director-governed later appointments, the tested utility-token policy, and NamedCoin validation correction.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached terminal checkpoint da998240dc172426223dcc05985cae80a8115df4 resolves dev-publish; main and the released source cut 2f726654ae540f1c1f23dc80cd533d4deb4e0bb6 are ancestors",
-            "full Go and npm source/release suites passed at the released source cut 2f726654ae540f1c1f23dc80cd533d4deb4e0bb6",
-            "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 71, marketing version 1.0.19, and package SHA-256 92f87568face6256de96348c763d90f4bd6beec3766644cdd25e3b589d374eb8",
-            "unpacked signed candidate contains the NamedCoin correction and has no dynamic runtime dependency",
-            "terminal governed promotion was accepted and the public Bazaar plus tenant Store UI independently served version 1.0.19"
+            "clean detached v1.0.20/appVersion-72 checkout 79ae4c2f411a6b17689d3febda44a98e8784d088 resolves origin/dev-publish; main is an ancestor",
+            "full Go app and onboarding suites plus npm release suite passed at 79ae4c2f411a6b17689d3febda44a98e8784d088",
+            "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 72, marketing version 1.0.20, and package SHA-256 ed426947fab0ce4561450f00473f9888287d4f19f6239b362ac6ebe8c30d49a3",
+            "unpacked artifact contains the optional-officer correction, excludes the old empty-roster rejection, and has no dynamic runtime dependency"
         ]
     },
     "reviewedRefs": [
@@ -29,7 +28,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "da998240dc172426223dcc05985cae80a8115df4",
+            "commit": "79ae4c2f411a6b17689d3febda44a98e8784d088",
             "outcome": "selected"
         },
         {

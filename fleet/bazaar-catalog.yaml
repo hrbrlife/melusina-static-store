@@ -401,11 +401,12 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # The v1.0.19/appVersion-71 source cut retains the verified shared
-        # suite and recoverable attachment model while making the NamedCoin
-        # setup correction visible to the Pearl user. This descendant
-        # checkpoint preserves the exact accepted catalog artifact and receipt.
-        source_commit: da998240dc172426223dcc05985cae80a8115df4
+        # The v1.0.20/appVersion-72 source candidate makes the launch-time
+        # officer roster genuinely optional, matching the rendered setup
+        # choice while preserving later director-governed appointments. The
+        # accepted v1.0.19 catalog version remains live until this cut has a
+        # separate governed promotion receipt.
+        source_commit: 79ae4c2f411a6b17689d3febda44a98e8784d088
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

@@ -2,27 +2,22 @@
     "schema": "melusina-source-selection-v1",
     "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
     "sourceRepository": "https://github.com/hrbrlife/melusina_teleport2",
-    "sourceCommit": "9b8f137dc65d85b8a4b423af73ba416677eb143e",
+    "sourceCommit": "5d0ffebdcbabc204e1ee878c940039db8f96f388",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Teleport 1.3.7 makes a call room joinable. The owner reported that joining did nothing and the grain log showed a 'left room' for a join that never appeared; the log was truthful in the only order it could be. sendBytes is a streaming method and the first frames of a call go out from inside the openWebSocket RPC handler \u2014 hub.Register admits the peer and hub.Send delivers the room snapshot, both on the handler goroutine, before that handler returns its results \u2014 and nativeTransport.sendFrame awaited the answer, which cannot arrive until the handler returns. The call sat for its whole 5s context, hub.Send failed, the error path unregistered the peer, and Unregister logged the leave. sendFrame now enqueues with SendStreamCall, which queues under the connection's flow-control window instead of blocking a goroutine that has to return before the window can drain. The commit message on this exact dev-publish tip records the measurement and both mutations. Main remains the reviewed baseline; the dev-publish head is the release authority, as for every other row in this catalog.",
+    "decisionSummary": "Audit-repair source-only selection for v1.3.8/appVersion-14: canonical dev-publish bounds private-room snapshot load and exposes accessible reconnect and retry with a fresh socket and snapshot. This records source and local package evidence only; it is not a Store, Bazaar, or live acceptance.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected canonical dev-publish commit",
-            "go test -tags melusina ./... passes",
-            "the guard asserts a DEADLINE because the defect was a deadline: a stream server that records frames and answers nothing, against which sendFrame must still return",
-            "mutation: restoring the awaited SendCall fails it by name after the full 5s; a wrong method ordinal fails its delivery control",
-            "positive control: the frame must actually reach the stream server, so the test cannot pass on a transport that silently drops every frame",
-            "the interface id is taken from the generated WebSession_WebSocketStream_TypeID constant, never transcribed",
-            "the release cohort guard, red on dev-publish since 1.3.6 because it held its own literals instead of the cohort constants, now derives both and fails by name on a half-bumped pkgdef",
-            "receipt regenerated from git ls-remote at publish time by scripts/refresh-source-selection.py, not hand-transcribed"
+            "Node syntax, full Go test and vet, Calls test, and native build passed",
+            "Package and verify checks passed",
+            "Verified package SHA-256 8a819649db4e032f56e86f2a04b90c9b7d5fe08a4b55230b69ed027ed0cb37ef"
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "9b8f137dc65d85b8a4b423af73ba416677eb143e",
+            "commit": "5d0ffebdcbabc204e1ee878c940039db8f96f388",
             "outcome": "selected"
         },
         {

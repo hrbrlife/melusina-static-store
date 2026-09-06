@@ -226,8 +226,8 @@ groups:
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: dueprocess
-        # 0.1.79/v83 restores templated wallet custody and durable process startup.
-        source_commit: 0b2a7687a00754cb420fdcf88c018187588b034e
+        # Audit-repair v0.1.80/appVersion-84 source pin only; no Store, Bazaar, or live acceptance is asserted.
+        source_commit: ffc8fa69614b16f155bcd482e4973d29888da6f6
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned
@@ -307,7 +307,8 @@ groups:
       fineract-setup:
         appId: 7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h
         source_path: fineract-setup/fineract-sidecar
-        source_commit: 14011aaece6087b87a30d4e7748cf0328c23e407
+        # Audit-repair v0.2.23/appVersion-23 source pin only; no Store, Bazaar, or live endpoint acceptance is asserted.
+        source_commit: 7d1b2061e10839d01f64e0f4ffca241c746b12d7
         source_repository: https://github.com/hrbrlife/cca-tc-operator
         reconciliation_state: source-pinned
         release_state: ready
@@ -330,12 +331,8 @@ groups:
       telescreen:
         appId: 55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60
         source_path: telescreen
-        # The current dev-publish v0.0.17 / v21 source preserves the v21
-        # saveable ScreeningService repair and isolates the bundled sidecar's
-        # loopback listener to POST /llm/. Forged Sandstorm-permission headers
-        # cannot reach its shell-facing /admin/* mux. Its direct shared-
-        # protocol consumer still needs final P_bind alignment before package.
-        source_commit: b334cec9bff40e56323b93074e479c3e01b22610
+        # Audit-repair v0.0.18/appVersion-22 source pin only; no Store, Bazaar, or live acceptance is asserted.
+        source_commit: 94c3dd5f920a7d9a7c8a904547f69fbe751bc589
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -356,14 +353,8 @@ groups:
       teleport:
         appId: ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h
         source_path: teleport
-        # v12/1.3.6. v11/1.3.5 pins correctly and its grain runs fine on an
-        # IDLE host, then dies under concurrent load with "runtime/cgo:
-        # pthread_create failed" and exit 2 — the app is under-provisioned for
-        # virtual address space, which the supervisor's default RLIMIT_AS
-        # starves at pthread_create's stack mmap (F-259/F-262). This cut adds
-        # the documented Manifest.requestedMemoryGiB lever, the same fix Bureau
-        # Doc needed at 2.0.37 and which is proven end-to-end there.
-        source_commit: 9b8f137dc65d85b8a4b423af73ba416677eb143e
+        # Audit-repair v1.3.8/appVersion-14 source pin only; no Store, Bazaar, or live acceptance is asserted.
+        source_commit: 5d0ffebdcbabc204e1ee878c940039db8f96f388
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -384,11 +375,8 @@ groups:
       instaco:
         appId: u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh
         source_path: instaco
-        # The current dev-publish source is a clean-clone, deterministic
-        # v0.1.10 / v17 governed candidate. The prior main is its reviewed
-        # ancestor; older divergent preservation refs remain recorded in its
-        # selection receipt instead of becoming an accidental source choice.
-        source_commit: 838a3729df2bde5c3cbfef094f914992e17c61ce
+        # Audit-repair v0.1.11/appVersion-18 source pin only; no Store, Bazaar, or live acceptance is asserted.
+        source_commit: 9e0f83029b65a37e0f925837d94f5af857ece458
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -554,10 +542,8 @@ groups:
       cratelink:
         appId: ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h
         source_path: cratelink
-        # v0.3.6/appVersion-18: the v3 client now pins the daemon's authz identity
-        # from /run/melusina/authz-identity.pub; v17 exits at connect on next boot
-        # because the v3 client refuses to construct without it.
-        source_commit: 147165e48dadbb53e552bd8e94bd85f243031298
+        # Audit-repair v0.3.7/appVersion-19 source pin only; no Store, Bazaar, or live acceptance is asserted.
+        source_commit: 2f76ff35acf39b154b56a8720c6988d753bbaf94
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -627,7 +613,8 @@ groups:
       paint-bureau:
         appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
         source_path: paint-bureau
-        source_commit: 4fe245183b31de5045bae69af53a5908accec939
+        # Audit-repair v2.0.36/appVersion-29 source pin only; the existing release hold remains authoritative.
+        source_commit: b4264407a67cc5b01101a3c7dc99fa3b3baffb54
         reconciliation_state: source-pinned
         publish_slug: paint-bureau
         catalog_name: Bureau Paint
@@ -733,7 +720,7 @@ groups:
       bureau-calendar:
         appId: p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0
         source_path: melusina-bureau-cal-app
-        source_commit: b2865491f725452e58745c2660bb0d03ab65f78c
+        source_commit: 9d31a11cca3805cc940cb6033d2ba3538150bc91
         reconciliation_state: source-pinned
         publish_slug: bureau-cal
         catalog_name: Bureau Calendar
@@ -775,10 +762,8 @@ groups:
       canboard:
         appId: 30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh
         source_path: melusina-canboard-app
-        # v0.2.8/appVersion-15: the v3 client now pins the daemon's authz identity
-        # from /run/melusina/authz-identity.pub; v14 exits at connect on next boot
-        # because the v3 client refuses to construct without it.
-        source_commit: 7862d297c943e604a5d65c6196b421b9581d0c82
+        # Audit-repair v0.2.9/appVersion-16 source pin only; live success remains gated by governed authzsign.
+        source_commit: 418c6d1bb244251faf462dd2db80211c81e3f3d3
         reconciliation_state: source-pinned
         publish_slug: canboard
         catalog_name: CanBoard
@@ -851,12 +836,8 @@ groups:
       clientspace:
         appId: kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0
         source_path: clientspace
-        # v0.1.6/appVersion-11 is the current dev-publish tip. It merges the
-        # August reporting-session and sturdyref hardening, passes the full
-        # recovery control, and packs byte-identically from its committed
-        # source. The selected source is not inferred from the older catalog
-        # listing or prior v10 candidate.
-        source_commit: e4d3913a4965153620595552b83b59dace048f28
+        # Audit-repair v0.1.8/appVersion-13 source pin only; no Store, Bazaar, or live acceptance is asserted.
+        source_commit: 51ca56b2b9c497e165d2e75ea90fca72aebab2e8
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -955,11 +936,8 @@ groups:
       shell-tester:
         appId: nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh
         source_path: shell-tester
-        # v0.1.11/version-14 is the clean-clone-proven dev-publish source. It
-        # retains v13's source-bound packaging/runtime controls and integrates
-        # the app-relevant wallet credential E2E coverage from the only recent
-        # divergent feature line.
-        source_commit: a6e23c3480bd97fde24cdaeaa6bed9418ad280f0
+        # Audit-repair v0.1.12/appVersion-15 source pin only; no Store, Bazaar, or live acceptance is asserted.
+        source_commit: 206730ce407cf7ff2844417f15aa3dd7e626f081
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

@@ -1,459 +1,456 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
-  "sourceRepository": "https://github.com/hrbrlife/AITX-Procedures",
-  "sourceCommit": "0b2a7687a00754cb420fdcf88c018187588b034e",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "same",
-  "decisionSummary": "Selected 0.1.79/v83 for two observed runtime failures: templated wallet-control locking and missing process-engine storage. Both main documentation commits are merged without dropping the current controlled handoff source; main and dev-publish agree. The golden-mvp-protocol-align tip is an ancestor of the selected source. Renamed archive refs retain their previously reviewed commits. The preserved Aug. 27 main snapshot carries a separate protocol 1.18/Sails capability migration and is retained as historical work. This release keeps the installed v82 protocol cohort; it does not claim to integrate or validate that separate migration.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "make ci passed",
-      "go test -race ./pkg/process ./pkg/station ./pkg/users passed",
-      "production Users DOM test: four identity/permission fixtures passed",
-      "missing-directory durable workflow test failed before fix, passed after fix",
-      "contract receiver mutation tests still reject status aliases",
-      "main and dev-publish advertised the selected commit after ordinary merge",
-      "two fresh recursive remote clones, SOURCE_DATE_EPOCH=1788589150, identical 35122324-byte SPKs: 96e9cd9f64233c3c6ff6f03fe98723b5e727b788551b3e2ed39f81c29bddca39"
-    ]
-  },
-  "reviewedRefs": [
-    {
-      "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-dueprocess-0158-clean-release-20260711",
-      "commit": "70268edb6cbe1b870ec5cdafcc180e3df9d9b3d8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-wp2-case-mint-bridge-20260715",
-      "commit": "68a12361486b9f0014edf1c8b48ed7b484b2c931",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-wp2-issuance-template-20260715",
-      "commit": "844dc351c0d23e7e5ac3e644d69564e7eb135f7d",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/publish",
-      "commit": "d88596ddba51f6f3d4cb1b119d5d8c564e0c7579",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/chore/v0.1.10-pre-stage-2026-05-21-20260814",
-      "commit": "f8c73a60a27487cbdee9b0854481081b50d27fdb",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/copilot/add-basic-multi-person-chat-20260814",
-      "commit": "6fcaa1dc8119b84743ade8fda67e602b24369289",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/copilot/add-multi-person-chat-ui-20260814",
-      "commit": "21b859eaff0516005d5a0221abacb387f10a6c68",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/copilot/implement-phase-1-plan-20260814",
-      "commit": "9656239f47a8c78b6e015a8a74f2792415b1bb69",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/copilot/improve-ui-design-aesthetic-20260814",
-      "commit": "8a864a7b184f707fb8d024fc7a5d70d8535a25b0",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/copilot/review-app-planning-document-20260814",
-      "commit": "2f14b9743aa84ceeb1a933a25bb15517eaa46884",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/sanctions-adjudication-ui-20260814",
-      "commit": "2d25dc0ce745e9eedf1304e59cf7509375704612",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/feat/welcome-pearl-strip-cycle14-20260814",
-      "commit": "f38bf637c58be5f0c7a9a697c10a96fd7d4726f8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/live-v75-provenance-20260813",
-      "commit": "8e7be89ee2b9456da120f6e004566aa51bc215e1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/archive/skeleton-20260814",
-      "commit": "3e8cafdc151aa05a6ba86d8e3797125a6ef5d942",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/dev-publish",
-      "commit": "0b2a7687a00754cb420fdcf88c018187588b034e",
-      "outcome": "selected"
-    },
-    {
-      "ref": "refs/heads/fix/golden-mvp-protocol-align",
-      "commit": "27dcd5f37f0a3d223f9f640ee12f894b5e4a3e8f",
-      "outcome": "retained"
-    },
-    {
-      "ref": "refs/heads/main",
-      "commit": "0b2a7687a00754cb420fdcf88c018187588b034e",
-      "outcome": "baseline"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_detached/f6865c970f2d",
-      "commit": "f6865c970f2d47f53d12ed54daa859731ecaa1f6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/22d4132ea736",
-      "commit": "22d4132ea736657ba9d2de0e56fa2308e3d91efc",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/3a9b999d3140",
-      "commit": "3a9b999d314098d1cd05d460b9982732655b0d7b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/6cc5e2353ec8",
-      "commit": "6cc5e2353ec85fc8ea758cc6ead90601714e9ca2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/b9fb1317f3bb",
-      "commit": "b9fb1317f3bb4ebcdc8b6f960a2f71d980bb1ada",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/c808f910ae5d",
-      "commit": "c808f910ae5df2f65b03edc4949acac263f9c8d2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/ec112268595e",
-      "commit": "ec112268595e73fa3180fb3c2ecbc4f3659d624b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/f1173eb9fc3b",
-      "commit": "f1173eb9fc3bfab96e2c94f7394ca6e3bd70aa3f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/_stash/fa5823ac4a12",
-      "commit": "fa5823ac4a1247eb3733ed73ff4a7ef513ec006e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/bump/dueprocess-0.1.68",
-      "commit": "4c29570c5b744c5fb967d51d9c0fd2a7a193a082",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/checkpoint/dueprocess-corridor-v18-precanonical",
-      "commit": "d7028d7766795dddc9c0515cef0e147ddedc7409",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/dueprocess-candidate-pack-20260719",
-      "commit": "97a6064c6fa3697a6a2b62278e21d95867e61725",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/telescreen-tenant-lease-recipient-20260721",
-      "commit": "f2a31a62d79f07b5b951124f40b2dd0626fb6d3b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/codex/telescreen-ux-20260713",
-      "commit": "86a7075ee7e49908c994c96e80b85c32b75f8327",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-dueprocess",
-      "commit": "cf948be9a55fe140d9b9d2726bc03a2da79cf73f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/dueprocess-station-screening-0.1.64",
-      "commit": "d912cd7f68c856484c9334fa6374809645c4c355",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/b01-t05-v2-caller-20260803",
-      "commit": "78ae3eb5e4ebcfb0d548765bc4715ba22e77033f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/build-p0-c5.2-root",
-      "commit": "bacee63f98038e16106729f23fc0421b53b96ca6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/canon-2026-06-17-money-path-templates",
-      "commit": "014e42af1f77739b425a863604acf9b50d90cff2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/dao-securities-dt-2026-06-26",
-      "commit": "ca701dd9f1bdd18014873c2c1c0144c45ce16869",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/disposition-webhook",
-      "commit": "a40015a57f146659a7ca405b1c3a771127523828",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/disposition-webhook-legacy-cycle10",
-      "commit": "a73e106f7e97b210d176991e1188d9f3dfe60ad2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/dt2-gate6-egress-cutover-2026-06-29",
-      "commit": "bd4cad820d94a28f5644b86f1ef1211517e69470",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/dueprocess-corridor-v18-20260731",
-      "commit": "642f7fdecaf2c3f5f4db997ec2e4a7ab79e9174a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/four-eyes-request-2026-06-05",
-      "commit": "7eb55375d884e0c4de82e101ecdd78e2a7b9536b",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/foureyes-wallet-sod-2026-07-06",
-      "commit": "d0818b54c925007e44378bc4a5dc4381e9ec5edf",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/greenfield-build",
-      "commit": "39f2b33e1d3b611ec699d7ef54e3cd3684473382",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready",
-      "commit": "c8b33c917d823f78de349a41903d3d2e56546273",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-dp-a1b-manifest-validator-20260509",
-      "commit": "8a4d75443a62b0cf83b45fa9255ac78d798f2bb6",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-dp-a2a-dtg-poller-20260509",
-      "commit": "d655e45c6c4704523b91de252b8607d5f2c6eb0e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-dp-a3a-screening-servicecall-20260509",
-      "commit": "a20b4468235b01bd46234d53671defd64e9fe362",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-dp-a3b-servicecall-20260509",
-      "commit": "08494da08a16102c96979cc31fbe4ee35ad3be80",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-station-boot-wiring-20260509",
-      "commit": "1cc10bf487f334052b166eeb49fbf909c1a15fd5",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/killlist-ts-a3-a4-sweep-report-20260509",
-      "commit": "304aa0bd9ac97ae8e4c47ebf147dd095b52189f3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-dueprocess",
-      "commit": "e849b487baa5a362c72649e0d2ac2d2d6a4e0815",
-      "outcome": "retained"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/mermail-deploy-ready-2026-06-23",
-      "commit": "0298696d420f226fb9c45850754bb74cd13e8353",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/sanctions-adjudication-ui",
-      "commit": "2d25dc0ce745e9eedf1304e59cf7509375704612",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/station-envelope-client-20260511",
-      "commit": "61354fa0fb3dfcc21cb5b2262eb99306295d6c6e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/streaming-deadcode-catalog-2026-06-07",
-      "commit": "6ab165d3d2bb7308987ad208d8b5d11fe5257190",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/welcome-pearl-strip-cycle14",
-      "commit": "3cec3d5f5d7aa8ebfe817da6c47c1f8bbaef56f4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/feat/welcome-prequalifier-broadsheet-2026-07-07",
-      "commit": "f0ac0d0cc591c0fa7afeb3582ebc70226af3cf0f",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/audit-h2-dueprocess",
-      "commit": "bb005dc9592d53caf8c30bf96ed0e0d6bdda1c0a",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/bounded-http-bridge-response",
-      "commit": "7f254710a6e154b0282de8fc52cb61369a2ab9b3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/case-capability-binder-v16-20260726",
-      "commit": "a3889bf5ca3bc5325f78cd5481194b33f48479d1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/dueprocess-pearl-type-trim",
-      "commit": "c98ac75f39ff0924e407846adb5892284d2af316",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/fineract-egress-tenant-2026-07-23",
-      "commit": "686c0aa1564f20bd2e9c618f1b86d264876f3124",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/hermetic-main-build-20260726",
-      "commit": "a3889bf5ca3bc5325f78cd5481194b33f48479d1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/pearl-type-trim-on-main",
-      "commit": "03162b7e5a5d565f63c688769c4f230d15144be7",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/process-grain-no-template-ux",
-      "commit": "665d5f2cc17552d926ce1772fe9a83936801f5f4",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/t2-b08-b02-20260804",
-      "commit": "8e7be89ee2b9456da120f6e004566aa51bc215e1",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/t2-capnp-identity-20260804",
-      "commit": "f040168f7a09252b7cff0046aa1b92243314fecd",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/fix/websession-lifecycle-20260813",
-      "commit": "e59f4d13d6c97086edce227a196a478621353e69",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/golden/b01-b02-main-reconciliation-20260804",
-      "commit": "387aa1742fd4d290971329df738762932d7c38b7",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/integrate/dueprocess-v76-union-20260814",
-      "commit": "95717c13a9ffb793e61ce910fe4d088fa0db2767",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/integration-killlist-20260509",
-      "commit": "54de7669d42f9a51e3526218ad974f30d96f40dd",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/main",
-      "commit": "69d6341283369c30e10d02831180ccb924a82507",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/main-tmp",
-      "commit": "56456d80120c97b12c338596b8b170063d75fc05",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/polish/approval-queue-ui",
-      "commit": "dc66437a9f2c7be79e78b135d20467a998183c0e",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/proxy-fix/sandstorm-env-2026-05-19",
-      "commit": "5423515a7032a062cf7ffbc76bc3cd39ace336b9",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/proxy-fix/welcome-pearl-metadata-sync-2026-05-19",
-      "commit": "26907cb8c8d87459d6ed3ac7ebc15251bbd8b7ba",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/publish",
-      "commit": "daf48074319b2a11e8c90949699d653e70efa1c3",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/riker/a14-contract-20260804",
-      "commit": "847ff43efef2944538bee8d28354522f264342ff",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/team1/a14-corrective-20260804",
-      "commit": "e55dc0abed3c8194a04db557dd54c4cdc98eb1d8",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/uiux/dueprocess-demo-polish-2026-06-03",
-      "commit": "5eada6e280ab804310d2d0976b74f219e4651fe0",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/welcome-pearl-history",
-      "commit": "8e3d64d308efe9e6d7a59f298c638b218739cbf2",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/welcome-pearl-publish",
-      "commit": "6b231df9187c21e15b2d11a3200a66277cab0024",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260814/wip/msb-v17-emergency-snapshot-20260726",
-      "commit": "b1b76ee080dede8695b5e3a62cdb1c55275e5242",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve-local-20260827/dueprocess-main-msb",
-      "commit": "3e427f1e3ae88e9bdc49a3857b726b6a0881e4aa",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve/local-main-ahead2-20260814",
-      "commit": "69d6341283369c30e10d02831180ccb924a82507",
-      "outcome": "archive"
-    },
-    {
-      "ref": "refs/heads/preserve/v18-worktree-detached-20260814",
-      "commit": "f6865c970f2d47f53d12ed54daa859731ecaa1f6",
-      "outcome": "archive"
-    }
-  ]
+    "schema": "melusina-source-selection-v1",
+    "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
+    "sourceRepository": "https://github.com/hrbrlife/AITX-Procedures",
+    "sourceCommit": "ffc8fa69614b16f155bcd482e4973d29888da6f6",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "Audit-repair source-only selection for v0.1.80/appVersion-84: canonical dev-publish rejects HTTP-200 structured success:false builder save, publish, and discard responses without false success or reload. This records source and local package evidence only; it is not a Store, Bazaar, or live acceptance.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "JSDOM production-DOM builder refusal regression passed",
+            "go test ./..., go vet ./..., and make build-source passed",
+            "Two independent SPKs matched SHA-256 380543faa3ccc2a621f35c2f6b8caa6b99f4b86aa4684feeb2838c015fe8ea6c"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-dueprocess-0158-clean-release-20260711",
+            "commit": "70268edb6cbe1b870ec5cdafcc180e3df9d9b3d8",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-wp2-case-mint-bridge-20260715",
+            "commit": "68a12361486b9f0014edf1c8b48ed7b484b2c931",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/codex-wp2-issuance-template-20260715",
+            "commit": "844dc351c0d23e7e5ac3e644d69564e7eb135f7d",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/2026-08-24/msb-branch-cap/publish",
+            "commit": "d88596ddba51f6f3d4cb1b119d5d8c564e0c7579",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/chore/v0.1.10-pre-stage-2026-05-21-20260814",
+            "commit": "f8c73a60a27487cbdee9b0854481081b50d27fdb",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/copilot/add-basic-multi-person-chat-20260814",
+            "commit": "6fcaa1dc8119b84743ade8fda67e602b24369289",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/copilot/add-multi-person-chat-ui-20260814",
+            "commit": "21b859eaff0516005d5a0221abacb387f10a6c68",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/copilot/implement-phase-1-plan-20260814",
+            "commit": "9656239f47a8c78b6e015a8a74f2792415b1bb69",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/copilot/improve-ui-design-aesthetic-20260814",
+            "commit": "8a864a7b184f707fb8d024fc7a5d70d8535a25b0",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/copilot/review-app-planning-document-20260814",
+            "commit": "2f14b9743aa84ceeb1a933a25bb15517eaa46884",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/sanctions-adjudication-ui-20260814",
+            "commit": "2d25dc0ce745e9eedf1304e59cf7509375704612",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/feat/welcome-pearl-strip-cycle14-20260814",
+            "commit": "f38bf637c58be5f0c7a9a697c10a96fd7d4726f8",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/live-v75-provenance-20260813",
+            "commit": "8e7be89ee2b9456da120f6e004566aa51bc215e1",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/skeleton-20260814",
+            "commit": "3e8cafdc151aa05a6ba86d8e3797125a6ef5d942",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "ffc8fa69614b16f155bcd482e4973d29888da6f6",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/fix/golden-mvp-protocol-align",
+            "commit": "27dcd5f37f0a3d223f9f640ee12f894b5e4a3e8f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "0b2a7687a00754cb420fdcf88c018187588b034e",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/f6865c970f2d",
+            "commit": "f6865c970f2d47f53d12ed54daa859731ecaa1f6",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/22d4132ea736",
+            "commit": "22d4132ea736657ba9d2de0e56fa2308e3d91efc",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/3a9b999d3140",
+            "commit": "3a9b999d314098d1cd05d460b9982732655b0d7b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/6cc5e2353ec8",
+            "commit": "6cc5e2353ec85fc8ea758cc6ead90601714e9ca2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/b9fb1317f3bb",
+            "commit": "b9fb1317f3bb4ebcdc8b6f960a2f71d980bb1ada",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/c808f910ae5d",
+            "commit": "c808f910ae5df2f65b03edc4949acac263f9c8d2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/ec112268595e",
+            "commit": "ec112268595e73fa3180fb3c2ecbc4f3659d624b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/f1173eb9fc3b",
+            "commit": "f1173eb9fc3bfab96e2c94f7394ca6e3bd70aa3f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_stash/fa5823ac4a12",
+            "commit": "fa5823ac4a1247eb3733ed73ff4a7ef513ec006e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/bump/dueprocess-0.1.68",
+            "commit": "4c29570c5b744c5fb967d51d9c0fd2a7a193a082",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/checkpoint/dueprocess-corridor-v18-precanonical",
+            "commit": "d7028d7766795dddc9c0515cef0e147ddedc7409",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/dueprocess-candidate-pack-20260719",
+            "commit": "97a6064c6fa3697a6a2b62278e21d95867e61725",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/telescreen-tenant-lease-recipient-20260721",
+            "commit": "f2a31a62d79f07b5b951124f40b2dd0626fb6d3b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/codex/telescreen-ux-20260713",
+            "commit": "86a7075ee7e49908c994c96e80b85c32b75f8327",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-dueprocess",
+            "commit": "cf948be9a55fe140d9b9d2726bc03a2da79cf73f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/dueprocess-station-screening-0.1.64",
+            "commit": "d912cd7f68c856484c9334fa6374809645c4c355",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/b01-t05-v2-caller-20260803",
+            "commit": "78ae3eb5e4ebcfb0d548765bc4715ba22e77033f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/build-p0-c5.2-root",
+            "commit": "bacee63f98038e16106729f23fc0421b53b96ca6",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/canon-2026-06-17-money-path-templates",
+            "commit": "014e42af1f77739b425a863604acf9b50d90cff2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/dao-securities-dt-2026-06-26",
+            "commit": "ca701dd9f1bdd18014873c2c1c0144c45ce16869",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/disposition-webhook",
+            "commit": "a40015a57f146659a7ca405b1c3a771127523828",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/disposition-webhook-legacy-cycle10",
+            "commit": "a73e106f7e97b210d176991e1188d9f3dfe60ad2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/dt2-gate6-egress-cutover-2026-06-29",
+            "commit": "bd4cad820d94a28f5644b86f1ef1211517e69470",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/dueprocess-corridor-v18-20260731",
+            "commit": "642f7fdecaf2c3f5f4db997ec2e4a7ab79e9174a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/four-eyes-request-2026-06-05",
+            "commit": "7eb55375d884e0c4de82e101ecdd78e2a7b9536b",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/foureyes-wallet-sod-2026-07-06",
+            "commit": "d0818b54c925007e44378bc4a5dc4381e9ec5edf",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/greenfield-build",
+            "commit": "39f2b33e1d3b611ec699d7ef54e3cd3684473382",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready",
+            "commit": "c8b33c917d823f78de349a41903d3d2e56546273",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-dp-a1b-manifest-validator-20260509",
+            "commit": "8a4d75443a62b0cf83b45fa9255ac78d798f2bb6",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-dp-a2a-dtg-poller-20260509",
+            "commit": "d655e45c6c4704523b91de252b8607d5f2c6eb0e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-dp-a3a-screening-servicecall-20260509",
+            "commit": "a20b4468235b01bd46234d53671defd64e9fe362",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-dp-a3b-servicecall-20260509",
+            "commit": "08494da08a16102c96979cc31fbe4ee35ad3be80",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-station-boot-wiring-20260509",
+            "commit": "1cc10bf487f334052b166eeb49fbf909c1a15fd5",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/killlist-ts-a3-a4-sweep-report-20260509",
+            "commit": "304aa0bd9ac97ae8e4c47ebf147dd095b52189f3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-dueprocess",
+            "commit": "e849b487baa5a362c72649e0d2ac2d2d6a4e0815",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/mermail-deploy-ready-2026-06-23",
+            "commit": "0298696d420f226fb9c45850754bb74cd13e8353",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/sanctions-adjudication-ui",
+            "commit": "2d25dc0ce745e9eedf1304e59cf7509375704612",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/station-envelope-client-20260511",
+            "commit": "61354fa0fb3dfcc21cb5b2262eb99306295d6c6e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/streaming-deadcode-catalog-2026-06-07",
+            "commit": "6ab165d3d2bb7308987ad208d8b5d11fe5257190",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/welcome-pearl-strip-cycle14",
+            "commit": "3cec3d5f5d7aa8ebfe817da6c47c1f8bbaef56f4",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/welcome-prequalifier-broadsheet-2026-07-07",
+            "commit": "f0ac0d0cc591c0fa7afeb3582ebc70226af3cf0f",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/audit-h2-dueprocess",
+            "commit": "bb005dc9592d53caf8c30bf96ed0e0d6bdda1c0a",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/bounded-http-bridge-response",
+            "commit": "7f254710a6e154b0282de8fc52cb61369a2ab9b3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/case-capability-binder-v16-20260726",
+            "commit": "a3889bf5ca3bc5325f78cd5481194b33f48479d1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/dueprocess-pearl-type-trim",
+            "commit": "c98ac75f39ff0924e407846adb5892284d2af316",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/fineract-egress-tenant-2026-07-23",
+            "commit": "686c0aa1564f20bd2e9c618f1b86d264876f3124",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/hermetic-main-build-20260726",
+            "commit": "a3889bf5ca3bc5325f78cd5481194b33f48479d1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/pearl-type-trim-on-main",
+            "commit": "03162b7e5a5d565f63c688769c4f230d15144be7",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/process-grain-no-template-ux",
+            "commit": "665d5f2cc17552d926ce1772fe9a83936801f5f4",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/t2-b08-b02-20260804",
+            "commit": "8e7be89ee2b9456da120f6e004566aa51bc215e1",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/t2-capnp-identity-20260804",
+            "commit": "f040168f7a09252b7cff0046aa1b92243314fecd",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/websession-lifecycle-20260813",
+            "commit": "e59f4d13d6c97086edce227a196a478621353e69",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/golden/b01-b02-main-reconciliation-20260804",
+            "commit": "387aa1742fd4d290971329df738762932d7c38b7",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/integrate/dueprocess-v76-union-20260814",
+            "commit": "95717c13a9ffb793e61ce910fe4d088fa0db2767",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/integration-killlist-20260509",
+            "commit": "54de7669d42f9a51e3526218ad974f30d96f40dd",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "69d6341283369c30e10d02831180ccb924a82507",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main-tmp",
+            "commit": "56456d80120c97b12c338596b8b170063d75fc05",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/polish/approval-queue-ui",
+            "commit": "dc66437a9f2c7be79e78b135d20467a998183c0e",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/proxy-fix/sandstorm-env-2026-05-19",
+            "commit": "5423515a7032a062cf7ffbc76bc3cd39ace336b9",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/proxy-fix/welcome-pearl-metadata-sync-2026-05-19",
+            "commit": "26907cb8c8d87459d6ed3ac7ebc15251bbd8b7ba",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "daf48074319b2a11e8c90949699d653e70efa1c3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/riker/a14-contract-20260804",
+            "commit": "847ff43efef2944538bee8d28354522f264342ff",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/team1/a14-corrective-20260804",
+            "commit": "e55dc0abed3c8194a04db557dd54c4cdc98eb1d8",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/uiux/dueprocess-demo-polish-2026-06-03",
+            "commit": "5eada6e280ab804310d2d0976b74f219e4651fe0",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/welcome-pearl-history",
+            "commit": "8e3d64d308efe9e6d7a59f298c638b218739cbf2",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/welcome-pearl-publish",
+            "commit": "6b231df9187c21e15b2d11a3200a66277cab0024",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/wip/msb-v17-emergency-snapshot-20260726",
+            "commit": "b1b76ee080dede8695b5e3a62cdb1c55275e5242",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260827/dueprocess-main-msb",
+            "commit": "3e427f1e3ae88e9bdc49a3857b726b6a0881e4aa",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve/local-main-ahead2-20260814",
+            "commit": "69d6341283369c30e10d02831180ccb924a82507",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve/v18-worktree-detached-20260814",
+            "commit": "f6865c970f2d47f53d12ed54daa859731ecaa1f6",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

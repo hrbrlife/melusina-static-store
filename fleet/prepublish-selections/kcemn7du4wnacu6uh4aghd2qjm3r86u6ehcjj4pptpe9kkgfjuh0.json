@@ -1,36 +1,86 @@
 {
-  "schema": "melusina-source-selection-v1",
-  "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
-  "sourceRepository": "https://github.com/hrbrlife/clientspace",
-  "sourceCommit": "e4d3913a4965153620595552b83b59dace048f28",
-  "selectionMethod": "direct-dev",
-  "baselineBranch": "main",
-  "baselineRelation": "ancestor",
-  "decisionSummary": "The current v0.1.7 dev-publish tip is the newest valid forward ClientSpace source. It retains the bounded reporting-session, durable sturdyref persistence, log-redaction, and session-lifecycle work, removes the stale local-only release marker, and binds the canonical public name and forward package metadata to a byte-identical double pack. The current main tip is its reviewed ancestor. Every preserved, salvage, and historic publish ref remains recorded; none is a newer application source than this tested dev-publish tip.",
-  "internalControls": {
-    "status": "passed",
-    "checks": [
-      "the selected dev-publish commit was pushed without force and matches the advertised remote tip",
-      "the complete remote-head snapshot remains reviewed; only dev-publish advanced for this forward release",
-      "the selected source merges the August reporting-session and sturdyref security line before the forward version cut",
-      "make verify-recovery passed: vet, the full security suite, deterministic double pack, SPK verification, and packageId/SHA synchronization",
-      "two independent package runs matched SHA-256 936315e787b0dac04550205b0dfd918cf16f56d25fec90cd2983802522de2e63 and packageId 936315e787b0dac04550205b0dfd918c",
-      "spk verify confirmed the immutable ClientSpace appId, appVersion 12, and marketing version 0.1.7"
-    ]
-  },
-  "reviewedRefs": [
-    {"ref": "refs/heads/dev-publish", "commit": "e4d3913a4965153620595552b83b59dace048f28", "outcome": "selected"},
-    {"ref": "refs/heads/main", "commit": "eb2a2dbcc37479421b696b7fe542ca227ce13237", "outcome": "baseline"},
-    {"ref": "refs/heads/preserve-local-20260814/_alt/main-b4a729785aba", "commit": "b4a729785aba93779688bba2949764ee1eecb84d", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/_detached/b4a729785aba", "commit": "b4a729785aba93779688bba2949764ee1eecb84d", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready", "commit": "0286b576489af0f89c01dafbe23965f138527642", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814", "commit": "156a51331f51b6015fb7d84232156684c18b56c7", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/fix/t2-b22-20260804", "commit": "e8ff192b71ef1ef88156376268e9746206ca6467", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/main", "commit": "6fc675b850d5beaa9754d10b7cefcb9256ebd4da", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/publish", "commit": "1b4c9bcabaae46cc693d44476cdd1ab8ea3164c7", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/riker/b22-clientspace-fresh-20260804", "commit": "8da31427dd12f7c2c2f861e786ada383e73f9954", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/riker/b22-clientspace-hardening-20260804", "commit": "7c13fac54d95330dcbcae249139fd48d1f2dedf9", "outcome": "archive"},
-    {"ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801", "commit": "252521bc950ed23cebcb21059b87654f791de12c", "outcome": "archive"},
-    {"ref": "refs/heads/publish", "commit": "41a9cdd24f13cc1534179ffefae35d2b937bf32c", "outcome": "archive"}
-  ]
+    "schema": "melusina-source-selection-v1",
+    "appId": "kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0",
+    "sourceRepository": "https://github.com/hrbrlife/clientspace",
+    "sourceCommit": "51ca56b2b9c497e165d2e75ea90fca72aebab2e8",
+    "selectionMethod": "direct-dev",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "Audit-repair source-only selection for v0.1.8/appVersion-13: canonical dev-publish binds picker, descriptor, and request, rejecting malformed or success:false results without leaking token or sturdyref data. This records source and local package evidence only; it is not a Store, Bazaar, or live acceptance.",
+    "internalControls": {
+        "status": "passed",
+        "checks": [
+            "go test ./... and go vet ./... passed",
+            "Package reproducibility and packageId synchronization passed",
+            "Verified package SHA-256 a47ea66d0a7df11f1621aba145307d967e6db3657c26b9a7c0388ac2aeb1d0e0"
+        ]
+    },
+    "reviewedRefs": [
+        {
+            "ref": "refs/heads/dev-publish",
+            "commit": "51ca56b2b9c497e165d2e75ea90fca72aebab2e8",
+            "outcome": "selected"
+        },
+        {
+            "ref": "refs/heads/main",
+            "commit": "eb2a2dbcc37479421b696b7fe542ca227ce13237",
+            "outcome": "baseline"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_alt/main-b4a729785aba",
+            "commit": "b4a729785aba93779688bba2949764ee1eecb84d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/_detached/b4a729785aba",
+            "commit": "b4a729785aba93779688bba2949764ee1eecb84d",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/feat/greenfield-ready",
+            "commit": "0286b576489af0f89c01dafbe23965f138527642",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
+            "commit": "156a51331f51b6015fb7d84232156684c18b56c7",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/fix/t2-b22-20260804",
+            "commit": "e8ff192b71ef1ef88156376268e9746206ca6467",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/main",
+            "commit": "6fc675b850d5beaa9754d10b7cefcb9256ebd4da",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/publish",
+            "commit": "1b4c9bcabaae46cc693d44476cdd1ab8ea3164c7",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/riker/b22-clientspace-fresh-20260804",
+            "commit": "8da31427dd12f7c2c2f861e786ada383e73f9954",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/riker/b22-clientspace-hardening-20260804",
+            "commit": "7c13fac54d95330dcbcae249139fd48d1f2dedf9",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/preserve-local-20260814/salvage/wip-20260801",
+            "commit": "252521bc950ed23cebcb21059b87654f791de12c",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/publish",
+            "commit": "41a9cdd24f13cc1534179ffefae35d2b937bf32c",
+            "outcome": "retained"
+        }
+    ],
+    "baselineBranch": "main",
+    "baselineRelation": "ancestor"
 }

@@ -2,15 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
     "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-paint-app",
-    "sourceCommit": "4fe245183b31de5045bae69af53a5908accec939",
+    "sourceCommit": "b4264407a67cc5b01101a3c7dc99fa3b3baffb54",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "same",
-    "decisionSummary": "Published rich Paint implementation with the common bundled 60 FOSS fonts and six icon families, editable icon layers, and full-document Save/snapshot persistence.",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "Audit-repair source-only selection for v2.0.36/appVersion-29: canonical dev-publish turns missing required editor assets into visible non-cacheable 503 instead of JSON 200. This records source and local package evidence only; it is not a Store, Bazaar, or live acceptance; the catalog release hold remains in force.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "234 Python tests, frontend compilation, font audit and local rendered save/reload proof pass.",
-            "Two independent clean paths produce identical SPK fd8f19e624ba19e00f710462d59362bfbe384983bcb345e9337fa4be3f73b359 at the source commit epoch."
+            "Build-source, ASGI static regression, mutation test, and make test with 234 passing tests completed",
+            "Package, verify, and unpack checks passed",
+            "Verified package SHA-256 55e718e15204fda720f5a77874effccbda9a491427d7ae5791709beeaaea853d"
         ]
     },
     "reviewedRefs": [
@@ -26,7 +27,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "4fe245183b31de5045bae69af53a5908accec939",
+            "commit": "b4264407a67cc5b01101a3c7dc99fa3b3baffb54",
             "outcome": "selected"
         },
         {
@@ -41,7 +42,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "4fe245183b31de5045bae69af53a5908accec939",
+            "commit": "986f802eca43a77aefc94278b06313773b93ea64",
             "outcome": "baseline"
         },
         {
@@ -81,5 +82,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "same"
+    "baselineRelation": "ancestor"
 }

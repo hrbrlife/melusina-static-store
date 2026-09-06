@@ -649,7 +649,7 @@ groups:
       diagram-bureau:
         appId: sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420
         source_path: diagram-bureau
-        source_commit: 9c6a19c66d36fa0df033fe2ce81d62fdc7ff89d1
+        source_commit: f945f07733b42889e5daf0da3c6eee8be24f85bf
         source_repository: https://github.com/hrbrlife/melusina-bureau-diagram-app
         reconciliation_state: source-pinned
         release_state: ready

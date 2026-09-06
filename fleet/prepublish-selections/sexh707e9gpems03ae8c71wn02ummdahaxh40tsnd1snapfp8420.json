@@ -2,15 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420",
     "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-diagram-app",
-    "sourceCommit": "9c6a19c66d36fa0df033fe2ce81d62fdc7ff89d1",
+    "sourceCommit": "f945f07733b42889e5daf0da3c6eee8be24f85bf",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "same",
-    "decisionSummary": "Restore the retained draw.io Bureau Diagram identity through the governed Store rail, carrying the common offline 60-font and six-icon-family bundle. Source main and dev-publish select the same reviewed rich app implementation.",
+    "decisionSummary": "Bureau Diagram 2.0.27 packages the shared 60 text and 6 icon fonts, with the canonical catalog title and standalone build documentation.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "225 Python tests and all five release mutation controls passed; font tables and indexed icon glyphs audited.",
-            "Local rendered UI applied font and icon changes, saved the diagram, and restored both after reload."
+            "Two independent clean builds at f945f077 produce exact SPK 3121e46c7d1ac3f494af7276c8a1554b50a2e147fd787ad0238dc91941e02e20.",
+            "Source gate and seven compiling refusal controls pass after correcting metadata and removing retired suite entrypoints; runtime is unchanged.",
+            "Local rendered UI font and icon save/reload acceptance passed on the retained runtime."
         ]
     },
     "reviewedRefs": [
@@ -21,7 +22,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "9c6a19c66d36fa0df033fe2ce81d62fdc7ff89d1",
+            "commit": "f945f07733b42889e5daf0da3c6eee8be24f85bf",
             "outcome": "selected"
         },
         {
@@ -36,7 +37,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "9c6a19c66d36fa0df033fe2ce81d62fdc7ff89d1",
+            "commit": "f945f07733b42889e5daf0da3c6eee8be24f85bf",
             "outcome": "baseline"
         },
         {

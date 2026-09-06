@@ -401,12 +401,11 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # The v1.0.20/appVersion-72 source candidate makes the launch-time
-        # officer roster genuinely optional, matching the rendered setup
-        # choice while preserving later director-governed appointments. The
-        # accepted v1.0.19 catalog version remains live until this cut has a
-        # separate governed promotion receipt.
-        source_commit: 79ae4c2f411a6b17689d3febda44a98e8784d088
+        # This terminal v1.0.20/appVersion-72 checkpoint preserves the exact
+        # accepted catalog artifact after its governed promotion. It includes
+        # the optional launch-time officer roster correction while preserving
+        # later director-governed appointments and the signed release receipt.
+        source_commit: 28506f58358e1017223f9fc5335c49840474678c
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -414,7 +413,7 @@ groups:
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: instadao
         catalog_name: InstaDAO
-        live_version: 1.0.19
+        live_version: 1.0.20
         # The historical Store package is a submodule with a legacy product
         # path.  It is the same immutable appId; bind this update there rather
         # than inventing a parallel package from the current repository name.

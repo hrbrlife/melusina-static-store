@@ -2,17 +2,18 @@
     "schema": "melusina-source-selection-v1",
     "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
     "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
-    "sourceCommit": "79ae4c2f411a6b17689d3febda44a98e8784d088",
+    "sourceCommit": "28506f58358e1017223f9fc5335c49840474678c",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The v1.0.20/appVersion-72 source cut makes the launch-time officer roster genuinely optional, matching the rendered real-Pearl choice while preserving director-governed later appointments, the tested utility-token policy, and NamedCoin validation correction.",
+    "decisionSummary": "The terminal v1.0.20/appVersion-72 checkpoint preserves the governed accepted catalog artifact for the optional-officer correction, including the signed release evidence and the independently verified Store/Pearl result.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached v1.0.20/appVersion-72 checkout 79ae4c2f411a6b17689d3febda44a98e8784d088 resolves origin/dev-publish; main is an ancestor",
-            "full Go app and onboarding suites plus npm release suite passed at 79ae4c2f411a6b17689d3febda44a98e8784d088",
+            "clean detached terminal checkpoint 28506f58358e1017223f9fc5335c49840474678c resolves origin/dev-publish; main and released source cut 79ae4c2f411a6b17689d3febda44a98e8784d088 are ancestors",
+            "full Go app and onboarding suites plus npm release suite passed at released source cut 79ae4c2f411a6b17689d3febda44a98e8784d088",
             "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 72, marketing version 1.0.20, and package SHA-256 ed426947fab0ce4561450f00473f9888287d4f19f6239b362ac6ebe8c30d49a3",
-            "unpacked artifact contains the optional-officer correction, excludes the old empty-roster rejection, and has no dynamic runtime dependency"
+            "terminal governed promotion accepted with active ReleaseEntry BaEBtXmCVmPFsRpj2kwg2EvcC5cZ3Qkw8piAfaKuRMey bound to app hash 936e2fdb91ab9cfa789989c7cdfe7e3bd20453b4864653b307370e49271d32fe",
+            "public Bazaar, signed-in Store upgrade, and a fresh v72 Pearl independently served version 1.0.20; empty Step-4 officer roster advanced normally to Templates"
         ]
     },
     "reviewedRefs": [
@@ -28,7 +29,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "79ae4c2f411a6b17689d3febda44a98e8784d088",
+            "commit": "28506f58358e1017223f9fc5335c49840474678c",
             "outcome": "selected"
         },
         {

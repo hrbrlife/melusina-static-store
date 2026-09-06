@@ -263,7 +263,7 @@ groups:
         source_repository: https://github.com/hrbrlife/ai-lagoon
         publish_slug: ai-lagoon
         catalog_name: AiLagoon
-        live_version: "0.7.31"
+        live_version: "0.7.32"
         catalog_developer: hrbrlife
         # This is the existing historical Store target. Its retained metadata
         # is never source authority; the provider validates/copies metadata

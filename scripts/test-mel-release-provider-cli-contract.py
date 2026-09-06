@@ -2254,7 +2254,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h":
             ("fineract-setup/fineract-sidecar", "7d1b2061e10839d01f64e0f4ffca241c746b12d7", "fineract-setup", "fineract-setup"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
-            ("teleport", "5d0ffebdcbabc204e1ee878c940039db8f96f388", "melusina_teleport2", "teleport"),
+            ("teleport", "2c312877d45b5b881921cd7269eabdd199a7af55", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
             ("GoldKey", "4c1f0b8746e98c06e7d9f78f71ff30dfdc2df915", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":

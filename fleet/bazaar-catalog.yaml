@@ -353,8 +353,8 @@ groups:
       teleport:
         appId: ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h
         source_path: teleport
-        # Audit-repair v1.3.8/appVersion-14 source pin only; no Store, Bazaar, or live acceptance is asserted.
-        source_commit: 5d0ffebdcbabc204e1ee878c940039db8f96f388
+        # Forward v1.3.9/appVersion-15 queued-frame lifetime repair; live acceptance remains separate.
+        source_commit: 2c312877d45b5b881921cd7269eabdd199a7af55
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

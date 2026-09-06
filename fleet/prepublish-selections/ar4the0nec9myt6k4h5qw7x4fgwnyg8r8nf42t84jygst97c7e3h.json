@@ -2,22 +2,22 @@
     "schema": "melusina-source-selection-v1",
     "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
     "sourceRepository": "https://github.com/hrbrlife/melusina_teleport2",
-    "sourceCommit": "5d0ffebdcbabc204e1ee878c940039db8f96f388",
+    "sourceCommit": "2c312877d45b5b881921cd7269eabdd199a7af55",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Audit-repair source-only selection for v1.3.8/appVersion-14: canonical dev-publish bounds private-room snapshot load and exposes accessible reconnect and retry with a fresh socket and snapshot. This records source and local package evidence only; it is not a Store, Bazaar, or live acceptance.",
+    "decisionSummary": "Select canonical dev-publish 2c31287 for Teleport 1.3.9/v15: fix the live-proven premature queued-frame cancellation, preserve asynchronous acknowledgements, bounded deadlines and sticky stream errors. Keep existing F11 bounded history refusal and the same two app actions. Main and historical refs remain preserved; no live success is asserted here.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "Node syntax, full Go test and vet, Calls test, and native build passed",
-            "Package and verify checks passed",
-            "Verified package SHA-256 8a819649db4e032f56e86f2a04b90c9b7d5fe08a4b55230b69ed027ed0cb37ef"
+            "Clean source equals canonical origin/dev-publish; main remains a943d5a5.",
+            "Full tagged Go suite and vet pass; full Calls race suite passes repeatedly.",
+            "New queued-frame lifetime test fails on the original cancellation behavior and its deliberate reintroduction; two ordered pending frames, 100 acknowledgement batches and asynchronous failure retention pass."
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "5d0ffebdcbabc204e1ee878c940039db8f96f388",
+            "commit": "2c312877d45b5b881921cd7269eabdd199a7af55",
             "outcome": "selected"
         },
         {

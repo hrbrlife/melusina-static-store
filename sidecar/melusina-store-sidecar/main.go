@@ -65,6 +65,10 @@ func main() {
 		runCatalogRetireSubcommand(os.Args[2:])
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "catalog-reconcile-retirement" {
+		runCatalogReconcileRetirementSubcommand(os.Args[2:])
+		return
+	}
 	// A signed, no-public-byte-change reconciliation for one durable rollout
 	// that is already absent from the current immutable catalog. This is not an
 	// app publish or a catalog editor; it makes that exact visibility fact

@@ -141,6 +141,23 @@ func (r catalogRetirement) matchesRollout(rollout appRolloutState) error {
 	return nil
 }
 
+// A retirement withdraws one exact release selection. A later ordinary
+// publish may select a new release of the same app; its stage, signed catalog
+// pointer, release authority and serve-time chain checks remain mandatory.
+// Keeping the older signed retirement must not make that successor unbootable.
+func (r catalogRetirement) appliesToRollout(rollout appRolloutState) (bool, error) {
+	if r.matchesRollout(rollout) == nil {
+		return true, nil
+	}
+	forward, err := semverGreater(rollout.CurrentVersion, r.CurrentVersion)
+	if err != nil || !forward || rollout.AppID != r.AppID ||
+		rollout.CurrentStageID == r.CurrentStageID || rollout.CurrentAppHash == r.CurrentAppHash ||
+		rollout.ActivatedAt <= r.RetiredAtUnix {
+		return false, errors.New("retirement mismatch is not a strictly later release activation")
+	}
+	return false, nil
+}
+
 func readCatalogRetirements(cfg Config) (map[string]catalogRetirement, error) {
 	retirements := make(map[string]catalogRetirement)
 	dir := catalogRetirementDir(cfg)

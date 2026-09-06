@@ -553,6 +553,8 @@ func validateRemovableCatalogTree(root string) error {
 // making every unrelated valid package unavailable. Explicit catalog
 // retirements and signed unserved-rollout reconciliations are also omitted, but
 // only when their receipt still binds the exact durable rollout selection.
+// A strictly later published release can supersede an older retirement and
+// must pass the same complete stage/catalog validation as every served app.
 type rolloutClassification struct {
 	serving     map[string]appRolloutState
 	quarantined map[string]appRolloutState
@@ -615,11 +617,14 @@ func classifyRolloutStatesAt(cfg Config, now time.Time) (rolloutClassification, 
 			if _, alsoUnserved := unserved[appID]; alsoUnserved {
 				return rolloutClassification{}, fmt.Errorf("rollout %s has both a catalog retirement and an unserved reconciliation", appID)
 			}
-			if err := retirement.matchesRollout(rollout); err != nil {
+			applies, err := retirement.appliesToRollout(rollout)
+			if err != nil {
 				return rolloutClassification{}, fmt.Errorf("validate retired rollout %s: %w", appID, err)
 			}
 			seenRetirements[appID] = struct{}{}
-			continue
+			if applies {
+				continue
+			}
 		}
 		if receipt, reconciled := unserved[appID]; reconciled {
 			if err := receipt.matchesRollout(rollout); err != nil {

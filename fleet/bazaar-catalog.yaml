@@ -237,7 +237,7 @@ groups:
         source_repository: https://github.com/hrbrlife/AITX-Procedures
         publish_slug: dueprocess
         catalog_name: DueProcess
-        live_version: 0.1.79
+        live_version: 0.1.80
         catalog_developer: hrbrlife
         catalog_repo: DueProcess
         catalog_slug: dueprocess

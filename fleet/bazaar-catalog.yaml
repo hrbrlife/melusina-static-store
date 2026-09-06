@@ -585,7 +585,7 @@ groups:
       sheets-bureau:
         appId: fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0
         source_path: sheets-bureau
-        source_commit: 3aa0926d5dbfe8e0201b00d378645c7143878391
+        source_commit: 1061acb71c118f8110342e2e9ab5dff4d1e9ffae
         source_repository: https://github.com/hrbrlife/CHEESESPREAD
         reconciliation_state: source-pinned
         release_state: ready

@@ -2,26 +2,27 @@
     "schema": "melusina-source-selection-v1",
     "appId": "fz7r56h1kr79g4v65cgxf7dv85ymt3ysas2em90739ry3vczt8t0",
     "sourceRepository": "https://github.com/hrbrlife/CHEESESPREAD",
-    "sourceCommit": "3aa0926d5dbfe8e0201b00d378645c7143878391",
+    "sourceCommit": "1061acb71c118f8110342e2e9ab5dff4d1e9ffae",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "same",
-    "decisionSummary": "Published rich Sheets implementation with the common bundled 60 FOSS fonts and six icon families, unified format controls, icon insertion, and XLSX font preservation.",
+    "decisionSummary": "Retain the rich Bureau Sheets app with all 60 bundled FOSS fonts and six icon fonts; contain the toolbar menu's 66 choices and normalize pip launcher wrappers across checkout paths. This source is current on main and dev-publish, and two independent clean SPKs match.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "Full Python suites, release guards, font mutation controls and XLSX round-trip checks pass.",
-            "Local rendered UI loads all 66 families offline; font and icon formatting survives save and reload."
+            "13 release regressions pass, including real pip launchers from short, long and quoted paths and executable argument equivalence.",
+            "Actual browser audits pass for the frontend shipped in this candidate: contained font menu, font and icon selection, save and reload.",
+            "Independent clean builds agree on SHA-256 2bf101def703925d1d263e0a35b5dced6081bc587678933e3a6a7ac7cf1026da, 168892548 bytes; both SPK content probes pass. Build A's package and receipt remain after removing its duplicate checkout."
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "3aa0926d5dbfe8e0201b00d378645c7143878391",
+            "commit": "1061acb71c118f8110342e2e9ab5dff4d1e9ffae",
             "outcome": "selected"
         },
         {
             "ref": "refs/heads/main",
-            "commit": "3aa0926d5dbfe8e0201b00d378645c7143878391",
+            "commit": "1061acb71c118f8110342e2e9ab5dff4d1e9ffae",
             "outcome": "baseline"
         }
     ],

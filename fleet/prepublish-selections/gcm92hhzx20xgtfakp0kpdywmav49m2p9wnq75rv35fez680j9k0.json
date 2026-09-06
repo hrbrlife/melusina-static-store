@@ -2,18 +2,19 @@
     "schema": "melusina-source-selection-v1",
     "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
     "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
-    "sourceCommit": "8f7ee8a6c29111d682c139a6d8ee5c91aec08103",
+    "sourceCommit": "843dd1256f5347deeb615d0d2c28201830b6e21f",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The v1.0.18/appVersion-70 dev-publish source is the reviewed forward InstaDAO release: it preserves the verified shared program suite and delivers chain-truth, no-write attachment and reconciliation for compatible existing InstaDAOs alongside governed token-policy controls.",
+    "decisionSummary": "The v1.0.18/appVersion-70 dev-publish checkpoint is the reviewed forward InstaDAO source: it preserves the verified chain-truth attachment and governed token controls while recording the exact accepted catalog artifact, signed release, and runtime contract needed to reproduce the live Store lineage.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "fresh clean clone resolved dev-publish 8f7ee8a6c29111d682c139a6d8ee5c91aec08103 and main is its ancestor",
-            "two independently cloned clean source trees built byte-identical InstaDAO 1.0.18 SPKs with SHA-256 255141f55223396733c184f95591f4b2417e1eda1d6e2e46ae32ea852148b6d3",
+            "fresh clean clone resolved dev-publish 843dd1256f5347deeb615d0d2c28201830b6e21f and main is its ancestor",
+            "two independently cloned clean source trees reproduced the accepted InstaDAO 1.0.18 SPK with SHA-256 255141f55223396733c184f95591f4b2417e1eda1d6e2e46ae32ea852148b6d3 and matched the tracked catalog artifact byte-for-byte",
             "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 70, and marketing version 1.0.18",
-            "fresh full Go suite passed from the selected clean clone",
-            "fresh finalized devnet reads verified both the PDAO attachment and a distinct capped-token Squads fixture without a chain write"
+            "fresh full Go suite passed from the checkpoint clone",
+            "fresh finalized devnet reads verified both the PDAO attachment and a distinct capped-token Squads fixture without a chain write",
+            "tracked catalog RELEASE and runtime contract matched the accepted terminal receipt, active release PDA, app hash, and runtime-contract digest"
         ]
     },
     "reviewedRefs": [
@@ -29,7 +30,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "8f7ee8a6c29111d682c139a6d8ee5c91aec08103",
+            "commit": "843dd1256f5347deeb615d0d2c28201830b6e21f",
             "outcome": "selected"
         },
         {

@@ -401,12 +401,13 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # The v1.0.18/appVersion-70 dev-publish tip keeps the verified shared
-        # suite and adds read-only, recoverable attachment of an existing
-        # compatible DAO.  Two independent clean packages reproduced the
-        # same SPK, and both the historical PDAO and a separate capped-token
-        # fixture passed the finalized devnet attachment readback.
-        source_commit: 8f7ee8a6c29111d682c139a6d8ee5c91aec08103
+        # The v1.0.18/appVersion-70 dev-publish checkpoint retains the exact
+        # accepted catalog artifact alongside the verified shared suite and
+        # read-only, recoverable attachment of compatible existing DAOs. Two
+        # independent clean packages reproduced the same SPK, and both the
+        # historical PDAO and a separate capped-token fixture passed the
+        # finalized devnet attachment readback.
+        source_commit: 843dd1256f5347deeb615d0d2c28201830b6e21f
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

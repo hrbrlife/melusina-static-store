@@ -401,11 +401,12 @@ groups:
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
         source_path: instadao
-        # The v1.0.14/appVersion-66 dev-publish tip carries the full
-        # shared-suite byte proof.  The two previously mismatched programs
-        # were upgraded under their recorded authority and all seven current
-        # source artifacts now match devnet ProgramData exactly.
-        source_commit: b32df2d42af962e80947f863f15f0161c5899c7b
+        # The v1.0.18/appVersion-70 dev-publish tip keeps the verified shared
+        # suite and adds read-only, recoverable attachment of an existing
+        # compatible DAO.  Two independent clean packages reproduced the
+        # same SPK, and both the historical PDAO and a separate capped-token
+        # fixture passed the finalized devnet attachment readback.
+        source_commit: 8f7ee8a6c29111d682c139a6d8ee5c91aec08103
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -413,7 +414,7 @@ groups:
         runtime_contract_path: RUNTIME-CONTRACT.json
         publish_slug: instadao
         catalog_name: InstaDAO
-        live_version: 1.0.14
+        live_version: 1.0.18
         # The historical Store package is a submodule with a legacy product
         # path.  It is the same immutable appId; bind this update there rather
         # than inventing a parallel package from the current repository name.

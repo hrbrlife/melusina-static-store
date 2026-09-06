@@ -2,21 +2,18 @@
     "schema": "melusina-source-selection-v1",
     "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
     "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
-    "sourceCommit": "b32df2d42af962e80947f863f15f0161c5899c7b",
+    "sourceCommit": "8f7ee8a6c29111d682c139a6d8ee5c91aec08103",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The Aug. 20 appVersion-66 dev-publish tip is the newest valid forward InstaDAO source. It contains main's Aug. 16 landing of the preserved v65 securities, browser-RPC, and acceptance-harness work, then records the controlled devnet reconciliation of dao_securities and dao_voting. The full seven-program verifier, release controls, deterministic package builds, SPK verification, and fresh launch simulation passed at this source. The preserved v65 snapshot remains historical evidence but carries an older 683824-byte dao_securities artifact; it is superseded by main's landed source and cannot be merged without regressing the verified 685072-byte artifact. DAO and historic publish lines are superseded or incompatible prior release histories, not newer valid application sources.",
+    "decisionSummary": "The v1.0.18/appVersion-70 dev-publish source is the reviewed forward InstaDAO release: it preserves the verified shared program suite and delivers chain-truth, no-write attachment and reconciliation for compatible existing InstaDAOs alongside governed token-policy controls.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "fresh recursive source checkout resolved dev-publish b32df2d42af962e80947f863f15f0161c5899c7b cleanly",
-            "complete current remote-head snapshot reviewed, including preserved v65, DAO, feature, codex, and historic publish refs",
-            "the Aug. 16 main landing contains the preserved v65 acceptance/RPC/security surfaces and is an ancestor of the selected dev-publish source",
-            "scripts/check-shared-suite.mjs confirmed all seven devnet program accounts are executable upgradeable programs",
-            "scripts/verify-onchain.mjs --no-build --artifact-dir=app/so returned ok=true for all seven reviewed source artifacts after controlled upgrades of dao_securities and dao_voting",
-            "npm test, package-config-check, and the bwrap launch simulation passed with all launch actions stamped INSTADAO_SHARED_SUITE_VERIFIED=1",
-            "two independent clean package runs matched SHA-256 7beb775145c768e0b3181e5b905090822df72ffa93ce52196ab5b08ac7644913 and packageId 7beb775145c768e0b3181e5b90509082",
-            "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 66, and marketing version 1.0.14"
+            "fresh clean clone resolved dev-publish 8f7ee8a6c29111d682c139a6d8ee5c91aec08103 and main is its ancestor",
+            "two independently cloned clean source trees built byte-identical InstaDAO 1.0.18 SPKs with SHA-256 255141f55223396733c184f95591f4b2417e1eda1d6e2e46ae32ea852148b6d3",
+            "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 70, and marketing version 1.0.18",
+            "fresh full Go suite passed from the selected clean clone",
+            "fresh finalized devnet reads verified both the PDAO attachment and a distinct capped-token Squads fixture without a chain write"
         ]
     },
     "reviewedRefs": [
@@ -32,7 +29,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "b32df2d42af962e80947f863f15f0161c5899c7b",
+            "commit": "8f7ee8a6c29111d682c139a6d8ee5c91aec08103",
             "outcome": "selected"
         },
         {

@@ -2,22 +2,22 @@
     "schema": "melusina-source-selection-v1",
     "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
     "sourceRepository": "https://github.com/hrbrlife/pr_ninja",
-    "sourceCommit": "94c3dd5f920a7d9a7c8a904547f69fbe751bc589",
+    "sourceCommit": "176a9bca7f194ae0febe02a8ab432e7aabe5a9fc",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Audit-repair source-only selection for v0.0.18/appVersion-22: canonical dev-publish persists only complete owner-seeded grain and grant pairs, omits partial pairs, removes the unsupported route, and distinguishes launcher labels. This records source and local package evidence only; it is not a Store, Bazaar, or live acceptance.",
+    "decisionSummary": "Select canonical dev-publish 176a9bc: F09/F10/U01 runtime repairs plus the strict version-guard correction for 0.0.18/v22. Earlier queued artifact used the parent epoch; final packages must be derived from this clean source revision before publication. Main is preserved as baseline; other refs remain evidence.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "Go test, go vet, 13 constellation tests, ruff, and native build passed",
-            "Package, verify, and unpack checks passed",
-            "Verified package SHA-256 7cbf047c0657cf4fc7870e220e8c7a2e515dc79c286a30867ddfc29db8c9dde3"
+            "Clean selected source equals canonical origin/dev-publish; main unchanged at 415766b.",
+            "Full Python suite: 1194 passed with 29 retained warnings; 42 focused release/build/trust/lease checks pass.",
+            "Production payload unchanged from audited 94c3dd5; both Go build/vet/race and isolated admin smoke checks passed for that identical runtime source."
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "94c3dd5f920a7d9a7c8a904547f69fbe751bc589",
+            "commit": "176a9bca7f194ae0febe02a8ab432e7aabe5a9fc",
             "outcome": "selected"
         },
         {

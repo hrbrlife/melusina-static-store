@@ -332,7 +332,7 @@ groups:
         appId: 55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60
         source_path: telescreen
         # Audit-repair v0.0.18/appVersion-22 source pin only; no Store, Bazaar, or live acceptance is asserted.
-        source_commit: 94c3dd5f920a7d9a7c8a904547f69fbe751bc589
+        source_commit: 176a9bca7f194ae0febe02a8ab432e7aabe5a9fc
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

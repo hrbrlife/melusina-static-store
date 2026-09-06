@@ -2094,7 +2094,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert cratelink["release_state"] == "ready", cratelink
     assert cratelink["source_selection_state"] == "direct-dev-verified", cratelink
     telescreen = entries["55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60"]
-    assert telescreen["source_commit"] == "94c3dd5f920a7d9a7c8a904547f69fbe751bc589", telescreen
+    assert telescreen["source_commit"] == "176a9bca7f194ae0febe02a8ab432e7aabe5a9fc", telescreen
     assert telescreen["reconciliation_state"] == "source-pinned", telescreen
     assert telescreen["release_state"] == "ready", telescreen
     assert telescreen["source_selection_state"] == "direct-dev-verified", telescreen

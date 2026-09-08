@@ -91,6 +91,10 @@ func decodeRelease(raw []byte) (ReleaseClaims, error) {
 // Duplicate fields, aliases, nulls and unsupported extensions must not acquire
 // different meanings in the finalizer, envelope signer and Store.
 func exactReleaseObject(raw []byte, allowed map[string]bool) (map[string]json.RawMessage, error) {
+	return exactReleaseObjectWithNulls(raw, allowed, nil)
+}
+
+func exactReleaseObjectWithNulls(raw []byte, allowed, nullable map[string]bool) (map[string]json.RawMessage, error) {
 	d := json.NewDecoder(bytes.NewReader(raw))
 	token, err := d.Token()
 	if err != nil || token != json.Delim('{') {
@@ -107,7 +111,7 @@ func exactReleaseObject(raw []byte, allowed map[string]bool) (map[string]json.Ra
 			return nil, errors.New("release field is unknown, aliased or duplicated")
 		}
 		var value json.RawMessage
-		if err := d.Decode(&value); err != nil || bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+		if err := d.Decode(&value); err != nil || (bytes.Equal(bytes.TrimSpace(value), []byte("null")) && !nullable[key]) {
 			return nil, errors.New("release field is malformed or null")
 		}
 		fields[key] = value

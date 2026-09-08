@@ -29,6 +29,7 @@ type registerSDKFixture struct {
 	Expectation                                               ProposalExpectation
 	Transaction, Multisig, Proposal, PendingProposal, Release registerFixtureAccount
 	AuthorSignatureBase64                                     string
+	Candidate, Ceremony                                       json.RawMessage
 }
 type observerFixture struct {
 	t           *testing.T

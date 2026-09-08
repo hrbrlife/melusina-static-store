@@ -155,22 +155,25 @@ const (
 // It must bind the executed immutable action and live ReleaseEntry evidence;
 // a generic “transaction succeeded” boolean is deliberately insufficient.
 type ProposalObservation struct {
-	State                 ProposalState
-	Reference             string
-	Digest                string
-	AppHash               string
-	Release               string
-	StageID               string
-	ExecutedAt            time.Time
-	ReleaseEntryPDA       string
-	VerifiedSlot          uint64
-	RegisteredAt          time.Time
-	AuthorSignatureBase64 string
-	MasterNftMint         string
-	PublisherSquadsVault  string
-	SquadsMultisig        string
-	Threshold             int
-	MemberCount           int
+	State                  ProposalState
+	Reference              string
+	Digest                 string
+	AppHash                string
+	Release                string
+	StageID                string
+	ExecutedAt             time.Time
+	ReleaseEntryPDA        string
+	VerifiedSlot           uint64
+	RegisteredAt           time.Time
+	AuthorSignatureBase64  string
+	RegistryProgramID      string
+	PublisherEd25519Pubkey string
+	SignedPayloadHash      string
+	MasterNftMint          string
+	PublisherSquadsVault   string
+	SquadsMultisig         string
+	Threshold              int
+	MemberCount            int
 }
 
 type ProposalObserver interface {
@@ -235,10 +238,11 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 	if err != nil {
 		return Result{}, nil, fmt.Errorf("load finalization input: %w", err)
 	}
-	var input finalizationinput.Input
-	decoder := json.NewDecoder(bytes.NewReader(inputRaw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&input); err != nil || decoder.Decode(&struct{}{}) != io.EOF || input.Validate(maxBytes) != nil {
+	if int64(len(inputRaw)) != request.FinalizationInputBytes || hash(inputRaw) != request.FinalizationInputSHA256 {
+		return Result{}, nil, errors.New("loaded finalization input differs from its approved immutable descriptor")
+	}
+	input, err := finalizationinput.Decode(inputRaw, maxBytes)
+	if err != nil {
 		return Result{}, nil, errors.New("finalization input is malformed or untrusted")
 	}
 	if input.DossierID != request.DossierID || input.StoreID != request.StoreID || input.AppID != request.AppID || input.Candidate.SHA256 != request.CandidateSHA256 || input.Candidate.Bytes != request.CandidateBytes || input.ReleaseHash != request.ReleaseHash || input.StageID != request.StageID {
@@ -261,6 +265,18 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 	}
 	if observation.State != ProposalExecuted || observation.Reference != request.ProposalReference || observation.Digest != request.ProposalDigest || observation.AppHash != input.AppHash || observation.Release != request.ReleaseHash || observation.StageID != request.StageID || observation.ExecutedAt.IsZero() || observation.ExecutedAt.After(now.Add(2*time.Minute)) || observation.VerifiedSlot == 0 {
 		return Result{}, nil, errors.New("governance observer did not prove this exact proposal execution")
+	}
+	if observation.RegisteredAt.IsZero() || !observation.RegisteredAt.Equal(observation.ExecutedAt) {
+		return Result{}, nil, errors.New("release registration does not match the exact proposal execution time")
+	}
+	input, err = input.WithRegistration(finalizationinput.Registration{
+		ProposalReference: observation.Reference, RegisteredAtUnix: observation.RegisteredAt.Unix(), ProgramID: observation.RegistryProgramID,
+		MasterNftMint: observation.MasterNftMint, LicenseSquadsVault: observation.PublisherSquadsVault, ReleaseEntryPDA: observation.ReleaseEntryPDA,
+		PublisherEd25519Pubkey: observation.PublisherEd25519Pubkey, SignedPayloadHash: observation.SignedPayloadHash, AuthorSig: observation.AuthorSignatureBase64,
+		QuorumPolicy: finalizationinput.ReleaseQuorum{Threshold: observation.Threshold, MemberCount: observation.MemberCount, MultisigPDA: observation.SquadsMultisig},
+	}, maxBytes)
+	if err != nil {
+		return Result{}, nil, fmt.Errorf("materialize observed final release: %w", err)
 	}
 	release, claims, err := input.Release(maxBytes)
 	if err != nil {

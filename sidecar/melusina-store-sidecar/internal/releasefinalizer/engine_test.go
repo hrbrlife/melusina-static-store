@@ -72,7 +72,7 @@ func finalizerFixture(t *testing.T, now time.Time) (*Engine, Request, Job, *test
 	release, err := json.Marshal(finalizationinput.ReleaseClaims{
 		Schema: "melusina-release-v1", AppHash: appHash, ReleaseHash: hash([]byte(appHash + "2.0.34" + "nonce")),
 		Version: "2.0.34", ReleaseEntryPDA: "11111111111111111111111111111111",
-		SignedAtUnix: 1780000000, ReleaseNonce: "nonce", AuthorSig: base64.StdEncoding.EncodeToString(make([]byte, 64)),
+		SignedAtUnix: now.Unix(), ReleaseNonce: "nonce", AuthorSig: base64.StdEncoding.EncodeToString(make([]byte, 64)),
 		MasterNftMint:         "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
 		LicenseSquadsVault:    "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
 		QuorumPolicy:          finalizationinput.ReleaseQuorum{Threshold: 3, MemberCount: 4, MultisigPDA: "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"},
@@ -100,7 +100,7 @@ func finalizerFixture(t *testing.T, now time.Time) (*Engine, Request, Job, *test
 	request.RequestDigest = request.Digest()
 	observation := &testObserver{want: ProposalExpectation{Reference: request.ProposalReference, Digest: request.ProposalDigest, AppID: input.AppID, Version: input.Version, AppHash: input.AppHash, Release: request.ReleaseHash, StageID: request.StageID}, observation: ProposalObservation{
 		State: ProposalExecuted, Reference: request.ProposalReference, Digest: request.ProposalDigest, AppHash: input.AppHash, Release: request.ReleaseHash, StageID: request.StageID,
-		ExecutedAt: now, RegisteredAt: time.Unix(1780000000, 0).UTC(), AuthorSignatureBase64: base64.StdEncoding.EncodeToString(make([]byte, 64)), ReleaseEntryPDA: "11111111111111111111111111111111", VerifiedSlot: 42,
+		ExecutedAt: now, RegisteredAt: now, AuthorSignatureBase64: base64.StdEncoding.EncodeToString(make([]byte, 64)), ReleaseEntryPDA: "11111111111111111111111111111111", VerifiedSlot: 42,
 		MasterNftMint: coreReleaseMaster, PublisherSquadsVault: coreReleaseVault, SquadsMultisig: coreReleaseMultisig, Threshold: 3, MemberCount: 4,
 	}}
 	signedEnvelope := envelope.Signed{Payload: envelope.Payload{

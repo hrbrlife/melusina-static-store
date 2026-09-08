@@ -20,13 +20,15 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-const Schema = "bazaar-control-finalization-input-v1"
+const (
+	Schema         = "bazaar-control-finalization-input-v1"
+	PreparedSchema = "bazaar-control-finalization-input-v2"
+)
 
-// Input is written by the restricted preparation worker after it creates the
-// governed release/proposal. The signed preparation result commits the vault
-// descriptor of these bytes. Candidate identifies the pre-review build object;
-// RELEASE.json supplies only the post-review release facts that candidate
-// intentionally lacks.
+// Input is frozen in the vault and committed by the signed preparation result.
+// V2 retains original prepared ceremony bytes before chain execution. V1 retains
+// a complete final RELEASE.json for already registered work. The forms cannot
+// be mixed. Candidate always identifies the same pre-review build object.
 type Input struct {
 	Schema      string                   `json:"schema"`
 	DossierID   string                   `json:"dossierId"`
@@ -41,7 +43,8 @@ type Input struct {
 	AppHash     string                   `json:"appHash"`
 	ReleaseHash string                   `json:"releaseHash"`
 	StageID     string                   `json:"stageId"`
-	ReleaseB64  string                   `json:"releaseB64"`
+	ReleaseB64  string                   `json:"releaseB64,omitempty"`
+	CeremonyB64 string                   `json:"ceremonyB64,omitempty"`
 	Developer   string                   `json:"developer,omitempty"`
 	Repo        string                   `json:"repo,omitempty"`
 	Slug        string                   `json:"slug,omitempty"`
@@ -69,7 +72,7 @@ type Package struct {
 // ReleaseEntry's live chain state; the finalizer's fixed governance observer
 // performs that immediately before requesting a publisher envelope.
 func (i Input) Validate(maxCandidateBytes int64) error {
-	if i.Schema != Schema || !lowerHex(i.DossierID, 24) || !safeText(i.StoreID, 256) || !appID(i.AppID) || !safeText(i.Version, 256) || !lowerHex(i.ArtifactSHA, 64) || !lowerHex(i.MetadataSHA, 64) || (i.RuntimeSHA != "" && !lowerHex(i.RuntimeSHA, 64)) || !safeText(i.PackageID, 256) || !lowerHex(i.AppHash, 64) || !lowerHex(i.ReleaseHash, 64) || !lowerHex(i.StageID, 64) {
+	if (i.Schema != Schema && i.Schema != PreparedSchema) || !lowerHex(i.DossierID, 24) || !safeText(i.StoreID, 256) || !appID(i.AppID) || !safeText(i.Version, 256) || !lowerHex(i.ArtifactSHA, 64) || !lowerHex(i.MetadataSHA, 64) || (i.RuntimeSHA != "" && !lowerHex(i.RuntimeSHA, 64)) || !safeText(i.PackageID, 256) || !lowerHex(i.AppHash, 64) || !lowerHex(i.ReleaseHash, 64) || !lowerHex(i.StageID, 64) {
 		return errors.New("finalization input is incomplete or malformed")
 	}
 	if err := i.Candidate.Validate(maxCandidateBytes); err != nil {
@@ -77,6 +80,19 @@ func (i Input) Validate(maxCandidateBytes int64) error {
 	}
 	if (i.Developer == "") != (i.Repo == "") || (i.Repo == "") != (i.Slug == "") || (i.Developer != "" && (!segment(i.Developer) || !segment(i.Repo) || !segment(i.Slug))) {
 		return errors.New("finalization input catalog locator is invalid")
+	}
+	if i.Schema == PreparedSchema {
+		if i.ReleaseB64 != "" {
+			return errors.New("prepared finalization input cannot contain a final release")
+		}
+		_, state, err := i.preparedCeremony()
+		if err != nil || state.AppID != i.AppID || state.AppHash != i.AppHash || state.ReleaseHash != i.ReleaseHash || state.Version != i.Version {
+			return errors.New("prepared ceremony does not bind the approved input")
+		}
+		return nil
+	}
+	if i.CeremonyB64 != "" {
+		return errors.New("complete finalization input cannot contain prepared ceremony state")
 	}
 	release, err := base64.StdEncoding.DecodeString(strings.TrimSpace(i.ReleaseB64))
 	if err != nil || len(release) == 0 || len(release) > 128<<10 || !json.Valid(release) {
@@ -142,6 +158,9 @@ func (i Input) DecodeCandidate(body []byte, maxCandidateBytes int64) (Package, e
 func (i Input) Release(maxCandidateBytes int64) ([]byte, ReleaseClaims, error) {
 	if err := i.Validate(maxCandidateBytes); err != nil {
 		return nil, ReleaseClaims{}, err
+	}
+	if i.Schema != Schema {
+		return nil, ReleaseClaims{}, errors.New("prepared ceremony has no final RELEASE.json before chain registration")
 	}
 	release, _ := base64.StdEncoding.DecodeString(strings.TrimSpace(i.ReleaseB64))
 	var claims ReleaseClaims

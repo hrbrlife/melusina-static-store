@@ -172,6 +172,9 @@ func (o *CoreProposalObserver) ObserveExecution(ctx context.Context, want Propos
 	observation.State, observation.ExecutedAt = ProposalExecuted, time.Unix(proposal.Status.Timestamp, 0).UTC()
 	observation.RegisteredAt, observation.ReleaseEntryPDA = time.Unix(registeredAt, 0).UTC(), primitives.EncodeBase58(register.entry[:])
 	observation.AuthorSignatureBase64 = base64.StdEncoding.EncodeToString(register.signature[:])
+	observation.RegistryProgramID = primitives.EncodeBase58(o.pins.registry[:])
+	observation.PublisherEd25519Pubkey = primitives.EncodeBase58(o.pins.publisher[:])
+	observation.SignedPayloadHash = hex.EncodeToString(register.data[len(register.data)-32:])
 	observation.MasterNftMint, observation.PublisherSquadsVault = primitives.EncodeBase58(o.pins.master[:]), primitives.EncodeBase58(o.pins.vault[:])
 	observation.SquadsMultisig, observation.Threshold, observation.MemberCount = primitives.EncodeBase58(multisig.Address[:]), int(multisig.Threshold), len(multisig.Members)
 	return observation, nil

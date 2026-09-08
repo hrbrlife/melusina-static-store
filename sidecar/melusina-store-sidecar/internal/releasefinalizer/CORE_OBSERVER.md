@@ -63,6 +63,39 @@ signature, Master NFT, vault, multisig and quorum with the complete final
 fields, aliases and duplicates remain refusals. Exact retries re-read current
 finalized accounts; there is no success cache that can conceal revocation.
 
+## Immutable preparation to final descriptor
+
+`bazaar-control-finalization-input-v2` carries `ceremonyB64`: the original full
+`melusina-release-ceremony-v1` author state emitted by the governed provider.
+It must omit `releaseB64`. The existing v1 input still accepts and preserves
+complete final `RELEASE.json` bytes through `releaseB64`, and must omit
+`ceremonyB64`. These are explicit alternatives; unknown, duplicate, aliased,
+null and mixed-state fields are refused before decoding. The original
+ceremony's nullable empty Ed25519 instruction account list is the one explicit
+schema-defined null exception.
+
+The prepared state includes its actual author signature and payload hash,
+app/version/nonce, Master NFT, vault/quorum, registry, derived transaction and
+Proposal PDAs, and the exact Ed25519 and register instructions. Each account
+privilege and instruction byte is checked against the signed payload. The
+author's `dry-run-prepared` status remains preparation context and cannot
+assert chain execution. The worker retains the exact original ceremony bytes
+in the approved content-addressed input; it verifies that input's hash again
+when loading it. Candidate bytes, metadata, app hash and runtime contract are
+revalidated before any chain observation.
+
+After the fixed observer proves real execution, `Input.WithRegistration`
+compares the prepared transaction, registry, author public key, payload hash,
+original signature and authority with that observation. It creates a separate
+complete descriptor using the observed `registered_at`, never `createdAtUnix`.
+The runtime digest comes from the reviewed input and is rechecked against the
+candidate; runtime claims are not represented as part of the older on-chain
+author-signature payload. Only the final descriptor bytes enter publisher
+custody and the final sidecar body. No original input, ceremony, request digest
+or human authorization is rewritten. Pending work cannot export a final
+descriptor or call custody; exact restart repeats the chain verification and
+materializes identical descriptor bytes from identical observed facts.
+
 ## Remaining production composition
 
 This source provides the actual chain observer, not a deployed worker or a
@@ -81,14 +114,11 @@ browser publication entrance. Complete the existing seams in this order:
    authorization form is a separate policy-bound human signature; attaching
    it does not execute Squads. There is currently no built-in Core browser
    execution join in that Pearl.
-4. After the real execution, the finalizer must materialize the complete
-   `RELEASE.json` using the observed `registered_at`, original author signature
-   and independently checked authority. The canonical provider currently keeps
-   `RELEASE.json` provisional until `ApplyEntryToManifest` after execution.
-   Therefore the preparation adapter cannot freeze a purported final timestamp
-   before it exists. The current finalization-input schema expects a complete
-   final descriptor; its explicit prepared-state-to-final-descriptor join is
-   still required before a native composition can run.
+4. The preparation adapter must produce the v2 input above after its exact
+   transaction index/PDAs are fixed. It retains the canonical author's prepared
+   state rather than freezing a purported final timestamp. The finalizer's
+   implemented observer/materializer then joins that state to real execution,
+   following the existing `ApplyEntryToManifest` registration-time semantics.
 5. Compose the observer/runner/mTLS handler with the fixed artifact vault,
    publisher-envelope Unix custody and worker result key; then bind existing
    Store Link and private Store control routes. Store policy, Pearl routing and

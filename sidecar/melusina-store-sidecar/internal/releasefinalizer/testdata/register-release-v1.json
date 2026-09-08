@@ -17,17 +17,17 @@
   },
   "expectation": {
     "Reference": "62381Cnn89cZozC2eCgpWB9YNEpzjrqmcHcpqrazbpaE",
-    "Digest": "338c0505fcc3603d2bc60a8e05f5b5364b82f4197ccaef36e0854560a24d8f02",
+    "Digest": "9da074142731bd9cded98a31fc1717aa5f8a1d6de41009752a6976f108698a69",
     "AppID": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
     "Version": "0.1.32",
-    "AppHash": "c87e071149fef7d67cbaa4c4a4100b9d48856d293f6bc233ec2b0d8b6ba40319",
-    "Release": "95ffb2dee78d03218e8728074f38ae06869711d4d8fd19a431b1d4a0b8bba83b",
+    "AppHash": "d0d5f09ad1ff2b82634973195065da7366a356d3884a496234e582b17882c1b6",
+    "Release": "86aeba54816e4e379827b185f27fa98d3081a62eea27333c517b265e7f46f223",
     "StageID": "d404e6fcc4fa02cb3ded56e528a27cbac49fabb88dc158f371254949c4dd0128"
   },
   "transaction": {
     "address": "62381Cnn89cZozC2eCgpWB9YNEpzjrqmcHcpqrazbpaE",
     "owner": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
-    "dataBase64": "qPqiZFEOos8qbjaHrVPXAOI3CEP5zYoAVcDHmRlPJ6QgoIGly2nxjduZX+JRadFByrm7upK6oB+fLh7OffTLKsBRkPN/zB+dBwAAAAAAAAD/APwAAAAAAQEBCAAAAEYyyXZ1y3UUxEE2c2/NeEzmjG9nHKV5Sq0efZWqHvYZL3I8hlkb5bVLdsPK2ar4j12Gd9Y0n+PTr9kUGNAO8eVhzaREC0eEfoiLqlJcPP7DRft1TNdeBcqi6/8iBcVTPF4hLAmA5LOfwJchE0qgIQk3Tt/SYMDT0Dy1AcjWVFepjCZ+0fU/i8tNgjmd2W30005JpmBWJ+VBKvoi2qtBuN0Gp9UXGHvRZjXa1ARV/cLAwSTGjyFWdaXbustfCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAgcAAAABAAMEBQYHEgEAAD4sOFJq8wK9yH4HEUn+99Z8uqTEpBALnUiFbSk/a8Iz7CsNi2ukAxm0aD1idnUKxfYIAT04o3R1ENrpaLaBgguB7WeIDK7Ad5X/st7njQMhjocoB084rgaGlxHU2P0ZpDGx1KC4u6g7BgAAADAuMS4zMkYyyXZ1y3UUxEE2c2/NeEzmjG9nHKV5Sq0efZWqHvYZF8t5+ytBIPKx7GXkGY1uCLKOgT/rAeSkAIObheGAgM6N7Nf9ikGNxf5pEG/LDJj5XMQ6AFnUTk3iEGZYD3lGVC5P/bd+TIhJZYoxfLLNtAdIyXXWL2FLZ3YEyZef/mIAc1PGrtuSGvcgYK7w0/sCAdOeRPtYhcOXvGy8o3JNiMoAAAAA"
+    "dataBase64": "qPqiZFEOos8qbjaHrVPXAOI3CEP5zYoAVcDHmRlPJ6QgoIGly2nxjduZX+JRadFByrm7upK6oB+fLh7OffTLKsBRkPN/zB+dBwAAAAAAAAD/APwAAAAAAQEBCAAAAEYyyXZ1y3UUxEE2c2/NeEzmjG9nHKV5Sq0efZWqHvYZ1whH6uwqi3kL8ph9VfxD+7xHr+BdmXFRnPan57AelvJhzaREC0eEfoiLqlJcPP7DRft1TNdeBcqi6/8iBcVTPF4hLAmA5LOfwJchE0qgIQk3Tt/SYMDT0Dy1AcjWVFepjCZ+0fU/i8tNgjmd2W30005JpmBWJ+VBKvoi2qtBuN0Gp9UXGHvRZjXa1ARV/cLAwSTGjyFWdaXbustfCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAgcAAAABAAMEBQYHEgEAAD4sOFJq8wK90NXwmtH/K4JjSXMZUGXac2ajVtOISkliNOWCsXiCwba0aD1idnUKxfYIAT04o3R1ENrpaLaBgguB7WeIDK7Ad4auulSBbk43mCexhfJ/qY0wgaYu6iczPFF7Jl5/RvIjBgAAADAuMS4zMkYyyXZ1y3UUxEE2c2/NeEzmjG9nHKV5Sq0efZWqHvYZF8t5+ytBIPKx7GXkGY1uCLKOgT/rAeSkAIObheGAgM6mhP6e8trz3HJIVHNLXOo+2q9IUSaZCbXIHuUAyBVgx3IKyeQ+oYdl/r9zQGuF2Hz6r+ig3KpTRzo3O1bH6kwGu3AEFfl83tLPDfFYOjQK2np3ptUO8D49+iflaDE7zAAAAAAA"
   },
   "multisig": {
     "address": "3rdbanHdvkdfcePukF8stkQaj9msM7ogt3AqpntUT48k",
@@ -45,9 +45,91 @@
     "dataBase64": "Gl69u3SINSEqbjaHrVPXAOI3CEP5zYoAVcDHmRlPJ6QgoIGly2nxjQcAAAAAAAAAAYAkoGoAAAAA/wAAAAAAAAAAAAAAAA=="
   },
   "release": {
-    "address": "4CDCCUuuqyVUakz1HnQn2AEw2oZS4wx96V96JrqAFedA",
+    "address": "FUPymPnnHU5uTvcaquohEj237HSappw13fk3dKDXAeZw",
     "owner": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-    "dataBase64": "+HpJdu5ongBeISwJgOSzn8CXIRNKoCEJN07f0mDA09A8tQHI1lRXqch+BxFJ/vfWfLqkxKQQC51IhW0pP2vCM+wrDYtrpAMZtGg9YnZ1CsX2CAE9OKN0dRDa6Wi2gYILge1niAyuwHeV/7Le540DIY6HKAdPOK4GhpcR1Nj9GaQxsdSguLuoOwYAAAAwLjEuMzJGMsl2dct1FMRBNnNvzXhM5oxvZxyleUqtHn2Vqh72GRfLefsrQSDysexl5BmNbgiyjoE/6wHkpACDm4XhgIDOjezX/YpBjcX+aRBvywyY+VzEOgBZ1E5N4hBmWA95RlQuT/23fkyISWWKMXyyzbQHSMl11i9hS2d2BMmXn/5iAHNTxq7bkhr3IGCu8NP7AgHTnkT7WIXDl7xsvKNyTYjKRjLJdnXLdRTEQTZzb814TOaMb2ccpXlKrR59laoe9hmAJKBqAAAAAAAA/g=="
+    "dataBase64": "+HpJdu5ongBeISwJgOSzn8CXIRNKoCEJN07f0mDA09A8tQHI1lRXqdDV8JrR/yuCY0lzGVBl2nNmo1bTiEpJYjTlgrF4gsG2tGg9YnZ1CsX2CAE9OKN0dRDa6Wi2gYILge1niAyuwHeGrrpUgW5ON5gnsYXyf6mNMIGmLuonMzxReyZef0byIwYAAAAwLjEuMzJGMsl2dct1FMRBNnNvzXhM5oxvZxyleUqtHn2Vqh72GRfLefsrQSDysexl5BmNbgiyjoE/6wHkpACDm4XhgIDOpoT+nvLa89xySFRzS1zqPtqvSFEmmQm1yB7lAMgVYMdyCsnkPqGHZf6/c0Brhdh8+q/ooNyqU0c6NztWx+pMBrtwBBX5fN7Szw3xWDo0Ctp6d6bVDvA+Pfon5WgxO8wARjLJdnXLdRTEQTZzb814TOaMb2ccpXlKrR59laoe9hmAJKBqAAAAAAAA/Q=="
   },
-  "authorSignatureBase64": "jezX/YpBjcX+aRBvywyY+VzEOgBZ1E5N4hBmWA95RlQuT/23fkyISWWKMXyyzbQHSMl11i9hS2d2BMmXn/5iAA=="
+  "authorSignatureBase64": "poT+nvLa89xySFRzS1zqPtqvSFEmmQm1yB7lAMgVYMdyCsnkPqGHZf6/c0Brhdh8+q/ooNyqU0c6NztWx+pMBg==",
+  "candidate": {
+    "spk_b64": "c3ludGhldGljIHJlcHJvZHVjaWJsZSBzb3VyY2UgcGFja2FnZQ==",
+    "metadata_b64": "eyJhcHBJZCI6IjAyMXgzNjBqbnF6Nzk4dGFlZnNjdTdyNjlhMHh2dnF5aGZ3ZmphZHE4ZzJmOXd1cW01aDAiLCJwYWNrYWdlSWQiOiJzeW50aGV0aWMtcGFja2FnZS0xIiwidmVyc2lvbiI6IjAuMS4zMiJ9",
+    "runtime_contract_b64": "eyJzY2hlbWEiOiJtZWx1c2luYS1hcHAtcnVudGltZS1jb250cmFjdC12MSJ9"
+  },
+  "ceremony": {
+    "$schema": "melusina-release-ceremony-v1",
+    "status": "dry-run-prepared",
+    "dryRun": true,
+    "appHash": "d0d5f09ad1ff2b82634973195065da7366a356d3884a496234e582b17882c1b6",
+    "releaseHash": "86aeba54816e4e379827b185f27fa98d3081a62eea27333c517b265e7f46f223",
+    "releaseNonce": "fixed-offline-fixture",
+    "version": "0.1.32",
+    "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
+    "appIdHash": "b4683d6276750ac5f608013d38a3747510dae968b681820b81ed67880caec077",
+    "licenseMint": "7LSfLv2S6K7zMPrgmJDkZoJNhWvWRzpU7qt9uMR5yz8G",
+    "masterNftMint": "7LSfLv2S6K7zMPrgmJDkZoJNhWvWRzpU7qt9uMR5yz8G",
+    "programId": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+    "squadsProgramId": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+    "multisigPda": "3rdbanHdvkdfcePukF8stkQaj9msM7ogt3AqpntUT48k",
+    "licenseSquadsVault": "5j2TPvpZtCGYHPrYWQiG5FVGiWWMN6SPE5uFa7G6GL2k",
+    "masterNftAta": "AS689TurjLfJPpiGmnrrjUpVUGEYQL4PTrhFAgdeyweL",
+    "transactionIndex": 7,
+    "transactionPda": "62381Cnn89cZozC2eCgpWB9YNEpzjrqmcHcpqrazbpaE",
+    "proposalPda": "1vuPCH3Nsb7LUzuL9v3f2RgLaRYJhNobpdV28xJzYTo",
+    "releaseEntryPda": "FUPymPnnHU5uTvcaquohEj237HSappw13fk3dKDXAeZw",
+    "publisherEd25519Pubkey": "2btLJAAb1S3x6hZYdVyAePjqtQYi2ZBSRGy4569RZu8h",
+    "signedPayloadHash": "bb700415f97cded2cf0df1583a340ada7a77a6d50ef03e3dfa27e568313bcc00",
+    "authorSig": "poT+nvLa89xySFRzS1zqPtqvSFEmmQm1yB7lAMgVYMdyCsnkPqGHZf6/c0Brhdh8+q/ooNyqU0c6NztWx+pMBg==",
+    "createdAtUnix": 1788879940,
+    "ed25519Instruction": {
+      "programId": "Ed25519SigVerify111111111111111111111111111",
+      "accounts": null,
+      "data": "AQAQAP//UAD//3AAIAD//6aE/p7y2vPcckhUc0tc6j7ar0hRJpkJtcge5QDIFWDHcgrJ5D6hh2X+v3NAa4XYfPqv6KDcqlNHOjc7VsfqTAYXy3n7K0Eg8rHsZeQZjW4Iso6BP+sB5KQAg5uF4YCAzrtwBBX5fN7Szw3xWDo0Ctp6d6bVDvA+Pfon5WgxO8wA"
+    },
+    "registerReleaseEntryInstruction": {
+      "programId": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+      "accounts": [
+        {
+          "pubkey": "FUPymPnnHU5uTvcaquohEj237HSappw13fk3dKDXAeZw",
+          "isSigner": false,
+          "isWritable": true
+        },
+        {
+          "pubkey": "5j2TPvpZtCGYHPrYWQiG5FVGiWWMN6SPE5uFa7G6GL2k",
+          "isSigner": true,
+          "isWritable": true
+        },
+        {
+          "pubkey": "7LSfLv2S6K7zMPrgmJDkZoJNhWvWRzpU7qt9uMR5yz8G",
+          "isSigner": false,
+          "isWritable": false
+        },
+        {
+          "pubkey": "AS689TurjLfJPpiGmnrrjUpVUGEYQL4PTrhFAgdeyweL",
+          "isSigner": false,
+          "isWritable": false
+        },
+        {
+          "pubkey": "Sysvar1nstructions1111111111111111111111111",
+          "isSigner": false,
+          "isWritable": false
+        },
+        {
+          "pubkey": "11111111111111111111111111111111",
+          "isSigner": false,
+          "isWritable": false
+        },
+        {
+          "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "isSigner": false,
+          "isWritable": false
+        }
+      ],
+      "data": "Piw4UmrzAr3Q1fCa0f8rgmNJcxlQZdpzZqNW04hKSWI05YKxeILBtrRoPWJ2dQrF9ggBPTijdHUQ2ulotoGCC4HtZ4gMrsB3hq66VIFuTjeYJ7GF8n+pjTCBpi7qJzM8UXsmXn9G8iMGAAAAMC4xLjMyRjLJdnXLdRTEQTZzb814TOaMb2ccpXlKrR59laoe9hkXy3n7K0Eg8rHsZeQZjW4Iso6BP+sB5KQAg5uF4YCAzqaE/p7y2vPcckhUc0tc6j7ar0hRJpkJtcge5QDIFWDHcgrJ5D6hh2X+v3NAa4XYfPqv6KDcqlNHOjc7VsfqTAa7cAQV+Xze0s8N8Vg6NAraenem1Q7wPj36J+VoMTvMAA=="
+    },
+    "quorumPolicy": {
+      "threshold": 3,
+      "memberCount": 4,
+      "multisigPda": "3rdbanHdvkdfcePukF8stkQaj9msM7ogt3AqpntUT48k"
+    }
+  }
 }

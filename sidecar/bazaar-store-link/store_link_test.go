@@ -194,7 +194,7 @@ func proofResumeHTTPRequest(t *testing.T, jobID, dossierID, releaseDigest string
 
 func preparationJobRequest(t *testing.T) *http.Request {
 	t.Helper()
-	body := `{"schema":"bazaar-control-release-preparation-request-v1","dossierId":"` + testDossierID + `","storeId":"` + testStoreID + `","appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceRef":"refs/heads/dev-publish","sourceCommit":"0123456789abcdef0123456789abcdef01234567","version":"1.2.3","buildAttestationDigest":"` + strings.Repeat("a", 64) + `","candidateSha256":"` + strings.Repeat("b", 64) + `","candidateBytes":1,"artifactSha256":"` + strings.Repeat("c", 64) + `","metadataSha256":"` + strings.Repeat("d", 64) + `","packageId":"pkg-1","appHash":"` + strings.Repeat("e", 64) + `","action":"prepare_release","requestDigest":"` + strings.Repeat("f", 64) + `"}`
+	body := `{"schema":"bazaar-control-release-preparation-request-v2","dossierId":"` + testDossierID + `","storeId":"` + testStoreID + `","appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceRef":"refs/heads/dev-publish","sourceCommit":"0123456789abcdef0123456789abcdef01234567","version":"1.2.3","buildAttestationDigest":"` + strings.Repeat("a", 64) + `","candidateSha256":"` + strings.Repeat("b", 64) + `","candidateBytes":1,"artifactSha256":"` + strings.Repeat("c", 64) + `","metadataSha256":"` + strings.Repeat("d", 64) + `","packageId":"pkg-1","appHash":"` + strings.Repeat("e", 64) + `","action":"prepare_release","requestDigest":"` + strings.Repeat("f", 64) + `"}`
 	request := httptest.NewRequest(http.MethodPost, "/v1/release-preparation-jobs", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	return request
@@ -558,8 +558,8 @@ func TestWorkerJobRelayFailsClosed(t *testing.T) {
 	}
 
 	badPreparation := preparationJobRequest(t)
-	badPreparation.Body = io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-release-preparation-request-v1","action":"publish_release"}`))
-	badPreparation.ContentLength = int64(len(`{"schema":"bazaar-control-release-preparation-request-v1","action":"publish_release"}`))
+	badPreparation.Body = io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-release-preparation-request-v2","action":"publish_release"}`))
+	badPreparation.ContentLength = int64(len(`{"schema":"bazaar-control-release-preparation-request-v2","action":"publish_release"}`))
 	badPreparationRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(badPreparationRecorder, badPreparation)
 	if badPreparationRecorder.Code != http.StatusBadRequest || len(workers.preparationRequests) != 0 {

@@ -462,6 +462,7 @@ type preparationStartRequest struct {
 	RuntimeContractSHA256  string `json:"runtimeContractSha256,omitempty"`
 	PackageID              string `json:"packageId"`
 	AppHash                string `json:"appHash"`
+	ReviewedPriorAppHash   string `json:"reviewedPriorAppHash,omitempty"`
 	Action                 string `json:"action"`
 	RequestDigest          string `json:"requestDigest"`
 }
@@ -512,7 +513,7 @@ func validateJobStart(collection string, body []byte) error {
 		if err := decoder.Decode(&value); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
 			return errors.New("release preparation job JSON is malformed")
 		}
-		if value.Schema != "bazaar-control-release-preparation-request-v1" || !isLowerHex(value.DossierID, 24) || !validSegment(value.StoreID) || !validSegment(value.AppID) || !safeJobText(value.SourceRef) || !isLowerHex(value.SourceCommit, 40) || !safeJobText(value.Version) || !isLowerHex(value.BuildAttestationDigest, 64) || !isLowerHex(value.CandidateSHA256, 64) || value.CandidateBytes <= 0 || value.CandidateBytes > maxCandidateBytes || !isLowerHex(value.ArtifactSHA256, 64) || !isLowerHex(value.MetadataSHA256, 64) || (value.RuntimeContractSHA256 != "" && !isLowerHex(value.RuntimeContractSHA256, 64)) || !safeJobText(value.PackageID) || !isLowerHex(value.AppHash, 64) || value.Action != "prepare_release" || !isLowerHex(value.RequestDigest, 64) {
+		if value.Schema != "bazaar-control-release-preparation-request-v2" || !isLowerHex(value.DossierID, 24) || !validSegment(value.StoreID) || !validSegment(value.AppID) || !safeJobText(value.SourceRef) || !isLowerHex(value.SourceCommit, 40) || !safeJobText(value.Version) || !isLowerHex(value.BuildAttestationDigest, 64) || !isLowerHex(value.CandidateSHA256, 64) || value.CandidateBytes <= 0 || value.CandidateBytes > maxCandidateBytes || !isLowerHex(value.ArtifactSHA256, 64) || !isLowerHex(value.MetadataSHA256, 64) || (value.RuntimeContractSHA256 != "" && !isLowerHex(value.RuntimeContractSHA256, 64)) || !safeJobText(value.PackageID) || !isLowerHex(value.AppHash, 64) || (value.ReviewedPriorAppHash != "" && !isLowerHex(value.ReviewedPriorAppHash, 64)) || value.Action != "prepare_release" || !isLowerHex(value.RequestDigest, 64) {
 			return errors.New("release preparation job is not exact")
 		}
 		return nil

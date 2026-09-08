@@ -64,17 +64,6 @@ type Package struct {
 	RuntimeContract []byte
 }
 
-// ReleaseClaims is the bounded set of RELEASE.json facts a finalizer passes to
-// its constrained envelope signer after a separate observer verifies chain
-// state. It intentionally omits mutable catalog and publisher authority.
-type ReleaseClaims struct {
-	Schema          string `json:"$schema"`
-	AppHash         string `json:"appHash"`
-	ReleaseHash     string `json:"releaseHash"`
-	Version         string `json:"version"`
-	ReleaseEntryPDA string `json:"releaseEntryPda"`
-}
-
 // Validate checks the complete immutable preparation record before a
 // finalizer dereferences Candidate. It deliberately does not verify the
 // ReleaseEntry's live chain state; the finalizer's fixed governance observer
@@ -93,10 +82,8 @@ func (i Input) Validate(maxCandidateBytes int64) error {
 	if err != nil || len(release) == 0 || len(release) > 128<<10 || !json.Valid(release) {
 		return errors.New("finalization input release is invalid")
 	}
-	var claims ReleaseClaims
-	decoder := json.NewDecoder(bytes.NewReader(release))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&claims); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
+	claims, err := decodeRelease(release)
+	if err != nil {
 		return errors.New("finalization input release is malformed")
 	}
 	if claims.Schema != "melusina-release-v1" || claims.AppHash != i.AppHash || claims.ReleaseHash != i.ReleaseHash || claims.Version != i.Version {
@@ -104,6 +91,9 @@ func (i Input) Validate(maxCandidateBytes int64) error {
 	}
 	if _, err := primitives.PubkeyFromBase58(claims.ReleaseEntryPDA); err != nil {
 		return errors.New("finalization input release has an invalid release entry")
+	}
+	if claims.RuntimeContractSHA256 != i.RuntimeSHA || (i.RuntimeSHA != "" && claims.RuntimeContractSchema != "melusina-app-runtime-contract-v1") || (i.RuntimeSHA == "" && claims.RuntimeContractSchema != "") {
+		return errors.New("finalization input release does not bind its runtime contract")
 	}
 	return nil
 }
@@ -200,6 +190,14 @@ func (i Input) validatePackage(candidate Package) error {
 	}
 	if err := json.Unmarshal(candidate.Metadata, &metadataFacts); err != nil || metadataFacts.AppID != i.AppID || metadataFacts.PackageID != i.PackageID || metadataFacts.Version != i.Version {
 		return errors.New("package metadata does not bind the finalization input")
+	}
+	if len(candidate.RuntimeContract) != 0 {
+		var runtimeFacts struct {
+			Schema string `json:"schema"`
+		}
+		if err := json.Unmarshal(candidate.RuntimeContract, &runtimeFacts); err != nil || runtimeFacts.Schema != "melusina-app-runtime-contract-v1" {
+			return errors.New("package runtime contract has an unsupported schema")
+		}
 	}
 	return nil
 }

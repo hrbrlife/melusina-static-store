@@ -61,7 +61,7 @@ func finalizerFixture(t *testing.T, now time.Time) (*Engine, Request, Job, *test
 	t.Helper()
 	spk := []byte("reproducible package")
 	metadata := []byte(`{"appId":"paint","packageId":"package-1","version":"2.0.34"}`)
-	runtime := []byte(`{"schema":"runtime-contract"}`)
+	runtime := []byte(`{"schema":"melusina-app-runtime-contract-v1"}`)
 	candidateRaw, err := json.Marshal(finalizationinput.CandidateWire{
 		SPKB64: base64.StdEncoding.EncodeToString(spk), MetadataB64: base64.StdEncoding.EncodeToString(metadata), RuntimeContractB64: base64.StdEncoding.EncodeToString(runtime),
 	})
@@ -69,11 +69,22 @@ func finalizerFixture(t *testing.T, now time.Time) (*Engine, Request, Job, *test
 		t.Fatal(err)
 	}
 	appHash := testAppHash(spk, metadata)
-	release := []byte(`{"$schema":"melusina-release-v1","appHash":"` + appHash + `","releaseHash":"` + strings.Repeat("c", 64) + `","version":"2.0.34","releaseEntryPda":"11111111111111111111111111111111"}`)
+	release, err := json.Marshal(finalizationinput.ReleaseClaims{
+		Schema: "melusina-release-v1", AppHash: appHash, ReleaseHash: hash([]byte(appHash + "2.0.34" + "nonce")),
+		Version: "2.0.34", ReleaseEntryPDA: "11111111111111111111111111111111",
+		SignedAtUnix: 1780000000, ReleaseNonce: "nonce", AuthorSig: base64.StdEncoding.EncodeToString(make([]byte, 64)),
+		MasterNftMint:         "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+		LicenseSquadsVault:    "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+		QuorumPolicy:          finalizationinput.ReleaseQuorum{Threshold: 3, MemberCount: 4, MultisigPDA: "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"},
+		RuntimeContractSHA256: hash(runtime), RuntimeContractSchema: "melusina-app-runtime-contract-v1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	input := finalizationinput.Input{
 		Schema: finalizationinput.Schema, DossierID: strings.Repeat("a", 24), StoreID: "bazaar", AppID: "paint", Version: "2.0.34",
 		Candidate: artifactvault.Descriptor{SHA256: hash(candidateRaw), Bytes: int64(len(candidateRaw))}, ArtifactSHA: hash(spk), MetadataSHA: hash(metadata), RuntimeSHA: hash(runtime), PackageID: "package-1", AppHash: appHash,
-		ReleaseHash: strings.Repeat("c", 64), StageID: strings.Repeat("d", 64), ReleaseB64: base64.StdEncoding.EncodeToString(release),
+		ReleaseHash: hash([]byte(appHash + "2.0.34" + "nonce")), StageID: strings.Repeat("d", 64), ReleaseB64: base64.StdEncoding.EncodeToString(release),
 	}
 	inputRaw, err := json.Marshal(input)
 	if err != nil {
@@ -165,6 +176,56 @@ func TestFinalizeBindsVaultProposalSignerAndSidecarBody(t *testing.T) {
 		if _, found := wire[key]; !found {
 			t.Fatalf("finalizer body lacks %q: %s", key, body)
 		}
+	}
+	var releaseB64 string
+	if err := json.Unmarshal(wire["release_b64"], &releaseB64); err != nil || releaseB64 != signer.want.ReleaseB64 {
+		t.Fatal("finalizer did not preserve the complete release bytes signed by custody")
+	}
+}
+
+func TestFinalizeRefusesFullReleaseDriftBeforeObserverOrSigner(t *testing.T) {
+	now := time.Date(2026, 8, 24, 10, 0, 0, 0, time.UTC)
+	for name, mutate := range map[string]func(map[string]any){
+		"runtime digest": func(r map[string]any) { r["runtimeContractSha256"] = strings.Repeat("e", 64) },
+		"foreign vault":  func(r map[string]any) { r["licenseSquadsVault"] = r["masterNftMint"] },
+		"unknown claim":  func(r map[string]any) { r["additionalAuthority"] = true },
+		"unknown schema": func(r map[string]any) { r["$schema"] = "melusina-release-v2" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			engine, request, job, observer, signer, _ := finalizerFixture(t, now)
+			vault := engine.vault.(testVault)
+			var input finalizationinput.Input
+			if err := json.Unmarshal(vault.values[request.FinalizationInputSHA256], &input); err != nil {
+				t.Fatal(err)
+			}
+			releaseRaw, err := base64.StdEncoding.DecodeString(input.ReleaseB64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var release map[string]any
+			if err := json.Unmarshal(releaseRaw, &release); err != nil {
+				t.Fatal(err)
+			}
+			mutate(release)
+			releaseRaw, err = json.Marshal(release)
+			if err != nil {
+				t.Fatal(err)
+			}
+			input.ReleaseB64 = base64.StdEncoding.EncodeToString(releaseRaw)
+			inputRaw, err := json.Marshal(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Rebind the vault descriptor and job digest too: the rejection must
+			// come from the semantic release join, not stale transport hashes.
+			request.FinalizationInputSHA256, request.FinalizationInputBytes = hash(inputRaw), int64(len(inputRaw))
+			request.RequestDigest = request.Digest()
+			job.RequestDigest = request.RequestDigest
+			vault.values[request.FinalizationInputSHA256] = inputRaw
+			if _, _, err := engine.Finalize(context.Background(), job, request); err == nil || observer.calls != 0 || signer.calls != 0 {
+				t.Fatalf("invalid release reached observer/custody: error=%v calls=%d/%d", err, observer.calls, signer.calls)
+			}
+		})
 	}
 }
 

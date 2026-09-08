@@ -30,6 +30,16 @@ func NewClient(socketPath string) (*Client, error) {
 	return &Client{socketPath: socketPath, dial: (&net.Dialer{}).DialContext}, nil
 }
 
+// CheckSocket lets supervised finalizer startup verify the same fixed local
+// custody identity which Sign rechecks on every operation. It performs no I/O
+// on the socket and requests no signature.
+func CheckSocket(path string) error {
+	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+		return errors.New("publisher-envelope client requires a canonical absolute socket path")
+	}
+	return requireSignerSocket(path)
+}
+
 // Sign sends only the fixed publisher-envelope request to the configured,
 // owner-only Unix socket. It does not submit the envelope anywhere; the
 // finalizer still validates all returned facts before it produces a result.

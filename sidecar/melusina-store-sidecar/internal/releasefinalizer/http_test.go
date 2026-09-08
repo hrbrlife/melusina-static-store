@@ -72,6 +72,28 @@ func TestHTTPHandlerPinsStoreLinkAndReturnsExactFinalizationResult(t *testing.T)
 	}
 }
 
+func TestHTTPHandlerRefusesAliasedRoutesAndDuplicateClaims(t *testing.T) {
+	handler, request, observer, signer, leaf := finalizerHTTPFixture(t, time.Now().UTC())
+	raw, _ := json.Marshal(request)
+	for _, path := range []string{jobCollectionPath + "?ignored=yes", "/v1/%72elease-finalization-jobs"} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, finalizerMTLSRequest(http.MethodPost, path, raw, leaf))
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("aliased route accepted: %d", response.Code)
+		}
+	}
+	for _, bad := range [][]byte{append([]byte(`{"appId":"other",`), raw[1:]...), bytes.Replace(raw, []byte(`"appId"`), []byte(`"AppID"`), 1)} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, finalizerMTLSRequest(http.MethodPost, jobCollectionPath, bad, leaf))
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("ambiguous request accepted: %d", response.Code)
+		}
+	}
+	if observer.calls != 0 || signer.calls != 0 {
+		t.Fatal("invalid route/claims reached governance or custody")
+	}
+}
+
 func TestHTTPHandlerRefusesUnpinnedAndPendingClients(t *testing.T) {
 	now := time.Date(2026, 8, 24, 10, 0, 0, 0, time.UTC)
 	handler, request, observer, signer, leaf := finalizerHTTPFixture(t, now)

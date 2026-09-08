@@ -299,7 +299,17 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 	if err != nil {
 		return Result{}, nil, fmt.Errorf("request publisher envelope: %w", err)
 	}
-	envelopeRaw, err := validateEnvelopeResponse(signed, request, input, release, observation, now)
+	// The separate custody process timestamps its envelope after the request
+	// reaches it. Validate its unchanged TTL against the current clock, rather
+	// than rejecting every real IPC round trip against the earlier start time.
+	if err := ctx.Err(); err != nil {
+		return Result{}, nil, err
+	}
+	finalizedAt := e.now().UTC()
+	if finalizedAt.Before(now) {
+		return Result{}, nil, errors.New("finalizer clock moved backwards during custody")
+	}
+	envelopeRaw, err := validateEnvelopeResponse(signed, request, input, release, observation, finalizedAt)
 	if err != nil {
 		return Result{}, nil, err
 	}
@@ -311,7 +321,7 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 		Schema: ResultSchema, WorkerID: e.workerID, Job: job, RequestDigest: request.RequestDigest,
 		ReleaseAuthorizationDigest: request.ReleaseAuthorizationDigest, ProposalReference: request.ProposalReference, ProposalDigest: request.ProposalDigest,
 		ProposalExecutedAt: observation.ExecutedAt.UTC(), FinalCandidateSHA256: hash(body), FinalCandidateBytes: int64(len(body)),
-		PublisherIntentHash: signed.PublisherIntentHash, FinalizedAt: now, ExpiresAt: signed.ExpiresAt.UTC(),
+		PublisherIntentHash: signed.PublisherIntentHash, FinalizedAt: finalizedAt, ExpiresAt: signed.ExpiresAt.UTC(),
 	}
 	result.Signature = base64.RawURLEncoding.EncodeToString(ed25519.Sign(e.resultKey, []byte(resultPrefix+result.Digest())))
 	return result, body, nil

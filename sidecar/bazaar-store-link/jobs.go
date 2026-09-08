@@ -307,7 +307,23 @@ func (h *Handler) handleJobStart(w http.ResponseWriter, r *http.Request, collect
 		http.Error(w, "Verification job does not bind one release.", http.StatusBadRequest)
 		return
 	}
-	h.forwardJobResponse(w, r, collection, WorkerRequest{Method: http.MethodPost, Path: "/v1/" + collection, Body: io.NopCloser(bytes.NewReader(body))}, true, false)
+	var scope struct {
+		StoreID string `json:"storeId"`
+	}
+	if json.Unmarshal(body, &scope) != nil || scope.StoreID != h.storeID {
+		http.Error(w, "Verification job belongs to another Store.", http.StatusForbidden)
+		return
+	}
+	path := "/v1/" + collection
+	if collection == buildJobCollection {
+		body, err = h.buildSubmission(r.Context(), body)
+		if err != nil {
+			http.Error(w, "The selected Store release could not be read for source review.", http.StatusServiceUnavailable)
+			return
+		}
+		path = buildSubmissionPath
+	}
+	h.forwardJobResponse(w, r, collection, WorkerRequest{Method: http.MethodPost, Path: path, Body: io.NopCloser(bytes.NewReader(body))}, true, false)
 }
 
 // handleTenantProofResume preserves the human's explicit recovery boundary.
@@ -572,6 +588,9 @@ func tenantProofResumeRoute(path string) (string, bool) {
 
 func canonicalJobPath(method, path, collection string) bool {
 	if method == http.MethodPost {
+		if collection == buildJobCollection {
+			return path == buildSubmissionPath
+		}
 		if path == "/v1/"+collection {
 			return true
 		}

@@ -437,7 +437,8 @@ func TestDurableWorkerJobsHaveOnlyFixedRoutesAndBodies(t *testing.T) {
 		finalizationResponse: WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-release-finalization-job-v1"}`))},
 		proofResponse:        WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-tenant-proof-job-v1"}`))},
 	}
-	handler := newJobTestHandler(t, &capturedForwarder{}, workers)
+	selected, _ := selectedSnapshotFixture(t)
+	handler := newJobTestHandler(t, &capturedForwarder{response: ForwardResponse{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: selected}}, workers)
 
 	buildRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(buildRecorder, buildJobRequest(t))
@@ -445,7 +446,7 @@ func TestDurableWorkerJobsHaveOnlyFixedRoutesAndBodies(t *testing.T) {
 		t.Fatalf("build status/requests = %d/%d", buildRecorder.Code, len(workers.buildRequests))
 	}
 	build := workers.buildRequests[0]
-	if build.Method != http.MethodPost || build.Path != "/v1/build-jobs" {
+	if build.Method != http.MethodPost || build.Path != buildSubmissionPath {
 		t.Fatalf("build worker request = %s %s", build.Method, build.Path)
 	}
 

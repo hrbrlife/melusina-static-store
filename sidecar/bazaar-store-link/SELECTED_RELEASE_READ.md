@@ -26,11 +26,21 @@ registration time/PDA, blacklist and StoreReleaseListing. No cached verdict or
 empty-Store-authority compatibility path is used. Missing pointers and revoked
 or unavailable authority fail closed; the read creates no catalog state.
 
+For a browser `POST /v1/build-jobs`, the connector first validates the unchanged
+64 KiB source-intent schema and exact configured Store ID. It obtains the
+selected readout itself, then constructs the private
+`bazaar-control-trusted-build-submission-v1` envelope: original
+`sourceIntentBytes` plus the `selectedRelease` object. Only the fixed private
+worker `POST /v1/build-submissions` accepts this envelope. The browser cannot
+call that route or provide evidence, a baseline or an endpoint. Existing exact
+job polling remains `GET /v1/build-jobs/{id}`. The larger internal body bound is
+the selected-read response plus one bounded encoded source intent and framing;
+public artifact byte fields acquire no additional base64 expansion.
+
 This response is a **locator and public evidence transport**, not a source
 attestation. It contains no source commit, authenticated-baseline flag, new
 signer or publication authorization. The production build worker still needs
-to receive these server-fetched bytes separately from the browser's unchanged
-source-intent request, independently verify the original per-app finalized
+to independently verify the original per-app finalized
 chain/Core and SPK signatures, and reproduce the selected package's ELF and
 package definition under its pinned keyless historical build environment.
 An unsigned local commit crosswalk can locate a candidate source only. A

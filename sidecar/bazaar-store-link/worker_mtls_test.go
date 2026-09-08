@@ -112,7 +112,7 @@ func TestWorkerForwarderUsesMutualTLSAndPinsEachWorkerLeaf(t *testing.T) {
 
 	requests := 0
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/v1/build-jobs" {
+		if request.URL.Path != buildSubmissionPath {
 			t.Fatalf("worker route = %q", request.URL.Path)
 		}
 		requests++
@@ -166,7 +166,7 @@ func TestWorkerForwarderUsesMutualTLSAndPinsEachWorkerLeaf(t *testing.T) {
 	}
 	response, err := forwarder.ForwardBuild(context.Background(), WorkerRequest{
 		Method: http.MethodPost,
-		Path:   "/v1/build-jobs",
+		Path:   buildSubmissionPath,
 		Body:   io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-trusted-build-job-v1"}`)),
 	})
 	if err != nil {
@@ -183,7 +183,7 @@ func TestWorkerForwarderUsesMutualTLSAndPinsEachWorkerLeaf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := forwarder.ForwardBuild(context.Background(), WorkerRequest{Method: http.MethodPost, Path: "/v1/build-jobs", Body: io.NopCloser(strings.NewReader("{}"))}); err == nil {
+	if _, err := forwarder.ForwardBuild(context.Background(), WorkerRequest{Method: http.MethodPost, Path: buildSubmissionPath, Body: io.NopCloser(strings.NewReader("{}"))}); err == nil {
 		t.Fatal("Store Link accepted a trusted-CA worker with the wrong leaf pin")
 	}
 	if requests != 1 {
@@ -196,7 +196,7 @@ func TestWorkerForwarderUsesMutualTLSAndPinsEachWorkerLeaf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := forwarder.ForwardBuild(context.Background(), WorkerRequest{Method: http.MethodPost, Path: "/v1/build-jobs", Body: io.NopCloser(strings.NewReader("{}"))}); err == nil {
+	if _, err := forwarder.ForwardBuild(context.Background(), WorkerRequest{Method: http.MethodPost, Path: buildSubmissionPath, Body: io.NopCloser(strings.NewReader("{}"))}); err == nil {
 		t.Fatal("worker accepted a different Store Link leaf from the same CA")
 	}
 	if requests != 1 {

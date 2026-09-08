@@ -12,13 +12,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/hrbrlife/melusina-store-sidecar/catalogselection"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
@@ -217,82 +216,8 @@ func readSelectedRelease(snapshot AppCatalogSnapshot, cfg Config, appID string, 
 // give a served descriptor two meanings. Public metadata keeps its rich schema;
 // typed pointer and RELEASE objects additionally require exact known names.
 func selectedExactJSON(raw []byte, target any) error {
-	if err := selectedJSONFields(raw, reflect.TypeOf(target).Elem(), 0); err != nil {
-		return err
-	}
-	return decodeStrictJSON(raw, target)
+	return catalogselection.DecodeExact(raw, target)
 }
-
 func selectedJSONFields(raw []byte, kind reflect.Type, depth int) error {
-	if depth > 32 {
-		return errors.New("selected artifact JSON is too deep")
-	}
-	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) == 0 {
-		return errors.New("selected artifact JSON is empty")
-	}
-	if kind != nil && kind.Kind() == reflect.Pointer {
-		kind = kind.Elem()
-	}
-	if kind != nil && bytes.Equal(trimmed, []byte("null")) {
-		return errors.New("selected typed artifact field is null")
-	}
-	if trimmed[0] == '[' {
-		var values []json.RawMessage
-		if err := json.Unmarshal(raw, &values); err != nil {
-			return err
-		}
-		for _, value := range values {
-			if err := selectedJSONFields(value, nil, depth+1); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	if trimmed[0] != '{' {
-		if !json.Valid(raw) {
-			return errors.New("selected artifact JSON is malformed")
-		}
-		return nil
-	}
-	fields := make(map[string]reflect.Type)
-	if kind != nil && kind.Kind() == reflect.Struct {
-		for i := 0; i < kind.NumField(); i++ {
-			f := kind.Field(i)
-			fields[strings.Split(f.Tag.Get("json"), ",")[0]] = f.Type
-		}
-	}
-	d := json.NewDecoder(bytes.NewReader(raw))
-	_, _ = d.Token()
-	seen := make(map[string]bool)
-	for d.More() {
-		token, err := d.Token()
-		key, ok := token.(string)
-		if err != nil || !ok || seen[key] {
-			return errors.New("selected artifact has duplicate or malformed fields")
-		}
-		seen[key] = true
-		// The index and rich metadata intentionally allow display fields, but
-		// their identity members must still have one exact spelling.
-		for _, identity := range []string{"apps", "appId", "packageId"} {
-			if key != identity && strings.EqualFold(key, identity) {
-				return errors.New("selected artifact has an aliased identity field")
-			}
-		}
-		fieldType, known := fields[key]
-		if len(fields) > 0 && !known {
-			return fmt.Errorf("selected artifact has unknown or aliased field %q", key)
-		}
-		var value json.RawMessage
-		if err := d.Decode(&value); err != nil {
-			return err
-		}
-		if err := selectedJSONFields(value, fieldType, depth+1); err != nil {
-			return err
-		}
-	}
-	if token, err := d.Token(); err != nil || token != json.Delim('}') || d.Decode(&struct{}{}) != io.EOF {
-		return errors.New("selected artifact has trailing JSON")
-	}
-	return nil
+	return catalogselection.ValidateJSON(raw, kind, depth)
 }

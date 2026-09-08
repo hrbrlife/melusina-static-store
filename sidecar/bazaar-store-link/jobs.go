@@ -35,8 +35,10 @@ const (
 	tenantProofResumeSchema                = "bazaar-control-tenant-proof-resume-request-v1"
 	maxJobRequestBytes               int64 = 64 << 10
 	// A complete build result includes the candidate JSON body encoded as
-	// base64url. The Pearl enforces the same candidate cap after decoding.
-	maxBuildJobResultBytes int64 = (maxCandidateBytes*4)/3 + (128 << 10)
+	// base64url plus the complete 1 MiB source review, whose JSON encoding may
+	// expand sixfold. Matches Bazaar trustedbuildworker.MaxBuildResultBytes;
+	// the decoded candidate itself remains capped at 64 MiB.
+	maxBuildJobResultBytes int64 = (maxCandidateBytes*4)/3 + (8 << 20)
 	// A completed preparation result carries the full, signed final sidecar
 	// request. It is bounded the same way as a build candidate, then verified
 	// and stored privately by the Pearl; the relay never interprets it.
@@ -362,6 +364,12 @@ func (h *Handler) forwardJobResponse(w http.ResponseWriter, r *http.Request, col
 		return
 	}
 	defer response.Body.Close()
+	limit := jobResponseLimit(collection, start)
+	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
+	if err != nil || int64(len(body)) > limit {
+		http.Error(w, "Verification worker returned an incomplete or oversized response.", http.StatusBadGateway)
+		return
+	}
 	if isJSONContentType(response.Header.Get("Content-Type")) {
 		w.Header().Set("Content-Type", "application/json")
 	} else {
@@ -369,9 +377,9 @@ func (h *Handler) forwardJobResponse(w http.ResponseWriter, r *http.Request, col
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(response.StatusCode)
-	// This source cap mirrors the Pearl's own input cap. A malformed/oversize
-	// result is not a successful job because the Pearl cannot decode/verify it.
-	_, _ = io.Copy(w, io.LimitReader(response.Body, jobResponseLimit(collection, start)+1))
+	// Refuse a failed or oversized stream before sending a successful status;
+	// never turn a prefix of a signed result into a successful relay response.
+	_, _ = w.Write(body)
 }
 
 func allowedJobStatus(status int, start, resume bool) bool {

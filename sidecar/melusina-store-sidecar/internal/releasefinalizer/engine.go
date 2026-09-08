@@ -137,6 +137,8 @@ type VaultReader interface {
 type ProposalExpectation struct {
 	Reference string
 	Digest    string
+	AppID     string
+	Version   string
 	AppHash   string
 	Release   string
 	StageID   string
@@ -153,15 +155,22 @@ const (
 // It must bind the executed immutable action and live ReleaseEntry evidence;
 // a generic “transaction succeeded” boolean is deliberately insufficient.
 type ProposalObservation struct {
-	State           ProposalState
-	Reference       string
-	Digest          string
-	AppHash         string
-	Release         string
-	StageID         string
-	ExecutedAt      time.Time
-	ReleaseEntryPDA string
-	VerifiedSlot    uint64
+	State                 ProposalState
+	Reference             string
+	Digest                string
+	AppHash               string
+	Release               string
+	StageID               string
+	ExecutedAt            time.Time
+	ReleaseEntryPDA       string
+	VerifiedSlot          uint64
+	RegisteredAt          time.Time
+	AuthorSignatureBase64 string
+	MasterNftMint         string
+	PublisherSquadsVault  string
+	SquadsMultisig        string
+	Threshold             int
+	MemberCount           int
 }
 
 type ProposalObserver interface {
@@ -243,7 +252,7 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 	if err != nil {
 		return Result{}, nil, err
 	}
-	observation, err := e.observer.ObserveExecution(ctx, ProposalExpectation{Reference: request.ProposalReference, Digest: request.ProposalDigest, AppHash: input.AppHash, Release: request.ReleaseHash, StageID: request.StageID})
+	observation, err := e.observer.ObserveExecution(ctx, ProposalExpectation{Reference: request.ProposalReference, Digest: request.ProposalDigest, AppID: input.AppID, Version: input.Version, AppHash: input.AppHash, Release: request.ReleaseHash, StageID: request.StageID})
 	if err != nil {
 		return Result{}, nil, fmt.Errorf("observe approved proposal: %w", err)
 	}
@@ -259,6 +268,12 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 	}
 	if claims.ReleaseEntryPDA != observation.ReleaseEntryPDA {
 		return Result{}, nil, errors.New("governance observation release entry differs from RELEASE.json")
+	}
+	if observation.RegisteredAt.IsZero() || claims.SignedAtUnix != observation.RegisteredAt.Unix() || claims.AuthorSig != observation.AuthorSignatureBase64 {
+		return Result{}, nil, errors.New("final release does not bind the observed registration time and author signature")
+	}
+	if claims.MasterNftMint != observation.MasterNftMint || claims.LicenseSquadsVault != observation.PublisherSquadsVault || claims.QuorumPolicy.MultisigPDA != observation.SquadsMultisig || claims.QuorumPolicy.Threshold != observation.Threshold || claims.QuorumPolicy.MemberCount != observation.MemberCount {
+		return Result{}, nil, errors.New("final release authority differs from the independently observed Core authority")
 	}
 	signed, err := e.signer.Sign(ctx, publisherenvelope.Request{
 		Schema: publisherenvelope.RequestSchema, DossierID: request.DossierID, StoreID: request.StoreID, AppID: request.AppID, Version: input.Version,

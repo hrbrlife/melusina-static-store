@@ -1,0 +1,53 @@
+{
+  "sdkVersion": "2.1.4",
+  "web3Version": "1.98.4",
+  "now": 1788880000,
+  "pins": {
+    "registry": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+    "master": "7LSfLv2S6K7zMPrgmJDkZoJNhWvWRzpU7qt9uMR5yz8G",
+    "multisig": "3rdbanHdvkdfcePukF8stkQaj9msM7ogt3AqpntUT48k",
+    "vault": "5j2TPvpZtCGYHPrYWQiG5FVGiWWMN6SPE5uFa7G6GL2k",
+    "publisher": "2btLJAAb1S3x6hZYdVyAePjqtQYi2ZBSRGy4569RZu8h",
+    "members": [
+      "FnDw11RnMuVPfRYeo2h9aGj8siN4iWJTz5UwdLtKcfA4",
+      "3F5qRPtKg8GhGNnbd3qCj6nVJxWsGxq7pvH84okYLAqf",
+      "3MZskhKUdNRkeMQ6zyNVSJcCx38o79ohwmSgZ2d5a4cu",
+      "FVdnakemjhcemfWUgNR2AERbk5Pog7zJ1UF2LjbocBUj"
+    ]
+  },
+  "expectation": {
+    "Reference": "62381Cnn89cZozC2eCgpWB9YNEpzjrqmcHcpqrazbpaE",
+    "Digest": "338c0505fcc3603d2bc60a8e05f5b5364b82f4197ccaef36e0854560a24d8f02",
+    "AppID": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
+    "Version": "0.1.32",
+    "AppHash": "c87e071149fef7d67cbaa4c4a4100b9d48856d293f6bc233ec2b0d8b6ba40319",
+    "Release": "95ffb2dee78d03218e8728074f38ae06869711d4d8fd19a431b1d4a0b8bba83b",
+    "StageID": "d404e6fcc4fa02cb3ded56e528a27cbac49fabb88dc158f371254949c4dd0128"
+  },
+  "transaction": {
+    "address": "62381Cnn89cZozC2eCgpWB9YNEpzjrqmcHcpqrazbpaE",
+    "owner": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+    "dataBase64": "qPqiZFEOos8qbjaHrVPXAOI3CEP5zYoAVcDHmRlPJ6QgoIGly2nxjduZX+JRadFByrm7upK6oB+fLh7OffTLKsBRkPN/zB+dBwAAAAAAAAD/APwAAAAAAQEBCAAAAEYyyXZ1y3UUxEE2c2/NeEzmjG9nHKV5Sq0efZWqHvYZL3I8hlkb5bVLdsPK2ar4j12Gd9Y0n+PTr9kUGNAO8eVhzaREC0eEfoiLqlJcPP7DRft1TNdeBcqi6/8iBcVTPF4hLAmA5LOfwJchE0qgIQk3Tt/SYMDT0Dy1AcjWVFepjCZ+0fU/i8tNgjmd2W30005JpmBWJ+VBKvoi2qtBuN0Gp9UXGHvRZjXa1ARV/cLAwSTGjyFWdaXbustfCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAgcAAAABAAMEBQYHEgEAAD4sOFJq8wK9yH4HEUn+99Z8uqTEpBALnUiFbSk/a8Iz7CsNi2ukAxm0aD1idnUKxfYIAT04o3R1ENrpaLaBgguB7WeIDK7Ad5X/st7njQMhjocoB084rgaGlxHU2P0ZpDGx1KC4u6g7BgAAADAuMS4zMkYyyXZ1y3UUxEE2c2/NeEzmjG9nHKV5Sq0efZWqHvYZF8t5+ytBIPKx7GXkGY1uCLKOgT/rAeSkAIObheGAgM6N7Nf9ikGNxf5pEG/LDJj5XMQ6AFnUTk3iEGZYD3lGVC5P/bd+TIhJZYoxfLLNtAdIyXXWL2FLZ3YEyZef/mIAc1PGrtuSGvcgYK7w0/sCAdOeRPtYhcOXvGy8o3JNiMoAAAAA"
+  },
+  "multisig": {
+    "address": "3rdbanHdvkdfcePukF8stkQaj9msM7ogt3AqpntUT48k",
+    "owner": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+    "dataBase64": "4HR5ukShT+xIB1pZfnIaFW4uB5neXMDFMk3G5+rxzdRiUIaOxTIV3QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAABwAAAAAAAAAAAAAAAAAAAAD8BAAAANuZX+JRadFByrm7upK6oB+fLh7OffTLKsBRkPN/zB+dByFS+NGbeR0kRTJC4V8uq2y3z/p7al7TAJeWDgaYgdsSByL8KXeS8Lb/wL/P237bDAqhTgJaNl7A40Lobjgpy3S2B9dZeTu8E6KBmoJ8dq22+6ikmu4Af0ny0JktmbglrSxIBw=="
+  },
+  "proposal": {
+    "address": "1vuPCH3Nsb7LUzuL9v3f2RgLaRYJhNobpdV28xJzYTo",
+    "owner": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+    "dataBase64": "Gl69u3SINSEqbjaHrVPXAOI3CEP5zYoAVcDHmRlPJ6QgoIGly2nxjQcAAAAAAAAABYAkoGoAAAAA/wMAAADbmV/iUWnRQcq5u7qSuqAfny4ezn30yyrAUZDzf8wfnSFS+NGbeR0kRTJC4V8uq2y3z/p7al7TAJeWDgaYgdsSIvwpd5Lwtv/Av8/bftsMCqFOAlo2XsDjQuhuOCnLdLYAAAAAAAAAAA=="
+  },
+  "pendingProposal": {
+    "address": "1vuPCH3Nsb7LUzuL9v3f2RgLaRYJhNobpdV28xJzYTo",
+    "owner": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+    "dataBase64": "Gl69u3SINSEqbjaHrVPXAOI3CEP5zYoAVcDHmRlPJ6QgoIGly2nxjQcAAAAAAAAAAYAkoGoAAAAA/wAAAAAAAAAAAAAAAA=="
+  },
+  "release": {
+    "address": "4CDCCUuuqyVUakz1HnQn2AEw2oZS4wx96V96JrqAFedA",
+    "owner": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+    "dataBase64": "+HpJdu5ongBeISwJgOSzn8CXIRNKoCEJN07f0mDA09A8tQHI1lRXqch+BxFJ/vfWfLqkxKQQC51IhW0pP2vCM+wrDYtrpAMZtGg9YnZ1CsX2CAE9OKN0dRDa6Wi2gYILge1niAyuwHeV/7Le540DIY6HKAdPOK4GhpcR1Nj9GaQxsdSguLuoOwYAAAAwLjEuMzJGMsl2dct1FMRBNnNvzXhM5oxvZxyleUqtHn2Vqh72GRfLefsrQSDysexl5BmNbgiyjoE/6wHkpACDm4XhgIDOjezX/YpBjcX+aRBvywyY+VzEOgBZ1E5N4hBmWA95RlQuT/23fkyISWWKMXyyzbQHSMl11i9hS2d2BMmXn/5iAHNTxq7bkhr3IGCu8NP7AgHTnkT7WIXDl7xsvKNyTYjKRjLJdnXLdRTEQTZzb814TOaMb2ccpXlKrR59laoe9hmAJKBqAAAAAAAA/g=="
+  },
+  "authorSignatureBase64": "jezX/YpBjcX+aRBvywyY+VzEOgBZ1E5N4hBmWA95RlQuT/23fkyISWWKMXyyzbQHSMl11i9hS2d2BMmXn/5iAA=="
+}

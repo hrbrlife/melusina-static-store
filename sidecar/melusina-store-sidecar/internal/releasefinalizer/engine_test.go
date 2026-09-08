@@ -98,9 +98,10 @@ func finalizerFixture(t *testing.T, now time.Time) (*Engine, Request, Job, *test
 		StorePolicy: "policy-1", PolicyEpoch: 2, PublisherGrant: "grant-1", GrantEpoch: 3, Action: "finalize_release",
 	}
 	request.RequestDigest = request.Digest()
-	observation := &testObserver{want: ProposalExpectation{Reference: request.ProposalReference, Digest: request.ProposalDigest, AppHash: input.AppHash, Release: request.ReleaseHash, StageID: request.StageID}, observation: ProposalObservation{
+	observation := &testObserver{want: ProposalExpectation{Reference: request.ProposalReference, Digest: request.ProposalDigest, AppID: input.AppID, Version: input.Version, AppHash: input.AppHash, Release: request.ReleaseHash, StageID: request.StageID}, observation: ProposalObservation{
 		State: ProposalExecuted, Reference: request.ProposalReference, Digest: request.ProposalDigest, AppHash: input.AppHash, Release: request.ReleaseHash, StageID: request.StageID,
-		ExecutedAt: now, ReleaseEntryPDA: "11111111111111111111111111111111", VerifiedSlot: 42,
+		ExecutedAt: now, RegisteredAt: time.Unix(1780000000, 0).UTC(), AuthorSignatureBase64: base64.StdEncoding.EncodeToString(make([]byte, 64)), ReleaseEntryPDA: "11111111111111111111111111111111", VerifiedSlot: 42,
+		MasterNftMint: coreReleaseMaster, PublisherSquadsVault: coreReleaseVault, SquadsMultisig: coreReleaseMultisig, Threshold: 3, MemberCount: 4,
 	}}
 	signedEnvelope := envelope.Signed{Payload: envelope.Payload{
 		Protocol: envelope.ProtocolV2, Kind: envelope.KindPublishRequest, Method: "POST", Target: "/control/v1/releases/" + request.DossierID + "/publish", RequestHashHex: input.ArtifactSHA, BodyHashHex: hash(release),
@@ -233,6 +234,14 @@ func TestFinalizeRefusesObserverAndEnvelopeDrift(t *testing.T) {
 	now := time.Date(2026, 8, 24, 10, 0, 0, 0, time.UTC)
 	for name, mutate := range map[string]func(*testObserver, *testSigner){
 		"observer release": func(observer *testObserver, _ *testSigner) { observer.observation.Release = strings.Repeat("e", 64) },
+		"observer registration": func(observer *testObserver, _ *testSigner) {
+			observer.observation.RegisteredAt = observer.observation.RegisteredAt.Add(time.Second)
+		},
+		"observer author": func(observer *testObserver, _ *testSigner) { observer.observation.AuthorSignatureBase64 = "foreign" },
+		"observer master": func(observer *testObserver, _ *testSigner) {
+			observer.observation.MasterNftMint = observer.observation.PublisherSquadsVault
+		},
+		"observer quorum": func(observer *testObserver, _ *testSigner) { observer.observation.Threshold = 2 },
 		"envelope target": func(_ *testObserver, signer *testSigner) {
 			var signed envelope.Signed
 			raw, _ := base64.RawURLEncoding.DecodeString(signer.response.EnvelopeB64)

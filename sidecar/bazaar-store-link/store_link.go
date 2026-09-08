@@ -242,11 +242,15 @@ func (f *SidecarForwarder) Forward(ctx context.Context, forwarded ForwardRequest
 		return ForwardResponse{}, fmt.Errorf("call private Store sidecar: %w", err)
 	}
 	defer response.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
+	limit := maxResponseBytes
+	if _, ok := selectedReleaseAppID(forwarded.Path, privateSelectedReleasePrefix); ok && forwarded.Method == http.MethodGet && response.StatusCode == http.StatusOK {
+		limit = maxSelectedReleaseResponseBytes
+	}
+	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	if err != nil {
 		return ForwardResponse{}, fmt.Errorf("read private Store sidecar response: %w", err)
 	}
-	if int64(len(body)) > maxResponseBytes {
+	if int64(len(body)) > limit {
 		return ForwardResponse{}, errors.New("private Store sidecar response exceeded its bound")
 	}
 	return ForwardResponse{StatusCode: response.StatusCode, Header: response.Header.Clone(), Body: body}, nil
@@ -292,6 +296,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleStoreStatus(w, r)
 	case path == "/v1/store-policy":
 		h.handleStorePolicy(w, r)
+	case strings.HasPrefix(path, selectedReleasePrefix):
+		h.handleSelectedRelease(w, r)
 	case path == "/v1/"+buildJobCollection || strings.HasPrefix(path, "/v1/"+buildJobCollection+"/"):
 		h.handleJob(w, r, buildJobCollection)
 	case path == "/v1/"+releasePreparationJobCollection || strings.HasPrefix(path, "/v1/"+releasePreparationJobCollection+"/"):
@@ -567,6 +573,11 @@ func authorityRoute(path string) (string, string, string, bool) {
 }
 
 func canonicalSidecarPath(method, path string) bool {
+	if method == http.MethodGet {
+		if _, ok := selectedReleaseAppID(path, privateSelectedReleasePrefix); ok {
+			return true
+		}
+	}
 	if method == http.MethodGet && path == "/control/v1/status" {
 		return true
 	}

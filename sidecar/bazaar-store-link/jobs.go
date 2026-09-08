@@ -38,7 +38,7 @@ const (
 	// base64url plus the complete 1 MiB source review, whose JSON encoding may
 	// expand sixfold. Matches Bazaar trustedbuildworker.MaxBuildResultBytes;
 	// the decoded candidate itself remains capped at 64 MiB.
-	maxBuildJobResultBytes int64 = (maxCandidateBytes*4)/3 + (8 << 20)
+	maxBuildJobResultBytes int64 = ((64<<20)*4)/3 + (8 << 20)
 	// A completed preparation result carries the full, signed final sidecar
 	// request. It is bounded the same way as a build candidate, then verified
 	// and stored privately by the Pearl; the relay never interprets it.

@@ -39,6 +39,16 @@ type ReleaseQuorum struct {
 	MultisigPDA string `json:"multisigPda"`
 }
 
+// DecodeReleaseDescriptor checks the complete original public descriptor.
+// Claims remain claims until independently compared with finalized Core and
+// ReleaseEntry evidence; this function neither signs nor asserts execution.
+func DecodeReleaseDescriptor(raw []byte) (ReleaseClaims, error) {
+	if len(raw) == 0 || len(raw) > 1<<20 {
+		return ReleaseClaims{}, errors.New("release descriptor exceeds its public evidence bound")
+	}
+	return decodeRelease(raw)
+}
+
 func decodeRelease(raw []byte) (ReleaseClaims, error) {
 	var claims ReleaseClaims
 	fields, err := exactReleaseObject(raw, map[string]bool{

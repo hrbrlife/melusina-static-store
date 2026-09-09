@@ -77,6 +77,41 @@ func git(ctx context.Context, dir string, args ...string) (string, error) {
 	}
 	return string(raw), nil
 }
+
+func authenticatedSourceRead(ctx context.Context, home string) (*exec.Cmd, error) {
+	if !filepath.IsAbs(home) || filepath.Clean(home) != home || strings.TrimSpace(home) != home {
+		return nil, errors.New("original source credentials require a canonical existing user home")
+	}
+	// Only this fixed remote read uses the operator's existing Git credential
+	// configuration. It runs outside a repository and takes no alternate remote,
+	// branch, credential, hook, protocol, refspec or command from the request.
+	// Local object/remote metadata reads above retain their sterile configuration.
+	cmd := exec.CommandContext(ctx, "/usr/bin/git", "--no-replace-objects", "ls-remote", "--heads", firstRepository+".git")
+	cmd.Dir = "/"
+	cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + home, "GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0"}
+	return cmd, nil
+}
+
+func advertisedSource(ctx context.Context) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	cmd, err := authenticatedSourceRead(ctx, home)
+	if err != nil {
+		return "", err
+	}
+	raw, err := cmd.Output()
+	if err != nil {
+		// Credential-helper diagnostics are never copied into public preparation
+		// output; no access token or private configuration is exported.
+		return "", fmt.Errorf("original authenticated source advertisement refused: %w", err)
+	}
+	if len(raw) > 1<<20 {
+		return "", errors.New("original source advertisement exceeds its bound")
+	}
+	return string(raw), nil
+}
 func observeSource(ctx context.Context, repo string) error {
 	if !filepath.IsAbs(repo) {
 		return errors.New("absolute original source repository required")
@@ -89,7 +124,7 @@ func observeSource(ctx context.Context, repo string) error {
 	if e != nil {
 		return e
 	} // Git objects are selected; dirty/untracked work is never built or changed.
-	heads, e := git(ctx, "/", "ls-remote", "--heads", firstRepository+".git")
+	heads, e := advertisedSource(ctx)
 	if e != nil {
 		return e
 	}

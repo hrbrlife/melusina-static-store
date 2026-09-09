@@ -1,0 +1,102 @@
+{
+  "static/web3.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/deploy-ui/static/vendor/web3.js-1.95.5.iife.min.js",
+    "sha256": "021e88bb4b21b95f3b0e83238ec88aedf06f406ba4a66e8cea951cca218539ad",
+    "bytes": 451402
+  },
+  "static/registry.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/msb-registry-upgrade/static/store-control-protocol.js",
+    "sha256": "dadd34a84e169d50d8d8756c194adafddc2fc1c28eb50508106022f86f78cd54",
+    "bytes": 9790
+  },
+  "static/core.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/msb-registry-upgrade/static/store-policy-setup-protocol.js",
+    "sha256": "4cfebd53428833e8d65fd36c48f1a443d489f0b2b5fcaeec9eb3d4d841e8d163",
+    "bytes": 30579
+  },
+  "solana-wire.cjs": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/msb-registry-upgrade/solana-wire.cjs",
+    "sha256": "5fd45ade905f82071222ff11f02f68eded13991ae255c726869a7482cb7b9e6a",
+    "bytes": 7436
+  },
+  "original-store-public.json": {
+    "source": "cmd/msb-store-runtime-publication/original-store-public.json",
+    "sha256": "0750ade356004583023a3eff76395a326d94e4b4a5f853f039d082d7f8a1b79e",
+    "bytes": 529
+  },
+  "vendor/ws/LICENSE": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/LICENSE",
+    "sha256": "3de284c8e6fa7e8437eff6f53695471e0332129a5b42a79361e17b7637de94b3",
+    "bytes": 1106
+  },
+  "vendor/ws/index.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/index.js",
+    "sha256": "c2b0c9905540a51acb276523bb024ef3c11bd118b03a90d92962080ebd07fec9",
+    "bytes": 296
+  },
+  "vendor/ws/lib/buffer-util.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/buffer-util.js",
+    "sha256": "da2088dcfa847be2b26a0c4fd46480e2a787b3120bcaceb98555654bbba53631",
+    "bytes": 3044
+  },
+  "vendor/ws/lib/constants.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/constants.js",
+    "sha256": "2c2e8f6abbb7c2314d5736ef0a8d11f04ddc3cf4faf1c710df5d75c4170e937e",
+    "bytes": 268
+  },
+  "vendor/ws/lib/event-target.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/event-target.js",
+    "sha256": "6bad3e83c4a8f113cfc40ef2757ecbc727e67c5e16ea8447cdc6e12af2b1554a",
+    "bytes": 4396
+  },
+  "vendor/ws/lib/extension.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/extension.js",
+    "sha256": "13b228a92d2dad9d1bffd09faaae6b64bfc1f713dd966010ad479a901c243a86",
+    "bytes": 6883
+  },
+  "vendor/ws/lib/limiter.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/limiter.js",
+    "sha256": "e0469d4b83f6ba764b15f80e1766b75c136fbff68f048f4c050f0b1c7f065f69",
+    "bytes": 1034
+  },
+  "vendor/ws/lib/permessage-deflate.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/permessage-deflate.js",
+    "sha256": "3bf41b9b2d3b9315f1f58b732d27ca48840b50f7991d4f90bd5d765cee92b216",
+    "bytes": 14314
+  },
+  "vendor/ws/lib/receiver.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/receiver.js",
+    "sha256": "1e4b5b4e5bbf5566a96af4458d8f70d488e9d424070dbd157b99afe36c60a5df",
+    "bytes": 15353
+  },
+  "vendor/ws/lib/sender.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/sender.js",
+    "sha256": "6a712c13b94ba77bf33a06859a86f3db5513943cef65997587f096796822e627",
+    "bytes": 10826
+  },
+  "vendor/ws/lib/stream.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/stream.js",
+    "sha256": "b766b7ff30b15c8c8dac84b31469fe4aea72ee9cdd25e5319197174111919d11",
+    "bytes": 4648
+  },
+  "vendor/ws/lib/validation.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/validation.js",
+    "sha256": "257923e54135f38ba66cf9129c02765c448efa2272e710844b3923b879605e18",
+    "bytes": 2494
+  },
+  "vendor/ws/lib/websocket-server.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/websocket-server.js",
+    "sha256": "517a6d4571ea55078380fb3e516b00babc65c7c35be856b71da172c056c80cb8",
+    "bytes": 12959
+  },
+  "vendor/ws/lib/websocket.js": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/lib/websocket.js",
+    "sha256": "5276902c6ab9c198c713e24e1538dc78eb49da8c3707b19ec0f7e3f5f5a4291a",
+    "bytes": 31511
+  },
+  "vendor/ws/package.json": {
+    "source": "/home/user/Desktop/Melusina/deployer-current-main-20260827/scripts/node_modules/ws/package.json",
+    "sha256": "24a2b36dc40f8a965fbbbd8e1a95d5723645273147865e5aa024be7a632871ce",
+    "bytes": 1464
+  }
+}

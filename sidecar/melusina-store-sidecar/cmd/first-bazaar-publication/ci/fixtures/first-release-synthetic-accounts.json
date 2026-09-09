@@ -1,0 +1,90 @@
+{
+  "scope": "SYNTHETIC original-SDK account serialization for offline lifecycle tests only; no proposal, approval or execution occurred",
+  "plan": {
+    "schema": "melusina-first-bazaar-browser-plan-v1",
+    "ceremony": {
+      "$schema": "melusina-release-ceremony-v1",
+      "status": "dry-run-prepared",
+      "dryRun": true,
+      "appHash": "a3172ddafb512da90139f225ba225e70536360fc0e07934930b36b18b6c335c3",
+      "releaseHash": "a4b0474c1e70851373bafe831324845cfde864630c127a30bb476529f767a6c7",
+      "releaseNonce": "8fab9ec5b89c1b7a3da786fddf9e5b21a86bd0087c2f8c49c72ee9ca4ff580b3",
+      "version": "0.1.0",
+      "appId": "zukk3pav049f7wr4a12x76ytpgmsyt3136sz1hev4zy8g33f1310",
+      "appIdHash": "4cb47dacd59416fb2b964aff6db9069b674e8c4286889290dd0aba7345a24489",
+      "licenseMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+      "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+      "programId": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+      "squadsProgramId": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+      "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+      "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+      "masterNftAta": "EA2FEHzhg4ZunhchFhcBMjaVtTh3pGkEy2SG6FEmYepn",
+      "transactionIndex": 1986,
+      "transactionPda": "DRfvbMQg4VaPCri3XaXiyGthL8hUCVRiNy53EmMadtN",
+      "proposalPda": "AmX6x2jmKgtbBYASjQx8tMPkPgv8nFahxcLd8qR12LhU",
+      "releaseEntryPda": "4iFmchVJiwbKc5a23xjVwcNGAPGYYjUbZ4hPPwQcCVBo",
+      "publisherEd25519Pubkey": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
+      "signedPayloadHash": "ec7e3cc0f27495efa13304b82220eedc41df80ef1787302a911daa6ec9d5d208",
+      "authorSig": "TOLQ2dJ9SuSeGepsskS9092ccpRQhtMh1iwGmHsZ72pcN4eqg+2CAHnxv8JBQ2i5/UFYPgtFWWzLPtoHGWcYCg==",
+      "createdAtUnix": 1788948572,
+      "ed25519Instruction": {
+        "programId": "Ed25519SigVerify111111111111111111111111111",
+        "accounts": null,
+        "data": "AQAQAP//UAD//3AAIAD//0zi0NnSfUrknhnqbLJEvdPdnHKUUIbTIdYsBph7Ge9qXDeHqoPtggB58b/CQUNouf1BWD4LRVlsyz7aBxlnGAqMARWsSIwFoz50EAlMzvEfPj6a1rAo9jxUP00rDigySux+PMDydJXvoTMEuCIg7txB34DvF4cwKpEdqm7J1dII"
+      },
+      "registerReleaseEntryInstruction": {
+        "programId": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+        "accounts": [
+          {
+            "pubkey": "4iFmchVJiwbKc5a23xjVwcNGAPGYYjUbZ4hPPwQcCVBo",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "EA2FEHzhg4ZunhchFhcBMjaVtTh3pGkEy2SG6FEmYepn",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "Sysvar1nstructions1111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "isSigner": false,
+            "isWritable": false
+          }
+        ],
+        "data": "Piw4UmrzAr2jFy3a+1EtqQE58iW6Il5wU2Ng/A4Hk0kws2sYtsM1w0y0fazVlBb7K5ZK/225BptnToxChoiSkN0KunNFokSJpLBHTB5whRNzuv6DEySEXP3oZGMMEnowu0dlKfdnpscFAAAAMC4xLjAopSWd27GBldnBfleL7Sa63UKOuOdcWkZDu5LdPmOyzIwBFaxIjAWjPnQQCUzO8R8+PprWsCj2PFQ/TSsOKDJKTOLQ2dJ9SuSeGepsskS9092ccpRQhtMh1iwGmHsZ72pcN4eqg+2CAHnxv8JBQ2i5/UFYPgtFWWzLPtoHGWcYCux+PMDydJXvoTMEuCIg7txB34DvF4cwKpEdqm7J1dII"
+      },
+      "quorumPolicy": {
+        "threshold": 3,
+        "memberCount": 4,
+        "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+      }
+    },
+    "stageReceipt": null
+  },
+  "transactionB64": "qPqiZFEOos85e2au5TjCoTNNPAUo3Iy7awMoGYZwXxr4oy3eBRz7OowBFaxIjAWjPnQQCUzO8R8+PprWsCj2PFQ/TSsOKDJKwgcAAAAAAAAAAAAAAAAAAQEBCAAAACilJZ3bsYGV2cF+V4vtJrrdQo6451xaRkO7kt0+Y7LMNySS1di8Hni5EbPLm5sPFZSDFLS/y8Xn+brsI8dINyphzaREC0eEfoiLqlJcPP7DRft1TNdeBcqi6/8iBcVTPJYqV8IlD9wVpJHv8lJ6da0PXCIZXwShtPv1vnjEiQ+5w3eQv6ZwlGpzG7D82+RwRT+DeQ7H//DqtuoRsrFhzL8Gp9UXGHvRZjXa1ARV/cLAwSTGjyFWdaXbustfCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAgcAAAABAAMEBQYHEQEAAD4sOFJq8wK9oxct2vtRLakBOfIluiJecFNjYPwOB5NJMLNrGLbDNcNMtH2s1ZQW+yuWSv9tuQabZ06MQoaIkpDdCrpzRaJEiaSwR0wecIUTc7r+gxMkhFz96GRjDBJ6MLtHZSn3Z6bHBQAAADAuMS4wKKUlnduxgZXZwX5Xi+0mut1CjrjnXFpGQ7uS3T5jssyMARWsSIwFoz50EAlMzvEfPj6a1rAo9jxUP00rDigySkzi0NnSfUrknhnqbLJEvdPdnHKUUIbTIdYsBph7Ge9qXDeHqoPtggB58b/CQUNouf1BWD4LRVlsyz7aBxlnGArsfjzA8nSV76EzBLgiIO7cQd+A7xeHMCqRHapuydXSCAAAAAA=",
+  "proposals": {
+    "Active": "Gl69u3SINSE5e2au5TjCoTNNPAUo3Iy7awMoGYZwXxr4oy3eBRz7OsIHAAAAAAAAAZgwoWoAAAAAAAAAAAAAAAAAAAAAAA==",
+    "Approved": "Gl69u3SINSE5e2au5TjCoTNNPAUo3Iy7awMoGYZwXxr4oy3eBRz7OsIHAAAAAAAAA5gwoWoAAAAAAAMAAACMARWsSIwFoz50EAlMzvEfPj6a1rAo9jxUP00rDigySnULjqT2HxnmCBOO7IpLgvng2W0FCk2v2agrfiSJFLOJY3ZrRIVuGJpWb6OEE0leDFPexHoLdX+y50Dq0z1eacYAAAAAAAAAAA==",
+    "Executed": "Gl69u3SINSE5e2au5TjCoTNNPAUo3Iy7awMoGYZwXxr4oy3eBRz7OsIHAAAAAAAABZgwoWoAAAAAAAMAAACMARWsSIwFoz50EAlMzvEfPj6a1rAo9jxUP00rDigySnULjqT2HxnmCBOO7IpLgvng2W0FCk2v2agrfiSJFLOJY3ZrRIVuGJpWb6OEE0leDFPexHoLdX+y50Dq0z1eacYAAAAAAAAAAA=="
+  }
+}

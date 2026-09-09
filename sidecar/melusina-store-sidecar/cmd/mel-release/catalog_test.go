@@ -235,8 +235,15 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	if catalog.Schema != bazaarCatalogSchema || catalog.Origin != defaultBazaarOrigin {
 		t.Fatalf("real catalog identity = schema %q origin %q", catalog.Schema, catalog.Origin)
 	}
-	if len(catalog.Apps) != 35 || catalog.ExpectedLiveAppCount != 35 {
-		t.Fatalf("real catalog scope = apps %d expected %d, want 35", len(catalog.Apps), catalog.ExpectedLiveAppCount)
+	if len(catalog.Apps) != 36 || catalog.ExpectedLiveAppCount != 36 {
+		t.Fatalf("real catalog scope = apps %d expected %d, want 36", len(catalog.Apps), catalog.ExpectedLiveAppCount)
+	}
+	first, err := catalog.Select("zukk3pav049f7wr4a12x76ytpgmsyt3136sz1hev4zy8g33f1310")
+	if err != nil || first.CatalogName != "Bazaar Control" || first.LiveVersion != "unpublished" || first.ReleaseState != "hold" || first.SourceCommit != "" || first.SourceSelectionReceipt != "" || first.RequireReleaseReady() == nil {
+		t.Fatalf("first Bazaar Control identity must remain unpublished and release-held: %+v, %v", first, err)
+	}
+	if first.Audience != "operator" || first.InstallMode != "owner-only" || first.PearlRole != "workflow" || first.ClientAccess != "none" || first.AdminSurface != "same-pearl" {
+		t.Fatalf("first Bazaar Control installation policy changed: %+v", first)
 	}
 	if catalog.InstallationPolicyVersion != installationPolicyVersion {
 		t.Fatalf("real catalog installation policy version = %d, want %d", catalog.InstallationPolicyVersion, installationPolicyVersion)

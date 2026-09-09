@@ -1958,8 +1958,13 @@ def checked_in_catalog_entries():
 def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     document, entries = checked_in_catalog_entries()
     assert document["catalog_origin"] == "https://bazaar.melusina-os.org", document
-    assert document["expected_live_app_count"] == 35, document
-    assert len(entries) == 35, entries
+    assert document["expected_live_app_count"] == 36, document
+    assert len(entries) == 36, entries
+    first_bazaar = entries["zukk3pav049f7wr4a12x76ytpgmsyt3136sz1hev4zy8g33f1310"]
+    assert first_bazaar["live_version"] == "unpublished", first_bazaar
+    assert first_bazaar["release_state"] == "hold", first_bazaar
+    assert first_bazaar["source_selection_state"] == "pending", first_bazaar
+    assert "source_commit" not in first_bazaar and "source_selection_receipt" not in first_bazaar, first_bazaar
     assert document["default_release_state"] == "hold", document
     assert document["default_source_branch"] == "dev-publish", document
     assert document["installation_policy_version"] == 1, document
@@ -1992,6 +1997,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     for app_id, expected_name in expected_public_names.items():
         assert entries[app_id]["catalog_name"] == expected_name, entries[app_id]
     expected_installation_policy = {
+        "zukk3pav049f7wr4a12x76ytpgmsyt3136sz1hev4zy8g33f1310": ("operator", "owner-only", "workflow", "none", "same-pearl"),
         "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": ("client", "owner-provisions", "workflow", "scoped-share", "hidden-authority"),
         "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh": ("client", "owner-provisions", "workspace", "scoped-share", "hidden-authority"),
         "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0": ("foundation", "owner-only", "authority", "none", "hidden-authority"),

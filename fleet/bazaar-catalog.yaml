@@ -12,9 +12,10 @@ schema: melusina-bazaar-catalog/v1
 catalog_origin: https://bazaar.melusina-os.org
 catalog_observed_at: 2026-08-20T12:41:34Z
 catalog_index_sha256: 1281a51be9d34113d867935bb0c9d87188064df975a541ff1aeaa400f6edd602
-# The source ledger includes Bureau Diagram for governed restoration.
-# Its absence from the observed live projection is not a retirement decision.
-expected_live_app_count: 35
+# The source ledger includes Bureau Diagram for governed restoration and the
+# first original Bazaar Control identity for held first-publication admission.
+# Neither entry asserts an additional app in the observed live projection.
+expected_live_app_count: 36
 default_release_state: hold
 default_reconciliation_state: source-pinned
 # A source pin proves a remotely recoverable dev-publish tip, not that recent
@@ -428,6 +429,30 @@ groups:
         admin_surface: same-pearl
   platform-tools:
     apps:
+      bazaar-control:
+        # FIRST original identity. No prior catalog entry, release, or key was
+        # replaced. The Store must carry this policy before first publication;
+        # policy admission itself does not add a live catalog row or release.
+        appId: zukk3pav049f7wr4a12x76ytpgmsyt3136sz1hev4zy8g33f1310
+        source_path: bazaar-control-pearl
+        candidate_source_commit: 161b99160c5f47dcdacb8b68b57bced0d6b88c95
+        source_baseline_branch: main
+        source_repository: https://github.com/melusina-os/bazaar-control-pearl
+        reconciliation_state: pending
+        release_state: hold
+        source_selection_state: pending
+        publish_slug: bazaar-control
+        catalog_name: Bazaar Control
+        live_version: unpublished
+        catalog_developer: melusina-os
+        catalog_repo: bazaar-control-pearl
+        catalog_slug: bazaar-control
+        role: operator-governed-store-release-workflow
+        audience: operator
+        install_mode: owner-only
+        pearl_role: workflow
+        client_access: none
+        admin_surface: same-pearl
       botmother:
         appId: xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0
         source_path: botmother

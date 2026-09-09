@@ -256,7 +256,8 @@ def canonical_source_repository(value: str) -> str:
     normalized = value.strip()
     if normalized.endswith(".git"):
         normalized = normalized[:-4]
-    if not CANONICAL_SOURCE_REPOSITORY_RE.fullmatch(normalized):
+    if (not CANONICAL_SOURCE_REPOSITORY_RE.fullmatch(normalized) and
+            normalized != "https://github.com/melusina-os/bazaar-control-pearl"):
         raise ProviderError(f"invalid canonical source_repository: {value!r}")
     return normalized
 

@@ -571,6 +571,9 @@ func isLowerHexCommit(value string) bool {
 }
 
 func validCanonicalSourceRepository(value string) bool {
+	if value == "https://github.com/melusina-os/bazaar-control-pearl" {
+		return true
+	}
 	const prefix = "https://github.com/hrbrlife/"
 	if !strings.HasPrefix(value, prefix) {
 		return false

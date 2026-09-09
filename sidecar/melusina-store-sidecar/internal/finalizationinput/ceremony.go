@@ -199,6 +199,10 @@ func decodeCeremony(raw []byte) (CeremonyState, error) {
 	return state, nil
 }
 
+// DecodePreparedCeremony validates original author preparation bytes without
+// claiming that a proposal exists or has executed.
+func DecodePreparedCeremony(raw []byte) (CeremonyState, error) { return decodeCeremony(raw) }
+
 func (s CeremonyState) validate() error {
 	if s.Schema != "melusina-release-ceremony-v1" || s.Status != "dry-run-prepared" || !s.DryRun || s.CreatedAtUnix <= 0 || len(s.AppID) != 52 || !appID(s.AppID) || strings.Contains(s.AppID, "-") || s.AppIDHash != digest([]byte(s.AppID)) || !lowerHex(s.AppHash, 64) || !lowerHex(s.ReleaseHash, 64) || !safeText(s.Version, 32) || len(s.Version) > 32 || !safeText(s.ReleaseNonce, 256) || s.ReleaseHash != digest([]byte(s.AppHash+s.Version+s.ReleaseNonce)) || !lowerHex(s.SignedPayloadHash, 64) || s.TransactionIndex == 0 {
 		return errors.New("prepared ceremony identity, nonce, status or time is invalid")

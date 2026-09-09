@@ -242,10 +242,22 @@ func main() {
 	repo := flag.String("source", "", "original Bazaar repository (read-only)")
 	spk := flag.String("spk", "", "original protected first package")
 	out := flag.String("out", "", "new private preparation directory")
+	verifyAuthor := flag.String("verify-author-dir", "", "verify the original author state and write a new provisional release in an existing private preparation directory; no network or signer")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		fmt.Fprintln(os.Stderr, "unexpected arguments")
 		os.Exit(2)
+	}
+	if *verifyAuthor != "" {
+		if *repo != "" || *spk != "" || *out != "" {
+			fmt.Fprintln(os.Stderr, "author verification cannot be combined with source preparation options")
+			os.Exit(2)
+		}
+		if e := verifyFirstAuthor(*verifyAuthor); e != nil {
+			fmt.Fprintln(os.Stderr, e)
+			os.Exit(1)
+		}
+		return
 	}
 	if e := prepare(*repo, *spk, *out); e != nil {
 		fmt.Fprintln(os.Stderr, e)

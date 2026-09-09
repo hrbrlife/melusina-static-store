@@ -50,6 +50,7 @@ import (
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
+	"github.com/hrbrlife/melusina-store-sidecar/staging"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -109,16 +110,7 @@ type PublishReceiptApp struct {
 	Version   string `json:"version"`
 }
 
-type StageReceipt struct {
-	Schema            string `json:"schema"`
-	StageID           string `json:"stageId"`
-	AppID             string `json:"appId"`
-	AppHash           string `json:"appHash"`
-	ReleaseHash       string `json:"releaseHash"`
-	ServingDomainHash string `json:"servingDomainHash"`
-	StoredAt          int64  `json:"storedAt"`
-	OperatorSignature string `json:"operatorSignature"`
-}
+type StageReceipt = staging.Receipt
 
 type AppRolloutReceipt struct {
 	Schema             string `json:"schema"`
@@ -578,37 +570,23 @@ func buildSubmittedReceiptIntentWithRuntimeContract(spk, metadata, runtimeContra
 	spkHash := sha256.Sum256(spk)
 	metadataHash := sha256.Sum256(metadata)
 	runtimeContractHash := sha256.Sum256(runtimeContract)
-	versionHash := sha256.Sum256([]byte(version))
-	masterMintHash := sha256.Sum256([]byte(masterMint))
-	stageHasher := sha256.New()
-	_, _ = stageHasher.Write([]byte("melusina-app-stage-v1\x00"))
-	_, _ = stageHasher.Write(spkHash[:])
-	_, _ = stageHasher.Write(metadataHash[:])
+	stageInput := staging.Identity{SPKSHA256: spkHash, MetadataSHA256: metadataHash, ReleaseHash: releaseHash,
+		Version: version, MasterNftMint: masterMint, Developer: developer, Repo: repo, Slug: slug}
 	binding := runtimecontract.Binding{SPK: spk, Metadata: metadata, AppHash: claims.AppHash, Version: claims.Version, ReleaseContractSHA256: claims.RuntimeContractSHA256, ReleaseContractSchema: claims.RuntimeContractSchema}
 	if runtimecontract.RequiresContract(binding) {
 		if _, err := runtimecontract.Validate(runtimeContract, binding); err != nil {
 			return submittedReceiptIntent{}, fmt.Errorf("runtime contract: %w", err)
 		}
-		_, _ = stageHasher.Write([]byte("runtime-contract-v1\x00"))
-		_, _ = stageHasher.Write(runtimeContractHash[:])
+		stageInput.RuntimeContractSHA256 = &runtimeContractHash
 	} else if len(runtimeContract) != 0 {
 		return submittedReceiptIntent{}, errors.New("runtime contract supplied but RELEASE.json does not bind one")
-	}
-	_, _ = stageHasher.Write(releaseHash[:])
-	_, _ = stageHasher.Write(versionHash[:])
-	_, _ = stageHasher.Write(masterMintHash[:])
-	for _, part := range []string{developer, repo, slug} {
-		var size [4]byte
-		binary.BigEndian.PutUint32(size[:], uint32(len(part)))
-		_, _ = stageHasher.Write(size[:])
-		_, _ = stageHasher.Write([]byte(part))
 	}
 
 	return submittedReceiptIntent{
 		AppID:       appID,
 		AppHash:     hex.EncodeToString(appHash[:]),
 		ReleaseHash: hex.EncodeToString(releaseHash[:]),
-		StageID:     hex.EncodeToString(stageHasher.Sum(nil)),
+		StageID:     staging.StageID(stageInput),
 	}, nil
 }
 
@@ -1246,49 +1224,11 @@ func verifyStageReceipt(ctx context.Context, cr storeOperatorAuthzFetcher, licen
 }
 
 func verifyStageReceiptWithAuthority(pubKey ed25519.PublicKey, storeDomainHash [32]byte, receipt StageReceipt) error {
-	if receipt.Schema != "melusina-app-stage-receipt-v1" {
-		return errors.New("check=stage_receipt: schema mismatch")
-	}
-	stageID, err := hash32FromHex(receipt.StageID)
-	if err != nil {
-		return fmt.Errorf("check=stage_receipt: stageId: %w", err)
-	}
-	appHash, err := hash32FromHex(receipt.AppHash)
-	if err != nil {
-		return fmt.Errorf("check=stage_receipt: appHash: %w", err)
-	}
-	releaseHash, err := hash32FromHex(receipt.ReleaseHash)
-	if err != nil {
-		return fmt.Errorf("check=stage_receipt: releaseHash: %w", err)
-	}
-	domainHash, err := hash32FromHex(receipt.ServingDomainHash)
-	if err != nil {
-		return fmt.Errorf("check=stage_receipt: servingDomainHash: %w", err)
-	}
-	if domainHash != storeDomainHash {
-		return errors.New("check=stage_receipt: serving domain mismatch")
-	}
-	sig, err := primitives.DecodeBase58(receipt.OperatorSignature)
-	if err != nil {
-		return fmt.Errorf("check=stage_receipt: signature: %w", err)
-	}
-	msg := stageReceiptMessage(stageID, appHash, releaseHash, domainHash, receipt.StoredAt)
-	if !ed25519.Verify(pubKey, msg, sig) {
-		return errors.New("check=stage_receipt: signature does not verify against on-chain store_authority")
-	}
-	return nil
+	return staging.VerifyWithAuthority(pubKey, storeDomainHash, receipt)
 }
 
 func stageReceiptMessage(stageID, appHash, releaseHash, domainHash [32]byte, storedAt int64) []byte {
-	msg := make([]byte, 0, len("melusina-app-stage-receipt-v1\x00")+32*4+8)
-	msg = append(msg, []byte("melusina-app-stage-receipt-v1\x00")...)
-	msg = append(msg, stageID[:]...)
-	msg = append(msg, appHash[:]...)
-	msg = append(msg, releaseHash[:]...)
-	msg = append(msg, domainHash[:]...)
-	var ts [8]byte
-	binary.BigEndian.PutUint64(ts[:], uint64(storedAt))
-	return append(msg, ts[:]...)
+	return staging.ReceiptMessage(stageID, appHash, releaseHash, domainHash, storedAt)
 }
 
 func verifyRolloutReceiptWithAuthority(pubKey ed25519.PublicKey, storeDomainHash [32]byte, receipt AppRolloutReceipt) error {

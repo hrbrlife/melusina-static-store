@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -19,6 +18,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
+	"github.com/hrbrlife/melusina-store-sidecar/staging"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -29,7 +29,6 @@ const (
 )
 
 var (
-	appStageReceiptDomain           = []byte("melusina-app-stage-receipt-v1\x00")
 	errStagedReleaseAppHashMismatch = errors.New("staged app bytes do not match claimed release app hash")
 )
 
@@ -69,16 +68,7 @@ type stagedAppManifest struct {
 // StageReceipt proves durable private persistence only. It is deliberately
 // domain-separated from Receipt: a staged candidate is NOT served and has not
 // yet passed the Active ReleaseEntry gate.
-type StageReceipt struct {
-	Schema            string `json:"schema"`
-	StageID           string `json:"stageId"`
-	AppID             string `json:"appId"`
-	AppHash           string `json:"appHash"`
-	ReleaseHash       string `json:"releaseHash"`
-	ServingDomainHash string `json:"servingDomainHash"`
-	StoredAt          int64  `json:"storedAt"`
-	OperatorSignature string `json:"operatorSignature"`
-}
+type StageReceipt = staging.Receipt
 
 // buildStagedAppManifest retains the legacy three-artifact stage shape for
 // historical releases that do not claim a runtime contract. New callers must
@@ -135,26 +125,12 @@ func buildStagedAppManifestWithRuntimeContract(spk, metadata, release, runtimeCo
 	releaseHash := sha256.Sum256(release)
 	runtimeContractHash := sha256.Sum256(runtimeContract)
 	releaseIntent, _ := hash32FromHex(strings.TrimSpace(rel.ReleaseHash))
-	versionHash := sha256.Sum256([]byte(strings.TrimSpace(rel.Version)))
-	masterMintHash := sha256.Sum256([]byte(strings.TrimSpace(rel.MasterNftMint)))
-	stageHasher := sha256.New()
-	_, _ = stageHasher.Write([]byte(appStageSchema + "\x00"))
-	_, _ = stageHasher.Write(spkHash[:])
-	_, _ = stageHasher.Write(metadataHash[:])
+	stageInput := staging.Identity{SPKSHA256: spkHash, MetadataSHA256: metadataHash, ReleaseHash: releaseIntent,
+		Version: rel.Version, MasterNftMint: rel.MasterNftMint, Developer: hint.Developer, Repo: hint.Repo, Slug: hint.Slug}
 	if runtimecontract.RequiresContract(binding) {
-		_, _ = stageHasher.Write([]byte("runtime-contract-v1\x00"))
-		_, _ = stageHasher.Write(runtimeContractHash[:])
+		stageInput.RuntimeContractSHA256 = &runtimeContractHash
 	}
-	_, _ = stageHasher.Write(releaseIntent[:])
-	_, _ = stageHasher.Write(versionHash[:])
-	_, _ = stageHasher.Write(masterMintHash[:])
-	for _, part := range []string{hint.Developer, hint.Repo, hint.Slug} {
-		var size [4]byte
-		binary.BigEndian.PutUint32(size[:], uint32(len(part)))
-		_, _ = stageHasher.Write(size[:])
-		_, _ = stageHasher.Write([]byte(part))
-	}
-	stageID := hex.EncodeToString(stageHasher.Sum(nil))
+	stageID := staging.StageID(stageInput)
 
 	runtimeContractSHA256 := ""
 	runtimeContractSize := 0
@@ -494,16 +470,7 @@ func signStageReceipt(operator *identity.Private, manifest stagedAppManifest, se
 }
 
 func stageReceiptMessage(stageID, appHash, releaseHash, servingDomainHash [32]byte, storedAt int64) []byte {
-	msg := make([]byte, 0, len(appStageReceiptDomain)+32*4+8)
-	msg = append(msg, appStageReceiptDomain...)
-	msg = append(msg, stageID[:]...)
-	msg = append(msg, appHash[:]...)
-	msg = append(msg, releaseHash[:]...)
-	msg = append(msg, servingDomainHash[:]...)
-	var ts [8]byte
-	binary.BigEndian.PutUint64(ts[:], uint64(storedAt))
-	msg = append(msg, ts[:]...)
-	return msg
+	return staging.ReceiptMessage(stageID, appHash, releaseHash, servingDomainHash, storedAt)
 }
 
 func verifyStageReceipt(pub ed25519.PublicKey, receipt StageReceipt) error {

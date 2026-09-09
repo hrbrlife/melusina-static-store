@@ -39,9 +39,8 @@ const (
 	// expand sixfold. Matches Bazaar trustedbuildworker.MaxBuildResultBytes;
 	// the decoded candidate itself remains capped at 64 MiB.
 	maxBuildJobResultBytes int64 = ((64<<20)*4)/3 + (8 << 20)
-	// A completed preparation result carries the full, signed final sidecar
-	// request. It is bounded the same way as a build candidate, then verified
-	// and stored privately by the Pearl; the relay never interprets it.
+	// A signed private-stage offer carries only a preparation body. Final
+	// publication bodies are returned exclusively by the separate finalizer.
 	maxPreparationJobResultBytes  int64 = (maxCandidateBytes*4)/3 + (128 << 10)
 	maxFinalizationJobResultBytes int64 = (maxCandidateBytes*4)/3 + (128 << 10)
 	maxProofJobResultBytes        int64 = 64 << 10
@@ -269,6 +268,15 @@ func (h *Handler) handleJob(w http.ResponseWriter, r *http.Request, collection s
 	}
 	if r.Method == http.MethodPost && r.URL.Path == "/v1/"+collection {
 		h.handleJobStart(w, r, collection)
+		return
+	}
+	if r.Method == http.MethodPost && collection == releasePreparationJobCollection {
+		id, ok := preparationStageReturnRoute(r.URL.Path)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		h.handlePreparationStageReturn(w, r, id)
 		return
 	}
 	if r.Method == http.MethodPost && collection == tenantProofJobCollection {
@@ -593,6 +601,10 @@ func canonicalJobPath(method, path, collection string) bool {
 		}
 		if path == "/v1/"+collection {
 			return true
+		}
+		if collection == releasePreparationJobCollection {
+			_, ok := preparationStageReturnRoute(path)
+			return ok
 		}
 		_, ok := tenantProofResumeRoute(path)
 		return collection == tenantProofJobCollection && ok

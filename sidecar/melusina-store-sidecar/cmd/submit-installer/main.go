@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -47,6 +48,7 @@ type options struct {
 	storePubkey  string
 	verifiedSlot uint64
 	timeout      time.Duration
+	prepareOut   string
 }
 
 type publishResult struct {
@@ -74,6 +76,7 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "store operator identity.Public JSON path (required)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "publisher chain-evidence slot")
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "upload + read-back timeout")
+	fs.StringVar(&o.prepareOut, "prepare-out", "", "write the exact signed multipart request to a new private file; do not contact the Store")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -98,6 +101,9 @@ func parseFlags(args []string) (options, error) {
 	}
 	if o.timeout <= 0 {
 		return o, errors.New("--timeout must be positive")
+	}
+	if o.prepareOut != "" && !filepath.IsAbs(o.prepareOut) {
+		return o, errors.New("--prepare-out must be an absolute new private file")
 	}
 	return o, nil
 }
@@ -141,6 +147,33 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("sign envelope: %w", err)
 	}
+	if o.prepareOut != "" {
+		body, contentType, err := preparePublishBody(o, signed, artifact)
+		if err != nil {
+			return err
+		}
+		prepared := struct {
+			Schema         string `json:"schema"`
+			Store          string `json:"store"`
+			Method         string `json:"method"`
+			Target         string `json:"target"`
+			Class          string `json:"class"`
+			Name           string `json:"name"`
+			ArtifactSHA256 string `json:"artifactSha256"`
+			ArtifactBytes  int    `json:"artifactBytes"`
+			ContentType    string `json:"contentType"`
+			Body           []byte `json:"bodyBase64"`
+		}{"melusina-installer-publish-prepared-v1", strings.TrimRight(o.store, "/"), http.MethodPost, "/publish/installer", o.class, o.name, hashHex, len(artifact), contentType, body}
+		raw, err := json.Marshal(prepared)
+		if err != nil {
+			return err
+		}
+		if err := writePreparedFile(o.prepareOut, raw); err != nil {
+			return err
+		}
+		digest := sha256.Sum256(raw)
+		return json.NewEncoder(stdout).Encode(map[string]any{"status": "PREPARED_ONLY", "path": o.prepareOut, "sha256": hex.EncodeToString(digest[:]), "artifactSha256": hashHex, "artifactBytes": len(artifact), "storeContacted": false})
+	}
 
 	client := &http.Client{Timeout: o.timeout}
 	result, err := publish(context.Background(), client, o, signed, artifact)
@@ -172,33 +205,16 @@ func run(args []string, stdout io.Writer) error {
 
 func publish(ctx context.Context, client *http.Client, o options, signed envelope.Signed, artifact []byte) (publishResult, error) {
 	var result publishResult
-	var body bytes.Buffer
-	mw := multipart.NewWriter(&body)
-	envelopeBytes, err := json.Marshal(signed)
+	body, contentType, err := preparePublishBody(o, signed, artifact)
 	if err != nil {
-		return result, err
-	}
-	if err := writePart(mw, "envelope", "envelope.json", envelopeBytes); err != nil {
-		return result, err
-	}
-	if err := mw.WriteField("class", o.class); err != nil {
-		return result, err
-	}
-	if err := mw.WriteField("name", o.name); err != nil {
-		return result, err
-	}
-	if err := writePart(mw, "artifact", o.name, artifact); err != nil {
-		return result, err
-	}
-	if err := mw.Close(); err != nil {
 		return result, err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		strings.TrimRight(o.store, "/")+"/publish/installer", &body)
+		strings.TrimRight(o.store, "/")+"/publish/installer", bytes.NewReader(body))
 	if err != nil {
 		return result, err
 	}
-	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.Header.Set("Content-Type", contentType)
 	resp, err := client.Do(req)
 	if err != nil {
 		return result, fmt.Errorf("publish POST: %w", err)
@@ -216,6 +232,58 @@ func publish(ctx context.Context, client *http.Client, o options, signed envelop
 		return result, fmt.Errorf("decode publish result: %w", err)
 	}
 	return result, nil
+}
+
+func preparePublishBody(o options, signed envelope.Signed, artifact []byte) ([]byte, string, error) {
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	envelopeBytes, err := json.Marshal(signed)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := writePart(mw, "envelope", "envelope.json", envelopeBytes); err != nil {
+		return nil, "", err
+	}
+	if err := mw.WriteField("class", o.class); err != nil {
+		return nil, "", err
+	}
+	if err := mw.WriteField("name", o.name); err != nil {
+		return nil, "", err
+	}
+	if err := writePart(mw, "artifact", o.name, artifact); err != nil {
+		return nil, "", err
+	}
+	if err := mw.Close(); err != nil {
+		return nil, "", err
+	}
+	return body.Bytes(), mw.FormDataContentType(), nil
+}
+
+func writePreparedFile(name string, raw []byte) (err error) {
+	f, err := os.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return fmt.Errorf("create new private prepared request: %w", err)
+	}
+	defer func() {
+		if closeErr := f.Close(); err == nil {
+			err = closeErr
+		}
+		if err != nil {
+			_ = os.Remove(name)
+		}
+	}()
+	if _, err = f.Write(raw); err != nil {
+		return err
+	}
+	if err = f.Sync(); err != nil {
+		return err
+	}
+	dir, err := os.Open(filepath.Dir(name))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
 }
 
 func verifyServed(ctx context.Context, client *http.Client, store, servedPath string, wantHash [32]byte) error {

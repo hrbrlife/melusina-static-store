@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "ref": {
+    "kind": "sidecar",
+    "chain_id": "solana:devnet",
+    "program_id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+    "license_mint": "9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J",
+    "domain": "bazaar.melusina-os.org",
+    "pda": "7eESnZ9hvVAVTDCwSq73FGygqhp9bQZ5jF672NZsSKr6",
+    "sidecar_id": "melusina-os-root-store-v2",
+    "key_version": 1
+  },
+  "sign_pubkey_b58": "4J2hbufiTKmvgfxjGVNqhoQXiKVDsYwaor6hcaDKjzZV",
+  "box_pubkey_b58": "D62iWtghh4s6majv1xm5bbeTnLmzrkycF1tA9bgcnKJ5"
+}

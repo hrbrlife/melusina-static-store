@@ -103,7 +103,7 @@
         {
             "ref": "refs/heads/integration/dueprocess-msb-cohort-20260913",
             "commit": "29e6b5a2b659a657e10838fde04efa4f74030215",
-            "outcome": "selected-source-branch"
+            "outcome": "retained"
         },
         {
             "ref": "refs/heads/main",

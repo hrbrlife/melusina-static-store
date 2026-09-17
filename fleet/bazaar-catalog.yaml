@@ -227,8 +227,9 @@ groups:
       dueprocess:
         appId: 47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0
         source_path: dueprocess
-        # Audit-repair v0.1.80/appVersion-84 source pin only; no Store, Bazaar, or live acceptance is asserted.
-        source_commit: ffc8fa69614b16f155bcd482e4973d29888da6f6
+        # v0.1.82 is the dev.paype.cc MSB cohort cut, frozen two-path
+        # byte-identical 2026-09-13 (sha256 1055c0d5…).
+        source_commit: 29e6b5a2b659a657e10838fde04efa4f74030215
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

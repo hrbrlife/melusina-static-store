@@ -2,10 +2,10 @@
     "schema": "melusina-source-selection-v1",
     "appId": "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0",
     "sourceRepository": "https://github.com/hrbrlife/AITX-Procedures",
-    "sourceCommit": "ffc8fa69614b16f155bcd482e4973d29888da6f6",
+    "sourceCommit": "29e6b5a2b659a657e10838fde04efa4f74030215",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "Audit-repair source-only selection for v0.1.80/appVersion-84: canonical dev-publish rejects HTTP-200 structured success:false builder save, publish, and discard responses without false success or reload. This records source and local package evidence only; it is not a Store, Bazaar, or live acceptance.",
+    "decisionSummary": "DueProcess 0.1.82 is the dev.paype.cc MSB cohort cut; two clean source paths produced byte-identical packages on 2026-09-13 (sha256 1055c0d5\u2026).",
     "internalControls": {
         "status": "passed",
         "checks": [
@@ -86,14 +86,24 @@
             "outcome": "archive"
         },
         {
+            "ref": "refs/heads/codex/aitx-release-bounded-20260914",
+            "commit": "623a972117a3a38d7eea0d698e768467a1757dec",
+            "outcome": "retained"
+        },
+        {
             "ref": "refs/heads/dev-publish",
-            "commit": "ffc8fa69614b16f155bcd482e4973d29888da6f6",
+            "commit": "29e6b5a2b659a657e10838fde04efa4f74030215",
             "outcome": "selected"
         },
         {
             "ref": "refs/heads/fix/golden-mvp-protocol-align",
             "commit": "27dcd5f37f0a3d223f9f640ee12f894b5e4a3e8f",
             "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/integration/dueprocess-msb-cohort-20260913",
+            "commit": "29e6b5a2b659a657e10838fde04efa4f74030215",
+            "outcome": "selected-source-branch"
         },
         {
             "ref": "refs/heads/main",

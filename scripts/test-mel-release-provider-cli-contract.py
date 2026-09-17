@@ -2148,7 +2148,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     ), domain_template
     paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
     assert paype["source_path"] == "popaye", paype
-    assert paype["source_commit"] == "7ac65fd2905ad50a93211a12c3c3728d96883981", paype
+    assert paype["source_commit"] == "73c14ec231f7faa4aa061944f7445ad4c8d1c833", paype
     assert paype["source_baseline_branch"] == "main", paype
     assert paype["runtime_contract_path"] == "RUNTIME-CONTRACT.json", paype
     assert paype["reconciliation_state"] == "source-pinned", paype
@@ -2381,7 +2381,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
     assert paype["source_path"] == "popaye", paype
     assert paype["source_repository"] == "https://github.com/hrbrlife/ccash_go_htmx", paype
-    assert paype["source_commit"] == "7ac65fd2905ad50a93211a12c3c3728d96883981", paype
+    assert paype["source_commit"] == "73c14ec231f7faa4aa061944f7445ad4c8d1c833", paype
     assert paype["reconciliation_state"] == "source-pinned", paype
     assert paype["release_state"] == "ready", paype
     assert paype["source_selection_state"] == "direct-dev-verified", paype

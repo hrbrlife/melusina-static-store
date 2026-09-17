@@ -172,10 +172,10 @@ groups:
         # its canonical Fineract dependency. Never bind release provenance to
         # a historical workstation worktree name.
         source_path: popaye
-        # v0.3.190/appVersion-182 is the current dev-publish tip. It
-        # retains the selected KYB and conditional-procedure work, and its
-        # bounded lossless advice-PNG export path passes the complete race suite.
-        source_commit: 7ac65fd2905ad50a93211a12c3c3728d96883981
+        # v0.3.193 is the dev.paype.cc MSB cohort cut, frozen two-path
+        # byte-identical 2026-09-13 (sha256 95a36a0d…). It keeps the selected
+        # KYB and conditional-procedure work of the prior dev-publish tip.
+        source_commit: 73c14ec231f7faa4aa061944f7445ad4c8d1c833
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

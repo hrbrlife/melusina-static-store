@@ -26,6 +26,11 @@
             "outcome": "retained"
         },
         {
+            "ref": "refs/heads/integration/namedcoin-msb-cohort-20260913",
+            "commit": "7b6edb559fe1833ba35a7d2e6f59e3195fab6424",
+            "outcome": "retained"
+        },
+        {
             "ref": "refs/heads/main",
             "commit": "ecffc8f31f9f3855616e5d6701dedb156b734b86",
             "outcome": "baseline"

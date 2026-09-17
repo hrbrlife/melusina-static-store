@@ -36,6 +36,11 @@
             "outcome": "retained"
         },
         {
+            "ref": "refs/heads/integration/configurator-msb-cohort-20260913",
+            "commit": "3ac1207235f6869a11ac2549886701a55507edca",
+            "outcome": "retained"
+        },
+        {
             "ref": "refs/heads/main",
             "commit": "2020e65515207676ae3d91c39e8f38a564d92d51",
             "outcome": "baseline"

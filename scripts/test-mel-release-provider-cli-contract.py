@@ -2357,11 +2357,11 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ), ailagoon
     cyberteller = entries["vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"]
     assert cyberteller["source_path"] == "cyberteller", cyberteller
-    assert cyberteller["source_commit"] == "e16bb3c7a8a31cb855115762265aef98ad271e78", cyberteller
+    assert cyberteller["source_commit"] == "449297bcd2805990425d6d801a5aff7e0022ff51", cyberteller
     assert cyberteller["source_baseline_branch"] == "main", cyberteller
     assert cyberteller["runtime_contract_path"] == "RUNTIME-CONTRACT.json", cyberteller
     assert cyberteller["reconciliation_state"] == "source-pinned", cyberteller
-    assert cyberteller["release_state"] == "hold", cyberteller
+    assert cyberteller["release_state"] == "ready", cyberteller
     assert cyberteller["source_selection_state"] == "direct-dev-verified", cyberteller
     assert cyberteller["source_selection_receipt"] == (
         "prepublish-selections/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json"

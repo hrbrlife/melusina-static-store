@@ -2,18 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
     "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-admin-app",
-    "sourceCommit": "f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f",
+    "sourceCommit": "3ac1207235f6869a11ac2549886701a55507edca",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "NamedCoin Configurator 0.1.47/build-50 is the selected dev-publish release cut. It delivers governed Enhanced and Full attestation cosigning through the signer plane, keeping the UI as the decision authority and eliminating the host-side issuance bypass.",
+    "decisionSummary": "NamedCoin Configurator 0.1.49/appVersion 52 is the dev.paype.cc MSB cohort cut aligned to melusina-msb-protocol v1.19.1-0.20260909055058-5964b66ea9cc. dev-publish was fast-forwarded to it on 2026-09-17; two clean source paths produced byte-identical packages on 2026-09-13 (sha256 327c7844224ec7e2feb3cb267027ffcf103b139f8ba6943841b5cee1b2b726d3).",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean recursively initialized checkout at the selected origin/dev-publish commit",
-            "make test-release-source-guard, go test ./... -count=1, and go vet ./... passed on the selected source",
-            "release metadata, pkgdef, runtime contract, changelog, and release-source guard agree on 0.1.47/build-50",
-            "the governed cosign route requires a maker and a distinct checker, validates its ABI before dispatch, and refuses an unavailable checker key before RPC",
-            "catalog provider retains the shared 3-of-4 Squads authority and rejects app-specific authority overrides"
+            "clean detached checkout at the selected dev-publish commit (fast-forward from the prior selection)",
+            "full go test ./... and the post-bump root release guard passed on the cohort commit",
+            "two clean source paths produced byte-identical packages; package verification passed"
         ]
     },
     "reviewedRefs": [
@@ -24,7 +22,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f",
+            "commit": "3ac1207235f6869a11ac2549886701a55507edca",
             "outcome": "selected"
         },
         {
@@ -39,7 +37,7 @@
         },
         {
             "ref": "refs/heads/main",
-            "commit": "71ab6da82b5fbf977ce483365ff2700a95e38d28",
+            "commit": "2020e65515207676ae3d91c39e8f38a564d92d51",
             "outcome": "baseline"
         },
         {

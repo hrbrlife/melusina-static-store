@@ -2,22 +2,22 @@
     "schema": "melusina-source-selection-v1",
     "appId": "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh",
     "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-app",
-    "sourceCommit": "053e4be65e8f4926fa439e009fa0a5e6f4d2e81d",
+    "sourceCommit": "7b6edb559fe1833ba35a7d2e6f59e3195fab6424",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "NamedCoin 0.1.40/appVersion 42 is the V1.18 birth-bound intake candidate with tenant/vertical scoped identity binding and historical-root refusal controls.",
+    "decisionSummary": "NamedCoin 0.1.42/appVersion 44 is the dev.paype.cc MSB cohort cut aligned to melusina-msb-protocol v1.19.1-0.20260909055058-5964b66ea9cc. dev-publish was fast-forwarded to it on 2026-09-17; two clean source paths produced byte-identical packages on 2026-09-13 (sha256 02283bfe1bf4a1390a770949cac429d4bf3ca5c8134e4a1404bcae5d43541731).",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected current dev-publish commit",
-            "GOWORK=off go test, vet, and race suites passed",
-            "two fresh recursive clones produced byte-identical devnet-only pack-msb-test packages"
+            "clean detached checkout at the selected dev-publish commit (fast-forward from the prior selection)",
+            "full go test ./... and the post-bump root release guard passed on the cohort commit",
+            "two clean source paths produced byte-identical packages; package verification passed"
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "053e4be65e8f4926fa439e009fa0a5e6f4d2e81d",
+            "commit": "7b6edb559fe1833ba35a7d2e6f59e3195fab6424",
             "outcome": "selected"
         },
         {

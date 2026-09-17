@@ -2070,7 +2070,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "prepublish-selections/svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h.json"
     ), claude
     namedcoin_admin = entries["zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"]
-    assert namedcoin_admin["source_commit"] == "f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f", namedcoin_admin
+    assert namedcoin_admin["source_commit"] == "3ac1207235f6869a11ac2549886701a55507edca", namedcoin_admin
     assert namedcoin_admin["reconciliation_state"] == "source-pinned", namedcoin_admin
     assert namedcoin_admin["release_state"] == "ready", namedcoin_admin
     assert namedcoin_admin["source_selection_state"] == "direct-dev-verified", namedcoin_admin

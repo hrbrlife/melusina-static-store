@@ -116,10 +116,10 @@ groups:
       namedcoin:
         appId: 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
         source_path: namedcoin
-        # v0.1.40/appVersion-42 is the V1.18 birth-bound identity intake.
-        # Its positive authority fixture is rooted in the current protocol and
-        # preserves explicit historical-root refusal controls.
-        source_commit: 053e4be65e8f4926fa439e009fa0a5e6f4d2e81d
+        # v0.1.42/appVersion-44 is the dev.paype.cc MSB cohort cut aligned to
+        # melusina-msb-protocol v1.19.1-0.20260909055058-5964b66ea9cc; frozen
+        # two-path byte-identical 2026-09-13 (sha256 02283bfe…).
+        source_commit: 7b6edb559fe1833ba35a7d2e6f59e3195fab6424
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -145,10 +145,10 @@ groups:
       namedcoin-admin:
         appId: zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0
         source_path: namedcoin-admin
-        # v0.1.47/build-50 is the newest clean, source-bound dev-publish
-        # candidate. It adds the governed enhanced-attestation cosign seam
-        # needed by the account-opening corridor without a host-side bypass.
-        source_commit: f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f
+        # v0.1.49/appVersion-52 is the dev.paype.cc MSB cohort cut aligned to
+        # melusina-msb-protocol v1.19.1-0.20260909055058-5964b66ea9cc; frozen
+        # two-path byte-identical 2026-09-13 (sha256 327c7844…).
+        source_commit: 3ac1207235f6869a11ac2549886701a55507edca
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

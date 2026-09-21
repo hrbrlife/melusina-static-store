@@ -1,0 +1,11 @@
+{
+  "schema": "melusina.store-config-render-input.v1",
+  "kind": "store-config-render-input",
+  "profileSha256": "REPLACE_WITH_EXACT_SIGNED_PROFILE_SHA256",
+  "licenseNftMint": "REPLACE_WITH_NEW_STORE_OPERATING_LICENSE_MINT",
+  "rpcUrl": "https://REPLACE_WITH_PRIMARY_TRUSTED_RPC/",
+  "rpcFallbackUrls": ["https://REPLACE_WITH_INDEPENDENT_TRUSTED_RPC/"],
+  "rpcAttempts": 2,
+  "chainId": "REPLACE_WITH_SELECTED_CHAIN_ID",
+  "operatorDomain": "REPLACE_WITH_STABLE_STORE_OPERATOR_IDENTITY_DOMAIN"
+}

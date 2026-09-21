@@ -13,8 +13,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$REPO/scripts"
+mkdir -p "$REPO/scripts" "$REPO/deploy/store-generation"
 cp "$ROOT/scripts/build-store-bootstrap-component.sh" "$REPO/scripts/"
+cp "$ROOT/deploy/store-generation/store-config-render-input.template.json" \
+  "$REPO/deploy/store-generation/store-config-render-input.template.json"
 cat >"$REPO/scripts/build-store-generation-release.sh" <<'BUILDER'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -64,6 +66,8 @@ members = {
     "bin/melusina-update-controller": b"controller fixture\n",
     "bin/verify-installer-release": b"verifier fixture\n",
     "config/store.config.template.json": b'{"domain":"REPLACE_WITH_STORE_IDENTITY_DOMAIN"}\n',
+    "config/component-registry.template.json": b'{"schema":"component-registry-fixture"}\n',
+    "config/update-controller.config.template.json": b'{"schema":"update-controller-fixture"}\n',
     "systemd/melusina-store-sidecar.service": b"[Service]\n",
 }
 archive = os.path.join(out, f"store-generation-{version}.tar.xz")
@@ -110,7 +114,7 @@ chmod 0755 "$REPO/scripts/build-store-bootstrap-component.sh" "$REPO/scripts/bui
 git -C "$REPO" init -q
 git -C "$REPO" config user.email test@example.invalid
 git -C "$REPO" config user.name test
-git -C "$REPO" add scripts
+git -C "$REPO" add scripts deploy/store-generation/store-config-render-input.template.json
 GIT_AUTHOR_DATE='2026-09-21T00:00:00Z' GIT_COMMITTER_DATE='2026-09-21T00:00:00Z' \
   git -C "$REPO" commit -qm fixture
 
@@ -132,7 +136,7 @@ with gzip.open(archive, "rb") as compressed:
             "STORE_BOOTSTRAP_PROVENANCE.json",
             "BUILD-PROVENANCE.json",
             "bin/melusina-store-sidecar",
-            "config/store.config.template.json",
+            "config/store-config-render-input.template.json",
         }
         if not required.issubset(members):
             raise SystemExit("component omitted required bootstrap members")
@@ -141,9 +145,17 @@ with gzip.open(archive, "rb") as compressed:
             raise SystemExit("component wrote an unexpected provenance schema")
         if provenance["sourceRepo"] != "hrbrlife/melusina-static-store":
             raise SystemExit("component wrote an unexpected source identity")
-        config = tar.extractfile(members["config/store.config.template.json"]).read()
-        if b"REPLACE_WITH_STORE_IDENTITY_DOMAIN" not in config:
-            raise SystemExit("component did not carry the bootstrap template")
+        if "config/store.config.template.json" in members:
+            raise SystemExit("component retained the retiring Store configuration template")
+        for legacy in {
+            "config/component-registry.template.json",
+            "config/update-controller.config.template.json",
+        }:
+            if legacy in members:
+                raise SystemExit("component retained a retiring controller configuration template")
+        config_input = json.load(tar.extractfile(members["config/store-config-render-input.template.json"]))
+        if config_input.get("schema") != "melusina.store-config-render-input.v1" or config_input.get("kind") != "store-config-render-input":
+            raise SystemExit("component did not carry the typed Store config-render input template")
 PY
 
 for mutation in bad-link bad-provenance; do

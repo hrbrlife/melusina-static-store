@@ -96,9 +96,15 @@ BUILD_OUT="$TMP/generation"
   --version "$VERSION" \
   --out-dir "$BUILD_OUT"
 
+RENDER_INPUT_TEMPLATE="$ROOT/deploy/store-generation/store-config-render-input.template.json"
+[[ -f "$RENDER_INPUT_TEMPLATE" && ! -L "$RENDER_INPUT_TEMPLATE" ]] || {
+  echo "Store config-render input template is missing or unsafe" >&2
+  exit 1
+}
+
 PUBLISH_TMP="$(mktemp -d "$OUT_PARENT/.store-bootstrap-$VERSION.output.XXXXXX")"
 chmod 0755 "$PUBLISH_TMP"
-python3 - "$BUILD_OUT" "$PUBLISH_TMP/store-bootstrap.tar.gz" "$SOURCE_REPO" "$HEAD" "$SOURCE_EPOCH" "$VERSION" <<'PY'
+python3 - "$BUILD_OUT" "$PUBLISH_TMP/store-bootstrap.tar.gz" "$SOURCE_REPO" "$HEAD" "$SOURCE_EPOCH" "$VERSION" "$RENDER_INPUT_TEMPLATE" <<'PY'
 import gzip
 import hashlib
 import io
@@ -115,6 +121,7 @@ import tarfile
     source_commit,
     source_epoch_raw,
     version,
+    render_input_template_path,
 ) = sys.argv[1:]
 source_epoch = int(source_epoch_raw)
 
@@ -147,6 +154,23 @@ def regular_file(directory: str, name: str) -> bytes:
 
 def digest(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
+
+
+def source_regular_file(path: str, subject: str) -> bytes:
+    try:
+        info = os.lstat(path)
+    except OSError as error:
+        fail(f"read {subject}: {error}")
+    if not os.path.isfile(path) or os.path.islink(path) or info.st_size < 1 or info.st_size > MAX_ENTRY_BYTES:
+        fail(f"{subject} is not one bounded regular source file")
+    try:
+        with open(path, "rb") as handle:
+            raw = handle.read(MAX_ENTRY_BYTES + 1)
+    except OSError as error:
+        fail(f"read {subject}: {error}")
+    if len(raw) != info.st_size:
+        fail(f"{subject} changed while it was read")
+    return raw
 
 
 def strict_json(raw: bytes, subject: str) -> dict:
@@ -276,6 +300,35 @@ for output_name, archive_path in {
 }.items():
     if files.get(archive_path, (b"", 0))[0] != regular_file(build_dir, output_name):
         fail(f"generation archive does not contain the checksummed {output_name}")
+
+# The old generation archive is still a legacy/update input.  A fresh-estate
+# bootstrap must not ship its Store, component-registry, or update-controller
+# templates: all three contain facts from the retiring estate and accepting a
+# hand-edited copy would bypass the signed estate-profile boundary.  The Store
+# binary in this archive provides estate-profile-review and
+# estate-store-config-render instead.  Its small input template is guidance,
+# never executable configuration.
+legacy_config_names = {
+    "config/store.config.template.json",
+    "config/component-registry.template.json",
+    "config/update-controller.config.template.json",
+}
+if not legacy_config_names.issubset(files):
+    fail("generation archive lacks the legacy configuration boundary expected by this bootstrap converter")
+for name in legacy_config_names:
+    del files[name]
+
+render_input_template = source_regular_file(render_input_template_path, "Store config-render input template")
+render_input = strict_json(render_input_template, "Store config-render input template")
+if set(render_input) != {
+    "schema", "kind", "profileSha256", "licenseNftMint", "rpcUrl",
+    "rpcFallbackUrls", "rpcAttempts", "chainId", "operatorDomain",
+} or render_input.get("schema") != "melusina.store-config-render-input.v1" or render_input.get("kind") != "store-config-render-input":
+    fail("Store config-render input template has an unexpected schema")
+render_input_name = "config/store-config-render-input.template.json"
+if render_input_name in files:
+    fail("generation archive unexpectedly supplied a Store config-render input template")
+files[render_input_name] = (render_input_template, 0o644)
 
 entry_records = [
     {"name": name, "sha256": digest(raw), "sizeBytes": len(raw)}

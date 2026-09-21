@@ -42,11 +42,17 @@ generation-archive digest, builder provenance digest, and every regular member
 digest. It never accepts a nested archive as sufficient evidence: the release
 assembler must inspect each inner member before it can sign a manifest.
 
-This packaging step does **not** make the current Store templates estate-clean.
-Until the Store configuration renderer receives the enrolled estate profile and
-the foundation outputs it needs, a release-set scan must refuse a bootstrap
-component that still carries a retiring estate value. Do not hide that failure
-by treating a compressed outer byte stream as a clean Store release.
+The legacy Store, component-registry and update-controller templates are
+deliberately **not** copied into this bootstrap component. They are historical
+update-path inputs and carry retiring-estate facts. Instead the component carries
+`config/store-config-render-input.template.json` and the Store binary's
+`estate-profile-review` plus `estate-store-config-render` commands. The operator
+uses the signed estate profile and a private mode-`0600` render input to create
+the Store candidate configuration; the template is guidance, never a config to
+copy or start. Controller and component-registry configuration remain separate
+profile/foundation-aware preparation work. A release-set scan still decides
+whether the complete component is clean; compression never hides a retained
+estate value.
 
 The archive includes `bin/boot-identity-prep` beside the store ELF. The
 deployer uses this exact, checksummed tool during its staged prepare phase to
@@ -54,13 +60,14 @@ derive the `register_sidecar_identity` input from the archived store ELF, the
 fresh TLS certificate, and the root-owned shard set. It must never hand-compose
 those identity fields or build the preparer on the target.
 
-It also includes the separately running `bin/melusina-update-controller`, its
-root-owned config/registry templates, and the controller service/timer units.
-The controller is built twice with the same source revision as the Store, but
-it is **not** silently installed or updated by a Store generation: its first
-installation still requires an authorized, Active `InstallerReleaseEntry`
-bootstrap ceremony. This bundle makes that ceremony reproducible for new
-tenants while preserving the controller's independent trust boundary.
+It also includes the separately running `bin/melusina-update-controller` and
+the controller service/timer units, but no controller configuration. The
+controller is built twice with the same source revision as the Store, but it is
+**not** silently installed or updated by a Store generation: its first
+installation still requires a profile/foundation-aware configuration and an
+authorized, Active `InstallerReleaseEntry` bootstrap ceremony. This bundle
+preserves that independent trust boundary rather than inheriting retired
+configuration values.
 
 ## Deployer-owned inputs
 
@@ -70,12 +77,12 @@ paths. Before enabling the unit it must install or create:
 1. The verified archive at an immutable path such as
    `/opt/melusina-store/releases/<version>-<archive-sha256>/`, then atomically
    point `/opt/melusina-store/current` at it.
-2. `/etc/melusina/store/store.config.json`, rendered from the bundled template,
-   mode `0600`, root-owned. `store_id` is the destination pinned by consumers.
-   `public_base_url` is the exact public origin used in every signed bundle URL.
-   Its `release_squads_authority` tuple is already pinned in the bundle from
-   the governed Bazaar catalog and must be copied unchanged: every app release
-   uses that one authority while retaining its own SPK signing key.
+2. `/etc/melusina/store/store.config.json`, rendered by the bundled Store
+   binary from the owner-signed estate profile and a private mode-`0600`
+   `store-config-render-input` file, then mode `0600`, root-owned. Do not copy
+   `config/store-config-render-input.template.json` as runtime configuration.
+   The renderer derives `store_id`, public origin and the exact
+   `release_squads_authority` tuple from the profile; it refuses overrides.
 3. The three root-owned mode-`0600` attest shards. They derive the operator
    signer; a private operator key is never packaged. The derived signer and
    running ELF hash must match an Active `SidecarIdentityEntry` before startup.
@@ -102,10 +109,14 @@ paths. Before enabling the unit it must install or create:
    bundled unit's `EnvironmentFile=-` directive. The controller alone writes
    this marker before a governed component restart and restores it from the
    WAL before rollback; the deployer must never hand-compose a release tuple.
+   The bootstrap component intentionally does not supply this entry; it must be
+   rendered as a profile/foundation-aware controller configuration, never copied
+   from the retired Store.
 8. The root-owned controller binary at
    `/usr/local/lib/melusina/melusina-update-controller`, plus strict rendered
    `config.json` and `component-registry.json` under
-   `/etc/melusina/update-controller/`. The controller starts with
+   `/etc/melusina/update-controller/`. The bootstrap component intentionally
+   does not supply either configuration file. The controller starts with
    `autoApply: false`; its active `InstallerReleaseEntry` is verified before
    the bootstrap ceremony enables the bundled timer.
 9. The bundled Store and controller systemd units, byte-for-byte, at

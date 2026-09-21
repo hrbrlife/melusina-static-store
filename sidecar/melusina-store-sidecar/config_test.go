@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,7 +20,7 @@ func writeTmpConfig(t *testing.T, content string) string {
 	// Every existing config-focused test gets a valid shared-authority tuple so
 	// it can continue to isolate the validation rule it names. A dedicated test
 	// below covers the new required field.
-	content = strings.TrimSuffix(trimmed, "}") + `,"release_squads_authority":{"multisig":"` + testStoreAuthority + `","vault":"` + testStoreAuthority + `","program_id":"` + testStoreAuthority + `"}}`
+	content = strings.TrimSuffix(trimmed, "}") + `,"release_squads_authority":{"multisig":"` + testStoreAuthority + `","vault":"` + testStoreAuthority + `","program_id":"` + testStoreAuthority + `","threshold":3,"member_count":4}}`
 	return writeRawTmpConfig(t, content)
 }
 
@@ -162,6 +163,101 @@ func TestLoadConfig_EnrolledStoreRequiresAnExplicitRPCTrustRoot(t *testing.T) {
 	withRPC := strings.TrimSuffix(base, "}") + `,"rpc_url":"https://primary.example/rpc"}`
 	if _, err := LoadConfig(writeTmpConfig(t, withRPC)); err != nil {
 		t.Fatalf("enrolled Store with explicit RPC trust root: %v", err)
+	}
+}
+
+func profileEnrolledStoreConfig(t *testing.T, statePath string) map[string]any {
+	t.Helper()
+	profile := storeEstateProfileFixture(t)
+	declaration := storeEstateDeclarationForProfile(t, profile)
+	return map[string]any{
+		"license_nft_mint":             declaration.LicenseNFTMint,
+		"store_authority":              declaration.StoreAuthority,
+		"program_id":                   declaration.ProgramID,
+		"domain":                       declaration.Domain,
+		"store_id":                     declaration.StoreID,
+		"reseller_nft_mint":            declaration.ResellerNFTMint,
+		"release_master_nft_mint":      declaration.ReleaseMasterNFTMint,
+		"estate_enrollment_state_path": statePath,
+		"rpc_url":                      "https://primary.example/rpc",
+		"release_squads_authority": map[string]any{
+			"multisig":     declaration.ReleaseSquadsAuthority.Multisig,
+			"vault":        declaration.ReleaseSquadsAuthority.Vault,
+			"program_id":   declaration.ReleaseSquadsAuthority.ProgramID,
+			"threshold":    declaration.ReleaseSquadsAuthority.Threshold,
+			"member_count": declaration.ReleaseSquadsAuthority.MemberCount,
+		},
+	}
+}
+
+func writeJSONConfig(t *testing.T, value any) string {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return writeRawTmpConfig(t, string(raw))
+}
+
+func TestLoadConfig_ProfileEnrolledStoreAcceptsItsExplicitProfileQuorum(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "estate-enrollment.json")
+	cfg, err := LoadConfig(writeJSONConfig(t, profileEnrolledStoreConfig(t, statePath)))
+	if err != nil {
+		t.Fatalf("LoadConfig refused the signed-profile 2-of-3 role: %v", err)
+	}
+	if cfg.ReleaseSquadsAuthority.Threshold != 2 || cfg.ReleaseSquadsAuthority.MemberCount != 3 {
+		t.Fatalf("profile quorum = %d/%d, want 2/3", cfg.ReleaseSquadsAuthority.Threshold, cfg.ReleaseSquadsAuthority.MemberCount)
+	}
+	authority, err := cfg.sharedSquadsAuthority()
+	if err != nil {
+		t.Fatalf("serve-time authority rejected the accepted profile quorum: %v", err)
+	}
+	if authority.Threshold != 2 || authority.MemberCount != 3 {
+		t.Fatalf("serve-time profile quorum = %d/%d, want 2/3", authority.Threshold, authority.MemberCount)
+	}
+}
+
+func TestLoadConfig_LegacyStoreRetainsFixedReleaseQuorum(t *testing.T) {
+	config := profileEnrolledStoreConfig(t, "")
+	delete(config, "estate_enrollment_state_path")
+	delete(config, "rpc_url")
+	_, err := LoadConfig(writeJSONConfig(t, config))
+	if err == nil || !strings.Contains(err.Error(), "release_squads_authority quorum must be 3/4") {
+		t.Fatalf("unenrolled Store accepted profile-specific 2/3 quorum: %v", err)
+	}
+}
+
+func TestLoadConfig_ProfileEnrolledStoreRefusesImplicitOrInvalidQuorum(t *testing.T) {
+	for name, mutate := range map[string]func(map[string]any){
+		"missing_threshold": func(config map[string]any) {
+			delete(config["release_squads_authority"].(map[string]any), "threshold")
+		},
+		"missing_member_count": func(config map[string]any) {
+			delete(config["release_squads_authority"].(map[string]any), "member_count")
+		},
+		"one_of_three": func(config map[string]any) {
+			config["release_squads_authority"].(map[string]any)["threshold"] = 1
+		},
+		"threshold_exceeds_members": func(config map[string]any) {
+			authority := config["release_squads_authority"].(map[string]any)
+			authority["threshold"] = 4
+			authority["member_count"] = 3
+		},
+	} {
+		want := map[string]string{
+			"missing_threshold":         "threshold and member_count are required",
+			"missing_member_count":      "threshold and member_count are required",
+			"one_of_three":              "threshold must be at least 2",
+			"threshold_exceeds_members": "threshold must not exceed member_count",
+		}[name]
+		t.Run(name, func(t *testing.T) {
+			config := profileEnrolledStoreConfig(t, filepath.Join(t.TempDir(), "estate-enrollment.json"))
+			mutate(config)
+			_, err := LoadConfig(writeJSONConfig(t, config))
+			if err == nil || !strings.Contains(err.Error(), want) {
+				t.Fatalf("invalid enrolled quorum accepted or misidentified: %v", err)
+			}
+		})
 	}
 }
 

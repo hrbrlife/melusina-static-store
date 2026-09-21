@@ -275,6 +275,51 @@ func TestVerifyConfiguredStoreEnrollmentReadsTheDurablePinAndStrictDeclaration(t
 	}
 }
 
+func TestVerifyConfiguredStoreEnrollmentRefusesAValidButForeignReleaseQuorum(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	statePath := filepath.Join(dir, "enrollment.json")
+	if err := writeStoreEnrollmentStateNew(statePath, f.state, uint32(os.Geteuid())); err != nil {
+		t.Fatalf("write enrollment state: %v", err)
+	}
+	configPath := filepath.Join(dir, "store.config.json")
+	config := map[string]any{
+		"license_nft_mint":             f.declaration.LicenseNFTMint,
+		"store_authority":              f.declaration.StoreAuthority,
+		"program_id":                   f.declaration.ProgramID,
+		"domain":                       f.declaration.Domain,
+		"store_id":                     f.declaration.StoreID,
+		"reseller_nft_mint":            f.declaration.ResellerNFTMint,
+		"release_master_nft_mint":      f.declaration.ReleaseMasterNFTMint,
+		"estate_enrollment_state_path": statePath,
+		"rpc_url":                      "https://primary.example/rpc",
+		"release_squads_authority": map[string]any{
+			"multisig":     f.declaration.ReleaseSquadsAuthority.Multisig,
+			"vault":        f.declaration.ReleaseSquadsAuthority.Vault,
+			"program_id":   f.declaration.ReleaseSquadsAuthority.ProgramID,
+			"threshold":    3,
+			"member_count": 3,
+		},
+	}
+	raw, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("LoadConfig should parse an explicit, meaningful quorum before enrollment checks it: %v", err)
+	}
+	if _, err := verifyConfiguredStoreEnrollment(context.Background(), loaded, configPath, f.identity, newFixedStoreGenesisChainReader(f.genesis)); err == nil || !strings.Contains(err.Error(), "store-estate-profile-config-mismatch: roles.store-release.threshold") {
+		t.Fatalf("enrolled Store accepted a quorum not authorized by its profile: %v", err)
+	}
+}
+
 func TestStoreEnrollmentRuntimeFactsUseTheVerifiedSnapshot(t *testing.T) {
 	f := newStoreEnrollmentRuntimeFixture(t)
 	facts, err := storeEnrollmentRuntimeFacts(f.declaration, f.identity)

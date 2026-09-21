@@ -202,6 +202,14 @@ directory must already exist, be owned by the Store service account, and be
 mode `0700`. The final state file must not exist. An enrolled config also
 requires an explicit `rpc_url` and may name explicit `rpc_fallback_urls`.
 
+The enrolled configuration must also spell out every
+`release_squads_authority` field: `multisig`, `vault`, `program_id`,
+`threshold`, and `member_count`. It never inherits the legacy Bazaar 3-of-4
+default. The threshold must be at least two and no greater than the member
+count; the preflight and enrollment runtime then require that exact tuple to
+project from the signed profile's `roles.store-release` record. Supplying a
+structurally valid but different quorum does not authorize a Store.
+
 Before the one-time local enrollment, the operator needs all of the following:
 
 - an owner-signed `EstateProfileV1` for the intended estate;

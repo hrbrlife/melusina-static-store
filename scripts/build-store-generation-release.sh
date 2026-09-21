@@ -34,11 +34,26 @@ fi
 [[ -z "$(git -C "$ROOT" status --porcelain --untracked-files=normal)" ]] || {
   echo "source tree must be clean" >&2; exit 2; }
 HEAD="$(git -C "$ROOT" rev-parse HEAD)"
-mapfile -t REMOTES < <(git -C "$ROOT" remote | LC_ALL=C sort)
-[[ ${#REMOTES[@]} -gt 0 ]] || { echo "source repository has no remote" >&2; exit 2; }
-for remote in "${REMOTES[@]}"; do git -C "$ROOT" fetch --prune "$remote"; done
-git -C "$ROOT" for-each-ref --format='%(refname)' --contains "$HEAD" refs/remotes/ | grep -q . || {
-  echo "source HEAD is not reachable from a refreshed remote ref: $HEAD" >&2; exit 2; }
+# Fetch exactly the branch which declares this source checkout publishable.
+# The default fetch refspec intentionally contains only a small subset of the
+# Store's many historical branches, so a bare `git fetch origin` can leave a
+# freshly pushed release branch only in FETCH_HEAD and falsely reject it.
+# An attached branch with an explicit upstream is the reviewable release
+# identity; detached or local-only source is refused rather than guessed.
+CURRENT_BRANCH="$(git -C "$ROOT" symbolic-ref -q --short HEAD || true)"
+[[ -n "$CURRENT_BRANCH" ]] || { echo "source HEAD must be on an attached branch with an upstream" >&2; exit 2; }
+UPSTREAM="$(git -C "$ROOT" for-each-ref --format='%(upstream:short)' "refs/heads/$CURRENT_BRANCH")"
+[[ -n "$UPSTREAM" && "$UPSTREAM" == */* ]] || {
+  echo "source branch must declare an upstream remote ref" >&2; exit 2; }
+UPSTREAM_REMOTE="${UPSTREAM%%/*}"
+UPSTREAM_BRANCH="${UPSTREAM#*/}"
+git -C "$ROOT" remote get-url "$UPSTREAM_REMOTE" >/dev/null 2>&1 || {
+  echo "source branch upstream remote is unavailable: $UPSTREAM_REMOTE" >&2; exit 2; }
+git -C "$ROOT" fetch --prune "$UPSTREAM_REMOTE" \
+  "+refs/heads/$UPSTREAM_BRANCH:refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+UPSTREAM_HEAD="$(git -C "$ROOT" rev-parse "refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH")"
+git -C "$ROOT" merge-base --is-ancestor "$HEAD" "$UPSTREAM_HEAD" || {
+  echo "source HEAD is not reachable from its refreshed upstream ref: $HEAD" >&2; exit 2; }
 
 SOURCE_EPOCH="$(git -C "$ROOT" show -s --format=%ct "$HEAD")"
 # The UI is part of the governed ELF through go:embed. Regenerate it once from

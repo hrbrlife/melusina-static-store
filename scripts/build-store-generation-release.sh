@@ -42,11 +42,11 @@ HEAD="$(git -C "$ROOT" rev-parse HEAD)"
 # identity; detached or local-only source is refused rather than guessed.
 CURRENT_BRANCH="$(git -C "$ROOT" symbolic-ref -q --short HEAD || true)"
 [[ -n "$CURRENT_BRANCH" ]] || { echo "source HEAD must be on an attached branch with an upstream" >&2; exit 2; }
-UPSTREAM="$(git -C "$ROOT" for-each-ref --format='%(upstream:short)' "refs/heads/$CURRENT_BRANCH")"
-[[ -n "$UPSTREAM" && "$UPSTREAM" == */* ]] || {
-  echo "source branch must declare an upstream remote ref" >&2; exit 2; }
-UPSTREAM_REMOTE="${UPSTREAM%%/*}"
-UPSTREAM_BRANCH="${UPSTREAM#*/}"
+UPSTREAM_REMOTE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.remote" || true)"
+UPSTREAM_MERGE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.merge" || true)"
+[[ -n "$UPSTREAM_REMOTE" && "$UPSTREAM_MERGE" == refs/heads/* ]] || {
+  echo "source branch must declare an upstream remote branch" >&2; exit 2; }
+UPSTREAM_BRANCH="${UPSTREAM_MERGE#refs/heads/}"
 git -C "$ROOT" remote get-url "$UPSTREAM_REMOTE" >/dev/null 2>&1 || {
   echo "source branch upstream remote is unavailable: $UPSTREAM_REMOTE" >&2; exit 2; }
 git -C "$ROOT" fetch --prune "$UPSTREAM_REMOTE" \

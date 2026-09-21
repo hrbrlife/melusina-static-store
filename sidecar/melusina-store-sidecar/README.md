@@ -205,14 +205,43 @@ requires an explicit `rpc_url` and may name explicit `rpc_fallback_urls`.
 Before the one-time local enrollment, the operator needs all of the following:
 
 - an owner-signed `EstateProfileV1` for the intended estate;
-- an owner-signed `StoreEnrollmentV1` that binds that exact profile to the
-  root Store's actual licence, registry, derived signing and box keys,
-  SidecarIdentity binding, TLS certificate, executable hash, and network
-  genesis;
 - the complete explicit Store configuration, the boot-identity shards, and an
   Active matching `SidecarIdentityEntry`; and
 - reachable primary and fallback RPC endpoints that all report the signed
   genesis hash.
+
+First, have the non-serving Store host make the exact unsigned candidate. Use
+a fresh path: the `noclobber` subshell refuses to replace a candidate for which
+owners may already hold partial signatures.
+
+```sh
+(
+  set -C
+  ./bin/melusina-store-sidecar estate-enrollment-request \
+    -config /etc/melusina/store/store.config.json \
+    -estate-profile /secure/operator/estate-profile.json \
+    > /secure/operator/store-enrollment-request.json
+)
+```
+
+This is a no-write preflight: it checks the profile, exact configuration,
+locally derived and on-chain-bound Store identity, TLS certificate, executable,
+and every configured RPC endpoint's genesis, then emits an unsigned public
+candidate with a 15-minute default signing window. It performs RPC reads only;
+it does not write Store state, write to the chain, or start a listener.
+
+The owner-side commands belong to the reviewed deployer source at
+`0dd3c088b74b82581a7ff3f2ba61576d7e2f0bb6`, not to the Store host. Follow
+[`STORE_ENROLLMENT_CEREMONY.md`](https://github.com/melusina-os/melusina-os-deployer/blob/0dd3c088b74b82581a7ff3f2ba61576d7e2f0bb6/deploy-ui/docs/STORE_ENROLLMENT_CEREMONY.md)
+there: a keyless reviewer prints the canonical digest and public facts; each
+current profile owner independently signs that exact digest using their own
+mode-`0600` keypair; and a keyless assembler combines enough public partials
+into `store-enrollment.json`. No owner private key reaches the Store host or
+the assembler. Do not hand-author or edit an enrollment document.
+
+The resulting owner-signed `StoreEnrollmentV1` binds that exact profile to the
+root Store's actual licence, registry, derived signing and box keys,
+SidecarIdentity binding, TLS certificate, executable hash, and network genesis.
 
 Run the local transition once, on the Store host:
 
@@ -236,11 +265,12 @@ checks every configured RPC endpoint against the signed genesis. While serving,
 it repeats the endpoint-genesis check every five minutes and terminates on a
 mismatch.
 
-This repository currently implements the **consumer** of `StoreEnrollmentV1`.
-It intentionally does not create or sign one: the Store must never receive the
-owner signing keys. A reviewed owner-side producer is still required before a
-fresh estate can perform this ceremony. Do not hand-author or fabricate an
-enrollment document to bypass that missing producer.
+This repository implements the Store-side candidate producer and consumer of
+`StoreEnrollmentV1`; it intentionally does not sign one. The matching
+owner-side review, signing, and assembly commands are source-level preparation
+until a bootstrap release set packages and pins them. This ceremony does not
+choose a real domain or root Store hostname, create a chain foundation or
+sidecar identity, or establish that a new estate is ready.
 
 Pending (post-C2.3): reseller root-mirror worker hardening, sealed-v3
 submit-client (C3).

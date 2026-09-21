@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -189,5 +190,77 @@ func TestStoreEnrollmentStateReadRefusesDirectoryThatBecomesInsecure(t *testing.
 	}
 	if _, err := readStoreEnrollmentState(path, uid); err == nil || !strings.Contains(err.Error(), "directory") {
 		t.Fatalf("state in insecure directory accepted: %v", err)
+	}
+}
+
+func TestStoreEnrollmentStateConcurrentInitialWriteHasOneWinner(t *testing.T) {
+	profile, enrollment := validStoreEnrollmentStateInput(t)
+	state, err := newStoreEnrollmentState(profile, enrollment, storeEnrollmentStateNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "enrollment.json")
+	uid := uint32(os.Geteuid())
+	const writers = 8
+	start := make(chan struct{})
+	errorsOut := make(chan error, writers)
+	var group sync.WaitGroup
+	for range writers {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			<-start
+			errorsOut <- writeStoreEnrollmentStateNew(path, state, uid)
+		}()
+	}
+	close(start)
+	group.Wait()
+	close(errorsOut)
+	var succeeded, exists int
+	for err := range errorsOut {
+		switch {
+		case err == nil:
+			succeeded++
+		case errors.Is(err, errStoreEnrollmentStateExists):
+			exists++
+		default:
+			t.Fatalf("concurrent initial write: %v", err)
+		}
+	}
+	if succeeded != 1 || exists != writers-1 {
+		t.Fatalf("concurrent writes: succeeded=%d exists=%d, want 1/%d", succeeded, exists, writers-1)
+	}
+	if _, err := readStoreEnrollmentState(path, uid); err != nil {
+		t.Fatalf("read winning enrollment state: %v", err)
+	}
+}
+
+func TestStoreEnrollmentStateNeverReplacesAnExistingSymlink(t *testing.T) {
+	profile, enrollment := validStoreEnrollmentStateInput(t)
+	state, err := newStoreEnrollmentState(profile, enrollment, storeEnrollmentStateNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "enrollment.json")
+	if err := os.Symlink("elsewhere.json", path); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeStoreEnrollmentStateNew(path, state, uint32(os.Geteuid())); !errors.Is(err, errStoreEnrollmentStateExists) {
+		t.Fatalf("existing symlink replaced or accepted: %v", err)
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("initial writer replaced the symlink: %s", info.Mode())
 	}
 }

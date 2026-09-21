@@ -260,6 +260,16 @@ func TestDeriveOperatorIdentity_EndToEnd(t *testing.T) {
 	// Happy path: the derived operator binds to the pinned entry.
 	m := newMockChainReader()
 	m.sidecarIdentity[sidecarPDA.Base58()] = mockSidecarIdentity{sid: good}
+	verified, err := deriveVerifiedBootIdentity(context.Background(), cfg, m)
+	if err != nil {
+		t.Fatalf("verified snapshot: %v", err)
+	}
+	if verified == nil || verified.operator.Public().SignPubkeyB58 != op.Public().SignPubkeyB58 || verified.sidecarIdentityPDA != sidecarPDA.Base58() || verified.bindingKeyVersion != 1 || verified.operatorKeyVersion != 1 || verified.operatorDomain != cfg.Domain {
+		t.Fatalf("verified snapshot does not preserve the bound identity: %#v", verified)
+	}
+	if verified.facts.signingPubkey != good.SigningPubkey || verified.facts.encryptionPubkey != good.EncryptionPubkey || verified.facts.tlsFingerprint != good.TLSCertFingerprint || verified.facts.binaryHash != good.BinaryHash {
+		t.Fatalf("verified snapshot facts differ from the accepted on-chain binding")
+	}
 	got, err := deriveOperatorIdentity(context.Background(), cfg, m)
 	if err != nil {
 		t.Fatalf("expected ACCEPT, got: %v", err)

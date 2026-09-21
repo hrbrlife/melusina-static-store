@@ -30,6 +30,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/hrbrlife/melusina-attest/identity"
 )
 
 // Version is set via -ldflags at build time.
@@ -41,6 +43,13 @@ func main() {
 	// runtime identity: only estate-enroll may persist that decision.
 	if len(os.Args) > 1 && os.Args[1] == "estate-profile-check" {
 		runEstateProfileCheckSubcommand(os.Args[2:])
+		return
+	}
+	// The initial owner-enrolled Store identity is a one-time, local state
+	// transition. It verifies facts against the configured target and exits; it
+	// never opens a listener or writes to the chain.
+	if len(os.Args) > 1 && os.Args[1] == "estate-enroll" {
+		runEstateEnrollSubcommand(os.Args[2:])
 		return
 	}
 	// Explicit genesis trust-root entrypoint (RRS_STORE_FRESH_BOOTSTRAP). It seals the
@@ -141,10 +150,18 @@ func main() {
 	// or mismatched on-chain entry) is FATAL — a publish-provisioned store refuses to
 	// start with an unverified identity (Inv 5).
 	bootCtx, bootCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	operator, err := deriveOperatorIdentity(bootCtx, cfg, cr)
+	bootIdentity, err := deriveVerifiedBootIdentity(bootCtx, cfg, cr)
+	var enrolledState *storeEnrollmentState
+	if err == nil {
+		enrolledState, err = verifyConfiguredStoreEnrollment(bootCtx, cfg, *configPath, bootIdentity, cr)
+	}
 	bootCancel()
 	if err != nil {
-		log.Fatalf("boot identity: %v", err)
+		log.Fatalf("boot identity / estate enrollment: %v", err)
+	}
+	var operator *identity.Private
+	if bootIdentity != nil {
+		operator = bootIdentity.operator
 	}
 	if operator == nil {
 		log.Printf("boot identity: no /publish operator provisioned (boot_identity.shards_dir unset) — /publish fails closed (503); read + serve active")
@@ -196,6 +213,15 @@ func main() {
 
 	ctxRoot, cancelRoot := context.WithCancel(context.Background())
 	defer cancelRoot()
+	var enrollmentRuntimeErrors <-chan error
+	if enrolledState != nil {
+		genesisReader, ok := cr.(genesisHashReader)
+		if !ok {
+			log.Fatalf("estate enrollment: configured chain reader no longer supports getGenesisHash")
+		}
+		enrollmentRuntimeErrors = watchStoreEnrollmentGenesis(ctxRoot, enrolledState.Enrollment, genesisReader, storeEnrollmentGenesisCheckInterval)
+		log.Printf("estate enrollment: %s revision %d pinned; checking every configured RPC endpoint every %s", enrolledState.ProfilePin.EstateID, enrolledState.ProfilePin.Revision, storeEnrollmentGenesisCheckInterval)
+	}
 	if mirror != nil {
 		go mirror.Run(ctxRoot)
 		log.Printf("reseller root-mirror worker started (interval %s)", mirror.interval())
@@ -249,7 +275,14 @@ func main() {
 			serveErrors <- storeLinkControlServer.ListenAndServeTLS("", "")
 		}()
 	}
-	err = <-serveErrors
+	select {
+	case err = <-serveErrors:
+	case enrollmentErr := <-enrollmentRuntimeErrors:
+		if enrollmentErr != nil {
+			log.Fatalf("estate enrollment runtime genesis check: %v", enrollmentErr)
+		}
+		err = nil
+	}
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("serve: %v", err)
 	}

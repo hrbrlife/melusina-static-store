@@ -127,3 +127,40 @@ func TestConfiguredStoreGenesisReaderDoesNotMaskMalformedResult(t *testing.T) {
 		t.Fatalf("fallback calls = %d, want zero after malformed primary response", calls)
 	}
 }
+
+func TestConfiguredStoreGenesisReaderChecksEveryConfiguredEndpoint(t *testing.T) {
+	want := randPubkeyB58(t)
+	var primaryCalls atomic.Int32
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		primaryCalls.Add(1)
+		writeGenesisHashResponse(t, w, want)
+	}))
+	defer primary.Close()
+
+	var fallbackCalls atomic.Int32
+	fallback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fallbackCalls.Add(1)
+		writeGenesisHashResponse(t, w, want)
+	}))
+	defer fallback.Close()
+
+	reader := newConfiguredStoreRPCReader(Config{
+		RPCURL:          primary.URL,
+		RPCFallbackURLs: []string{fallback.URL},
+		RPCAttempts:     2,
+	}).(*rpcFailoverChainReader)
+	reader.delay = 0
+	hashes, err := reader.FetchConfiguredGenesisHashes(context.Background())
+	if err != nil {
+		t.Fatalf("FetchConfiguredGenesisHashes: %v", err)
+	}
+	if len(hashes) != 2 || hashes[0] != want || hashes[1] != want {
+		t.Fatalf("configured hashes = %#v, want both %q", hashes, want)
+	}
+	if calls := primaryCalls.Load(); calls != 1 {
+		t.Fatalf("primary calls = %d, want one", calls)
+	}
+	if calls := fallbackCalls.Load(); calls != 1 {
+		t.Fatalf("fallback calls = %d, want one", calls)
+	}
+}

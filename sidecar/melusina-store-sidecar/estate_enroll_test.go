@@ -1,0 +1,307 @@
+package main
+
+import (
+	"context"
+	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
+)
+
+type fixedStoreGenesisReader struct {
+	genesis string
+	err     error
+}
+
+func (r fixedStoreGenesisReader) FetchGenesisHash(context.Context) (string, error) {
+	return r.genesis, r.err
+}
+
+type fixedConfiguredStoreGenesisReader struct {
+	fixedStoreGenesisReader
+	hashes []string
+}
+
+func (r fixedConfiguredStoreGenesisReader) FetchConfiguredGenesisHashes(context.Context) ([]string, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	return append([]string(nil), r.hashes...), nil
+}
+
+// fixedStoreGenesisChainReader gives startup its full chainReader shape while
+// keeping the test's only relevant network answer, getGenesisHash, explicit.
+type fixedStoreGenesisChainReader struct {
+	*mockChainReader
+	fixedStoreGenesisReader
+}
+
+func newFixedStoreGenesisChainReader(genesis string) *fixedStoreGenesisChainReader {
+	return &fixedStoreGenesisChainReader{
+		mockChainReader:         newMockChainReader(),
+		fixedStoreGenesisReader: fixedStoreGenesisReader{genesis: genesis},
+	}
+}
+
+type storeEnrollmentRuntimeFixture struct {
+	profile     estateprofile.EstateProfileV1
+	state       storeEnrollmentState
+	declaration storeEstateDeclaration
+	cfg         Config
+	identity    *verifiedBootIdentity
+	genesis     string
+}
+
+func signStoreEnrollmentRuntimeProfile(t *testing.T, profile estateprofile.EstateProfileV1) estateprofile.EstateProfileV1 {
+	t.Helper()
+	profile.Signatures = nil
+	digest, err := estateprofile.ProfileSHA256(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, keyID := range []string{"owner-a", "owner-b"} {
+		private := storeEnrollmentStatePrivate(profile.OwnerPolicy.PolicyID, keyID)
+		profile.Signatures = append(profile.Signatures, estateprofile.SignatureV1{
+			KeyID:     keyID,
+			Signature: base64.RawURLEncoding.EncodeToString(ed25519.Sign(private, []byte(digest))),
+		})
+	}
+	if _, err := estateprofile.VerifyProfile(profile); err != nil {
+		t.Fatalf("re-signed runtime profile: %v", err)
+	}
+	return profile
+}
+
+func newStoreEnrollmentRuntimeFixture(t *testing.T) storeEnrollmentRuntimeFixture {
+	t.Helper()
+	base := storeEstateProfileFixture(t)
+	operatorDomain := "operator.rehearsal.invalid"
+	operator := newTestIdentity(t, "store", base.Anchors.MasterMint, operatorDomain)
+	profile := base
+	profile.Store.OperatorKey = operator.Public().SignPubkeyB58
+	profile = signStoreEnrollmentRuntimeProfile(t, profile)
+	profileDigest, err := estateprofile.VerifyProfile(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tlsFingerprint := sha256.Sum256([]byte("estate-enroll-runtime-tls"))
+	binaryHash := sha256.Sum256([]byte("estate-enroll-runtime-binary"))
+	sidecarPDA := randPubkeyB58(t)
+	enrollment := estateprofile.StoreEnrollmentV1{
+		Schema:             estateprofile.StoreEnrollmentSchema,
+		Kind:               estateprofile.StoreEnrollmentKind,
+		Purpose:            estateprofile.StoreEnrollmentPurpose,
+		EstateID:           profile.EstateID,
+		ProfileSHA256:      profileDigest,
+		ProfileRevision:    profile.Revision,
+		NetworkGenesisHash: profile.Network.GenesisHash,
+		RootDomain:         profile.Store.RootDomain,
+		RootDomainSHA256:   profile.Store.RootDomainSHA256,
+		StoreID:            profile.Store.StoreID,
+		StoreOperatorKey:   operator.Public().SignPubkeyB58,
+		StoreBoxKey:        operator.Public().BoxPubkeyB58,
+		LicenseNFTMint:     profile.Anchors.MasterMint,
+		LicenseRegistryID:  storeEnrollmentStateProgramID(t, profile, estateprofile.ProgramRoleLicenseRegistry),
+		SidecarID:          "store",
+		BindingKeyVersion:  1,
+		OperatorKeyVersion: 1,
+		OperatorDomain:     operatorDomain,
+		SidecarIdentityPDA: sidecarPDA,
+		TLSCertFingerprint: hex.EncodeToString(tlsFingerprint[:]),
+		BinarySHA256:       hex.EncodeToString(binaryHash[:]),
+		IssuedAt:           "2026-09-20T01:00:00Z",
+		ExpiresAt:          "2026-09-20T02:00:00Z",
+		EnrollmentNonce:    storeEnrollmentStateDigest("runtime-nonce"),
+	}
+	digest, err := estateprofile.StoreEnrollmentSHA256(enrollment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, keyID := range []string{"owner-a", "owner-b"} {
+		enrollment.Signatures = append(enrollment.Signatures, estateprofile.SignatureV1{
+			KeyID:     keyID,
+			Signature: base64.RawURLEncoding.EncodeToString(ed25519.Sign(storeEnrollmentStatePrivate(profile.OwnerPolicy.PolicyID, keyID), []byte(digest))),
+		})
+	}
+	state, err := newStoreEnrollmentState(profile, enrollment, storeEnrollmentStateNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaration := storeEstateDeclarationForProfile(t, profile)
+	declaration.LicenseNFTMint = profile.Anchors.MasterMint
+	cfg := Config{
+		LicenseNFTMint:       declaration.LicenseNFTMint,
+		StoreAuthority:       declaration.StoreAuthority,
+		ProgramID:            declaration.ProgramID,
+		Domain:               declaration.Domain,
+		StoreID:              declaration.StoreID,
+		ResellerNFTMint:      declaration.ResellerNFTMint,
+		ReleaseMasterNftMint: declaration.ReleaseMasterNFTMint,
+		ReleaseSquadsAuthority: ReleaseSquadsAuthority{
+			Multisig:    declaration.ReleaseSquadsAuthority.Multisig,
+			Vault:       declaration.ReleaseSquadsAuthority.Vault,
+			ProgramID:   declaration.ReleaseSquadsAuthority.ProgramID,
+			Threshold:   declaration.ReleaseSquadsAuthority.Threshold,
+			MemberCount: declaration.ReleaseSquadsAuthority.MemberCount,
+		},
+	}
+	return storeEnrollmentRuntimeFixture{
+		profile:     profile,
+		state:       state,
+		declaration: declaration,
+		cfg:         cfg,
+		identity: &verifiedBootIdentity{
+			operator:           operator,
+			facts:              bootIdentityFacts{tlsFingerprint: tlsFingerprint, binaryHash: binaryHash},
+			sidecarID:          "store",
+			bindingKeyVersion:  1,
+			operatorKeyVersion: 1,
+			operatorDomain:     operatorDomain,
+			sidecarIdentityPDA: sidecarPDA,
+		},
+		genesis: profile.Network.GenesisHash,
+	}
+}
+
+func TestVerifyStoreEnrollmentRuntimeBindsExactFactsAndGenesis(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	got, err := verifyStoreEnrollmentRuntime(context.Background(), f.cfg, f.declaration, f.state, f.identity, fixedStoreGenesisReader{genesis: f.genesis})
+	if err != nil {
+		t.Fatalf("valid runtime enrollment refused: %v", err)
+	}
+	if got != f.genesis {
+		t.Fatalf("observed genesis = %q, want %q", got, f.genesis)
+	}
+
+	foreignOperator := newTestIdentity(t, "store", f.cfg.LicenseNFTMint, f.identity.operatorDomain)
+	foreign := *f.identity
+	foreign.operator = foreignOperator
+	if _, err := verifyStoreEnrollmentRuntime(context.Background(), f.cfg, f.declaration, f.state, &foreign, fixedStoreGenesisReader{genesis: f.genesis}); err == nil || !strings.Contains(err.Error(), "store-enrollment-facts-mismatch") {
+		t.Fatalf("foreign local operator accepted: %v", err)
+	}
+
+	if _, err := verifyStoreEnrollmentRuntime(context.Background(), f.cfg, f.declaration, f.state, f.identity, fixedStoreGenesisReader{genesis: randPubkeyB58(t)}); err == nil || !strings.Contains(err.Error(), "store-rpc-genesis-mismatch") {
+		t.Fatalf("foreign RPC genesis accepted: %v", err)
+	}
+
+	if _, err := verifyStoreEnrollmentRuntime(context.Background(), f.cfg, f.declaration, f.state, f.identity, fixedConfiguredStoreGenesisReader{fixedStoreGenesisReader: fixedStoreGenesisReader{genesis: f.genesis}, hashes: []string{f.genesis, randPubkeyB58(t)}}); err == nil || !strings.Contains(err.Error(), "store-rpc-genesis-mismatch") {
+		t.Fatalf("foreign configured fallback genesis accepted: %v", err)
+	}
+
+	wrongConfig := f.cfg
+	wrongConfig.StoreID = "different-store"
+	if _, err := verifyStoreEnrollmentRuntime(context.Background(), wrongConfig, f.declaration, f.state, f.identity, fixedStoreGenesisReader{genesis: f.genesis}); err == nil || !strings.Contains(err.Error(), "store-estate-profile-config-mismatch:store_id") {
+		t.Fatalf("config drift accepted: %v", err)
+	}
+}
+
+func TestVerifyConfiguredStoreEnrollmentRefusesMissingInitialStateByName(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	f.cfg.EstateEnrollmentStatePath = filepath.Join(dir, "enrollment.json")
+	_, err := verifyConfiguredStoreEnrollment(context.Background(), f.cfg, filepath.Join(dir, "store.config.json"), f.identity, nil)
+	if !errors.Is(err, errStoreEstateProfileNotEnrolled) || !strings.Contains(err.Error(), "store-estate-profile-not-enrolled") {
+		t.Fatalf("missing state error = %v", err)
+	}
+}
+
+func TestVerifyConfiguredStoreEnrollmentReadsTheDurablePinAndStrictDeclaration(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	statePath := filepath.Join(dir, "enrollment.json")
+	if err := writeStoreEnrollmentStateNew(statePath, f.state, uint32(os.Geteuid())); err != nil {
+		t.Fatalf("write enrollment state: %v", err)
+	}
+	f.cfg.EstateEnrollmentStatePath = statePath
+	configPath := filepath.Join(dir, "store.config.json")
+	config := map[string]any{
+		"license_nft_mint":        f.declaration.LicenseNFTMint,
+		"store_authority":         f.declaration.StoreAuthority,
+		"program_id":              f.declaration.ProgramID,
+		"domain":                  f.declaration.Domain,
+		"store_id":                f.declaration.StoreID,
+		"reseller_nft_mint":       f.declaration.ResellerNFTMint,
+		"release_master_nft_mint": f.declaration.ReleaseMasterNFTMint,
+		"release_squads_authority": map[string]any{
+			"multisig":     f.declaration.ReleaseSquadsAuthority.Multisig,
+			"vault":        f.declaration.ReleaseSquadsAuthority.Vault,
+			"program_id":   f.declaration.ReleaseSquadsAuthority.ProgramID,
+			"threshold":    f.declaration.ReleaseSquadsAuthority.Threshold,
+			"member_count": f.declaration.ReleaseSquadsAuthority.MemberCount,
+		},
+	}
+	raw, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := verifyConfiguredStoreEnrollment(context.Background(), f.cfg, configPath, f.identity, newFixedStoreGenesisChainReader(f.genesis))
+	if err != nil {
+		t.Fatalf("configured runtime refused its durable enrollment: %v", err)
+	}
+	if got == nil || got.ProfilePin != f.state.ProfilePin {
+		t.Fatalf("configured runtime returned wrong enrollment state: %#v", got)
+	}
+
+	delete(config, "store_authority")
+	raw, err = json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verifyConfiguredStoreEnrollment(context.Background(), f.cfg, configPath, f.identity, newFixedStoreGenesisChainReader(f.genesis)); err == nil || !strings.Contains(err.Error(), "store-estate-profile-config-missing:store_authority") {
+		t.Fatalf("runtime accepted declaration with omitted store authority: %v", err)
+	}
+}
+
+func TestStoreEnrollmentRuntimeFactsUseTheVerifiedSnapshot(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	facts, err := storeEnrollmentRuntimeFacts(f.declaration, f.identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if facts.StoreOperatorKey != f.identity.operator.Public().SignPubkeyB58 || facts.StoreBoxKey != f.identity.operator.Public().BoxPubkeyB58 {
+		t.Fatalf("facts did not come from the verified operator: %+v", facts)
+	}
+	if facts.SidecarIdentityPDA != f.identity.sidecarIdentityPDA || facts.OperatorDomain != f.identity.operatorDomain {
+		t.Fatalf("facts did not preserve verified binding coordinates: %+v", facts)
+	}
+}
+
+func TestWatchStoreEnrollmentGenesisReportsAChangedConfiguredEndpoint(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	errorsOut := watchStoreEnrollmentGenesis(ctx, f.state.Enrollment, fixedConfiguredStoreGenesisReader{
+		fixedStoreGenesisReader: fixedStoreGenesisReader{genesis: f.genesis},
+		hashes:                  []string{f.genesis, randPubkeyB58(t)},
+	}, time.Millisecond)
+	select {
+	case err := <-errorsOut:
+		if err == nil || !strings.Contains(err.Error(), "store-rpc-genesis-mismatch") {
+			t.Fatalf("watcher error = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("watcher did not report foreign configured endpoint")
+	}
+}

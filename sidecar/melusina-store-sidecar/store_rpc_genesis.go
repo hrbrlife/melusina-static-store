@@ -21,8 +21,16 @@ type genesisHashReader interface {
 	FetchGenesisHash(context.Context) (string, error)
 }
 
+// configuredGenesisHashReader additionally proves every explicitly trusted
+// endpoint belongs to the same cluster. A normal failover read cannot make
+// that assertion because it stops after the first reachable endpoint.
+type configuredGenesisHashReader interface {
+	FetchConfiguredGenesisHashes(context.Context) ([]string, error)
+}
+
 var _ genesisHashReader = (*storeRPCReader)(nil)
 var _ genesisHashReader = (*rpcFailoverChainReader)(nil)
+var _ configuredGenesisHashReader = (*rpcFailoverChainReader)(nil)
 
 // FetchGenesisHash reads the cluster's immutable identity. A syntactically
 // valid JSON-RPC reply is still checked as a canonical 32-byte base58 value so
@@ -83,6 +91,47 @@ func (c *rpcFailoverChainReader) FetchGenesisHash(ctx context.Context) (genesis 
 		return err
 	})
 	return genesis, err
+}
+
+// FetchConfiguredGenesisHashes checks each configured endpoint independently.
+// It retries a transport failure on that endpoint, but never uses another
+// endpoint as evidence for it: a fallback that later becomes active must have
+// demonstrated the same immutable cluster identity at enrollment/startup.
+func (c *rpcFailoverChainReader) FetchConfiguredGenesisHashes(ctx context.Context) ([]string, error) {
+	if len(c.readers) == 0 {
+		return nil, errors.New("no configured RPC endpoint supports getGenesisHash")
+	}
+	hashes := make([]string, 0, len(c.readers))
+	for index, reader := range c.readers {
+		genesisReader, ok := reader.(genesisHashReader)
+		if !ok {
+			return nil, fmt.Errorf("configured RPC endpoint %d does not support getGenesisHash", index+1)
+		}
+		var genesis string
+		var err error
+		for attempt := 0; attempt < c.attempts; attempt++ {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			genesis, err = genesisReader.FetchGenesisHash(ctx)
+			if err == nil {
+				break
+			}
+			if !errors.Is(err, verify.ErrRPCUnreachable) {
+				return nil, fmt.Errorf("configured RPC endpoint %d getGenesisHash: %w", index+1, err)
+			}
+			if attempt+1 < c.attempts {
+				if err := waitForRPCRetry(ctx, c.delay); err != nil {
+					return nil, err
+				}
+			}
+		}
+		if err != nil {
+			return nil, fmt.Errorf("configured RPC endpoint %d getGenesisHash: %w", index+1, err)
+		}
+		hashes = append(hashes, genesis)
+	}
+	return hashes, nil
 }
 
 type storeGenesisHashResponse struct {

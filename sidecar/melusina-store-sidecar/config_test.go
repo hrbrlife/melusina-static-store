@@ -153,6 +153,18 @@ func TestLoadConfig_NormalizesTrustedRPCEndpoints(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_EnrolledStoreRequiresAnExplicitRPCTrustRoot(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "estate-enrollment.json")
+	base := `{"license_nft_mint":"LIC","store_authority":"` + testStoreAuthority + `","domain":"store.example.org","estate_enrollment_state_path":"` + statePath + `"}`
+	if _, err := LoadConfig(writeTmpConfig(t, base)); err == nil || !strings.Contains(err.Error(), "rpc_url is required when estate_enrollment_state_path is configured") {
+		t.Fatalf("enrolled Store without explicit RPC trust root = %v", err)
+	}
+	withRPC := strings.TrimSuffix(base, "}") + `,"rpc_url":"https://primary.example/rpc"}`
+	if _, err := LoadConfig(writeTmpConfig(t, withRPC)); err != nil {
+		t.Fatalf("enrolled Store with explicit RPC trust root: %v", err)
+	}
+}
+
 func TestLoadConfig_RejectsUnsafeOrAmbiguousRPCEndpoints(t *testing.T) {
 	base := `"license_nft_mint":"LIC","store_authority":"` + testStoreAuthority + `","domain":"store.example.org"`
 	for name, suffix := range map[string]string{

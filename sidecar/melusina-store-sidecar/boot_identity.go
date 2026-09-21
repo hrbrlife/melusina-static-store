@@ -45,10 +45,26 @@ import (
 // binary_hash the SidecarIdentityEntry pins. Overridable in tests.
 const shardExeProc = "/proc/self/exe"
 
-// deriveOperatorIdentity runs the boot-identity ceremony and returns the gated
-// /publish operator, or (nil, nil) when no operator is provisioned (read-only
-// store). A non-nil error is FATAL at the call site (Inv 5 fail-closed).
-func deriveOperatorIdentity(ctx context.Context, cfg Config, cr chainReader) (*identity.Private, error) {
+// verifiedBootIdentity is one coherent result of the boot-identity ceremony.
+// The facts and binding coordinates are retained beside the derived operator
+// so an estate-enrollment check never re-reads a local file or re-derives a
+// key after the SidecarIdentityEntry check has succeeded.  It is intentionally
+// private to this package: callers receive a verified snapshot, never shard
+// material or an independently mutable collection of facts.
+type verifiedBootIdentity struct {
+	operator           *identity.Private
+	facts              bootIdentityFacts
+	sidecarID          string
+	bindingKeyVersion  uint32
+	operatorKeyVersion uint32
+	operatorDomain     string
+	sidecarIdentityPDA string
+}
+
+// deriveVerifiedBootIdentity runs the boot-identity ceremony and returns one
+// verified snapshot, or (nil, nil) when no operator is provisioned (read-only
+// Store). A non-nil error is FATAL at the call site (Inv 5 fail-closed).
+func deriveVerifiedBootIdentity(ctx context.Context, cfg Config, cr chainReader) (*verifiedBootIdentity, error) {
 	bi := cfg.BootIdentity
 	if strings.TrimSpace(bi.ShardsDir) == "" {
 		// Deliberately read-only: no publish operator provisioned.
@@ -109,7 +125,28 @@ func deriveOperatorIdentity(ctx context.Context, cfg Config, cr chainReader) (*i
 	if err := verifySidecarIdentity(ctx, cr, sidecarPDA.Base58(), in); err != nil {
 		return nil, err
 	}
-	return operator, nil
+	public := operator.Public()
+	return &verifiedBootIdentity{
+		operator:           operator,
+		facts:              in,
+		sidecarID:          sidecarID,
+		bindingKeyVersion:  keyVersion,
+		operatorKeyVersion: public.Ref.KeyVersion,
+		operatorDomain:     public.Ref.Domain,
+		sidecarIdentityPDA: sidecarPDA.Base58(),
+	}, nil
+}
+
+// deriveOperatorIdentity preserves the established callers while newer
+// enrollment-aware callers use deriveVerifiedBootIdentity directly. Keeping
+// this adapter means the existing read-only semantics remain byte-for-byte:
+// no shards still yields (nil, nil).
+func deriveOperatorIdentity(ctx context.Context, cfg Config, cr chainReader) (*identity.Private, error) {
+	verified, err := deriveVerifiedBootIdentity(ctx, cfg, cr)
+	if err != nil || verified == nil {
+		return nil, err
+	}
+	return verified.operator, nil
 }
 
 // sidecarIdentityRef builds the attest identity ref the operator key is derived

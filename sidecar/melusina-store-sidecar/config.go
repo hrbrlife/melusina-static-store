@@ -85,6 +85,12 @@ type ReleaseSquadsAuthority struct {
 
 type Config struct {
 	LicenseNFTMint string `json:"license_nft_mint"`
+	// EstateEnrollmentStatePath opts this Store into the owner-enrolled estate
+	// runtime boundary. It is deliberately empty by default so existing legacy
+	// Stores do not acquire a fabricated identity. A fresh estate config sets an
+	// absolute, owner-only state file created solely by `estate-enroll`; normal
+	// startup then verifies it against the exact local identity and RPC genesis.
+	EstateEnrollmentStatePath string `json:"estate_enrollment_state_path,omitempty"`
 	// StoreAuthority opts this Store into the target-scoped StoreReleaseListing
 	// policy. It is deliberately explicit: once configured, serve-time must
 	// never discover a store by scanning arbitrary listings, because that would
@@ -307,8 +313,21 @@ func LoadConfig(path string) (Config, error) {
 	if cfg.LicenseNFTMint == "" {
 		return cfg, fmt.Errorf("config: license_nft_mint is required")
 	}
+	if strings.TrimSpace(cfg.EstateEnrollmentStatePath) != "" {
+		statePath, err := cleanStoreEnrollmentStatePath(strings.TrimSpace(cfg.EstateEnrollmentStatePath))
+		if err != nil {
+			return cfg, fmt.Errorf("config: estate_enrollment_state_path: %w", err)
+		}
+		cfg.EstateEnrollmentStatePath = statePath
+	}
 	if err := cfg.normalizeRPCEndpoints(); err != nil {
 		return cfg, err
+	}
+	// Legacy read-only Stores may deliberately have no RPC endpoint. An enrolled
+	// Store cannot: both initial enrollment and every subsequent boot bind the
+	// signed estate authorization to the observed immutable network identity.
+	if cfg.EstateEnrollmentStatePath != "" && cfg.RPCURL == "" {
+		return cfg, fmt.Errorf("config: rpc_url is required when estate_enrollment_state_path is configured")
 	}
 	cfg.StoreAuthority = strings.TrimSpace(cfg.StoreAuthority)
 	if cfg.StoreAuthority != "" {

@@ -15,7 +15,8 @@
     "foundation_authorization.go": "d7e1aa80ac49b9e8a181a8b055363985163450978e6ae197769986bc00635f8b",
     "profile.go": "ea0f7b5ddcb7a8e2ced5a5f6ebc7aaf504b46a21b91fe87960cba3d87d0740d5",
     "projection.go": "af50ada982483f436c2828f00833a56430e0a79a23fb23e8e943fd96bd27b24a",
-    "refusal.go": "28c4e0381c824fb8c1a945698dc8279f8c10bad8f70a521fb01c45438692bbaf",
+    "refusal.go": "dff22a93ab28d56ac1e4b76daef15e48fd9e28ea85917afc1503b2c0942025a6",
+    "store_enrollment.go": "0e4d49969ef0e22f67cf47b60712f3d1453284c3f5aaa220b01631a04a9f3b07",
     "strictjson.go": "3df852f7041484eb154319fc8918e56e89f88dc0c257180abfb213a74740289d",
     "validate.go": "da6e02ba6b83446c400598cbeea3149d10d720c3b7c57f499a6e3da314555876",
     "verify.go": "825e007b2ebadb4cd9b5b60ac1fe31c51b0b4dff8e20c4fc9bf3ad952bf8f03c"

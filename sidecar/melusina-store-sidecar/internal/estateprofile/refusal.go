@@ -52,6 +52,20 @@ const (
 	RefusalFoundationAuthorizationTargetBindingMismatch   = "estate-foundation-authorization-target-binding-mismatch"
 	RefusalFoundationAuthorizationGenesisMismatch         = "estate-foundation-authorization-genesis-mismatch"
 
+	// Root-Store enrollment. This is a separate, post-foundation contract: a
+	// final EstateProfileV1 names the public estate, while this document binds
+	// the Store's root-only facts that exist only after foundation read-back.
+	RefusalStoreEnrollmentSchemaUnsupported      = "store-enrollment-schema-unsupported"
+	RefusalStoreEnrollmentFieldMalformed         = "store-enrollment-field-malformed"
+	RefusalStoreEnrollmentTimeInvalid            = "store-enrollment-time-invalid"
+	RefusalStoreEnrollmentNotYetValid            = "store-enrollment-not-yet-valid"
+	RefusalStoreEnrollmentExpired                = "store-enrollment-expired"
+	RefusalStoreEnrollmentProfileMismatch        = "store-enrollment-profile-mismatch"
+	RefusalStoreEnrollmentSignaturesInsufficient = "store-enrollment-owner-signatures-insufficient"
+	RefusalStoreEnrollmentSignatureInvalid       = "store-enrollment-owner-signature-invalid"
+	RefusalStoreEnrollmentFactsMismatch          = "store-enrollment-facts-mismatch"
+	RefusalStoreRPCGenesisMismatch               = "store-rpc-genesis-mismatch"
+
 	// Select, migrate and recall.
 	RefusalNotEnrolled            = "estate-profile-not-enrolled"
 	RefusalSelectionRequiresEmpty = "estate-selection-requires-empty-consumer"

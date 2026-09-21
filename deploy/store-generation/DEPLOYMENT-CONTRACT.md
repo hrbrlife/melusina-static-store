@@ -21,6 +21,33 @@ unless both ELFs and both archives are byte-identical. The archive contains no
 tenant key, shard, certificate, RPC credential, mutable catalog, or chain
 receipt.
 
+### Bootstrap release-set component
+
+The first-install archive is a bootstrap input. A signed
+`DesiredGeneration` is not: before the Store and its authority exist, the
+documented generation endpoint correctly returns `503`. A release set therefore
+stages the first-install component separately:
+
+```sh
+./scripts/build-store-bootstrap-component.sh \
+  --version 1.0.7 \
+  --out-dir /absolute/output/store-bootstrap-1.0.7
+```
+
+It delegates the deterministic two-build proof above, then unwraps the
+resulting `.tar.xz` into one canonical `store-bootstrap.tar.gz`. The component
+contains the bootstrap files and an internal
+`STORE_BOOTSTRAP_PROVENANCE.json` binding the Store source identity, version,
+generation-archive digest, builder provenance digest, and every regular member
+digest. It never accepts a nested archive as sufficient evidence: the release
+assembler must inspect each inner member before it can sign a manifest.
+
+This packaging step does **not** make the current Store templates estate-clean.
+Until the Store configuration renderer receives the enrolled estate profile and
+the foundation outputs it needs, a release-set scan must refuse a bootstrap
+component that still carries a retiring estate value. Do not hide that failure
+by treating a compressed outer byte stream as a clean Store release.
+
 The archive includes `bin/boot-identity-prep` beside the store ELF. The
 deployer uses this exact, checksummed tool during its staged prepare phase to
 derive the `register_sidecar_identity` input from the archived store ELF, the

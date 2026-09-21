@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -27,10 +28,18 @@ const storeEstateEnrollReportSchema = "melusina-store-estate-enroll-report.v1"
 
 const storeEnrollmentGenesisCheckInterval = 5 * time.Minute
 
+const storeEnrollmentRequestDefaultLifetime = 15 * time.Minute
+
 type estateEnrollOptions struct {
 	configPath     string
 	profilePath    string
 	enrollmentPath string
+}
+
+type estateEnrollmentRequestOptions struct {
+	configPath  string
+	profilePath string
+	lifetime    time.Duration
 }
 
 // storeEstateEnrollReport contains only public evidence. In particular, it
@@ -69,6 +78,176 @@ func runEstateEnrollSubcommand(args []string) {
 	if err := enc.Encode(report); err != nil {
 		log.Fatalf("estate-enroll report: %v", err)
 	}
+}
+
+// runEstateEnrollmentRequestSubcommand emits the unsigned, exact public
+// StoreEnrollmentV1 that the profile owners review and sign out of process.
+// Private shard material remains local and is used only to derive the public
+// facts that an eventual estate-enroll command will verify again.
+func runEstateEnrollmentRequestSubcommand(args []string) {
+	fs := flag.NewFlagSet("estate-enrollment-request", flag.ExitOnError)
+	opts := estateEnrollmentRequestOptions{}
+	fs.StringVar(&opts.configPath, "config", "store.config.json", "path to proposed Store JSON configuration")
+	fs.StringVar(&opts.profilePath, "estate-profile", "", "required path to owner-signed EstateProfileV1 JSON")
+	fs.DurationVar(&opts.lifetime, "valid-for", storeEnrollmentRequestDefaultLifetime, "owner-signing window from issuance (1m through 24h, whole seconds)")
+	_ = fs.Parse(args)
+	if fs.NArg() != 0 {
+		log.Fatalf("estate-enrollment-request: unexpected positional arguments: %v", fs.Args())
+	}
+	if strings.TrimSpace(opts.profilePath) == "" {
+		log.Fatalf("estate-enrollment-request: --estate-profile is required")
+	}
+	candidate, err := createStoreEnrollmentRequest(opts, time.Now().UTC())
+	if err != nil {
+		log.Fatalf("estate-enrollment-request: %v", err)
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(candidate); err != nil {
+		log.Fatalf("estate-enrollment-request output: %v", err)
+	}
+}
+
+// createStoreEnrollmentRequest creates no local state. It reads the same
+// bounded facts that estate-enroll will later verify, turns them into the
+// unsigned owner-signing candidate, and confirms every configured endpoint is
+// on the profile's network before returning public bytes to the caller.
+func createStoreEnrollmentRequest(opts estateEnrollmentRequestOptions, now time.Time) (estateprofile.StoreEnrollmentV1, error) {
+	if strings.TrimSpace(opts.configPath) == "" {
+		return estateprofile.StoreEnrollmentV1{}, errors.New("store-estate-profile-config-read: config path is required")
+	}
+	cfg, err := LoadConfig(opts.configPath)
+	if err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	if strings.TrimSpace(cfg.EstateEnrollmentStatePath) == "" {
+		return estateprofile.StoreEnrollmentV1{}, errStoreEstateProfileNotEnrolled
+	}
+	if err := requireStoreEnrollmentStateTargetAbsent(cfg.EstateEnrollmentStatePath, uint32(os.Geteuid())); err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	declaration, err := loadStoreEstateDeclaration(opts.configPath)
+	if err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	profile, err := loadStoreEnrollmentProfile(opts.profilePath)
+	if err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	profileDigest, err := verifyStoreEstateDeclaration(declaration, profile)
+	if err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	if err := requireLoadedConfigMatchesStoreDeclaration(cfg, declaration); err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+
+	setProgramIDFromConfig(cfg.ProgramID)
+	chain := newConfiguredStoreRPCReader(cfg)
+	genesisReader, ok := chain.(genesisHashReader)
+	if !ok {
+		return estateprofile.StoreEnrollmentV1{}, errors.New("store estate enrollment request chain reader does not support getGenesisHash")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	identity, err := deriveVerifiedBootIdentity(ctx, cfg, chain)
+	if err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	if identity == nil {
+		return estateprofile.StoreEnrollmentV1{}, fmt.Errorf("%w: boot_identity.shards_dir is required", errStoreEstateProfileNotEnrolled)
+	}
+	nonce := make([]byte, sha256.Size)
+	if _, err := rand.Read(nonce); err != nil {
+		return estateprofile.StoreEnrollmentV1{}, fmt.Errorf("store estate enrollment request nonce: %w", err)
+	}
+	return prepareStoreEnrollmentCandidate(ctx, cfg, declaration, profile, profileDigest, identity, genesisReader, now, opts.lifetime, nonce)
+}
+
+func loadStoreEnrollmentProfile(profilePath string) (estateprofile.EstateProfileV1, error) {
+	raw, err := os.ReadFile(strings.TrimSpace(profilePath))
+	if err != nil {
+		return estateprofile.EstateProfileV1{}, fmt.Errorf("store-estate-profile-read: %w", err)
+	}
+	profile, err := estateprofile.DecodeProfile(raw)
+	if err != nil {
+		return estateprofile.EstateProfileV1{}, fmt.Errorf("store-estate-profile-invalid: %w", err)
+	}
+	return profile, nil
+}
+
+// prepareStoreEnrollmentCandidate is pure with respect to Store state: it
+// constructs the public candidate from a snapshot that has already completed
+// the boot-identity ceremony. It is intentionally factored for tests and so
+// the request and enrollment paths cannot disagree about the facts they bind.
+func prepareStoreEnrollmentCandidate(ctx context.Context, cfg Config, declaration storeEstateDeclaration, profile estateprofile.EstateProfileV1, profileDigest string, identity *verifiedBootIdentity, genesisReader genesisHashReader, now time.Time, lifetime time.Duration, nonce []byte) (estateprofile.StoreEnrollmentV1, error) {
+	verifiedProfileDigest, err := verifyStoreEstateDeclaration(declaration, profile)
+	if err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	if err := requireLoadedConfigMatchesStoreDeclaration(cfg, declaration); err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	if profileDigest == "" {
+		return estateprofile.StoreEnrollmentV1{}, errors.New("store estate enrollment request profile digest is absent")
+	}
+	if profileDigest != verifiedProfileDigest {
+		return estateprofile.StoreEnrollmentV1{}, errors.New("store estate enrollment request profile digest does not match the verified profile")
+	}
+	if lifetime < time.Minute || lifetime > estateprofile.StoreEnrollmentMaxLifetime || lifetime%time.Second != 0 {
+		return estateprofile.StoreEnrollmentV1{}, errors.New("store estate enrollment request valid-for must be a whole number of seconds from 1m through 24h")
+	}
+	if len(nonce) != sha256.Size {
+		return estateprofile.StoreEnrollmentV1{}, errors.New("store estate enrollment request nonce must be 32 bytes")
+	}
+	now = now.UTC().Truncate(time.Second)
+	if now.IsZero() || now.Unix() <= 0 {
+		return estateprofile.StoreEnrollmentV1{}, errors.New("store estate enrollment request issuance time is invalid")
+	}
+	facts, err := storeEnrollmentRuntimeFacts(declaration, identity)
+	if err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	candidate := estateprofile.StoreEnrollmentV1{
+		Schema:             estateprofile.StoreEnrollmentSchema,
+		Kind:               estateprofile.StoreEnrollmentKind,
+		Purpose:            estateprofile.StoreEnrollmentPurpose,
+		EstateID:           profile.EstateID,
+		ProfileSHA256:      profileDigest,
+		ProfileRevision:    profile.Revision,
+		NetworkGenesisHash: profile.Network.GenesisHash,
+		RootDomain:         facts.RootDomain,
+		RootDomainSHA256:   facts.RootDomainSHA256,
+		StoreID:            facts.StoreID,
+		StoreOperatorKey:   facts.StoreOperatorKey,
+		StoreBoxKey:        facts.StoreBoxKey,
+		LicenseNFTMint:     facts.LicenseNFTMint,
+		LicenseRegistryID:  facts.LicenseRegistryID,
+		SidecarID:          facts.SidecarID,
+		BindingKeyVersion:  facts.BindingKeyVersion,
+		OperatorKeyVersion: facts.OperatorKeyVersion,
+		OperatorDomain:     facts.OperatorDomain,
+		SidecarIdentityPDA: facts.SidecarIdentityPDA,
+		TLSCertFingerprint: facts.TLSCertFingerprint,
+		BinarySHA256:       facts.BinarySHA256,
+		IssuedAt:           now.Format(time.RFC3339),
+		ExpiresAt:          now.Add(lifetime).Format(time.RFC3339),
+		EnrollmentNonce:    hex.EncodeToString(nonce),
+		Signatures:         []estateprofile.SignatureV1{},
+	}
+	if candidate.StoreOperatorKey != profile.Store.OperatorKey {
+		return estateprofile.StoreEnrollmentV1{}, errors.New("store estate enrollment request local operator does not match the estate profile")
+	}
+	if _, err := estateprofile.StoreEnrollmentSHA256(candidate); err != nil {
+		return estateprofile.StoreEnrollmentV1{}, fmt.Errorf("store estate enrollment request candidate: %w", err)
+	}
+	if err := estateprofile.RequireStoreEnrollmentFacts(candidate, facts); err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	if _, err := verifyStoreEnrollmentGenesis(ctx, candidate, genesisReader); err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
+	return candidate, nil
 }
 
 // enrollStoreEstate is the only initial state writer. It validates the

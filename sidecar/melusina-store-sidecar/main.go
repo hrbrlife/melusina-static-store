@@ -52,6 +52,13 @@ func main() {
 		runEstateEnrollSubcommand(os.Args[2:])
 		return
 	}
+	// A fresh root Store emits its exact public enrollment candidate before its
+	// owners sign it elsewhere. This command performs no chain write, state
+	// write, or listener start; it is deliberately separate from estate-enroll.
+	if len(os.Args) > 1 && os.Args[1] == "estate-enrollment-request" {
+		runEstateEnrollmentRequestSubcommand(os.Args[2:])
+		return
+	}
 	// Explicit genesis trust-root entrypoint (RRS_STORE_FRESH_BOOTSTRAP). It seals the
 	// honest first generation on a virgin target and EXITS — it never opens a listener.
 	// Selection is explicit (a subcommand), never a silent server-startup fallback.

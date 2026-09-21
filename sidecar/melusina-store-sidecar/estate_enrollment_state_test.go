@@ -264,3 +264,26 @@ func TestStoreEnrollmentStateNeverReplacesAnExistingSymlink(t *testing.T) {
 		t.Fatalf("initial writer replaced the symlink: %s", info.Mode())
 	}
 }
+
+func TestStoreEnrollmentStateRequestTargetRequiresTheSameFreshSecureLocation(t *testing.T) {
+	profile, enrollment := validStoreEnrollmentStateInput(t)
+	state, err := newStoreEnrollmentState(profile, enrollment, storeEnrollmentStateNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "enrollment.json")
+	uid := uint32(os.Geteuid())
+	if err := requireStoreEnrollmentStateTargetAbsent(path, uid); err != nil {
+		t.Fatalf("fresh secure request target refused: %v", err)
+	}
+	if err := writeStoreEnrollmentStateNew(path, state, uid); err != nil {
+		t.Fatal(err)
+	}
+	if err := requireStoreEnrollmentStateTargetAbsent(path, uid); !errors.Is(err, errStoreEnrollmentStateExists) {
+		t.Fatalf("request target accepted an existing enrollment state: %v", err)
+	}
+}

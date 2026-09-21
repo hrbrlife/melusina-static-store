@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
@@ -303,5 +304,97 @@ func TestWatchStoreEnrollmentGenesisReportsAChangedConfiguredEndpoint(t *testing
 		}
 	case <-time.After(time.Second):
 		t.Fatal("watcher did not report foreign configured endpoint")
+	}
+}
+
+func signRuntimeStoreEnrollmentCandidate(t *testing.T, profile estateprofile.EstateProfileV1, candidate estateprofile.StoreEnrollmentV1, keyIDs ...string) estateprofile.StoreEnrollmentV1 {
+	t.Helper()
+	candidate.Signatures = nil
+	digest, err := estateprofile.StoreEnrollmentSHA256(candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, keyID := range keyIDs {
+		candidate.Signatures = append(candidate.Signatures, estateprofile.SignatureV1{
+			KeyID:     keyID,
+			Signature: base64.RawURLEncoding.EncodeToString(ed25519.Sign(storeEnrollmentStatePrivate(profile.OwnerPolicy.PolicyID, keyID), []byte(digest))),
+		})
+	}
+	return candidate
+}
+
+func TestPrepareStoreEnrollmentCandidateBuildsTheExactSignableRuntimeSnapshot(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	profileDigest, err := estateprofile.VerifyProfile(f.profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 9, 20, 1, 30, 0, 0, time.UTC)
+	candidate, err := prepareStoreEnrollmentCandidate(
+		context.Background(), f.cfg, f.declaration, f.profile, profileDigest, f.identity,
+		fixedConfiguredStoreGenesisReader{fixedStoreGenesisReader: fixedStoreGenesisReader{genesis: f.genesis}, hashes: []string{f.genesis, f.genesis}},
+		now, 15*time.Minute, bytes.Repeat([]byte{0x5a}, sha256.Size),
+	)
+	if err != nil {
+		t.Fatalf("prepare candidate: %v", err)
+	}
+	if len(candidate.Signatures) != 0 {
+		t.Fatalf("candidate carries owner signatures before owners sign it: %#v", candidate.Signatures)
+	}
+	if candidate.EstateID != f.profile.EstateID || candidate.ProfileSHA256 != profileDigest || candidate.ProfileRevision != f.profile.Revision || candidate.StoreOperatorKey != f.profile.Store.OperatorKey || candidate.StoreBoxKey != f.identity.operator.Public().BoxPubkeyB58 {
+		t.Fatalf("candidate does not bind the exact profile and verified Store identity: %+v", candidate)
+	}
+	if candidate.IssuedAt != "2026-09-20T01:30:00Z" || candidate.ExpiresAt != "2026-09-20T01:45:00Z" {
+		t.Fatalf("candidate window = %q through %q", candidate.IssuedAt, candidate.ExpiresAt)
+	}
+	if err := estateprofile.RequireStoreEnrollmentFacts(candidate, mustStoreEnrollmentRuntimeFacts(t, f)); err != nil {
+		t.Fatalf("candidate does not bind the verified local facts: %v", err)
+	}
+	signed := signRuntimeStoreEnrollmentCandidate(t, f.profile, candidate, "owner-a", "owner-b")
+	if _, err := estateprofile.VerifyStoreEnrollment(f.profile, signed, now.Add(time.Minute)); err != nil {
+		t.Fatalf("owners cannot authorize the emitted candidate: %v", err)
+	}
+}
+
+func mustStoreEnrollmentRuntimeFacts(t *testing.T, f storeEnrollmentRuntimeFixture) estateprofile.StoreEnrollmentFacts {
+	t.Helper()
+	facts, err := storeEnrollmentRuntimeFacts(f.declaration, f.identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return facts
+}
+
+func TestPrepareStoreEnrollmentCandidateRefusesForeignIdentityAndConfiguredFallback(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	profileDigest, err := estateprofile.VerifyProfile(f.profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 9, 20, 1, 30, 0, 0, time.UTC)
+	nonce := bytes.Repeat([]byte{0x7c}, sha256.Size)
+	foreignIdentity := *f.identity
+	foreignIdentity.operator = newTestIdentity(t, "store", f.cfg.LicenseNFTMint, f.identity.operatorDomain)
+	if _, err := prepareStoreEnrollmentCandidate(context.Background(), f.cfg, f.declaration, f.profile, profileDigest, &foreignIdentity, fixedStoreGenesisReader{genesis: f.genesis}, now, 15*time.Minute, nonce); err == nil || !strings.Contains(err.Error(), "local operator does not match") {
+		t.Fatalf("candidate accepted a foreign local operator: %v", err)
+	}
+	if _, err := prepareStoreEnrollmentCandidate(context.Background(), f.cfg, f.declaration, f.profile, profileDigest, f.identity, fixedConfiguredStoreGenesisReader{fixedStoreGenesisReader: fixedStoreGenesisReader{genesis: f.genesis}, hashes: []string{f.genesis, randPubkeyB58(t)}}, now, 15*time.Minute, nonce); err == nil || !strings.Contains(err.Error(), "store-rpc-genesis-mismatch") {
+		t.Fatalf("candidate accepted a foreign configured fallback: %v", err)
+	}
+}
+
+func TestPrepareStoreEnrollmentCandidateRefusesInvalidLifetimeAndProfileDigest(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	profileDigest, err := estateprofile.VerifyProfile(f.profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 9, 20, 1, 30, 0, 0, time.UTC)
+	nonce := bytes.Repeat([]byte{0x31}, sha256.Size)
+	if _, err := prepareStoreEnrollmentCandidate(context.Background(), f.cfg, f.declaration, f.profile, profileDigest, f.identity, fixedStoreGenesisReader{genesis: f.genesis}, now, 59*time.Second, nonce); err == nil || !strings.Contains(err.Error(), "valid-for") {
+		t.Fatalf("candidate accepted a sub-minute signing window: %v", err)
+	}
+	if _, err := prepareStoreEnrollmentCandidate(context.Background(), f.cfg, f.declaration, f.profile, strings.Repeat("0", 64), f.identity, fixedStoreGenesisReader{genesis: f.genesis}, now, 15*time.Minute, nonce); err == nil || !strings.Contains(err.Error(), "profile digest does not match") {
+		t.Fatalf("candidate accepted a substituted profile digest: %v", err)
 	}
 }

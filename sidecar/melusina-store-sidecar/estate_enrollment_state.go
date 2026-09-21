@@ -81,6 +81,26 @@ func cleanStoreEnrollmentStatePath(path string) (string, error) {
 	return path, nil
 }
 
+// requireStoreEnrollmentStateTargetAbsent makes request preparation subject to
+// the same durable target conditions as the later no-replace write. A request
+// cannot imply a second enrollment of an already enrolled Store, nor can it be
+// prepared against a directory the final writer would refuse.
+func requireStoreEnrollmentStateTargetAbsent(path string, expectedUID uint32) error {
+	path, err := cleanStoreEnrollmentStatePath(path)
+	if err != nil {
+		return err
+	}
+	if err := requireOwnedSecureDirectory(filepath.Dir(path), 0o700, expectedUID); err != nil {
+		return fmt.Errorf("store estate enrollment state directory: %w", err)
+	}
+	if _, err := os.Lstat(path); err == nil {
+		return errStoreEnrollmentStateExists
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("store estate enrollment state target: %w", err)
+	}
+	return nil
+}
+
 // writeStoreEnrollmentStateNew makes an initial enrollment durable without
 // overwriting anything. A valid same-directory temporary file is fsynced, then
 // linked into the final name. link(2) is the no-replace commit: an existing

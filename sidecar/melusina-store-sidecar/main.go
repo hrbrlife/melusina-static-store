@@ -45,6 +45,20 @@ func main() {
 		runEstateProfileCheckSubcommand(os.Args[2:])
 		return
 	}
+	// A fresh root Store gets its profile-bound configuration from an explicit,
+	// no-network candidate renderer.  The later enrollment command remains the
+	// only path that can persist a Store's estate identity.
+	if len(os.Args) > 1 && os.Args[1] == "estate-store-config-render" {
+		runEstateStoreConfigRenderSubcommand(os.Args[2:])
+		return
+	}
+	// A keyless review of an owner-signed profile is deliberately separate from
+	// the config preflight so a future operator can obtain the exact canonical
+	// profile pin before any Store config exists.
+	if len(os.Args) > 1 && os.Args[1] == "estate-profile-review" {
+		runEstateProfileReviewSubcommand(os.Args[2:])
+		return
+	}
 	// The initial owner-enrolled Store identity is a one-time, local state
 	// transition. It verifies facts against the configured target and exits; it
 	// never opens a listener or writes to the chain.

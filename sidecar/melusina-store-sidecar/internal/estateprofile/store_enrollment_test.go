@@ -173,6 +173,9 @@ func TestStoreEnrollmentRefusesExpiryAndAmbiguousJSON(t *testing.T) {
 
 	_, err = VerifyStoreEnrollment(profile, value, storeEnrollmentNow.Add(2*time.Hour))
 	requireRefusal(t, err, RefusalStoreEnrollmentExpired)
+	if _, err := VerifyStoreEnrollmentAuthorization(profile, value); err != nil {
+		t.Fatalf("historical authorization refused after enrollment window: %v", err)
+	}
 
 	raw, err := json.Marshal(value)
 	if err != nil {

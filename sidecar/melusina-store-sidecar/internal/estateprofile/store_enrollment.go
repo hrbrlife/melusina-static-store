@@ -205,11 +205,12 @@ func StoreEnrollmentSHA256(value StoreEnrollmentV1) (string, error) {
 	return sha256Hex(preimage), nil
 }
 
-// VerifyStoreEnrollment establishes that the current, verified profile owners
-// authorized exactly this concrete root Store before its expiry. It performs no
-// I/O; RequireStoreEnrollmentFacts and RequireStoreEnrollmentGenesis are the
-// Store's later local and RPC comparisons.
-func VerifyStoreEnrollment(profile EstateProfileV1, value StoreEnrollmentV1, now time.Time) (string, error) {
+// VerifyStoreEnrollmentAuthorization establishes that the profile owners
+// signed exactly this concrete root Store. It deliberately does not apply the
+// one-time enrollment clock: a securely persisted state must be able to prove
+// which owners authorized its original enrollment after that short window has
+// elapsed. Call VerifyStoreEnrollment for a live ceremony.
+func VerifyStoreEnrollmentAuthorization(profile EstateProfileV1, value StoreEnrollmentV1) (string, error) {
 	profileDigest, err := VerifyProfile(profile)
 	if err != nil {
 		return "", err
@@ -223,6 +224,18 @@ func VerifyStoreEnrollment(profile EstateProfileV1, value StoreEnrollmentV1, now
 	digest := sha256Hex(storeEnrollmentPreimage(value))
 	if err := verifyThresholdSignatures(profile.OwnerPolicy, digest, value.Signatures); err != nil {
 		return "", storeEnrollmentRefusal(err)
+	}
+	return digest, nil
+}
+
+// VerifyStoreEnrollment establishes that the current, verified profile owners
+// authorized exactly this concrete root Store before its expiry. It performs no
+// I/O; RequireStoreEnrollmentFacts and RequireStoreEnrollmentGenesis are the
+// Store's later local and RPC comparisons.
+func VerifyStoreEnrollment(profile EstateProfileV1, value StoreEnrollmentV1, now time.Time) (string, error) {
+	digest, err := VerifyStoreEnrollmentAuthorization(profile, value)
+	if err != nil {
+		return "", err
 	}
 	if now.IsZero() {
 		return "", refuse(RefusalStoreEnrollmentTimeInvalid)

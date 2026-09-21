@@ -194,6 +194,54 @@ version 1 for `bazaar.melusina-os.org`, add:
   -operator-domain bazaar.melusina-os.org
 ```
 
+### Estate enrollment for a fresh root Store
+
+A fresh estate must explicitly opt into the enrolled-Store boundary. Add an
+absolute `estate_enrollment_state_path` to its `store.config.json`; its parent
+directory must already exist, be owned by the Store service account, and be
+mode `0700`. The final state file must not exist. An enrolled config also
+requires an explicit `rpc_url` and may name explicit `rpc_fallback_urls`.
+
+Before the one-time local enrollment, the operator needs all of the following:
+
+- an owner-signed `EstateProfileV1` for the intended estate;
+- an owner-signed `StoreEnrollmentV1` that binds that exact profile to the
+  root Store's actual licence, registry, derived signing and box keys,
+  SidecarIdentity binding, TLS certificate, executable hash, and network
+  genesis;
+- the complete explicit Store configuration, the boot-identity shards, and an
+  Active matching `SidecarIdentityEntry`; and
+- reachable primary and fallback RPC endpoints that all report the signed
+  genesis hash.
+
+Run the local transition once, on the Store host:
+
+```sh
+./bin/melusina-store-sidecar estate-enroll \
+  -config /etc/melusina/store/store.config.json \
+  -estate-profile /secure/operator/estate-profile.json \
+  -enrollment /secure/operator/store-enrollment.json
+```
+
+It performs no chain write and opens no listener. It verifies the signed
+documents, the exact raw configuration declaration, the locally derived and
+on-chain-bound identity, and every configured RPC endpoint before atomically
+creating a mode-`0600` state file. A retry or concurrent invocation cannot
+replace that file. Its JSON report contains public pins only.
+
+On every later start, the Store reads that durable authorization as historical
+evidence (so an expired initial issuance window does not erase a valid
+enrollment), checks the exact configuration and local identity again, and
+checks every configured RPC endpoint against the signed genesis. While serving,
+it repeats the endpoint-genesis check every five minutes and terminates on a
+mismatch.
+
+This repository currently implements the **consumer** of `StoreEnrollmentV1`.
+It intentionally does not create or sign one: the Store must never receive the
+owner signing keys. A reviewed owner-side producer is still required before a
+fresh estate can perform this ceremony. Do not hand-author or fabricate an
+enrollment document to bypass that missing producer.
+
 Pending (post-C2.3): reseller root-mirror worker hardening, sealed-v3
 submit-client (C3).
 

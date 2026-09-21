@@ -143,7 +143,7 @@ func main() {
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		log.Fatalf("config after overrides: %v", err)
 	}
-	ui, err := newGovernedUIStatic()
+	ui, err := newGovernedUIStaticForPublicOrigin(cfg.PublicBaseURL)
 	if err != nil {
 		log.Fatalf("governed UI: %v", err)
 	}

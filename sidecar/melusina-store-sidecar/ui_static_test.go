@@ -190,3 +190,28 @@ func TestGovernedUIServesLockedAppIcon(t *testing.T) {
 		t.Fatalf("undeclared icon = HTTP %d, want 404", unknown.Code)
 	}
 }
+
+func TestGovernedUIBindsOnlyTheConfiguredPublicOrigin(t *testing.T) {
+	const origin = "https://fresh-store.example.invalid"
+	ui, err := newGovernedUIStaticForPublicOrigin(origin)
+	if err != nil {
+		t.Fatalf("load configured governed UI: %v", err)
+	}
+	for path, want := range map[string]string{
+		"/index.html":        origin + "/",
+		"/update/install.sh": origin + "/update/install.sh",
+	} {
+		recorder := httptest.NewRecorder()
+		ui.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("configured UI %s = HTTP %d, want 200", path, recorder.Code)
+		}
+		body := recorder.Body.String()
+		if !strings.Contains(body, want) || strings.Contains(body, uiPublicOriginPlaceholder) || strings.Contains(body, "bazaar.melusina-os.org") {
+			t.Fatalf("configured UI %s did not render only the configured origin", path)
+		}
+	}
+	if _, err := newGovernedUIStaticForPublicOrigin("http://fresh-store.example.invalid"); err == nil || !strings.Contains(err.Error(), "check=ui_public_origin") {
+		t.Fatalf("insecure UI origin was accepted: %v", err)
+	}
+}

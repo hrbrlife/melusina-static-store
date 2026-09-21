@@ -35,7 +35,6 @@ const (
 	catalogRehydrationSchema   = "melusina-catalog-rehydration-v1"
 	catalogRehydrationDirName  = "catalog-rehydrations-v1"
 	governedCohortSchema       = "melusina-governed-artifact-cohort-v1"
-	defaultBazaarPublicOrigin  = "https://bazaar.melusina-os.org"
 	catalogRehydrationMaxApps  = 128
 	catalogRehydrationMaxBytes = 1 << 20
 )
@@ -262,7 +261,7 @@ func runCatalogRehydrateWithDependencies(ctx context.Context, cfg Config, operat
 	if err != nil {
 		return report, fmt.Errorf("rehydration shared publisher authority: %w", err)
 	}
-	artifacts, receiptRaw, err := loadGovernedCohort(opts.cohortDir, deps.expectedUID, authority)
+	artifacts, receiptRaw, err := loadGovernedCohort(opts.cohortDir, deps.expectedUID, authority, cfg.PublicBaseURL)
 	if err != nil {
 		return report, err
 	}
@@ -380,7 +379,11 @@ func rehydrationPlanID(receipt []byte, appCount, rolloutCount int, retired []str
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func loadGovernedCohort(root string, expectedUID uint32, authority configuredSquadsAuthority) ([]governedCohortArtifact, []byte, error) {
+func loadGovernedCohort(root string, expectedUID uint32, authority configuredSquadsAuthority, configuredOrigin string) ([]governedCohortArtifact, []byte, error) {
+	origin, _, err := rootTrustBundleInstallLocation(configuredOrigin)
+	if err != nil {
+		return nil, nil, fmt.Errorf("governed cohort public origin: %w", err)
+	}
 	if !filepath.IsAbs(root) || filepath.Clean(root) != root {
 		return nil, nil, errors.New("governed cohort directory must be an absolute clean path")
 	}
@@ -404,7 +407,7 @@ func loadGovernedCohort(root string, expectedUID uint32, authority configuredSqu
 	if err := json.Unmarshal(receiptRaw, &receipt); err != nil {
 		return nil, nil, fmt.Errorf("decode governed cohort receipt: %w", err)
 	}
-	if receipt.Schema != governedCohortSchema || receipt.Origin != defaultBazaarPublicOrigin || len(receipt.Apps) == 0 || len(receipt.Apps) > catalogRehydrationMaxApps {
+	if receipt.Schema != governedCohortSchema || receipt.Origin != origin || len(receipt.Apps) == 0 || len(receipt.Apps) > catalogRehydrationMaxApps {
 		return nil, nil, errors.New("governed cohort receipt schema, origin, or population is invalid")
 	}
 	seen := make(map[string]struct{}, len(receipt.Apps))

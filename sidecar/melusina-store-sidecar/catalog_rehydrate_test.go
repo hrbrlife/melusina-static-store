@@ -16,6 +16,8 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
+const rehydrationFixtureOrigin = "https://bazaar.melusina-os.org"
+
 // This optional evidence test lets a release operator validate the exact
 // materialized cohort used for a live repair without hard-coding a workstation
 // path into normal CI.  CI exercises the same parser with the synthetic case
@@ -25,12 +27,12 @@ func TestLoadGovernedCohortFromExplicitEvidence(t *testing.T) {
 	if root == "" {
 		t.Skip("set MELUSINA_GOVERNED_COHORT to validate a materialized cohort")
 	}
-	cfg := Config{Domain: defaultBazaarDomain, ReleaseSquadsAuthority: ReleaseSquadsAuthority{
+	cfg := Config{Domain: defaultBazaarDomain, PublicBaseURL: rehydrationFixtureOrigin, ReleaseSquadsAuthority: ReleaseSquadsAuthority{
 		Multisig: defaultBazaarSquadsMultisig, Vault: defaultBazaarSquadsVault,
 		ProgramID: defaultBazaarSquadsProgramID, Threshold: defaultBazaarSquadsThreshold, MemberCount: defaultBazaarSquadsMemberCount,
 	}}
 	authority := mustRehydrationAuthority(t, cfg)
-	artifacts, _, err := loadGovernedCohort(root, uint32(os.Getuid()), authority)
+	artifacts, _, err := loadGovernedCohort(root, uint32(os.Getuid()), authority, cfg.PublicBaseURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,6 +47,7 @@ func TestCatalogRehydrateBuildsFreshStagesAndRetiresOnlyExplicitLegacyRows(t *te
 	operator := newTestIdentity(t, "rehydrate", randPubkeyB58(t), defaultBazaarDomain)
 	cfg := Config{
 		Domain:                   defaultBazaarDomain,
+		PublicBaseURL:            rehydrationFixtureOrigin,
 		StoreAuthority:           operator.Public().SignPubkeyB58,
 		CatalogRepoRoot:          root,
 		PrivateStageDir:          filepath.Join(root, "stages"),
@@ -288,7 +291,7 @@ func writeRehydrationFixtureCohort(t *testing.T, root string, artifacts []govern
 	if err := os.Mkdir(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	receipt := governedCohortReceipt{Schema: governedCohortSchema, Origin: defaultBazaarPublicOrigin}
+	receipt := governedCohortReceipt{Schema: governedCohortSchema, Origin: rehydrationFixtureOrigin}
 	for _, artifact := range artifacts {
 		receipt.Apps = append(receipt.Apps, artifact.entry)
 		dir := filepath.Join(root, "packages", "governed", "cohort", artifact.entry.AppID)

@@ -17,9 +17,15 @@ import (
 )
 
 const (
-	uiManifestName   = "UI-MANIFEST.json"
-	uiManifestSchema = "melusina-store-sidecar-ui-v1"
+	uiManifestName            = "UI-MANIFEST.json"
+	uiManifestSchema          = "melusina-store-sidecar-ui-v1"
+	uiPublicOriginPlaceholder = "__MELUSINA_STORE_PUBLIC_ORIGIN__"
 )
+
+var uiPublicOriginTemplateOccurrences = map[string]int{
+	"index.html":        1,
+	"update/install.sh": 4,
+}
 
 // governedUI contains the generated Bazaar shell. It is compiled into the
 // governed sidecar ELF, so a release cannot switch the server binary while
@@ -42,19 +48,39 @@ type uiManifestFile struct {
 // uiStatic is a closed allowlist. A request for a shell-owned path never falls
 // back to DistDir: that would resurrect a stale bundle after a sidecar upgrade.
 type uiStatic struct {
-	fs    fs.FS
-	files map[string]uiManifestFile
+	fs            fs.FS
+	files         map[string]uiManifestFile
+	publicBaseURL string
 }
 
 func newGovernedUIStatic() (*uiStatic, error) {
+	return newGovernedUIStaticForPublicOrigin("")
+}
+
+// newGovernedUIStaticForPublicOrigin binds the embedded UI's only absolute
+// Store URLs to the reviewed public origin in configuration. The Store never
+// derives this value from a request Host header: that would turn a browser
+// request into a signed or served endpoint-selection oracle.
+func newGovernedUIStaticForPublicOrigin(rawOrigin string) (*uiStatic, error) {
 	root, err := fs.Sub(governedUI, "ui")
 	if err != nil {
 		return nil, fmt.Errorf("check=ui_manifest: embedded ui root: %w", err)
 	}
-	return newUIStatic(root)
+	if strings.TrimSpace(rawOrigin) == "" {
+		return newUIStatic(root)
+	}
+	origin, _, err := rootTrustBundleInstallLocation(rawOrigin)
+	if err != nil {
+		return nil, fmt.Errorf("check=ui_public_origin: %w", err)
+	}
+	return newUIStaticForPublicOrigin(root, origin)
 }
 
 func newUIStatic(root fs.FS) (*uiStatic, error) {
+	return newUIStaticForPublicOrigin(root, "")
+}
+
+func newUIStaticForPublicOrigin(root fs.FS, publicBaseURL string) (*uiStatic, error) {
 	raw, err := fs.ReadFile(root, uiManifestName)
 	if err != nil {
 		return nil, fmt.Errorf("check=ui_manifest: read %s: %w", uiManifestName, err)
@@ -135,7 +161,40 @@ func newUIStatic(root fs.FS) (*uiStatic, error) {
 		sort.Strings(missing)
 		return nil, fmt.Errorf("check=ui_manifest: declared file missing from embedded UI: %s", strings.Join(missing, ", "))
 	}
-	return &uiStatic{fs: root, files: declared}, nil
+	if publicBaseURL != "" {
+		if err := verifyUIOriginTemplate(root, declared); err != nil {
+			return nil, err
+		}
+	}
+	return &uiStatic{fs: root, files: declared, publicBaseURL: publicBaseURL}, nil
+}
+
+func verifyUIOriginTemplate(root fs.FS, declared map[string]uiManifestFile) error {
+	for name, want := range uiPublicOriginTemplateOccurrences {
+		if _, ok := declared[name]; !ok {
+			return fmt.Errorf("check=ui_public_origin: required template %q is absent", name)
+		}
+		raw, err := fs.ReadFile(root, name)
+		if err != nil {
+			return fmt.Errorf("check=ui_public_origin: read %q: %w", name, err)
+		}
+		if got := bytes.Count(raw, []byte(uiPublicOriginPlaceholder)); got != want {
+			return fmt.Errorf("check=ui_public_origin: template %q has %d origin placeholders, want %d", name, got, want)
+		}
+	}
+	for name := range declared {
+		if _, expected := uiPublicOriginTemplateOccurrences[name]; expected {
+			continue
+		}
+		raw, err := fs.ReadFile(root, name)
+		if err != nil {
+			return fmt.Errorf("check=ui_public_origin: read %q: %w", name, err)
+		}
+		if bytes.Contains(raw, []byte(uiPublicOriginPlaceholder)) {
+			return fmt.Errorf("check=ui_public_origin: unexpected origin placeholder in %q", name)
+		}
+	}
+	return nil
 }
 
 func isUIPath(urlPath string) bool {
@@ -170,6 +229,9 @@ func (h *uiStatic) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "embedded UI unavailable", http.StatusServiceUnavailable)
 		return
+	}
+	if h.publicBaseURL != "" {
+		body = bytes.ReplaceAll(body, []byte(uiPublicOriginPlaceholder), []byte(h.publicBaseURL))
 	}
 	if contentType := mime.TypeByExtension(path.Ext(name)); contentType != "" {
 		w.Header().Set("Content-Type", contentType)

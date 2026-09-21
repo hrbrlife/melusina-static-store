@@ -36,6 +36,13 @@ import (
 var Version = "dev"
 
 func main() {
+	// This is an offline, no-write preflight for the later owner-enrolled Store
+	// ceremony.  It deliberately does not make a profile file an accepted
+	// runtime identity: only estate-enroll may persist that decision.
+	if len(os.Args) > 1 && os.Args[1] == "estate-profile-check" {
+		runEstateProfileCheckSubcommand(os.Args[2:])
+		return
+	}
 	// Explicit genesis trust-root entrypoint (RRS_STORE_FRESH_BOOTSTRAP). It seals the
 	// honest first generation on a virgin target and EXITS — it never opens a listener.
 	// Selection is explicit (a subcommand), never a silent server-startup fallback.

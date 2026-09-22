@@ -5,23 +5,28 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 )
 
-func TestEmbeddedRuntimeContractSchemaMatchesCanonicalSource(t *testing.T) {
+func TestEmbeddedRuntimeContractSchemaMatchesSelectedTemplate(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	canonicalPath := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "schemas", "melusina-app-runtime-contract-v1.schema.json"))
-	canonical, err := os.ReadFile(canonicalPath)
+	templatePath := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "runtime-contract-schema", "melusina-app-runtime-contract-v1.schema.template.json"))
+	template, err := os.ReadFile(templatePath)
 	if err != nil {
-		t.Fatalf("read canonical runtime-contract schema: %v", err)
+		t.Fatalf("read runtime-contract schema template: %v", err)
 	}
+	if got := strings.Count(string(template), runtimeContractSchemaIDPlaceholder); got != 2 {
+		t.Fatalf("runtime-contract schema template placeholder count = %d, want 2", got)
+	}
+	canonical := []byte(strings.ReplaceAll(string(template), runtimeContractSchemaIDPlaceholder, runtimecontract.SchemaURL))
 	if string(canonical) != embeddedRuntimeContractSchema {
-		t.Fatalf("embedded runtime-contract schema drifted from %s", canonicalPath)
+		t.Fatalf("embedded runtime-contract schema drifted from %s", templatePath)
 	}
 	var schema struct {
 		ID string `json:"$id"`

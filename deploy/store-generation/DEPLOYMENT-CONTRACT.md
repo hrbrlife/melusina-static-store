@@ -34,7 +34,8 @@ stages the first-install component separately:
   --out-dir /absolute/output/store-bootstrap-1.0.7
 ```
 
-It delegates the deterministic two-build proof above, then unwraps the
+It delegates the deterministic two-build proof above in the recorded
+`estate-bootstrap` build flavor, then unwraps the
 resulting `.tar.xz` into one canonical `store-bootstrap.tar.gz`. The component
 contains the bootstrap files and an internal
 `STORE_BOOTSTRAP_PROVENANCE.json` binding the Store source identity, version,

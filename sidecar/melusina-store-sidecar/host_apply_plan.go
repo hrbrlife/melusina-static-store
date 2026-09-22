@@ -233,7 +233,7 @@ func (p hostApplyPlan) Validate(now time.Time) error {
 		!isCanonicalBase58(p.SquadsProgramID, 32) || !isCanonicalBase58(p.SquadsMultisig, 32) || !isCanonicalBase58(p.SquadsVault, 32) {
 		return errors.New("host apply plan has an invalid canonical public key")
 	}
-	if p.SquadsProgramID != squadsproof.DefaultProgramIDBase58 || p.SquadsThreshold < 2 ||
+	if p.SquadsThreshold < 2 ||
 		len(p.SquadsMembers) < int(p.SquadsThreshold) || len(p.SquadsMembers) > 65535 {
 		return errors.New("host apply plan has an invalid Squads quorum")
 	}
@@ -297,7 +297,7 @@ type hostApplyLicenseCustody struct {
 	Multisig primitives.Pubkey
 }
 
-func readHostApplyLicenseCustody(data []byte, owner string, expectedProgram, expectedLicense primitives.Pubkey) (hostApplyLicenseCustody, error) {
+func readHostApplyLicenseCustody(data []byte, owner string, expectedProgram, expectedLicense primitives.Pubkey, squadsProgram squadsproof.Pubkey) (hostApplyLicenseCustody, error) {
 	var zero hostApplyLicenseCustody
 	if len(data) < 8 || !strings.EqualFold(owner, expectedProgram.Base58()) || !bytesEqual(data[:8], accountDiscriminator("LicenseEntry")) {
 		return zero, errors.New("host apply LicenseEntry owner or discriminator is invalid")
@@ -339,7 +339,7 @@ func readHostApplyLicenseCustody(data []byte, owner string, expectedProgram, exp
 	if c.err != nil || license != expectedLicense || custodyMode != 1 || status != 0 || vault == nil || multisig == nil || *vault == (primitives.Pubkey{}) || *multisig == (primitives.Pubkey{}) {
 		return zero, errors.New("host apply LicenseEntry is not an active Squads-custodied target license")
 	}
-	if derived, _, err := squadsproof.DeriveVaultPDA(*multisig, 0, squadsproof.DefaultProgramID); err != nil || derived != *vault {
+	if derived, _, err := squadsproof.DeriveVaultPDA(*multisig, 0, squadsProgram); err != nil || derived != *vault {
 		return zero, errors.New("host apply LicenseEntry Squads vault does not match its multisig")
 	}
 	return hostApplyLicenseCustody{License: license, Vault: *vault, Multisig: *multisig}, nil
@@ -370,6 +370,7 @@ type hostApplyBaseFacts struct {
 	RawGeneration []byte
 	Component     componentrelease.ComponentRelease
 	Custody       hostApplyLicenseCustody
+	SquadsProgram squadsproof.Pubkey
 	Multisig      squadsproof.Multisig
 }
 
@@ -428,6 +429,14 @@ func fetchHostApplyBaseFacts(ctx context.Context, s *publishService) (hostApplyB
 	if err != nil {
 		return zero, fmt.Errorf("program id: %w", err)
 	}
+	authority, err := s.cfg.sharedSquadsAuthority()
+	if err != nil {
+		return zero, fmt.Errorf("release Squads authority: %w", err)
+	}
+	squadsProgram, err := squadsproof.DecodePubkey(authority.ProgramID.Base58())
+	if err != nil {
+		return zero, fmt.Errorf("release Squads authority program id: %w", err)
+	}
 	authz, _, err := pda.StoreOperatorAuthorization(storeLicense, primitives.StoreDomainHash(s.cfg.Domain), program)
 	if err != nil {
 		return zero, fmt.Errorf("derive store operator authorization: %w", err)
@@ -457,7 +466,7 @@ func fetchHostApplyBaseFacts(ctx context.Context, s *publishService) (hostApplyB
 	if len(licenseCohort.Accounts) != 1 {
 		return zero, errors.New("fetch finalized LicenseEntry: expected one account")
 	}
-	custody, err := readHostApplyLicenseCustody(licenseCohort.Accounts[0].Data, licenseCohort.Accounts[0].Owner, program, targetLicense)
+	custody, err := readHostApplyLicenseCustody(licenseCohort.Accounts[0].Data, licenseCohort.Accounts[0].Owner, program, targetLicense, squadsProgram)
 	if err != nil {
 		return zero, err
 	}
@@ -474,7 +483,7 @@ func fetchHostApplyBaseFacts(ctx context.Context, s *publishService) (hostApplyB
 	}
 	multisig, err := squadsproof.ParseMultisig(squadsproof.Account{
 		Address: custody.Multisig, Owner: multisigOwner, Data: multisigCohort.Accounts[0].Data,
-	}, squadsproof.DefaultProgramID)
+	}, squadsProgram)
 	if err != nil {
 		return zero, fmt.Errorf("parse finalized Squads multisig: %w", err)
 	}
@@ -485,7 +494,7 @@ func fetchHostApplyBaseFacts(ctx context.Context, s *publishService) (hostApplyB
 	return hostApplyBaseFacts{
 		OperatorPubkey: primitives.EncodeBase58(operatorPub), OperatorAuthz: authz.Base58(),
 		TargetLicense: targetLicense, Document: doc, RawGeneration: rawGeneration, Component: component,
-		Custody: custody, Multisig: multisig,
+		Custody: custody, SquadsProgram: squadsProgram, Multisig: multisig,
 	}, nil
 }
 
@@ -537,7 +546,7 @@ func hostApplyPlanFromFacts(dossierID string, facts hostApplyCurrentFacts, now t
 		RawGenerationSHA256: hex.EncodeToString(rawHash[:]), ComponentDigest: componentrelease.ComponentReleaseDigestHex(facts.Component),
 		ComponentSHA256: facts.Component.SHA256, ComponentVersion: facts.Component.Version,
 		ExpectedPreviousSHA256: facts.Component.PreviousSHA256,
-		SquadsProgramID:        squadsproof.DefaultProgramIDBase58, SquadsMultisig: facts.Custody.Multisig.Base58(),
+		SquadsProgramID:        facts.SquadsProgram.Base58(), SquadsMultisig: facts.Custody.Multisig.Base58(),
 		SquadsVault: facts.Custody.Vault.Base58(), SquadsThreshold: facts.Multisig.Threshold,
 		SquadsStableConfigSHA256:    hostApplySquadsStableConfigSHA256(facts.Multisig),
 		SquadsTransactionIndexFloor: facts.Multisig.TransactionIndex, SquadsMembers: hostApplyMembersFromMultisig(facts.Multisig),
@@ -572,6 +581,7 @@ func verifyHostApplyPlanAgainstFacts(plan hostApplyPlan, facts hostApplyCurrentF
 		"component sha256":             {plan.ComponentSHA256, facts.Component.SHA256},
 		"component version":            {plan.ComponentVersion, facts.Component.Version},
 		"previous sha256":              {plan.ExpectedPreviousSHA256, facts.Component.PreviousSHA256},
+		"Squads program":               {plan.SquadsProgramID, facts.SquadsProgram.Base58()},
 		"Squads multisig":              {plan.SquadsMultisig, facts.Custody.Multisig.Base58()},
 		"Squads vault":                 {plan.SquadsVault, facts.Custody.Vault.Base58()},
 		"Squads config":                {plan.SquadsStableConfigSHA256, hostApplySquadsStableConfigSHA256(facts.Multisig)},

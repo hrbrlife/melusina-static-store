@@ -92,7 +92,7 @@ cleanup() {
 trap cleanup EXIT
 
 BUILD_OUT="$TMP/generation"
-"$ROOT/scripts/build-store-generation-release.sh" \
+MELUSINA_STORE_BOOTSTRAP_BUILD=1 "$ROOT/scripts/build-store-generation-release.sh" \
   --version "$VERSION" \
   --out-dir "$BUILD_OUT"
 
@@ -215,7 +215,7 @@ outer_build_provenance = regular_file(build_dir, "BUILD-PROVENANCE.json")
 build_provenance = strict_json(outer_build_provenance, "BUILD-PROVENANCE.json")
 if set(build_provenance) != {
     "schema", "sourceCommit", "version", "sourceDateEpoch", "goos", "goarch",
-    "cgoEnabled", "uiManifestSha256", "builds", "byteIdentical",
+    "cgoEnabled", "buildFlavor", "uiManifestSha256", "builds", "byteIdentical",
 }:
     fail("BUILD-PROVENANCE.json has an unexpected schema")
 if (
@@ -226,6 +226,7 @@ if (
     or build_provenance["goos"] != "linux"
     or build_provenance["goarch"] != "amd64"
     or build_provenance["cgoEnabled"] is not False
+    or build_provenance["buildFlavor"] != "estate-bootstrap"
     or build_provenance["builds"] != 2
     or build_provenance["byteIdentical"] is not True
     or not isinstance(build_provenance["uiManifestSha256"], str)

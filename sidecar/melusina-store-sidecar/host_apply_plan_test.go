@@ -207,6 +207,10 @@ func newHostApplyPlanFixture(t *testing.T) hostApplyPlanFixture {
 	}
 
 	sdk := loadHostApplySDKFixture(t)
+	// The fixture's custody, multisig and proof PDAs were produced by this
+	// exact SDK program. Keep the test configuration equally explicit so the
+	// plan follows its configured program rather than an unrelated default.
+	cfg.ReleaseSquadsAuthority.ProgramID = sdk.ProgramID
 	multisig, err := primitives.PubkeyFromBase58(sdk.MultisigAddress)
 	if err != nil {
 		t.Fatal(err)
@@ -236,11 +240,11 @@ func newHostApplyPlanFixture(t *testing.T) hostApplyPlanFixture {
 		t.Fatal(err)
 	}
 	chain.rawAccounts[multisig.Base58()] = mutateHostApplyMultisigIndex(t, proofMultisig, 6)
-	chain.rawAccountOwners[multisig.Base58()] = squadsproof.DefaultProgramIDBase58
+	chain.rawAccountOwners[multisig.Base58()] = cfg.ReleaseSquadsAuthority.ProgramID
 	chain.rawAccounts[proposal.Base58()] = proofProposal
-	chain.rawAccountOwners[proposal.Base58()] = squadsproof.DefaultProgramIDBase58
+	chain.rawAccountOwners[proposal.Base58()] = cfg.ReleaseSquadsAuthority.ProgramID
 	chain.rawAccounts[vaultTx.Base58()] = proofVaultTx
-	chain.rawAccountOwners[vaultTx.Base58()] = squadsproof.DefaultProgramIDBase58
+	chain.rawAccountOwners[vaultTx.Base58()] = cfg.ReleaseSquadsAuthority.ProgramID
 	licensePDA, _, err := primitives.DeriveLicense(targetLicense, programID)
 	if err != nil {
 		t.Fatal(err)
@@ -275,7 +279,10 @@ func hostApplyProofHTTPReq(t *testing.T, dossier, digest, signature string) *htt
 
 func (f hostApplyPlanFixture) armProof(t *testing.T, plan hostApplyPlan) {
 	t.Helper()
-	program := squadsproof.DefaultProgramID
+	program, err := squadsproof.DecodePubkey(f.svc.cfg.ReleaseSquadsAuthority.ProgramID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	multisigKey, err := squadsproof.DecodePubkey(f.multisig)
 	if err != nil {
 		t.Fatal(err)
@@ -315,7 +322,7 @@ func (f hostApplyPlanFixture) armProof(t *testing.T, plan hostApplyPlan) {
 		// Solana's canonical key ordering puts writable unsigned accounts before
 		// readonly unsigned accounts: member, proposal, vault, then multisig,
 		// vault transaction, memo and program.
-		AccountKeys:       []string{member.Base58(), f.proposal, f.vault, f.multisig, f.vaultTx, squadsproof.DefaultMemoProgramIDBase58, squadsproof.DefaultProgramIDBase58},
+		AccountKeys:       []string{member.Base58(), f.proposal, f.vault, f.multisig, f.vaultTx, squadsproof.DefaultMemoProgramIDBase58, program.Base58()},
 		Instructions:      []hostApplyCompiledInstruction{{ProgramIDIndex: 6, Accounts: []uint8{3, 1, 4, 0, 2, 5}, Data: primitives.EncodeBase58([]byte{194, 8, 161, 87, 153, 164, 25, 171})}},
 		InnerInstructions: []hostApplyInnerInstructionSet{{Index: 0, Instructions: []hostApplyCompiledInstruction{{ProgramIDIndex: 5, Accounts: []uint8{2}, Data: primitives.EncodeBase58([]byte(plan.Memo()))}}}},
 	}
@@ -508,6 +515,25 @@ func TestHostApplyPlanReservesOneExactControllerUpgradeShape(t *testing.T) {
 				t.Fatalf("invalid controller upgrade plan %q was accepted", name)
 			}
 		})
+	}
+}
+
+func TestHostApplyPlanBindsConfiguredSquadsProgram(t *testing.T) {
+	f := newHostApplyPlanFixture(t)
+	facts, err := fetchHostApplyCurrentFacts(context.Background(), f.svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := hostApplyPlanFromFacts("00112233445566778899aabb", facts, f.now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.SquadsProgramID != f.svc.cfg.ReleaseSquadsAuthority.ProgramID {
+		t.Fatalf("plan Squads program = %q, want configured %q", plan.SquadsProgramID, f.svc.cfg.ReleaseSquadsAuthority.ProgramID)
+	}
+	plan.SquadsProgramID = randPubkeyB58(t)
+	if err := verifyHostApplyPlanAgainstFacts(plan, facts, f.now); err == nil || !strings.Contains(err.Error(), "Squads program") {
+		t.Fatalf("foreign configured Squads program was accepted: %v", err)
 	}
 }
 

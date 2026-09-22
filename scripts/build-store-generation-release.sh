@@ -31,6 +31,26 @@ if [[ -e "$OUT_DIR" || -L "$OUT_DIR" ]]; then
   rmdir "$OUT_DIR"
 fi
 
+# The Store bootstrap component is deliberately a different, reviewed build
+# flavor. It has no legacy estate authority or schema identifier compiled in.
+# This is not a caller-selectable release option: the bootstrap wrapper sets
+# the sole accepted value and its output provenance records the choice.
+BOOTSTRAP_BUILD="${MELUSINA_STORE_BOOTSTRAP_BUILD:-}"
+case "$BOOTSTRAP_BUILD" in
+  "")
+    BUILD_FLAVOR="standard"
+    BUILD_TAGS=()
+    ;;
+  1)
+    BUILD_FLAVOR="estate-bootstrap"
+    BUILD_TAGS=(-tags estatebootstrap)
+    ;;
+  *)
+    echo "MELUSINA_STORE_BOOTSTRAP_BUILD must be empty or 1" >&2
+    exit 2
+    ;;
+esac
+
 [[ -z "$(git -C "$ROOT" status --porcelain --untracked-files=normal)" ]] || {
   echo "source tree must be clean" >&2; exit 2; }
 HEAD="$(git -C "$ROOT" rev-parse HEAD)"
@@ -107,26 +127,26 @@ build_once() {
     export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0 GO111MODULE=on
     export GOFIPS140=off GO_EXTLINK_ENABLED=0 GOCACHEPROG= GOFLAGS= GOENV=off
     export GOWORK=off GOTOOLCHAIN=local SOURCE_DATE_EPOCH="$SOURCE_EPOCH" TMPDIR="$BUILD_TMPDIR"
-    go build -mod=vendor -trimpath -ldflags "-buildid= -X main.Version=$VERSION" \
+    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid= -X main.Version=$VERSION" \
       -o "$stage/bin/melusina-store-sidecar" .
     # The first-install deployer must derive the SidecarIdentity register
     # material from this exact archive ELF, TLS certificate and shard set.
     # Package the canonical preparer rather than asking deployment code to
     # reconstruct its JSON or build Go on the target.
-    go build -mod=vendor -trimpath -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/boot-identity-prep" ./cmd/boot-identity-prep
     # The controller is intentionally a separate root-owned process, but it is
     # built from the exact source revision as the Store it will govern.  The
     # first installation remains an explicitly authorized InstallerRelease
     # bootstrap; later Store generations never smuggle in a controller change.
-    go build -mod=vendor -trimpath -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/melusina-update-controller" ./cmd/melusina-update-controller
     # The controller install is a separately authorized custody ceremony that
     # must independently verify the artifact's active InstallerReleaseEntry.
     # Ship the verifier IN the bundle so that ceremony uses a tool built from
     # the same source revision as the controller it authorizes, instead of one
     # assembled ad hoc on whatever workstation happens to run the install.
-    go build -mod=vendor -trimpath -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/verify-installer-release" ./cmd/verify-installer-release
   )
   install -m 0644 "$work/deploy/store-generation/melusina-store-sidecar.service" \
@@ -145,7 +165,7 @@ build_once() {
     "$stage/config/component-registry.template.json"
   install -m 0644 "$work/deploy/store-generation/DEPLOYMENT-CONTRACT.md" \
     "$stage/DEPLOYMENT-CONTRACT.md"
-  printf '%s\n' "{\"schema\":\"melusina-store-generation-build-v1\",\"sourceCommit\":\"$HEAD\",\"version\":\"$VERSION\",\"sourceDateEpoch\":$SOURCE_EPOCH,\"goos\":\"linux\",\"goarch\":\"amd64\",\"cgoEnabled\":false,\"uiManifestSha256\":\"$ui_manifest_sha\",\"builds\":2,\"byteIdentical\":true}" \
+  printf '%s\n' "{\"schema\":\"melusina-store-generation-build-v1\",\"sourceCommit\":\"$HEAD\",\"version\":\"$VERSION\",\"sourceDateEpoch\":$SOURCE_EPOCH,\"goos\":\"linux\",\"goarch\":\"amd64\",\"cgoEnabled\":false,\"buildFlavor\":\"$BUILD_FLAVOR\",\"uiManifestSha256\":\"$ui_manifest_sha\",\"builds\":2,\"byteIdentical\":true}" \
     >"$stage/BUILD-PROVENANCE.json"
   find "$stage" -type d -exec chmod 0755 {} +
   chmod 0755 "$stage/bin/melusina-store-sidecar" "$stage/bin/boot-identity-prep" \

@@ -95,6 +95,7 @@ func TestControllerUpgradePlanDerivesTenantScopeFromFineractAndBindsOneDataArtif
 		"wrong artifact":          func(p *hostApplyPlan) { p.CandidateArtifactName = "other-controller.bin" },
 		"wrong installer release": func(p *hostApplyPlan) { p.InstallerReleaseSHA256 = strings.Repeat("b", 64) },
 		"wrong incumbent":         func(p *hostApplyPlan) { p.ExpectedPreviousSHA256 = strings.Repeat("c", 64) },
+		"wrong Squads program":    func(p *hostApplyPlan) { p.SquadsProgramID = randPubkeyB58(t) },
 		"Bazaar policy injected":  func(p *hostApplyPlan) { p.StorePolicy = randPubkeyB58(t) },
 		"Bazaar epoch injected":   func(p *hostApplyPlan) { p.PolicyEpoch = 1 },
 	} {

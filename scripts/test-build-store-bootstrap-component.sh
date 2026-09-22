@@ -51,6 +51,7 @@ provenance = {
     "goos": "linux",
     "goarch": "amd64",
     "cgoEnabled": False,
+    "buildFlavor": "estate-bootstrap",
     "uiManifestSha256": "a" * 64,
     "builds": 2,
     "byteIdentical": True,

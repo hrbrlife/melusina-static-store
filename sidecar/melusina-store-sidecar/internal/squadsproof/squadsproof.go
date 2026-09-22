@@ -4,12 +4,12 @@
 // callers supply the address, owner, and account bytes they read from a
 // consistent Solana snapshot.
 //
-// The layouts and PDA seeds in this package mirror @sqds/multisig v2.1.4,
-// whose IDL identifies the deployed v4 program as
-// SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf.  Unknown account extensions,
-// unknown enum values, malformed vectors, a non-canonical PDA, or an owner
-// mismatch are all refusals.  That is intentional: this package is an
-// authorization proof parser, not a best-effort account inspector.
+// The layouts and PDA seeds in this package mirror @sqds/multisig v2.1.4.
+// Callers supply their reviewed program id; a fresh estate must never inherit
+// one from this parser. Unknown account extensions, unknown enum values,
+// malformed vectors, a non-canonical PDA, or an owner mismatch are all
+// refusals. That is intentional: this package is an authorization proof
+// parser, not a best-effort account inspector.
 package squadsproof
 
 import (
@@ -24,8 +24,6 @@ import (
 type Pubkey = primitives.Pubkey
 
 const (
-	// DefaultProgramIDBase58 is @sqds/multisig v2.1.4's v4 program id.
-	DefaultProgramIDBase58 = "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
 	// DefaultMemoProgramIDBase58 is the Solana SPL Memo v2 program used by
 	// memo-only governance proofs.
 	DefaultMemoProgramIDBase58 = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
@@ -47,8 +45,6 @@ const (
 )
 
 var (
-	// DefaultProgramID is the decoded form of DefaultProgramIDBase58.
-	DefaultProgramID = mustDecodePubkey(DefaultProgramIDBase58)
 	// DefaultMemoProgramID is the decoded form of DefaultMemoProgramIDBase58.
 	DefaultMemoProgramID = mustDecodePubkey(DefaultMemoProgramIDBase58)
 

@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
-	"github.com/hrbrlife/melusina-store-sidecar/internal/squadsproof"
 )
 
 type controllerUpgradeCurrentFacts struct {
@@ -87,7 +86,7 @@ func controllerUpgradePlanFromFacts(dossierID string, facts controllerUpgradeCur
 		InstallerReleasePDA:    controller.Chain.ReleasePDA,
 		InstallerReleaseSHA256: controller.SHA256,
 
-		SquadsProgramID:             squadsproof.DefaultProgramIDBase58,
+		SquadsProgramID:             facts.Host.SquadsProgram.Base58(),
 		SquadsMultisig:              facts.Host.Custody.Multisig.Base58(),
 		SquadsVault:                 facts.Host.Custody.Vault.Base58(),
 		SquadsThreshold:             facts.Host.Multisig.Threshold,
@@ -126,6 +125,7 @@ func verifyControllerUpgradePlanAgainstFacts(plan hostApplyPlan, facts controlle
 		"candidate artifact":           {plan.CandidateArtifactName, controller.ArtifactName},
 		"installer release PDA":        {plan.InstallerReleasePDA, controller.Chain.ReleasePDA},
 		"installer release sha256":     {plan.InstallerReleaseSHA256, controller.SHA256},
+		"Squads program":               {plan.SquadsProgramID, facts.Host.SquadsProgram.Base58()},
 		"Squads multisig":              {plan.SquadsMultisig, facts.Host.Custody.Multisig.Base58()},
 		"Squads vault":                 {plan.SquadsVault, facts.Host.Custody.Vault.Base58()},
 		"Squads config":                {plan.SquadsStableConfigSHA256, hostApplySquadsStableConfigSHA256(facts.Host.Multisig)},

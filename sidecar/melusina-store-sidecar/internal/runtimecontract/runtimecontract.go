@@ -33,9 +33,6 @@ const (
 	// new identifier and validator; accepting unknown shapes as v1 would turn a
 	// release gate into a best-effort hint.
 	Schema = "melusina-app-runtime-contract-v1"
-	// SchemaURL is served by the Bazaar alongside the catalog schema so humans
-	// and tooling can resolve the exact contract shape offline from the store.
-	SchemaURL = "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json"
 )
 
 // ErrEmpty is returned only when a RELEASE.json claims a runtime contract but

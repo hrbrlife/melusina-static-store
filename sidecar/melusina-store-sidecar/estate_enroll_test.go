@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -155,6 +156,9 @@ func newStoreEnrollmentRuntimeFixture(t *testing.T) storeEnrollmentRuntimeFixtur
 			Threshold:   declaration.ReleaseSquadsAuthority.Threshold,
 			MemberCount: declaration.ReleaseSquadsAuthority.MemberCount,
 		},
+		// The literal, not rootstore.SidecarID: a changed constant must fail
+		// these fixtures rather than move them with it.
+		BootIdentity: BootIdentityConfig{SidecarID: "store"},
 	}
 	return storeEnrollmentRuntimeFixture{
 		profile:     profile,
@@ -441,5 +445,165 @@ func TestPrepareStoreEnrollmentCandidateRefusesInvalidLifetimeAndProfileDigest(t
 	}
 	if _, err := prepareStoreEnrollmentCandidate(context.Background(), f.cfg, f.declaration, f.profile, strings.Repeat("0", 64), f.identity, fixedStoreGenesisReader{genesis: f.genesis}, now, 15*time.Minute, nonce); err == nil || !strings.Contains(err.Error(), "profile digest does not match") {
 		t.Fatalf("candidate accepted a substituted profile digest: %v", err)
+	}
+}
+
+// storeEnrollmentFixtureUnderSidecarID re-issues the runtime fixture under
+// another sidecar id: the configured id, the derived identity and an
+// owner-signed enrollment all agree on it. Only the root-Store constant check
+// can then tell it from the real fixture.
+func storeEnrollmentFixtureUnderSidecarID(t *testing.T, sidecarID string) storeEnrollmentRuntimeFixture {
+	t.Helper()
+	f := newStoreEnrollmentRuntimeFixture(t)
+	enrollment := f.state.Enrollment
+	enrollment.SidecarID = sidecarID
+	enrollment = signRuntimeStoreEnrollmentCandidate(t, f.profile, enrollment, "owner-a", "owner-b")
+	state, err := newStoreEnrollmentState(f.profile, enrollment, storeEnrollmentStateNow)
+	if err != nil {
+		t.Fatalf("owner-signed enrollment under sidecar id %q: %v", sidecarID, err)
+	}
+	f.state = state
+	identity := *f.identity
+	identity.sidecarID = sidecarID
+	f.identity = &identity
+	f.cfg.BootIdentity.SidecarID = sidecarID
+	return f
+}
+
+func requireRootStoreSidecarRefusal(t *testing.T, label string, err error) {
+	t.Helper()
+	if !errors.Is(err, errStoreEstateSidecarIDNotRootStore) || !strings.Contains(fmt.Sprint(err), "store-estate-profile-config-mismatch:boot_identity.sidecar_id") {
+		t.Fatalf("%s: error = %v, want the named boot_identity.sidecar_id refusal", label, err)
+	}
+}
+
+func TestStoreEnrollmentRefusesANonRootStoreSidecarID(t *testing.T) {
+	// Positive control: the same fixture under the root Store id is accepted
+	// by every gate the negative cases exercise.
+	root := storeEnrollmentFixtureUnderSidecarID(t, "store")
+	if _, err := verifyStoreEnrollmentRuntime(context.Background(), root.cfg, root.declaration, root.state, root.identity, fixedStoreGenesisReader{genesis: root.genesis}); err != nil {
+		t.Fatalf("positive control: root Store sidecar id refused: %v", err)
+	}
+	profileDigest, err := estateprofile.VerifyProfile(root.profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 9, 20, 1, 30, 0, 0, time.UTC)
+	nonce := bytes.Repeat([]byte{0x42}, sha256.Size)
+	if _, err := prepareStoreEnrollmentCandidate(context.Background(), root.cfg, root.declaration, root.profile, profileDigest, root.identity, fixedStoreGenesisReader{genesis: root.genesis}, now, 15*time.Minute, nonce); err != nil {
+		t.Fatalf("positive control: enrollment request under the root Store sidecar id refused: %v", err)
+	}
+
+	for _, sidecarID := range []string{"melusina-os-root-store-v2", "store-v2", "rehearsal-root-store"} {
+		t.Run(sidecarID, func(t *testing.T) {
+			f := storeEnrollmentFixtureUnderSidecarID(t, sidecarID)
+			profileDigest, err := estateprofile.VerifyProfile(f.profile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// The owner-signed document, the derived identity and the config
+			// all agree, so the facts comparison alone would accept it.
+			requireRootStoreSidecarRefusal(t, "enrolled runtime", func() error {
+				_, err := verifyStoreEnrollmentRuntime(context.Background(), f.cfg, f.declaration, f.state, f.identity, fixedStoreGenesisReader{genesis: f.genesis})
+				return err
+			}())
+			requireRootStoreSidecarRefusal(t, "enrollment request", func() error {
+				_, err := prepareStoreEnrollmentCandidate(context.Background(), f.cfg, f.declaration, f.profile, profileDigest, f.identity, fixedStoreGenesisReader{genesis: f.genesis}, now, 15*time.Minute, nonce)
+				return err
+			}())
+			requireRootStoreSidecarRefusal(t, "configured id", requireLoadedConfigMatchesStoreDeclaration(f.cfg, f.declaration))
+			_, err = storeEnrollmentRuntimeFacts(f.declaration, f.identity)
+			requireRootStoreSidecarRefusal(t, "derived identity", err)
+		})
+	}
+}
+
+// Each gate is checked on its own, so removing either one fails a named case.
+func TestStoreEnrollmentChecksConfiguredAndDerivedSidecarIDSeparately(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	if err := requireLoadedConfigMatchesStoreDeclaration(f.cfg, f.declaration); err != nil {
+		t.Fatalf("positive control: root Store config refused: %v", err)
+	}
+	if _, err := storeEnrollmentRuntimeFacts(f.declaration, f.identity); err != nil {
+		t.Fatalf("positive control: root Store identity refused: %v", err)
+	}
+	for _, configured := range []string{"", " store", "store ", "Store", "melusina-os-root-store-v2"} {
+		cfg := f.cfg
+		cfg.BootIdentity.SidecarID = configured
+		requireRootStoreSidecarRefusal(t, fmt.Sprintf("configured %q", configured), requireLoadedConfigMatchesStoreDeclaration(cfg, f.declaration))
+	}
+	derived := *f.identity
+	derived.sidecarID = "melusina-os-root-store-v2"
+	_, err := storeEnrollmentRuntimeFacts(f.declaration, &derived)
+	requireRootStoreSidecarRefusal(t, "derived identity with root Store config", err)
+}
+
+// enrollStoreEstate refuses before it pins a registry or reads the chain. The
+// config's RPC endpoint is unroutable, and the positive control reaches a
+// later, different refusal.
+func TestEstateEnrollRefusesANonRootStoreSidecarIDBeforeAnyChainRead(t *testing.T) {
+	saved := programID
+	t.Cleanup(func() { programID = saved })
+	f := newStoreEnrollmentRuntimeFixture(t)
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	profileRaw, err := json.Marshal(f.profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	enrollmentRaw, err := json.Marshal(f.state.Enrollment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(dir, "estate-profile.json")
+	enrollmentPath := filepath.Join(dir, "enrollment.json")
+	for path, raw := range map[string][]byte{profilePath: profileRaw, enrollmentPath: enrollmentRaw} {
+		if err := os.WriteFile(path, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	enroll := func(sidecarID string) error {
+		config := map[string]any{
+			"license_nft_mint":             f.declaration.LicenseNFTMint,
+			"store_authority":              f.declaration.StoreAuthority,
+			"program_id":                   f.declaration.ProgramID,
+			"domain":                       f.declaration.Domain,
+			"store_id":                     f.declaration.StoreID,
+			"reseller_nft_mint":            f.declaration.ResellerNFTMint,
+			"release_master_nft_mint":      f.declaration.ReleaseMasterNFTMint,
+			"estate_enrollment_state_path": filepath.Join(dir, "state", "enrollment-state.json"),
+			"rpc_url":                      "https://127.0.0.1:9/unroutable",
+			"boot_identity":                map[string]any{"sidecar_id": sidecarID},
+			"release_squads_authority": map[string]any{
+				"multisig":     f.declaration.ReleaseSquadsAuthority.Multisig,
+				"vault":        f.declaration.ReleaseSquadsAuthority.Vault,
+				"program_id":   f.declaration.ReleaseSquadsAuthority.ProgramID,
+				"threshold":    f.declaration.ReleaseSquadsAuthority.Threshold,
+				"member_count": f.declaration.ReleaseSquadsAuthority.MemberCount,
+			},
+		}
+		raw, err := json.Marshal(config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		configPath := filepath.Join(dir, "store.config.json")
+		if err := os.WriteFile(configPath, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		_, err = enrollStoreEstate(estateEnrollOptions{configPath: configPath, profilePath: profilePath, enrollmentPath: enrollmentPath}, storeEnrollmentStateNow)
+		return err
+	}
+
+	requireRootStoreSidecarRefusal(t, "estate-enroll", enroll("melusina-os-root-store-v2"))
+	if programID != saved {
+		t.Fatalf("estate-enroll pinned registry %s before refusing the sidecar id", programID.Base58())
+	}
+	// Positive control: under the root Store id the same enrollment passes the
+	// check and stops at the absent shard set, which is a different named refusal.
+	err = enroll("store")
+	if errors.Is(err, errStoreEstateSidecarIDNotRootStore) || !errors.Is(err, errStoreEstateProfileNotEnrolled) || !strings.Contains(fmt.Sprint(err), "boot_identity.shards_dir is required") {
+		t.Fatalf("positive control: estate-enroll under the root Store id = %v, want the absent-shards refusal", err)
 	}
 }

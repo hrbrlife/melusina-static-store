@@ -30,6 +30,7 @@ import (
 	"syscall"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/rootstore"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -467,7 +468,7 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 		TLS:                      TLSConfig{CertPath: storeConfigRenderTLSCert, KeyPath: storeConfigRenderTLSKey},
 		BootIdentity: BootIdentityConfig{
 			ShardsDir:          storeConfigRenderShardDir,
-			SidecarID:          "store",
+			SidecarID:          rootstore.SidecarID,
 			ChainID:            input.ChainID,
 			KeyVersion:         1,
 			OperatorKeyVersion: 1,

@@ -1,0 +1,18 @@
+{
+  "schema": "melusina.store.vendored-vector-provenance.v1",
+  "comment": [
+    "sidecar-pda-vectors.json in this directory is a byte-for-byte copy of the contracts repository's cross-language",
+    "sidecar PDA vector. Do not edit the copy. To take a newer contracts vector, copy the file from a newer contracts",
+    "commit on main and update every field below from that commit.",
+    "root_store_sidecar_vectors_test.go checks the copy's sha256 and git blob id against this record on every run. When",
+    "MELUSINA_CONTRACTS_GIT_DIR names a contracts clone, it also reads sourcePath at sourceCommit from that clone and",
+    "requires identical bytes."
+  ],
+  "file": "sidecar-pda-vectors.json",
+  "sourceRepository": "https://github.com/melusina-os/melusina-os-smartcontract",
+  "sourceCommit": "285646b4651ae9635c2d27d707103b3b1032453e",
+  "sourcePath": "scripts/estate/testdata/sidecar-pda-vectors.json",
+  "gitBlobSha1": "eebdd0a7263d6eb76372bb8e793b896df7ddf720",
+  "sha256": "98be1a1052e8ab19000dfa20d4cb7997636f765e4559867473c2acb9d712afe9",
+  "bytes": 5583
+}

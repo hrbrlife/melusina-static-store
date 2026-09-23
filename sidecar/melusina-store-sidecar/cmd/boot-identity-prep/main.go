@@ -19,6 +19,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/derive"
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/rootstore"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -110,7 +111,7 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&opts.shardsDir, "shards-dir", "", "directory for author.shard, host-observation.shard, release.shard")
 	fs.StringVar(&opts.licenseMint, "license-mint", "", "store operator License NFT mint")
 	fs.StringVar(&opts.domain, "domain", "", "store domain used for store_domain_hash")
-	fs.StringVar(&opts.sidecarID, "sidecar-id", "store", "sidecar_id seed for SidecarIdentityEntry")
+	fs.StringVar(&opts.sidecarID, "sidecar-id", rootstore.SidecarID, "sidecar_id seed for SidecarIdentityEntry (the root Store's protocol constant; an estate-enrolled Store refuses any other)")
 	fs.StringVar(&opts.chainID, "chain-id", defaultChainID, "attest identity chain id")
 	fs.StringVar(&opts.programID, "program-id", "", "the estate's license-registry program id (required)")
 	fs.UintVar(&opts.keyVersion, "key-version", 1, "SidecarIdentityEntry key_version seed")

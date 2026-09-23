@@ -187,6 +187,9 @@ func profileEnrolledStoreConfig(t *testing.T, statePath string) map[string]any {
 		"release_master_nft_mint":      declaration.ReleaseMasterNFTMint,
 		"estate_enrollment_state_path": statePath,
 		"rpc_url":                      "https://primary.example/rpc",
+		// A profile-bound Store boots under the root Store sidecar id; the
+		// renderer always emits it and estate enrollment refuses any other.
+		"boot_identity": map[string]any{"sidecar_id": "store"},
 		"release_squads_authority": map[string]any{
 			"multisig":     declaration.ReleaseSquadsAuthority.Multisig,
 			"vault":        declaration.ReleaseSquadsAuthority.Vault,

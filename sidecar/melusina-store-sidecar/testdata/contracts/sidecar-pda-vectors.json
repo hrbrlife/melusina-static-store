@@ -1,0 +1,171 @@
+{
+  "schema": "melusina.sidecar-pda-vectors/v1",
+  "comment": [
+    "Cross-language vector for the licence-registry sidecar cascade PDAs.",
+    "A consumer derives every expected address from inputs and seeds, in its own implementation, and compares",
+    "address AND bump. The seeds block is checked against the program source by tests/sidecar-pda-vectors.test.mjs;",
+    "do not edit it by hand. Regenerate with the generator named below.",
+    "rootStoreSidecarId is the protocol constant a NEW estate's root Store uses (scripts/estate/lib/profile.mjs",
+    "ROOT_STORE_SIDECAR_ID); melusina-os-root-store-v2 is the retiring estate's rotation label and appears only",
+    "in the observed vector."
+  ],
+  "generator": "scripts/estate/testdata/gen_sidecar_pda_vectors.py (solders Pubkey.find_program_address)",
+  "rootStoreSidecarId": "store",
+  "seedSources": {
+    "global_sidecar": "programs/license-registry/src/instructions/sidecar_approval.rs ApproveGlobalSidecar (init)",
+    "reseller_sidecar": "programs/license-registry/src/instructions/sidecar_approval.rs ApproveResellerSidecar (init)",
+    "local_sidecar": "programs/license-registry/src/instructions/sidecar_approval.rs ApproveLocalSidecar (init)",
+    "sidecar_identity": "programs/license-registry/src/instructions/attestation.rs RegisterSidecarIdentity (init)"
+  },
+  "seeds": {
+    "global_sidecar": [
+      {
+        "literal": "global_sidecar"
+      },
+      {
+        "pubkey": "masterNftMint"
+      },
+      {
+        "utf8": "sidecarId"
+      }
+    ],
+    "reseller_sidecar": [
+      {
+        "literal": "reseller_sidecar"
+      },
+      {
+        "pubkey": "resellerNftMint"
+      },
+      {
+        "utf8": "sidecarId"
+      }
+    ],
+    "local_sidecar": [
+      {
+        "literal": "local_sidecar"
+      },
+      {
+        "pubkey": "licenseNftMint"
+      },
+      {
+        "utf8": "sidecarId"
+      }
+    ],
+    "sidecar_identity": [
+      {
+        "literal": "sidecar_identity"
+      },
+      {
+        "pubkey": "licenseNftMint"
+      },
+      {
+        "utf8": "sidecarId"
+      },
+      {
+        "u32le": "keyVersion"
+      }
+    ]
+  },
+  "vectors": [
+    {
+      "name": "root-store-new-estate",
+      "origin": "synthetic: every input key is sha256(\"melusina.sidecar-pda-vectors/v1:<label>\"); nothing here exists on any cluster",
+      "inputs": {
+        "programId": "7NDyWxVi3bLZG834GQ9AqmEhG1kkVuMML4BXUEKo5TZb",
+        "masterNftMint": "9Nj6adY3SnMyuzgPzCsYbK5ueP2Qs7oFjEhL8KPL1BE1",
+        "resellerNftMint": "C7KjpSV7nnkbNKqmzBpMUKYfgxPJPqDdWBpkXrzidBwJ",
+        "licenseNftMint": "HU7zYFJ53NoG9ujRfFhsC9jrkwDG8Qa9dGjAVBrGNaCu",
+        "sidecarId": "store",
+        "keyVersions": [
+          1,
+          2
+        ]
+      },
+      "expected": {
+        "global_sidecar": {
+          "address": "F2QNMkLemUpNRhJj8h2Gs9mVwqDaMKrp3SacC2bMEAGZ",
+          "bump": 252
+        },
+        "reseller_sidecar": {
+          "address": "B83pSt8sroYaTVkwtrXZAqUFEfqUfhCjUv2F6wfmUAVK",
+          "bump": 252
+        },
+        "local_sidecar": {
+          "address": "AegS53WosJsRv9fQvSmKFbeyxxHqwGzpu2CeoCYaWo7C",
+          "bump": 251
+        },
+        "sidecar_identity": [
+          {
+            "keyVersion": 1,
+            "address": "J8iDtBSGeauvB5AJboaa26hpbyFsk2ikib557mZuYrWZ",
+            "bump": 255
+          },
+          {
+            "keyVersion": 2,
+            "address": "6NfFshFK9pckvtmwFRsJ23bA4dW5JVaiE7ZyeVCzGRod",
+            "bump": 250
+          }
+        ]
+      }
+    },
+    {
+      "name": "retiring-estate-root-store-observed",
+      "origin": "observed: the retiring devnet estate; see observation",
+      "observation": {
+        "cluster": "devnet",
+        "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+        "commitment": "finalized",
+        "date": "2026-09-23",
+        "reads": [
+          {
+            "contextSlot": 502900313,
+            "method": "getMultipleAccounts",
+            "facts": "all five expected addresses exist, are owned by inputs.programId and store inputs.sidecarId"
+          },
+          {
+            "contextSlot": 502901584,
+            "method": "getMultipleAccounts",
+            "facts": "the identity entries store licenseNftMint with key_version 1 and 2; the local approval stores licenseNftMint, the reseller approval resellerNftMint, the global approval masterNftMint"
+          }
+        ]
+      },
+      "inputs": {
+        "programId": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+        "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "resellerNftMint": "FutVjE5AMrU5WT9GhoPCW37Foyq27Q7F9yMhZztT9kah",
+        "licenseNftMint": "9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J",
+        "sidecarId": "melusina-os-root-store-v2",
+        "keyVersions": [
+          1,
+          2
+        ]
+      },
+      "expected": {
+        "global_sidecar": {
+          "address": "HAgHW9rA3x6LeQ8gaZtQhVpdzx2jccBUp3EjhMgRMPVx",
+          "bump": 254
+        },
+        "reseller_sidecar": {
+          "address": "4XVGaunHS8u9g6rAia4AxFzDFHm9MgoKMoMYxaZtkt3q",
+          "bump": 255
+        },
+        "local_sidecar": {
+          "address": "9NjQULhN2FxS5bGHyyUARZNZGJreVEj1eWFAkPw8eQy",
+          "bump": 254
+        },
+        "sidecar_identity": [
+          {
+            "keyVersion": 1,
+            "address": "7eESnZ9hvVAVTDCwSq73FGygqhp9bQZ5jF672NZsSKr6",
+            "bump": 255
+          },
+          {
+            "keyVersion": 2,
+            "address": "DAVB728UJJtMF9rvF2CZcGHcihLWycMvUGMjAuVPZwcY",
+            "bump": 255
+          }
+        ]
+      }
+    }
+  ]
+}

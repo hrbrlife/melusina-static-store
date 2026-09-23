@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/rootstore"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -23,6 +24,21 @@ import (
 // estateprofile refusal because the profile package has no filesystem or Store
 // runtime dependency.
 var errStoreEstateProfileNotEnrolled = errors.New("store-estate-profile-not-enrolled")
+
+// errStoreEstateSidecarIDNotRootStore refuses a profile-bound Store whose boot
+// identity is not the root Store's protocol sidecar id. The foundation ceremony
+// approves the Store's GlobalSidecarApproval under rootstore.SidecarID, and
+// register_sidecar_identity reads that approval under the id it seeds the
+// identity with. A Store booting under any other id derives a different
+// operator key and SidecarIdentityEntry, so an owner signature must never bind it.
+var errStoreEstateSidecarIDNotRootStore = errors.New("store-estate-profile-config-mismatch:boot_identity.sidecar_id")
+
+func requireRootStoreSidecarID(sidecarID string) error {
+	if sidecarID != rootstore.SidecarID {
+		return fmt.Errorf("%w: %q is not the root Store sidecar id %q", errStoreEstateSidecarIDNotRootStore, sidecarID, rootstore.SidecarID)
+	}
+	return nil
+}
 
 const storeEstateEnrollReportSchema = "melusina-store-estate-enroll-report.v1"
 
@@ -276,6 +292,11 @@ func enrollStoreEstate(opts estateEnrollOptions, now time.Time) (storeEstateEnro
 	if err != nil {
 		return report, err
 	}
+	// Refuse configuration drift, including a non-root sidecar id, before any
+	// chain read, as the enrollment-request path does.
+	if err := requireLoadedConfigMatchesStoreDeclaration(cfg, declaration); err != nil {
+		return report, err
+	}
 
 	// The SidecarIdentityEntry PDA is under the configured registry program.
 	// Set it before deriving the snapshot, exactly as normal Store startup does.
@@ -514,12 +535,20 @@ func requireLoadedConfigMatchesStoreDeclaration(cfg Config, declaration storeEst
 	if cfg.ReleaseSquadsAuthority.MemberCount != declaration.ReleaseSquadsAuthority.MemberCount {
 		return errors.New("store-estate-profile-config-mismatch:release_squads_authority.member_count")
 	}
-	return nil
+	// The sidecar id is not a profile field. It is a protocol constant, so the
+	// exact configured spelling is compared with it rather than with the profile.
+	return requireRootStoreSidecarID(cfg.BootIdentity.SidecarID)
 }
 
 func storeEnrollmentRuntimeFacts(declaration storeEstateDeclaration, identity *verifiedBootIdentity) (estateprofile.StoreEnrollmentFacts, error) {
 	if identity == nil || identity.operator == nil {
 		return estateprofile.StoreEnrollmentFacts{}, fmt.Errorf("%w: boot identity is absent", errStoreEstateProfileNotEnrolled)
+	}
+	// These facts are what the owners sign and what every enrolled startup
+	// compares, so the derived identity's own sidecar id is checked here as well
+	// as the configured one.
+	if err := requireRootStoreSidecarID(identity.sidecarID); err != nil {
+		return estateprofile.StoreEnrollmentFacts{}, err
 	}
 	rootDomainHash := sha256.Sum256([]byte(declaration.Domain))
 	public := identity.operator.Public()

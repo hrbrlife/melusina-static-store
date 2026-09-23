@@ -207,9 +207,18 @@ requires an explicit `rpc_url` and may name explicit `rpc_fallback_urls`.
 Every Store configuration, enrolled or not, names its license-registry
 `program_id`. The Store compiles no registry program: startup refuses with
 `config: program_id is required` when it is absent, and the profile-bound
-renderer below writes the profile's `programs.license-registry` value. A
-mirroring reseller likewise names its `root_store_url`; there is no compiled
-root origin.
+renderer below writes the profile's `programs.license-registry` value. Every
+entry point that reads chain state logs
+`license registry: program <id> pinned from config` once it has pinned that
+value, before it opens a chain reader. A mirroring reseller likewise names its
+`root_store_url`; there is no compiled root origin.
+
+`TestBootstrapComponentBinariesCarryNoRetiringEstateValue` builds the four
+Store component programs with the build lines and environment of
+`scripts/build-store-generation-release.sh` and searches the built bytes for
+every retiring-estate value as text, raw 32 bytes, hex and base64: the whole
+retiring set in the estate-bootstrap build, and the license registry in the
+standard build.
 
 The enrolled configuration must also spell out every
 `release_squads_authority` field: `multisig`, `vault`, `program_id`,

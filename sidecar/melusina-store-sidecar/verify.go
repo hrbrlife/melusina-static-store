@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/hrbrlife/melusina-attest/pda"
@@ -51,6 +52,10 @@ func parseLicenseRegistryProgramID(raw string) (pda.Pubkey, error) {
 	return program, nil
 }
 
+// licenseRegistryPinnedLog is the startup line naming the one registry program
+// this process trusts. It is emitted only by a successful config pin.
+const licenseRegistryPinnedLog = "license registry: program %s pinned from config"
+
 // setProgramIDFromConfig pins the registry program for this process. Every
 // entry point calls it with the value LoadConfig has already validated, and
 // refuses to continue when it fails.
@@ -60,6 +65,7 @@ func setProgramIDFromConfig(raw string) error {
 		return err
 	}
 	programID = program
+	log.Printf(licenseRegistryPinnedLog, program.Base58())
 	return nil
 }
 

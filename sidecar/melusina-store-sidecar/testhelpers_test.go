@@ -20,13 +20,17 @@ import (
 
 // testLicenseProgramID is the registry program the package tests pin before
 // any test runs. It is a test fixture only: production compiles no registry
-// and pins exactly the program_id its validated config names.
+// and pins exactly the program_id its validated config names. The fixture is
+// assigned directly rather than through setProgramIDFromConfig, so it never
+// emits the config-pin line the entry-point tests look for.
 const testLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 
 func init() {
-	if err := setProgramIDFromConfig(testLicenseProgramID); err != nil {
+	program, err := parseLicenseRegistryProgramID(testLicenseProgramID)
+	if err != nil {
 		panic("pin test license-registry program: " + err.Error())
 	}
+	programID = program
 }
 
 // mustPubkey decodes a base58 fixture key.

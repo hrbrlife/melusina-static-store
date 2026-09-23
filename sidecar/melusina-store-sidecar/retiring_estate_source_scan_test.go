@@ -203,6 +203,11 @@ func sourceSetIncludes(sources []componentSource, suffix string) bool {
 // the estate being retired. In the estate-bootstrap build that is the whole
 // retiring forbid set; in the standard build, which deliberately keeps the
 // legacy Bazaar authority pins, it is the retiring license-registry program.
+//
+// This scan names the literal behind a hit, but it sees each literal alone: a
+// value the compiler assembles from several literals, or a byte array, passes
+// it. TestBootstrapComponentBinariesCarryNoRetiringEstateValue is the guard on
+// the built programs.
 func TestBootstrapComponentSourceCompilesNoRetiringEstateValue(t *testing.T) {
 	retiring := retiringEstateValues(t)
 	registryOnly := map[string]string{retiringLicenseRegistryField: retiring[retiringLicenseRegistryField]}

@@ -85,10 +85,15 @@ func fixtureAccounts(t *testing.T) (sdkFixture, Pubkey, Account, Account, Accoun
 	return fixture, programID, multisig, proposal, vaultTransaction
 }
 
+// sdkFixtureProgramIDBase58 is the Squads v4 program the recorded SDK fixture
+// was produced under (@sqds/multisig v2.1.4). It is test data only: the
+// package compiles no Squads program, and every caller passes the estate's.
+const sdkFixtureProgramIDBase58 = "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+
 func TestSDKFixtureParsesAndBindsMemoOnlyProof(t *testing.T) {
 	fixture, programID, multisigAccount, proposalAccount, vaultTransactionAccount := fixtureAccounts(t)
-	if programID != DefaultProgramID {
-		t.Fatalf("fixture program id does not match installed Squads v4 default")
+	if programID != mustDecodePubkey(sdkFixtureProgramIDBase58) {
+		t.Fatalf("fixture program id does not match the recorded Squads v4 SDK program")
 	}
 
 	multisig, err := ParseMultisig(multisigAccount, programID)
@@ -384,8 +389,8 @@ func TestParsedDataDoesNotAliasCallerBytes(t *testing.T) {
 }
 
 func TestDecodePubkeyIsExactAndCanonical(t *testing.T) {
-	if _, err := DecodePubkey(DefaultProgramIDBase58); err != nil {
-		t.Fatalf("decode default program id: %v", err)
+	if _, err := DecodePubkey(sdkFixtureProgramIDBase58); err != nil {
+		t.Fatalf("decode fixture program id: %v", err)
 	}
 	if _, err := DecodePubkey("not-base58!"); err == nil {
 		t.Fatal("invalid base58 accepted")

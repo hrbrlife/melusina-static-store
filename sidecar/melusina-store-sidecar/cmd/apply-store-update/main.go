@@ -34,14 +34,16 @@ const (
 	chainReceiptSchema        = "melusina-installer-release-chain-verification-v1"
 	applyReceiptSchema        = "melusina-store-update-apply-v1"
 	writerLockName            = "writer.lock"
-	canonicalLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 	xzExecutable              = "/usr/bin/xz"
-	maxChainReceiptBytes      = 64 << 10
-	maxPersistentJSONBytes    = 64 << 10
-	maxArchiveBytes           = int64(8 << 30)
-	maxELFBytes               = int64(1 << 30)
-	maxArchiveExpandedBytes   = int64(16 << 30)
-	chainVerificationTimeout  = 15 * time.Second
+	// systemProgramID is never a license registry; the all-ones placeholder
+	// decodes to it.
+	systemProgramID          = "11111111111111111111111111111111"
+	maxChainReceiptBytes     = 64 << 10
+	maxPersistentJSONBytes   = 64 << 10
+	maxArchiveBytes          = int64(8 << 30)
+	maxELFBytes              = int64(1 << 30)
+	maxArchiveExpandedBytes  = int64(16 << 30)
+	chainVerificationTimeout = 15 * time.Second
 )
 
 type options struct {
@@ -51,6 +53,7 @@ type options struct {
 	archiveSHA256        string
 	chainReceipt         string
 	rpcURL               string
+	programID            string
 	masterNFTMint        string
 	installedELF         string
 	expectedOldELFSHA256 string
@@ -152,6 +155,7 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&opts.archiveSHA256, "archive-sha256", "", "verified archive sha256")
 	fs.StringVar(&opts.chainReceipt, "chain-receipt", "", "bounded InstallerReleaseEntry verification receipt")
 	fs.StringVar(&opts.rpcURL, "rpc-url", "", "Solana JSON-RPC URL used for an independent InstallerReleaseEntry fetch")
+	fs.StringVar(&opts.programID, "program-id", "", "license-registry program that owns the InstallerReleaseEntry: the Store config's program_id (required; there is no default registry)")
 	fs.StringVar(&opts.masterNFTMint, "master-nft-mint", "", "Master NFT mint used to derive the InstallerReleaseEntry PDA")
 	fs.StringVar(&opts.installedELF, "installed-elf", "", "installed governed store ELF")
 	fs.StringVar(&opts.expectedOldELFSHA256, "expected-old-elf-sha256", "", "expected installed governed store ELF sha256")
@@ -170,6 +174,7 @@ func parseOptions(args []string) (options, error) {
 		"--from-version": opts.fromVersion, "--to-version": opts.toVersion,
 		"--archive": opts.archive, "--archive-sha256": opts.archiveSHA256,
 		"--chain-receipt": opts.chainReceipt, "--rpc-url": opts.rpcURL,
+		"--program-id":      opts.programID,
 		"--master-nft-mint": opts.masterNFTMint, "--installed-elf": opts.installedELF,
 		"--expected-old-elf-sha256": opts.expectedOldELFSHA256,
 		"--new-elf":                 opts.newELF, "--new-elf-member": opts.newELFMember,
@@ -211,6 +216,10 @@ func parseOptions(args []string) (options, error) {
 	parsedRPC, err := url.Parse(opts.rpcURL)
 	if err != nil || (parsedRPC.Scheme != "http" && parsedRPC.Scheme != "https") || parsedRPC.Host == "" || parsedRPC.User != nil {
 		return options{}, errors.New("--rpc-url must be an absolute http(s) URL without userinfo")
+	}
+	programID, err := primitives.PubkeyFromBase58(opts.programID)
+	if err != nil || programID.Base58() != opts.programID || opts.programID == systemProgramID {
+		return options{}, errors.New("--program-id must be the canonical base58 license-registry program, not the System Program")
 	}
 	masterMint, err := primitives.PubkeyFromBase58(opts.masterNFTMint)
 	if err != nil || masterMint.Base58() != opts.masterNFTMint {
@@ -355,9 +364,9 @@ func verifyChainAndReceipt(opts options, policy securityPolicy, receipt chainVer
 	if h != opts.archiveSHA256 {
 		return errors.New("installerSha256 does not bind the verified archive")
 	}
-	programID, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
+	programID, err := primitives.PubkeyFromBase58(opts.programID)
 	if err != nil {
-		return fmt.Errorf("internal canonical program id: %w", err)
+		return fmt.Errorf("license-registry program id: %w", err)
 	}
 	masterMint, err := primitives.PubkeyFromBase58(opts.masterNFTMint)
 	if err != nil {
@@ -373,7 +382,7 @@ func verifyChainAndReceipt(opts options, policy securityPolicy, receipt chainVer
 	if err != nil {
 		return fmt.Errorf("derive InstallerReleaseEntry PDA: %w", err)
 	}
-	if receipt.ProgramID != canonicalLicenseProgramID || receipt.MasterNFTMint != opts.masterNFTMint || receipt.InstallerReleasePDA != releasePDA.Base58() {
+	if receipt.ProgramID != opts.programID || receipt.MasterNFTMint != opts.masterNFTMint || receipt.InstallerReleasePDA != releasePDA.Base58() {
 		return errors.New("programId, masterNftMint, or installerReleasePda does not match independently derived identity")
 	}
 	if receipt.Status != verify.AttestationStatusActive.String() {

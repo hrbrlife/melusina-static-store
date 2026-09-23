@@ -29,7 +29,7 @@ func testPrivate(t *testing.T, sidecarID string) (*identity.Private, [32]byte, [
 	private, err := identity.NewPrivate(identity.Ref{
 		Kind:        identity.KindSidecar,
 		ChainID:     "solana:devnet",
-		ProgramID:   defaultProgramID,
+		ProgramID:   testProgramID,
 		LicenseMint: "11111111111111111111111111111111",
 		Domain:      "publisher.example",
 		PDA:         "11111111111111111111111111111111",
@@ -72,6 +72,9 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 				NonceCache:              envelope.NewMemoryNonceCache(),
 			}); err != nil {
 				t.Fatalf("verify envelope: %v", err)
+			}
+			if signed.Payload.ChainEvidence.ProgramID != testProgramID {
+				t.Fatalf("chain evidence names program %q, want the supplied %q", signed.Payload.ChainEvidence.ProgramID, testProgramID)
 			}
 			if r.FormValue("class") != "deployer" || r.FormValue("name") != "deployer-test.tar.xz" {
 				t.Fatalf("bad target: %s/%s", r.FormValue("class"), r.FormValue("name"))
@@ -118,6 +121,7 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 		"--publisher-key", publisherPath,
 		"--store-pubkey", operatorPath,
 		"--verified-slot", "123",
+		"--program-id", testProgramID,
 	}, &output)
 	if err != nil {
 		t.Fatalf("run: %v", err)
@@ -181,6 +185,7 @@ func TestRunStagesSidecarUntilGenerationPromotion(t *testing.T) {
 		"--publisher-key", publisherPath,
 		"--store-pubkey", operatorPath,
 		"--verified-slot", "123",
+		"--program-id", testProgramID,
 	}, &output)
 	if err != nil {
 		t.Fatalf("run: %v", err)

@@ -26,14 +26,16 @@ import (
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 const (
 	generationPromoteSchema = "melusina-generation-promote-v1"
 	generationPromoteTarget = "/publish/generation"
 	defaultChainID          = "solana:devnet"
-	defaultProgramID        = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 	maxRequestBytes         = 1 << 20
+	// systemProgramID is never a license registry.
+	systemProgramID = "11111111111111111111111111111111"
 )
 
 type publisherKeyFile struct {
@@ -68,6 +70,7 @@ type generationPromoteResult struct {
 type options struct {
 	store         string
 	storeID       string
+	programID     string
 	requestPath   string
 	publisherKey  string
 	storePubkey   string
@@ -92,6 +95,7 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.requestPath, "request", "", "exact GenerationPromoteRequest JSON to sign (required)")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher identity JSON path, or env:NAME (required)")
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "store operator identity.Public JSON (required)")
+	fs.StringVar(&o.programID, "program-id", "", "license-registry program named in the envelope chain evidence: the estate profile's programs.license-registry.programId (required; there is no default registry)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "publisher's verified chain slot (must be nonzero)")
 	fs.DurationVar(&o.timeout, "timeout", 60*time.Second, "promote plus read-back timeout")
 	fs.StringVar(&o.generationOut, "generation-out", "", "write verified raw served generation JSON atomically to this path")
@@ -103,6 +107,7 @@ func parseFlags(args []string) (options, error) {
 	for name, value := range map[string]string{
 		"--store": o.store, "--store-id": o.storeID, "--request": o.requestPath,
 		"--publisher-key": o.publisherKey, "--store-pubkey": o.storePubkey,
+		"--program-id": o.programID,
 	} {
 		if strings.TrimSpace(value) == "" {
 			missing = append(missing, name)
@@ -110,6 +115,9 @@ func parseFlags(args []string) (options, error) {
 	}
 	if len(missing) != 0 {
 		return o, fmt.Errorf("missing required flag(s): %s", strings.Join(missing, " "))
+	}
+	if err := validateProgramID(o.programID); err != nil {
+		return o, err
 	}
 	if _, err := storeURL(o.store); err != nil {
 		return o, err
@@ -146,6 +154,11 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("store pubkey: %w", err)
 	}
+	// A publisher key minted under another registry belongs to another
+	// estate; refuse the mix instead of letting either program win.
+	if keyProgram := publisher.Public().Ref.ProgramID; keyProgram != "" && keyProgram != o.programID {
+		return fmt.Errorf("check=program_id: publisher key is bound to license-registry program %s, not --program-id %s", keyProgram, o.programID)
+	}
 	ttl := o.timeout + 2*time.Minute
 	if ttl < 5*time.Minute {
 		ttl = 5 * time.Minute
@@ -160,7 +173,7 @@ func run(args []string, stdout io.Writer) error {
 		TTL:         ttl,
 		Chain: envelope.ChainEvidence{
 			ChainID:      firstNonEmpty(publisher.Public().Ref.ChainID, defaultChainID),
-			ProgramID:    firstNonEmpty(publisher.Public().Ref.ProgramID, defaultProgramID),
+			ProgramID:    o.programID,
 			VerifiedSlot: o.verifiedSlot,
 		},
 	})
@@ -420,6 +433,16 @@ func seed32(value string) ([32]byte, error) {
 	}
 	copy(out[:], raw)
 	return out, nil
+}
+
+// validateProgramID accepts only a canonical base58 public key that is not the
+// System Program; the client compiles no license registry of its own.
+func validateProgramID(value string) error {
+	key, err := primitives.PubkeyFromBase58(value)
+	if err != nil || key.Base58() != value || value == systemProgramID {
+		return fmt.Errorf("--program-id must be the canonical base58 license-registry program, not the System Program")
+	}
+	return nil
 }
 
 func firstNonEmpty(a, b string) string {

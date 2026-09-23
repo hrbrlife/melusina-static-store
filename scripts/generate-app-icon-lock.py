@@ -394,7 +394,8 @@ def replace_generated_assets(stage: Path, asset_dir: Path, expected: set[str]) -
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", required=True, type=Path, help="exact served /apps/index.json input")
-    parser.add_argument("--package-base", default="https://bazaar.melusina-os.org/packages", help="read-only package URL prefix")
+    parser.add_argument("--package-base", required=True,
+                        help="read-only package URL prefix of the Store that served --catalog, e.g. https://store.example.org/packages (required; there is no default Store)")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1], help="static_store source root")
     parser.add_argument("--work-dir", type=Path, required=True, help="empty scratch directory on a filesystem with space")
     parser.add_argument("--audit-node", default=os.environ.get("MELUSINA_ICON_AUDIT_NODE", "node"), help="Node binary compatible with capnp.node")

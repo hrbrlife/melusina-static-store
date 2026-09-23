@@ -26,9 +26,11 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-const defaultProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+// systemProgramID is never a license registry.
+const systemProgramID = "11111111111111111111111111111111"
 
 const sidecarClass = "sidecar"
 
@@ -45,6 +47,7 @@ type options struct {
 	artifactPath string
 	publisherKey string
 	storePubkey  string
+	programID    string
 	verifiedSlot uint64
 	timeout      time.Duration
 }
@@ -72,6 +75,7 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.artifactPath, "artifact", "", "whole-file artifact path (required)")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher identity JSON path or env:NAME (required)")
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "store operator identity.Public JSON path (required)")
+	fs.StringVar(&o.programID, "program-id", "", "license-registry program named in the envelope chain evidence: the estate profile's programs.license-registry.programId (required; there is no default registry)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "publisher chain-evidence slot")
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "upload + read-back timeout")
 	if err := fs.Parse(args); err != nil {
@@ -81,7 +85,7 @@ func parseFlags(args []string) (options, error) {
 	for name, value := range map[string]string{
 		"--store": o.store, "--class": o.class, "--name": o.name,
 		"--artifact": o.artifactPath, "--publisher-key": o.publisherKey,
-		"--store-pubkey": o.storePubkey,
+		"--store-pubkey": o.storePubkey, "--program-id": o.programID,
 	} {
 		if strings.TrimSpace(value) == "" {
 			missing = append(missing, name)
@@ -89,6 +93,9 @@ func parseFlags(args []string) (options, error) {
 	}
 	if len(missing) > 0 {
 		return o, fmt.Errorf("missing required flag(s): %s", strings.Join(missing, " "))
+	}
+	if key, err := primitives.PubkeyFromBase58(o.programID); err != nil || key.Base58() != o.programID || o.programID == systemProgramID {
+		return o, errors.New("--program-id must be the canonical base58 license-registry program, not the System Program")
 	}
 	if !safeSegment(o.class) || !safeSegment(o.name) {
 		return o, errors.New("--class and --name must each be one safe path segment")
@@ -125,6 +132,11 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("store pubkey: %w", err)
 	}
+	// A publisher key minted under another registry belongs to another
+	// estate; refuse the mix instead of letting either program win.
+	if keyProgram := publisher.Public().Ref.ProgramID; keyProgram != "" && keyProgram != o.programID {
+		return fmt.Errorf("check=program_id: publisher key is bound to license-registry program %s, not --program-id %s", keyProgram, o.programID)
+	}
 	ttl := o.timeout + 2*time.Minute
 	if ttl < 5*time.Minute {
 		ttl = 5 * time.Minute
@@ -134,7 +146,7 @@ func run(args []string, stdout io.Writer) error {
 		TTL:         ttl,
 		Chain: envelope.ChainEvidence{
 			ChainID:      firstNonEmpty(publisher.Public().Ref.ChainID, "solana:devnet"),
-			ProgramID:    firstNonEmpty(publisher.Public().Ref.ProgramID, defaultProgramID),
+			ProgramID:    o.programID,
 			VerifiedSlot: o.verifiedSlot,
 		},
 	})

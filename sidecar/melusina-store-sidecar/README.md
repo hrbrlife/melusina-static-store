@@ -220,6 +220,50 @@ every retiring-estate value as text, raw 32 bytes, hex and base64: the whole
 retiring set in the estate-bootstrap build, and the license registry in the
 standard build.
 
+The same rule covers every other Store program and production file. The
+operator and day-two tools compile no estate's values. Each takes the
+estate's license registry as a required flag and refuses by name without it:
+`apply-store-update --program-id`, `submit-generation --program-id`,
+`submit-installer --program-id`, `bootstrap-legacy-manifest --program-id`,
+`list-active-releases -program-id` and `canary-emit sign --program-id`. The
+signing clients also refuse a publisher key minted under another registry.
+`canary-emit` requires `program_id` in the Store config it reads. `keygen`
+takes every estate fact (mints, domain, registry, operator keys, sidecar ID,
+identity PDA) as a required flag. The catalog scripts likewise take the Store
+they act for: `materialize-governed-cohort.py --origin`,
+`generate-app-icon-lock.py --package-base`, and
+`bazaar-installation-policy.py` accepts any bare https `catalog_origin`
+unless `--catalog-origin` pins one.
+
+`retiring_estate_production_scan_test.go` enforces the rule with three
+checks:
+
+- It searches every compiled string literal and embedded file of all the
+  module's programs, in both flavors.
+- It searches all 18 programs built with `-trimpath -buildvcs=false`, as text,
+  raw 32 bytes, hex and base64.
+- It searches every production file in the repository, comments included.
+
+It fails by field and file:line. The forbid set is the retiring profile
+vector, the catalog ledger, and the retiring facts the profile does not
+project: the root domain `melusina-os.org` and its hash, `dev.paype.cc`, the
+`-v2` sidecar ID, the operator box key and identity PDA, and the earlier
+Store licence mint. Only three kinds of exception exist, all declared in the
+test:
+
+- **Build-tagged Go files.** `squads_authority_legacy.go` and
+  `schema_url_legacy.go` are compiled only into the standard (retiring
+  Bazaar) build.
+- **The retiring estate's own tooling.** `build-store.sh` and its
+  helpers/schemas, `default-bazaar-release.sh`, and the two legacy
+  `deploy/store-generation` config templates. The bootstrap component
+  strips those templates, and `TestStoreRetiringPathsAreNotShipped` proves
+  the component ships none of these paths.
+- **One UI placeholder.** `example.melusina-os.org` appears in `src/main.jsx`
+  and its committed bundle, and is due for removal at the next UI rebuild.
+
+Each exception must still occur where it is declared, so a stale one fails.
+
 The enrolled configuration must also spell out every
 `release_squads_authority` field: `multisig`, `vault`, `program_id`,
 `threshold`, and `member_count`. It never inherits the legacy Bazaar 3-of-4

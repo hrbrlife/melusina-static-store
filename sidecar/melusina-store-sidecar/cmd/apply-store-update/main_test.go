@@ -20,6 +20,13 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
+// Test fixtures only: the updater compiles no license registry, and these are
+// not any estate's program or mint.
+const (
+	testProgramID     = "7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD"
+	testMasterNFTMint = "G4Ps7fo3cud6NxSWoJS78fozqCWtCmAT9ZdoM3t4vHWb"
+)
+
 type testFixture struct {
 	opts       options
 	args       []string
@@ -333,11 +340,11 @@ func newTestFixture(t *testing.T) testFixture {
 	writeTarXZ(t, archive, []tarEntry{{member, "deterministic 1.0.7 binary"}})
 	archiveHash := fileSHA256(t, archive)
 	archiveHashBytes := mustHash32(t, archiveHash)
-	masterMint, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
+	masterMint, err := primitives.PubkeyFromBase58(testMasterNFTMint)
 	if err != nil {
 		t.Fatal(err)
 	}
-	programID, err := primitives.PubkeyFromBase58(canonicalLicenseProgramID)
+	programID, err := primitives.PubkeyFromBase58(testProgramID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +355,7 @@ func newTestFixture(t *testing.T) testFixture {
 	chainPath := filepath.Join(root, "verified-InstallerReleaseEntry-receipt.json")
 	writeTestJSON(t, chainPath, chainVerificationReceipt{
 		Schema: chainReceiptSchema, InstallerSHA256: archiveHash,
-		InstallerReleasePDA: releasePDA.Base58(), ProgramID: canonicalLicenseProgramID, MasterNFTMint: masterMint.Base58(),
+		InstallerReleasePDA: releasePDA.Base58(), ProgramID: testProgramID, MasterNFTMint: masterMint.Base58(),
 		Status: "Active", VerifiedSlot: 12345, VerifiedAtUnix: 1_700_000_000,
 	}, 0600)
 	persist := filepath.Join(root, "persist")
@@ -360,7 +367,7 @@ func newTestFixture(t *testing.T) testFixture {
 	opts := options{
 		fromVersion: "1.0.6", toVersion: "1.0.7",
 		archive: archive, archiveSHA256: archiveHash, chainReceipt: chainPath,
-		rpcURL: "https://rpc.example.invalid", masterNFTMint: masterMint.Base58(),
+		rpcURL: "https://rpc.example.invalid", programID: testProgramID, masterNFTMint: masterMint.Base58(),
 		installedELF: oldELF, expectedOldELFSHA256: fileSHA256(t, oldELF),
 		newELF: newELF, newELFMember: member, newELFSHA256: fileSHA256(t, newELF),
 		migrationStateDir: migrations, updateReceiptDir: receipts,
@@ -370,7 +377,7 @@ func newTestFixture(t *testing.T) testFixture {
 		"--from-version", opts.fromVersion, "--to-version", opts.toVersion,
 		"--archive", opts.archive, "--archive-sha256", opts.archiveSHA256,
 		"--chain-receipt", opts.chainReceipt,
-		"--rpc-url", opts.rpcURL, "--master-nft-mint", opts.masterNFTMint,
+		"--rpc-url", opts.rpcURL, "--program-id", opts.programID, "--master-nft-mint", opts.masterNFTMint,
 		"--installed-elf", opts.installedELF, "--expected-old-elf-sha256", opts.expectedOldELFSHA256,
 		"--new-elf", opts.newELF, "--new-elf-member", opts.newELFMember, "--new-elf-sha256", opts.newELFSHA256,
 		"--migration-state-dir", opts.migrationStateDir, "--update-receipt-dir", opts.updateReceiptDir,

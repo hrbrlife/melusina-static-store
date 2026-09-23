@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Materialize one exact default-Bazaar build cohort from release evidence.
+"""Materialize one exact governed Store build cohort from release evidence.
 
 The raw ``packages/`` directory is not a release population: it can contain
 legacy, developer, and incomplete submodule residue.  This tool instead takes
@@ -10,6 +10,10 @@ SPKs and already-local evidence are hard-linked, never copied.  The only HTTP
 reads are the public RELEASE.json and RUNTIME-CONTRACT.json for a recovery
 receipt that intentionally has no historical terminal directory.  Every output
 file is rechecked during ``--verify`` before the Store assembler can use it.
+
+``--origin`` names the Store whose cohort this is and has no default: it is the
+Store's public origin (its config ``public_base_url``, derived from the estate
+profile), the same origin the Store's catalog rehydrate binds the receipt to.
 """
 
 from __future__ import annotations
@@ -23,10 +27,10 @@ import secrets
 import shutil
 import sys
 import time
+import urllib.parse
 import urllib.request
 
 
-DEFAULT_ORIGIN = "https://bazaar.melusina-os.org"
 MANIFEST_SCHEMA = "melusina-base-apps/v1"
 COHORT_SCHEMA = "melusina-governed-artifact-cohort-v1"
 TERMINAL_SCHEMA = "melusina-mel-release-terminal-receipt-v1"
@@ -37,6 +41,22 @@ MAX_JSON = 1 << 20
 
 class CohortError(RuntimeError):
     pass
+
+
+def canonical_origin(value: str) -> str:
+    """Return value only when it is a clean https origin: lower-case host, no
+    port, path, query, fragment, userinfo or trailing dot."""
+    if not isinstance(value, str) or not value:
+        raise CohortError("--origin is required (the Store's public https origin; there is no default Store)")
+    parsed = urllib.parse.urlsplit(value)
+    host = parsed.hostname or ""
+    if (
+        parsed.scheme != "https" or not host or "." not in host or host.endswith(".")
+        or parsed.port is not None or parsed.username is not None or parsed.password is not None
+        or parsed.path or parsed.query or parsed.fragment or value != f"https://{host}"
+    ):
+        raise CohortError(f"--origin must be a bare lower-case https origin such as https://store.example.org, not {value!r}")
+    return value
 
 
 def fail(message: str) -> None:
@@ -358,10 +378,10 @@ def materialize(manifest_path: Path, state: Path, out: Path, origin: str) -> Non
             shutil.rmtree(tmp)
 
 
-def verify(manifest_path: Path, cohort: Path) -> None:
+def verify(manifest_path: Path, cohort: Path, origin: str) -> None:
     _, expected, manifest_ref = load_manifest(manifest_path)
     receipt = read_json(cohort / "COHORT-RECEIPT.json", "cohort receipt")
-    if receipt.get("schema") != COHORT_SCHEMA or receipt.get("origin") != DEFAULT_ORIGIN:
+    if receipt.get("schema") != COHORT_SCHEMA or receipt.get("origin") != origin:
         fail("cohort receipt has the wrong schema or origin")
     if receipt.get("manifest") != manifest_ref or not isinstance(receipt.get("apps"), list):
         fail("cohort receipt does not bind this exact base-apps manifest")
@@ -407,23 +427,22 @@ def main() -> int:
     parser.add_argument("--manifest", required=True, help="absolute melusina-base-apps/v1 manifest")
     parser.add_argument("--out", required=True, help="absolute cohort output directory")
     parser.add_argument("--state-dir", help="absolute mel-release state directory (materialize mode)")
-    parser.add_argument("--origin", default=DEFAULT_ORIGIN, help="must be the default Bazaar origin")
+    parser.add_argument("--origin", help="the Store's public https origin (required; there is no default Store)")
     parser.add_argument("--verify", action="store_true", help="verify an existing cohort without materializing")
     args = parser.parse_args()
     try:
         manifest = clean_absolute(args.manifest, "manifest")
         out = clean_absolute(args.out, "cohort output", exists=args.verify)
-        if args.origin != DEFAULT_ORIGIN:
-            fail(f"origin must be {DEFAULT_ORIGIN}")
+        origin = canonical_origin(args.origin)
         if args.verify:
-            verify(manifest, out)
+            verify(manifest, out, origin)
         else:
             if not args.state_dir:
                 fail("--state-dir is required when materializing")
             state = clean_absolute(args.state_dir, "state directory")
             if not state.is_dir() or state.is_symlink():
                 fail("state directory must be a real directory")
-            materialize(manifest, state, out, args.origin)
+            materialize(manifest, state, out, origin)
         return 0
     except CohortError as exc:
         print(f"materialize-governed-cohort: {exc}", file=sys.stderr)

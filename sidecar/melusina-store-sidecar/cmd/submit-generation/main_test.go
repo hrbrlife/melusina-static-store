@@ -89,7 +89,7 @@ func TestEnvelopeOutIsExactRouteBoundWireBodyAndDoesNotContactStore(t *testing.T
 		storeBox[i] = 0x44
 	}
 	publisherRef := identity.Ref{
-		Kind: identity.KindPearl, ChainID: defaultChainID, ProgramID: defaultProgramID,
+		Kind: identity.KindPearl, ChainID: defaultChainID, ProgramID: testProgramID,
 		LicenseMint: "publisher-license", Domain: "publisher.example", PDA: "publisher-pda",
 		PearlIDHash: strings.Repeat("a", 64), KeyVersion: 1,
 	}
@@ -108,7 +108,7 @@ func TestEnvelopeOutIsExactRouteBoundWireBodyAndDoesNotContactStore(t *testing.T
 		t.Fatal(err)
 	}
 	storeRef := identity.Ref{
-		Kind: identity.KindSidecar, ChainID: defaultChainID, ProgramID: defaultProgramID,
+		Kind: identity.KindSidecar, ChainID: defaultChainID, ProgramID: testProgramID,
 		LicenseMint: "store-license", Domain: "store.example", PDA: "store-pda", SidecarID: "rrs-store", KeyVersion: 1,
 	}
 	store, err := identity.NewPrivate(storeRef, storeSign, storeBox)
@@ -135,7 +135,7 @@ func TestEnvelopeOutIsExactRouteBoundWireBodyAndDoesNotContactStore(t *testing.T
 	err = run([]string{
 		"--store", "https://127.0.0.1:1", "--store-id", "rrs-store", "--request", requestPath,
 		"--publisher-key", publisherPath, "--store-pubkey", storePath, "--timeout", "1ms",
-		"--envelope-out", envelopePath,
+		"--envelope-out", envelopePath, "--program-id", testProgramID,
 	}, &stdout)
 	if err != nil {
 		t.Fatalf("offline envelope output: %v", err)
@@ -166,6 +166,9 @@ func TestEnvelopeOutIsExactRouteBoundWireBodyAndDoesNotContactStore(t *testing.T
 			return info.Mode().Perm()
 		}(), err)
 	}
+	if body.Envelope.Payload.ChainEvidence.ProgramID != testProgramID {
+		t.Fatalf("chain evidence names program %q, want the supplied %q", body.Envelope.Payload.ChainEvidence.ProgramID, testProgramID)
+	}
 	if !strings.Contains(stdout.String(), "SIGNED_GENERATION_ENVELOPE_OK") {
 		t.Fatalf("unexpected offline result: %s", stdout.String())
 	}
@@ -178,7 +181,7 @@ func TestFetchAndVerifyGenerationPinsSignerAndStoreID(t *testing.T) {
 		boxSeed[i] = 0x42
 	}
 	operator, err := identity.NewPrivate(identity.Ref{
-		Kind: identity.KindSidecar, ChainID: "solana:devnet", ProgramID: defaultProgramID,
+		Kind: identity.KindSidecar, ChainID: "solana:devnet", ProgramID: testProgramID,
 		LicenseMint: "license", Domain: "store.example", PDA: "operator-pda", SidecarID: "store",
 	}, signSeed, boxSeed)
 	if err != nil {
@@ -189,7 +192,7 @@ func TestFetchAndVerifyGenerationPinsSignerAndStoreID(t *testing.T) {
 		Components: []componentrelease.ComponentRelease{{
 			ComponentID: "shell", ComponentClass: componentrelease.ClassShell, Version: "build-1", ArtifactName: "shell.bin",
 			SHA256: strings.Repeat("a", 64), SizeBytes: 1, BundleURL: "https://store.example/releases/shell/shell.bin",
-			Chain: componentrelease.ChainAuthority{Kind: componentrelease.AuthorityInstallerRelease, Program: defaultProgramID, MasterNftMint: "master", ReleasePDA: "release"},
+			Chain: componentrelease.ChainAuthority{Kind: componentrelease.AuthorityInstallerRelease, Program: testProgramID, MasterNftMint: "master", ReleasePDA: "release"},
 		}},
 	})
 	if err != nil {

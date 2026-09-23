@@ -137,7 +137,7 @@ if [[ -n "$MEL_BAZAAR_COHORT_DIR" || -n "$MEL_BAZAAR_RELEASE_MANIFEST" ]]; then
     fail "governed cohort verifier missing at $COHORT_TOOL"
     exit 1
   fi
-  if ! python3 "$COHORT_TOOL" --manifest "$MEL_BAZAAR_RELEASE_MANIFEST" --out "$MEL_BAZAAR_COHORT_DIR" --verify; then
+  if ! python3 "$COHORT_TOOL" --manifest "$MEL_BAZAAR_RELEASE_MANIFEST" --out "$MEL_BAZAAR_COHORT_DIR" --origin "$BASE_URL" --verify; then
     fail "governed cohort verification failed"
     exit 1
   fi
@@ -154,11 +154,11 @@ BAZAAR_INSTALLATION_POLICY_JSON=""
 BAZAAR_CATALOG_SOURCE_REPOSITORIES_JSON=""
 if [[ -f "$INSTALLATION_POLICY_CATALOG" ]]; then
   [[ -f "$INSTALLATION_POLICY_RENDERER" ]] || { fail "installation-policy renderer missing at $INSTALLATION_POLICY_RENDERER"; exit 1; }
-  BAZAAR_INSTALLATION_POLICY_JSON="$(python3 "$INSTALLATION_POLICY_RENDERER" --catalog "$INSTALLATION_POLICY_CATALOG")" || {
+  BAZAAR_INSTALLATION_POLICY_JSON="$(python3 "$INSTALLATION_POLICY_RENDERER" --catalog "$INSTALLATION_POLICY_CATALOG" --catalog-origin "$BASE_URL")" || {
     fail "invalid governed installation policy at $INSTALLATION_POLICY_CATALOG"
     exit 1
   }
-  BAZAAR_CATALOG_SOURCE_REPOSITORIES_JSON="$(python3 "$INSTALLATION_POLICY_RENDERER" --catalog "$INSTALLATION_POLICY_CATALOG" --source-repositories)" || {
+  BAZAAR_CATALOG_SOURCE_REPOSITORIES_JSON="$(python3 "$INSTALLATION_POLICY_RENDERER" --catalog "$INSTALLATION_POLICY_CATALOG" --catalog-origin "$BASE_URL" --source-repositories)" || {
     fail "invalid governed source repository map at $INSTALLATION_POLICY_CATALOG"
     exit 1
   }

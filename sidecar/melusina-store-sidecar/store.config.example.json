@@ -1,11 +1,12 @@
 {
   "license_nft_mint": "<base58 License NFT mint of the operating license>",
   "_comment_store_authority": "OMIT store_authority until the governed StoreReleaseListing bootstrap has created an exact Active listing for every served release. Adding the StoreOperatorAuthorization.store_authority public key enables that target-scoped policy.",
-  "program_id": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+  "program_id": "<base58 license-registry program: the estate profile's programs.license-registry.programId>",
   "domain": "store.example.org",
   "store_id": "melusina-store",
-  "root_store_url": "https://melusina-os.org",
-  "public_base_url": "https://bazaar.melusina-os.org",
+  "_comment_root_store_url": "Reseller stores only: the root Store origin this Store mirrors. There is no default; omit it on a root Store.",
+  "root_store_url": "https://root-store.example.org",
+  "public_base_url": "https://store.example.org",
   "release_squads_authority": {
     "multisig": "<catalog release_squads_authority.multisig>",
     "vault": "<catalog release_squads_authority.vault>",

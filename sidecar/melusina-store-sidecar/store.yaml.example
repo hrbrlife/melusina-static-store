@@ -9,12 +9,12 @@
 
 license_nft_mint: "<base58 License NFT mint of the operating license>"
 store_authority: "<base58 StoreOperatorAuthorization.store_authority public key>"  # exact authority whose listing PDAs this sidecar may project
-program_id: "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+program_id: "<base58 license-registry program: the estate profile's programs.license-registry.programId>"  # required; there is no default registry
 domain: "store.internal.example.org"  # bare host only (no scheme/port/path); store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
 store_id: "melusina-store"
 # reseller_nft_mint: "<optional base58 ResellerEntry NFT mint>"   # set for reseller stores
-root_store_url: "https://melusina-os.org"   # base binary + basic apps are MIRRORED from here when this is not the root
-public_base_url: "https://bazaar.melusina-os.org"  # The current release target's public origin. Pins every desired-generation bundleUrl; unset => both /update/generation.json and its legacy /update/manifest.json projection fail closed (503).
+root_store_url: "https://root-store.example.org"   # reseller stores only: base binary + basic apps are MIRRORED from this root Store; there is no default
+public_base_url: "https://store.example.org"  # The current release target's public origin. Pins every desired-generation bundleUrl; unset => both /update/generation.json and its legacy /update/manifest.json projection fail closed (503).
 release_squads_authority:                         # exact tuple from fleet/bazaar-catalog.yaml; no app-specific override is accepted
   multisig: "<catalog release_squads_authority.multisig>"
   vault: "<catalog release_squads_authority.vault>"

@@ -58,10 +58,11 @@ import (
 )
 
 const (
-	defaultProgramIDB58 = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
-	defaultChainID      = "solana:devnet"
-	stageTarget         = "/publish/stage"
-	promoteTarget       = "/publish"
+	defaultChainID = "solana:devnet"
+	// systemProgramID is never a license registry.
+	systemProgramID = "11111111111111111111111111111111"
+	stageTarget     = "/publish/stage"
+	promoteTarget   = "/publish"
 	// maxTransportTTL mirrors the envelope transport ceiling AND the canary
 	// control-envelope lifetime cap (CanaryEnvelope.parse: expires-issued <= 30m).
 	maxTransportTTL = 30 * time.Minute
@@ -185,9 +186,9 @@ func runOperatorPublic(args []string) error {
 // different key, which the destination-digest gate rejects — but we cross-check
 // the sign pubkey in operator-public to catch it loudly instead.
 func operatorRef(cfg storeConfigFile) (identity.Ref, error) {
-	programID, err := primitives.PubkeyFromBase58(programIDOf(cfg))
+	programID, err := licenseRegistry(cfg.ProgramID, "config: program_id")
 	if err != nil {
-		return identity.Ref{}, fmt.Errorf("program_id: %w", err)
+		return identity.Ref{}, err
 	}
 	licenseMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(cfg.LicenseNFTMint))
 	if err != nil {
@@ -391,7 +392,7 @@ func runSign(args []string) error {
 	releaseEntryPDA := fs.String("release-entry-pda", "", "chain evidence: the app's on-chain ReleaseEntry PDA (base58) (required)")
 	verifiedSlot := fs.Uint64("verified-slot", 0, "chain evidence: verified_slot (a real finalized slot; must be > 0) (required)")
 	chainID := fs.String("chain-id", defaultChainID, "chain evidence chain_id")
-	programID := fs.String("program-id", defaultProgramIDB58, "chain evidence program_id")
+	programID := fs.String("program-id", "", "chain evidence program_id: the Store config's program_id (required; there is no default registry)")
 	nowUnix := fs.Int64("now-unix", 0, "issue time (unix seconds); 0 => now")
 	ttlSeconds := fs.Int64("ttl-seconds", 1200, "envelope TTL seconds (<= 1800; must cover the deadline)")
 	deadlineUnix := fs.Int64("deadline-unix", 0, "the governed-apply canary deadline (unix seconds); if set, expires must exceed deadline+60")
@@ -408,7 +409,7 @@ func runSign(args []string) error {
 		"--release": *releasePath, "--spk": *spkPath, "--metadata": *metadataPath,
 		"--release-entry-pda": *releaseEntryPDA, "--stage-nonce": *stageNonce,
 		"--promote-nonce": *promoteNonce, "--txid": *txid, "--wal-digest": *walDigest,
-		"--out-fixture": *outFixture,
+		"--out-fixture": *outFixture, "--program-id": *programID,
 	} {
 		if strings.TrimSpace(v) == "" {
 			return fmt.Errorf("%s is required", name)
@@ -448,6 +449,17 @@ func runSign(args []string) error {
 	pub, err := identity.NewPrivate(pk.Ref, signSeed, boxSeed)
 	if err != nil {
 		return fmt.Errorf("derive publisher identity: %w", err)
+	}
+	if _, err := licenseRegistry(*programID, "--program-id"); err != nil {
+		return err
+	}
+	// The operator identity and the publisher key each carry the registry they
+	// were minted under; one from another estate is refused, not overridden.
+	if dst.Ref.ProgramID != strings.TrimSpace(*programID) {
+		return fmt.Errorf("check=program_id: operator identity is bound to license-registry program %s, not --program-id %s", dst.Ref.ProgramID, *programID)
+	}
+	if keyProgram := pub.Public().Ref.ProgramID; keyProgram != "" && keyProgram != strings.TrimSpace(*programID) {
+		return fmt.Errorf("check=program_id: publisher key is bound to license-registry program %s, not --program-id %s", keyProgram, *programID)
 	}
 
 	release, err := readNonEmpty(*releasePath)
@@ -564,11 +576,19 @@ func loadStoreConfig(path string) (storeConfigFile, error) {
 	return cfg, nil
 }
 
-func programIDOf(cfg storeConfigFile) string {
-	if s := strings.TrimSpace(cfg.ProgramID); s != "" {
-		return s
+// licenseRegistry accepts only a canonical base58 key that is not the System
+// Program. The emitter compiles no registry: the Store config names it, and an
+// absent value is refused by name rather than defaulted.
+func licenseRegistry(value, name string) (primitives.Pubkey, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return primitives.Pubkey{}, fmt.Errorf("%s is required (the estate's license registry; there is no default registry)", name)
 	}
-	return defaultProgramIDB58
+	key, err := primitives.PubkeyFromBase58(value)
+	if err != nil || key.Base58() != value || value == systemProgramID {
+		return primitives.Pubkey{}, fmt.Errorf("%s must be the canonical base58 license-registry program, not the System Program", name)
+	}
+	return key, nil
 }
 
 func readNonEmpty(path string) ([]byte, error) {

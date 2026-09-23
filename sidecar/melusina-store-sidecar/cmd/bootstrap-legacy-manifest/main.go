@@ -27,11 +27,14 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 const (
 	bootstrapSchema = "melusina-legacy-manifest-bootstrap-v1"
 	bootstrapTarget = "/publish/legacy-manifest-bootstrap"
+	// systemProgramID is never a license registry.
+	systemProgramID = "11111111111111111111111111111111"
 )
 
 type publisherKeyFile struct {
@@ -62,6 +65,7 @@ func run(args []string, out io.Writer) error {
 	store := fs.String("store", "", "HTTPS store base URL (required)")
 	operatorPath := fs.String("store-pubkey", "", "store operator identity.Public JSON (required)")
 	publisherPath := fs.String("publisher-key", "", "publisher identity JSON (required)")
+	programID := fs.String("program-id", "", "license-registry program named in the envelope chain evidence: the estate profile's programs.license-registry.programId (required; there is no default registry)")
 	generation := fs.Uint64("generation", 0, "already-served DesiredGeneration ID (required)")
 	verifiedSlot := fs.Uint64("verified-slot", 0, "publisher finalized chain slot (required)")
 	timeout := fs.Duration("timeout", time.Minute, "request timeout")
@@ -69,10 +73,13 @@ func run(args []string, out io.Writer) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	for name, value := range map[string]string{"--store": *store, "--store-pubkey": *operatorPath, "--publisher-key": *publisherPath} {
+	for name, value := range map[string]string{"--store": *store, "--store-pubkey": *operatorPath, "--publisher-key": *publisherPath, "--program-id": *programID} {
 		if strings.TrimSpace(value) == "" {
 			return fmt.Errorf("%s is required", name)
 		}
+	}
+	if key, err := primitives.PubkeyFromBase58(*programID); err != nil || key.Base58() != *programID || *programID == systemProgramID {
+		return errors.New("--program-id must be the canonical base58 license-registry program, not the System Program")
 	}
 	if *generation == 0 || *verifiedSlot == 0 {
 		return errors.New("--generation and --verified-slot must be non-zero")
@@ -87,6 +94,11 @@ func run(args []string, out io.Writer) error {
 	publisher, err := loadPublisher(*publisherPath)
 	if err != nil {
 		return err
+	}
+	// A publisher key minted under another registry belongs to another
+	// estate; refuse the mix instead of letting either program win.
+	if keyProgram := publisher.Public().Ref.ProgramID; keyProgram != "" && keyProgram != *programID {
+		return fmt.Errorf("check=program_id: publisher key is bound to license-registry program %s, not --program-id %s", keyProgram, *programID)
 	}
 	opRaw, err := os.ReadFile(*operatorPath)
 	if err != nil {
@@ -105,7 +117,7 @@ func run(args []string, out io.Writer) error {
 		Method: http.MethodPost, Target: bootstrapTarget, Body: request,
 		BodyHash: hex.EncodeToString(sum[:]), RequestHash: hex.EncodeToString(sum[:]),
 		TTL:   5 * time.Minute,
-		Chain: envelope.ChainEvidence{ChainID: "solana:devnet", ProgramID: "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", VerifiedSlot: *verifiedSlot},
+		Chain: envelope.ChainEvidence{ChainID: "solana:devnet", ProgramID: *programID, VerifiedSlot: *verifiedSlot},
 	})
 	if err != nil {
 		return fmt.Errorf("sign bootstrap envelope: %w", err)

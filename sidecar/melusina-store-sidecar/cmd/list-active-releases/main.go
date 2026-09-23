@@ -8,7 +8,10 @@
 //
 // Usage:
 //
-//	list-active-releases -rpc-url <url> -known-pda <any-known-ReleaseEntry-PDA-for-this-app>
+//	list-active-releases -rpc-url <url> -program-id <estate license registry> (-app-id <Sandstorm-appId> | -known-pda <pda>)
+//
+// -program-id is required: the tool compiles no license registry, so it lists
+// only the estate the caller names.
 //
 // Prints one JSON line per Active entry: {pda, version, appHash}. Read-only —
 // makes zero on-chain writes.
@@ -36,8 +39,10 @@ import (
 )
 
 const (
-	defaultLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 	releaseEntryAppIDOffset = verify.AccountDiscriminatorLen + 32 + 32
+	// systemProgramID is never a license registry.
+	systemProgramID = "11111111111111111111111111111111"
+	usage           = "usage: list-active-releases -rpc-url <url> -program-id <license-registry> (-app-id <Sandstorm-appId> | -known-pda <pda>)"
 )
 
 type activeEntry struct {
@@ -46,17 +51,39 @@ type activeEntry struct {
 	AppHash string `json:"appHash"`
 }
 
+type options struct {
+	rpcURL, knownPDA, appID, programID string
+}
+
+func parseArgs(args []string) (options, error) {
+	var o options
+	fs := flag.NewFlagSet("list-active-releases", flag.ContinueOnError)
+	fs.StringVar(&o.rpcURL, "rpc-url", "", "Solana JSON-RPC endpoint (required)")
+	fs.StringVar(&o.knownPDA, "known-pda", "", "any known ReleaseEntry PDA for this app (base58; alternative to -app-id)")
+	fs.StringVar(&o.appID, "app-id", "", "immutable Sandstorm base32 appId (alternative to -known-pda)")
+	fs.StringVar(&o.programID, "program-id", "", "license-registry program id: the estate profile's programs.license-registry.programId (required; there is no default registry)")
+	if err := fs.Parse(args); err != nil {
+		return o, err
+	}
+	if fs.NArg() != 0 || o.rpcURL == "" || (o.knownPDA == "" && o.appID == "") || (o.knownPDA != "" && o.appID != "") {
+		return o, errors.New(usage)
+	}
+	if strings.TrimSpace(o.programID) == "" {
+		return o, errors.New("-program-id is required (the estate's license registry; there is no default registry)")
+	}
+	if key, err := primitives.PubkeyFromBase58(o.programID); err != nil || key.Base58() != o.programID || o.programID == systemProgramID {
+		return o, errors.New("-program-id must be the canonical base58 license-registry program, not the System Program")
+	}
+	return o, nil
+}
+
 func main() {
-	rpcURL := flag.String("rpc-url", "", "Solana JSON-RPC endpoint (required)")
-	knownPDA := flag.String("known-pda", "", "any known ReleaseEntry PDA for this app (base58; alternative to -app-id)")
-	appIDFlag := flag.String("app-id", "", "immutable Sandstorm base32 appId (alternative to -known-pda)")
-	programIDFlag := flag.String("program-id", defaultLicenseProgramID, "license-registry program id")
-	flag.Parse()
-	if *rpcURL == "" || (*knownPDA == "" && *appIDFlag == "") || (*knownPDA != "" && *appIDFlag != "") {
-		fmt.Fprintln(os.Stderr, "usage: list-active-releases -rpc-url <url> (-app-id <Sandstorm-appId> | -known-pda <pda>)")
+	o, err := parseArgs(os.Args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "list-active-releases: %v\n", err)
 		os.Exit(2)
 	}
-	if err := run(*rpcURL, *knownPDA, *appIDFlag, *programIDFlag); err != nil {
+	if err := run(o.rpcURL, o.knownPDA, o.appID, o.programID); err != nil {
 		fmt.Fprintf(os.Stderr, "list-active-releases: %v\n", err)
 		os.Exit(1)
 	}

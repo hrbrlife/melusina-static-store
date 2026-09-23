@@ -2,27 +2,33 @@
 // self-publish path (cmd/submit) needs and which, until now, existed nowhere
 // on disk:
 //
-//   publisher <solana-keypair.json> > publisher.key.json
-//       Derives an attest identity.Private for --publisher-key from an
-//       EXISTING Solana ed25519 keypair file (the standard 64-byte
-//       [seed(32)||pubkey(32)] array format, e.g.
-//       test-wallets/core-app-team/publisher.json). The resulting
-//       sign_pubkey_b58 is byte-identical to the Solana keypair's own
-//       pubkey (both are raw ed25519), so an already-allowlisted
-//       accept_publishers entry (a Solana pubkey) keeps working unchanged.
-//       A fresh x25519 box seed is generated (envelope encryption is not
-//       exercised by /publish; the seed only needs to be well-formed).
+//	publisher <solana-keypair.json> > publisher.key.json
+//	    Derives an attest identity.Private for --publisher-key from an
+//	    EXISTING Solana ed25519 keypair file (the standard 64-byte
+//	    [seed(32)||pubkey(32)] array format, e.g.
+//	    test-wallets/core-app-team/publisher.json). The resulting
+//	    sign_pubkey_b58 is byte-identical to the Solana keypair's own
+//	    pubkey (both are raw ed25519), so an already-allowlisted
+//	    accept_publishers entry (a Solana pubkey) keeps working unchanged.
+//	    A fresh x25519 box seed is generated (envelope encryption is not
+//	    exercised by /publish; the seed only needs to be well-formed).
 //
-//   store-pubkey > store-pubkey.json
-//       Reconstructs the store operator's identity.Public (the envelope
-//       DESTINATION for --store-pubkey) byte-for-byte from already-public
-//       on-chain-registered facts (no secret material involved) — the
-//       same Ref shape boot_identity.go's sidecarIdentityRef() builds
-//       server-side, so identity.Public.Digest() matches what the running
-//       sidecar computes for itself.
+//	store-pubkey > store-pubkey.json
+//	    Reconstructs the store operator's identity.Public (the envelope
+//	    DESTINATION for --store-pubkey) byte-for-byte from already-public
+//	    on-chain-registered facts (no secret material involved) — the
+//	    same Ref shape boot_identity.go's sidecarIdentityRef() builds
+//	    server-side, so identity.Public.Digest() matches what the running
+//	    sidecar computes for itself.
 //
 // Both subcommands print the finished JSON to stdout; write it to disk with
 // shell redirection so this tool never needs a --out flag or write access.
+//
+// Every estate fact (license registry, mints, domain, Store operator keys,
+// sidecar id and identity PDA) is a required flag taken from the owner-signed
+// estate profile and the Store's on-chain SidecarIdentityEntry. The tool
+// compiles no estate's values, so an omitted flag is refused by name instead
+// of minting an identity for some other estate.
 package main
 
 import (
@@ -36,6 +42,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/hrbrlife/melusina-attest/identity"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
@@ -55,9 +63,9 @@ func run(args []string, stdout, stderr io.Writer) error {
 	switch args[0] {
 	case "publisher":
 		fs := flag.NewFlagSet("publisher", flag.ContinueOnError)
-		licenseMint := fs.String("license-mint", "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe", "identity.Ref.LicenseMint (the release master-NFT mint; matches pearl-app-ceremony.sh MELUSINA_MASTER_NFT_MINT)")
-		domain := fs.String("domain", "bazaar.melusina-os.org", "identity.Ref.Domain (must equal the envelope Payload.Domain the sidecar expects — the store's serving domain)")
-		programID := fs.String("program-id", "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", "identity.Ref.ProgramID (the license-registry program)")
+		licenseMint := fs.String("license-mint", "", "identity.Ref.LicenseMint: the estate profile's anchors.masterMint (required)")
+		domain := fs.String("domain", "", "identity.Ref.Domain: the Store's serving domain, the estate profile's store.rootDomain (required)")
+		programID := fs.String("program-id", "", "identity.Ref.ProgramID: the estate profile's programs.license-registry.programId (required)")
 		chainID := fs.String("chain-id", "solana:devnet", "identity.Ref.ChainID")
 		pearlIDHash := fs.String("pearl-id-hash", "", "identity.Ref.PearlIDHash (required for Kind=pearl; defaults to sha256(label) if empty)")
 		label := fs.String("label", "core-app-team-publisher", "human label hashed into the default pearl-id-hash when -pearl-id-hash is empty")
@@ -67,23 +75,32 @@ func run(args []string, stdout, stderr io.Writer) error {
 		if fs.NArg() != 1 {
 			return errors.New("usage: keygen publisher <solana-keypair.json>")
 		}
+		if err := requireEstateFacts(map[string]string{"--license-mint": *licenseMint, "--domain": *domain, "--program-id": *programID}, *programID); err != nil {
+			return err
+		}
 		return doPublisher(fs.Arg(0), *licenseMint, *domain, *programID, *chainID, *pearlIDHash, *label, stdout)
 	case "store-pubkey":
 		fs := flag.NewFlagSet("store-pubkey", flag.ContinueOnError)
-		// The production Bazaar operator is the v2 boot identity under the
-		// melusina-os.org license. Keep these defaults aligned with the active
-		// on-chain SidecarIdentityEntry so a normal publish cannot seal to a
-		// legacy sidecar identity.
-		signPubkeyB58 := fs.String("sign-pubkey-b58", "4J2hbufiTKmvgfxjGVNqhoQXiKVDsYwaor6hcaDKjzZV", "store operator signing_pubkey_b58 (from the active on-chain SidecarIdentityEntry)")
-		boxPubkeyB58 := fs.String("box-pubkey-b58", "D62iWtghh4s6majv1xm5bbeTnLmzrkycF1tA9bgcnKJ5", "store operator encryption_pubkey_b58")
-		licenseMint := fs.String("license-mint", "9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J", "store operator license_nft_mint")
-		domain := fs.String("domain", "bazaar.melusina-os.org", "store serving domain")
-		programID := fs.String("program-id", "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb", "license-registry program id")
+		// Every value comes from the estate's active on-chain
+		// SidecarIdentityEntry and its profile, so a publish can seal only to
+		// the Store operator the caller names.
+		signPubkeyB58 := fs.String("sign-pubkey-b58", "", "store operator signing_pubkey_b58: the estate profile's store.operatorKey (required)")
+		boxPubkeyB58 := fs.String("box-pubkey-b58", "", "store operator encryption_pubkey_b58 from the active SidecarIdentityEntry (required)")
+		licenseMint := fs.String("license-mint", "", "store operator license_nft_mint (required)")
+		domain := fs.String("domain", "", "store serving domain (required)")
+		programID := fs.String("program-id", "", "license-registry program id: the estate profile's programs.license-registry.programId (required)")
 		chainID := fs.String("chain-id", "solana:devnet", "chain id")
-		pda := fs.String("pda", "7eESnZ9hvVAVTDCwSq73FGygqhp9bQZ5jF672NZsSKr6", "active SidecarIdentityEntry PDA base58")
-		sidecarID := fs.String("sidecar-id", "melusina-os-root-store-v2", "active store sidecar_id")
+		pda := fs.String("pda", "", "active SidecarIdentityEntry PDA base58 (required)")
+		sidecarID := fs.String("sidecar-id", "", "active store sidecar_id (required)")
 		keyVersion := fs.Uint("key-version", 1, "SidecarIdentityEntry key_version")
 		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		if err := requireEstateFacts(map[string]string{
+			"--sign-pubkey-b58": *signPubkeyB58, "--box-pubkey-b58": *boxPubkeyB58,
+			"--license-mint": *licenseMint, "--domain": *domain, "--program-id": *programID,
+			"--pda": *pda, "--sidecar-id": *sidecarID,
+		}, *programID); err != nil {
 			return err
 		}
 		pub := identity.Public{
@@ -110,6 +127,28 @@ func run(args []string, stdout, stderr io.Writer) error {
 	default:
 		return fmt.Errorf("unknown subcommand %q (want publisher | store-pubkey)", args[0])
 	}
+}
+
+// systemProgramID is never a license registry.
+const systemProgramID = "11111111111111111111111111111111"
+
+// requireEstateFacts refuses, by flag name, any estate fact the caller left
+// out, and a license registry that is not a canonical program key.
+func requireEstateFacts(values map[string]string, programID string) error {
+	var missing []string
+	for name, value := range values {
+		if strings.TrimSpace(value) == "" {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) != 0 {
+		sort.Strings(missing)
+		return fmt.Errorf("missing required flag(s): %s (estate facts have no default)", strings.Join(missing, " "))
+	}
+	if key, err := primitives.PubkeyFromBase58(programID); err != nil || key.Base58() != programID || programID == systemProgramID {
+		return errors.New("--program-id must be the canonical base58 license-registry program, not the System Program")
+	}
+	return nil
 }
 
 // solanaKeypairFile is the standard Solana CLI keypair JSON: a 64-byte array

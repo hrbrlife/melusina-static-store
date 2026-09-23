@@ -89,9 +89,17 @@ paths. Before enabling the unit it must install or create:
    running ELF hash must match an Active `SidecarIdentityEntry` before startup.
 4. TLS files, including the certificate whose DER hash is pinned by the active
    sidecar identity.
-5. Four disjoint roots named in the config. The migration root must already
-   hold the root-owned mode-`0600` `writer.lock` and the governed catalog
-   bootstrap record. The private and catalog roots are mode `0700`, root-owned.
+5. Four disjoint roots named in the config. The migration root is root-owned
+   mode `0700` and, on a virgin target, empty. The explicit
+   `genesis-bootstrap` is the one first-install creator of its root-owned
+   mode-`0600` `writer.lock`: it creates the lock with an exclusive create
+   only while the migration root is empty and no current catalog generation
+   exists, acquires an existing valid lock on a resumed run, and seals the
+   governed catalog bootstrap record under it. It refuses, and never replaces,
+   an invalid lock, a lock another writer holds, or a missing lock beside
+   existing Store state. The deployer never hand-creates, copies or deletes
+   the lock, and server startup never creates it. The private and catalog
+   roots are mode `0700`, root-owned.
 6. An independent root-owned writable `catalog_repo_root` and a
    genesis-compatible `dist-publish` snapshot before startup. The workspace is
    not the immutable Store source checkout and may be empty on a virgin target:

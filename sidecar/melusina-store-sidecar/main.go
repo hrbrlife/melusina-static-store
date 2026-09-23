@@ -194,7 +194,8 @@ func main() {
 
 	// Write-mode process exclusion is acquired immediately after the operator is
 	// derived and before constructors inspect bootstrap state or a listener can
-	// start. The verified apply helper, never this process, creates writer.lock.
+	// start. Server startup never creates writer.lock: the first-install
+	// genesis-bootstrap or the verified update helper does.
 	// Holding its descriptor until shutdown makes the OS lock process-lifetime.
 	var writerLock *os.File
 	if operator != nil {
@@ -317,8 +318,10 @@ func main() {
 // on a virgin target, then exits. It reuses the exact server boot preamble — config
 // load, program-id pinning, on-chain reader, operator derivation from the deploy
 // shards, and the process-lifetime writer lock — so genesis runs under the SAME
-// verified operator identity and single-writer exclusion the serving store uses. A
-// read-only store (no operator provisioned) cannot mint a trust root and is refused.
+// verified operator identity and single-writer exclusion the serving store uses.
+// On a virgin target it is also the one creator of that lock (see
+// acquireGenesisWriterLock). A read-only store (no operator provisioned) cannot
+// mint a trust root and is refused.
 func runGenesisBootstrapSubcommand(args []string) {
 	fs := flag.NewFlagSet("genesis-bootstrap", flag.ExitOnError)
 	configPath := fs.String("config", "store.config.json", "path to operator config (JSON)")
@@ -354,23 +357,25 @@ func runGenesisBootstrapSubcommand(args []string) {
 		log.Fatalf("genesis-bootstrap requires a write-capable operator (boot_identity.shards_dir must be provisioned) — a first-publish trust root cannot be established read-only")
 	}
 
-	writerLockPath := filepath.Join(cfg.CatalogMigrationStateDir, "writer.lock")
-	writerLock, err := acquireExistingWriterLock(writerLockPath)
-	if err != nil {
-		log.Fatalf("catalog writer exclusion: %v", err)
+	// Genesis owns writer.lock on a virgin target: it creates the lock exactly
+	// once (exclusive create, only beside no other Store write state), or
+	// acquires the existing one on a resumed run, and seals under it.
+	writerLockPath := filepath.Join(cfg.CatalogMigrationStateDir, storeWriterLockName)
+	created, err := runCatalogGenesisBootstrap(cfg, operator)
+	if created {
+		log.Printf("catalog writer exclusion: created %s for the first install", writerLockPath)
 	}
-	defer writerLock.Close()
-
-	if err := runCatalogGenesisBootstrap(cfg, operator); err != nil {
+	if err != nil {
 		log.Fatalf("genesis bootstrap: %v", err)
 	}
 	log.Printf("genesis bootstrap complete: honest first-generation trust root sealed (no fabricated 1.0.3->1.0.4 migration); start the server to serve it")
 }
 
-// acquireExistingWriterLock opens an apply-helper-created lock without
-// following symlinks or creating state, validates its exact type/mode, and
-// acquires non-blocking exclusive ownership. The caller must retain the returned
-// descriptor for its entire write-capable lifetime; closing it releases flock.
+// acquireExistingWriterLock opens a lock created by the first-install genesis
+// entrypoint or the verified update helper without following symlinks or
+// creating state, validates its exact type/mode, and acquires non-blocking
+// exclusive ownership. The caller must retain the returned descriptor for its
+// entire write-capable lifetime; closing it releases flock.
 func acquireExistingWriterLock(path string) (*os.File, error) {
 	return acquireExistingWriterLockOwned(path, 0, 0)
 }
@@ -380,9 +385,16 @@ func acquireExistingWriterLockOwned(path string, expectedUID, expectedGID uint32
 	if err != nil {
 		return nil, fmt.Errorf("open existing writer.lock: %w", err)
 	}
-	ok := false
+	return lockOpenedWriterLock(f, path, expectedUID, expectedGID)
+}
+
+// lockOpenedWriterLock validates that f is still the no-follow regular file at
+// path with the exact owner, mode 0600 and no content, then takes the
+// non-blocking exclusive flock on it. It closes f on every refusal.
+func lockOpenedWriterLock(f *os.File, path string, expectedUID, expectedGID uint32) (*os.File, error) {
+	locked := false
 	defer func() {
-		if !ok {
+		if !locked {
 			_ = f.Close()
 		}
 	}()
@@ -404,8 +416,8 @@ func acquireExistingWriterLockOwned(path string, expectedUID, expectedGID uint32
 	if openedInfo.Size() != 0 {
 		return nil, errors.New("writer.lock must be empty")
 	}
-	stat, ok := openedInfo.Sys().(*syscall.Stat_t)
-	if !ok {
+	stat, isStat := openedInfo.Sys().(*syscall.Stat_t)
+	if !isStat {
 		return nil, errors.New("writer.lock ownership metadata unavailable")
 	}
 	if stat.Uid != expectedUID || stat.Gid != expectedGID {
@@ -414,6 +426,6 @@ func acquireExistingWriterLockOwned(path string, expectedUID, expectedGID uint32
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		return nil, fmt.Errorf("lock writer.lock exclusively: %w", err)
 	}
-	ok = true
+	locked = true
 	return f, nil
 }

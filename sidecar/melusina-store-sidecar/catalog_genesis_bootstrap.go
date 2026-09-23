@@ -56,17 +56,35 @@ func requireGenesisOperatorAuthority(key ed25519.PublicKey) error {
 // runCatalogGenesisBootstrap establishes the honest first-generation trust root on a
 // virgin target. It requires a write-capable operator — a first-publish authority
 // root cannot be established by a read-only store — and never runs at server startup.
-func runCatalogGenesisBootstrap(cfg Config, operator *identity.Private) error {
+// It reports whether it created the Store writer.lock.
+func runCatalogGenesisBootstrap(cfg Config, operator *identity.Private) (bool, error) {
 	if operator == nil {
-		return errors.New("catalog genesis requires a write-capable operator identity (a first-publish trust root cannot be established read-only)")
+		return false, errors.New("catalog genesis requires a write-capable operator identity (a first-publish trust root cannot be established read-only)")
 	}
 	opts := productionCatalogBootstrapOptions()
 	pub, err := operator.Public().SignPublicKey()
 	if err != nil {
-		return fmt.Errorf("catalog genesis operator key: %w", err)
+		return false, fmt.Errorf("catalog genesis operator key: %w", err)
 	}
 	opts.operatorPublicKey = ed25519.PublicKey(pub)
-	return runCatalogGenesisBootstrapWithOptions(cfg, opts)
+	return runCatalogGenesisBootstrapUnderWriterLock(cfg, opts)
+}
+
+// runCatalogGenesisBootstrapUnderWriterLock is the genesis entrypoint's complete
+// write sequence: the operator-authority precheck, the first-install writer
+// exclusion (created exactly once on a virgin target, otherwise the existing
+// lock), then the seal while that lock is held. The authority precheck stays
+// ahead of the lock because creating the lock is the first filesystem mutation.
+func runCatalogGenesisBootstrapUnderWriterLock(cfg Config, opts catalogBootstrapOptions) (bool, error) {
+	if err := requireGenesisOperatorAuthority(opts.operatorPublicKey); err != nil {
+		return false, fmt.Errorf("catalog genesis authority: %w", err)
+	}
+	lock, created, err := acquireGenesisWriterLock(cfg, opts.expectedUID, opts.expectedGID)
+	if err != nil {
+		return false, fmt.Errorf("catalog writer exclusion: %w", err)
+	}
+	defer lock.Close()
+	return created, runCatalogGenesisBootstrapWithOptions(cfg, opts)
 }
 
 // runCatalogGenesisBootstrapWithOptions is the genesis WRITE state machine

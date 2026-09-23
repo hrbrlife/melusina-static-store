@@ -168,7 +168,8 @@ type Config struct {
 	// CatalogMigrationStateDir is the externally initialized migration-state
 	// directory. Its existing mode-0600 writer.lock is acquired for the complete
 	// lifetime of every write-capable process. Startup never creates this root or
-	// the lock. Required for a write-capable store.
+	// the lock; on a virgin target only genesis-bootstrap creates the lock, and
+	// only while this root is still empty. Required for a write-capable store.
 	CatalogMigrationStateDir string `json:"catalog_migration_state_dir,omitempty"`
 	// CatalogRepoRoot is the operator-owned writable catalog workspace where a
 	// successful governed publish records its exact gate-verified source tuple.

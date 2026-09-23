@@ -588,12 +588,29 @@ go build -o bin/melusina-store-sidecar .
 
 Run the suite in both build flavors. The bootstrap component ships the
 `estatebootstrap` flavor, which accepts a release authority only in the
-enrolled form, so a green standard run says nothing about it:
+enrolled form, so a green standard run says nothing about it.
+`scripts/run-tests.sh` runs both:
 
 ```sh
-go test ./...
-go test -tags estatebootstrap ./...
+scripts/run-tests.sh                      # go test ./... and go test -tags estatebootstrap ./...
+scripts/run-tests.sh --release --contracts-git-dir /path/to/melusina-os-smartcontract
 ```
+
+`testdata/contracts/sidecar-pda-vectors.json` is a copy of the contracts
+repository's sidecar PDA vector. Every run checks, without a contracts clone,
+that the commit named in its provenance holds exactly these bytes: the commit
+and the trees on the path are vendored in `testdata/contracts/git-objects/`,
+and each must hash to its own id. Only a contracts clone can show that the
+commit is on the contracts main line. The script takes the clone from
+`--contracts-git-dir`, `MELUSINA_CONTRACTS_GIT_DIR`, or
+`git config melusina.contractsGitDir <absolute path>` (set once per Store
+checkout), and passes it to the tests as an absolute
+`MELUSINA_CONTRACTS_GIT_DIR`. A dev run without one skips that check.
+
+`--release`, `MELUSINA_STORE_TEST_MODE=release` or `CI=true` declares a
+release or CI run. The script then refuses to start without a clone, and the
+Go test fails rather than skips if it is run without one (or with a clone whose
+`origin` is not the contracts repository, or that has no `origin/main`).
 
 Fixtures that model a running Store take their release-authority form from
 `configureReleaseAuthorityFixtureForBuild` (and, for config documents,

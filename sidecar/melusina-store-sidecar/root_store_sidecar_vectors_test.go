@@ -28,6 +28,7 @@ import (
 const (
 	contractsSidecarVectorPath     = "testdata/contracts/sidecar-pda-vectors.json"
 	contractsSidecarProvenancePath = "testdata/contracts/sidecar-pda-vectors.provenance.json"
+	contractsSidecarGitObjectsDir  = "testdata/contracts/git-objects"
 	contractsSidecarNewEstateName  = "root-store-new-estate"
 )
 
@@ -126,13 +127,206 @@ func loadContractsSidecarProvenance(t *testing.T) contractsSidecarProvenance {
 	return provenance
 }
 
-// gitBlobSHA1 is git's object id for a blob: sha1("blob <len>\x00" + bytes).
-// It is the address the contracts commit's tree holds for the file.
-func gitBlobSHA1(content []byte) string {
+// gitObjectID is git's object id: sha1("<kind> <len>\x00" + body). Hashing
+// with the kind in the header means a commit body cannot pass as a tree.
+func gitObjectID(kind string, body []byte) string {
 	h := sha1.New()
-	fmt.Fprintf(h, "blob %d\x00", len(content))
-	h.Write(content)
+	fmt.Fprintf(h, "%s %d\x00", kind, len(body))
+	h.Write(body)
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// gitBlobSHA1 is git's object id for a blob. It is the address the contracts
+// commit's tree holds for the file.
+func gitBlobSHA1(content []byte) string {
+	return gitObjectID("blob", content)
+}
+
+type gitTreeEntry struct {
+	Mode string
+	Name string
+	ID   string
+}
+
+// parseGitTree decodes a raw tree body: repeated "<mode> <name>\x00<20-byte id>".
+func parseGitTree(body []byte) ([]gitTreeEntry, error) {
+	var entries []gitTreeEntry
+	seen := map[string]bool{}
+	for len(body) > 0 {
+		space := bytes.IndexByte(body, ' ')
+		if space <= 0 {
+			return nil, fmt.Errorf("tree entry has no mode")
+		}
+		mode := string(body[:space])
+		for _, r := range mode {
+			if r < '0' || r > '7' {
+				return nil, fmt.Errorf("tree entry mode %q is not octal", mode)
+			}
+		}
+		body = body[space+1:]
+		nul := bytes.IndexByte(body, 0)
+		if nul <= 0 {
+			return nil, fmt.Errorf("tree entry has no name")
+		}
+		name := string(body[:nul])
+		if strings.Contains(name, "/") || name == "." || name == ".." || seen[name] {
+			return nil, fmt.Errorf("tree entry name %q is invalid or repeated", name)
+		}
+		seen[name] = true
+		body = body[nul+1:]
+		if len(body) < sha1.Size {
+			return nil, fmt.Errorf("tree entry %q has a truncated id", name)
+		}
+		entries = append(entries, gitTreeEntry{Mode: mode, Name: name, ID: hex.EncodeToString(body[:sha1.Size])})
+		body = body[sha1.Size:]
+	}
+	return entries, nil
+}
+
+// gitCommitTree returns the root tree a raw commit body names on its first line.
+func gitCommitTree(body []byte) (string, error) {
+	line, _, _ := bytes.Cut(body, []byte("\n"))
+	tree, ok := strings.CutPrefix(string(line), "tree ")
+	if !ok || !isLowerHex(tree, 40) {
+		return "", fmt.Errorf("commit does not open with a tree line: %q", line)
+	}
+	return tree, nil
+}
+
+// readVendoredContractsGitObject reads git-objects/<id>.<kind> and requires
+// that it hashes to id, so a file cannot stand in for another object.
+func readVendoredContractsGitObject(t *testing.T, kind, id string) []byte {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join(contractsSidecarGitObjectsDir, id+"."+kind))
+	if err != nil {
+		t.Fatalf("contracts-git-object-missing: %s %s: %v", kind, id, err)
+	}
+	if got := gitObjectID(kind, body); got != id {
+		t.Fatalf("contracts-git-object-altered: %s/%s.%s hashes to %s", contractsSidecarGitObjectsDir, id, kind, got)
+	}
+	return body
+}
+
+// TestContractsSidecarVectorCopyIsTheBlobTheNamedCommitHolds proves, without a
+// contracts clone, that the provenance's commit holds the copy's bytes at
+// sourcePath. It walks from the vendored commit object through one vendored
+// tree per path component to the blob id, checking every object against its
+// own id. A hand-edited copy with a recomputed sha256, blob id and size still
+// fails here, because the commit's trees name the original blob. Whether the
+// commit is on the contracts main line needs a clone; see the next test.
+func TestContractsSidecarVectorCopyIsTheBlobTheNamedCommitHolds(t *testing.T) {
+	provenance := loadContractsSidecarProvenance(t)
+	raw, err := os.ReadFile(contractsSidecarVectorPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	used := map[string]bool{provenance.SourceCommit + ".commit": true}
+	commit := readVendoredContractsGitObject(t, "commit", provenance.SourceCommit)
+	treeID, err := gitCommitTree(commit)
+	if err != nil {
+		t.Fatalf("contracts-git-object-altered: commit %s: %v", provenance.SourceCommit, err)
+	}
+	components := strings.Split(provenance.SourcePath, "/")
+	blobID := ""
+	for index, component := range components {
+		used[treeID+".tree"] = true
+		entries, err := parseGitTree(readVendoredContractsGitObject(t, "tree", treeID))
+		if err != nil {
+			t.Fatalf("contracts-git-object-altered: tree %s: %v", treeID, err)
+		}
+		var entry *gitTreeEntry
+		for i := range entries {
+			if entries[i].Name == component {
+				entry = &entries[i]
+			}
+		}
+		if entry == nil {
+			t.Fatalf("contracts-sidecar-vector-provenance-wrong: commit %s has no %s", provenance.SourceCommit, strings.Join(components[:index+1], "/"))
+		}
+		if index < len(components)-1 {
+			if entry.Mode != "40000" {
+				t.Fatalf("contracts-sidecar-vector-provenance-wrong: %s at %s is mode %s, not a directory", strings.Join(components[:index+1], "/"), provenance.SourceCommit, entry.Mode)
+			}
+			treeID = entry.ID
+			continue
+		}
+		if entry.Mode != "100644" && entry.Mode != "100755" {
+			t.Fatalf("contracts-sidecar-vector-provenance-wrong: %s at %s is mode %s, not a regular file", provenance.SourcePath, provenance.SourceCommit, entry.Mode)
+		}
+		blobID = entry.ID
+	}
+	if blobID != provenance.GitBlobSHA1 {
+		t.Fatalf("contracts-sidecar-vector-provenance-wrong: commit %s holds blob %s at %s, provenance records %s", provenance.SourceCommit, blobID, provenance.SourcePath, provenance.GitBlobSHA1)
+	}
+	if got := gitBlobSHA1(raw); got != blobID {
+		t.Fatalf("contracts-sidecar-vector-copy-diverged: the copy is blob %s, commit %s holds %s at %s", got, provenance.SourceCommit, blobID, provenance.SourcePath)
+	}
+	// Every vendored object is on this walk. A leftover object from an older
+	// commit would be unverified bytes that look like evidence.
+	files, err := os.ReadDir(contractsSidecarGitObjectsDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range files {
+		if !used[file.Name()] || !file.Type().IsRegular() {
+			t.Fatalf("contracts-git-object-unused: %s/%s is not on the walk from %s to %s", contractsSidecarGitObjectsDir, file.Name(), provenance.SourceCommit, provenance.SourcePath)
+		}
+	}
+}
+
+// contractsCloneRequired reports whether this run is a declared release or CI
+// run. Such a run must compare the copy with a contracts clone: it fails rather
+// than skips when none is named. MELUSINA_STORE_TEST_MODE=release declares a
+// release run; with the mode unset, CI=true (or 1) declares a CI run. Any other
+// mode is refused, so a misspelt "release" cannot quietly run as a dev run.
+func contractsCloneRequired(t *testing.T) bool {
+	t.Helper()
+	switch mode := os.Getenv("MELUSINA_STORE_TEST_MODE"); mode {
+	case "release":
+		return true
+	case "":
+		ci := strings.TrimSpace(os.Getenv("CI"))
+		return strings.EqualFold(ci, "true") || ci == "1"
+	default:
+		t.Fatalf("store-test-mode-unknown: MELUSINA_STORE_TEST_MODE=%q; the only declared mode is \"release\"", mode)
+		return true
+	}
+}
+
+// normalizeGitHubRepositoryURL maps the https and ssh spellings of one GitHub
+// repository to https://github.com/<owner>/<repo>.
+func normalizeGitHubRepositoryURL(raw string) string {
+	url := strings.TrimSpace(raw)
+	for _, prefix := range []string{"git@github.com:", "ssh://git@github.com/"} {
+		if rest, ok := strings.CutPrefix(url, prefix); ok {
+			url = "https://github.com/" + rest
+		}
+	}
+	url = strings.TrimSuffix(url, "/")
+	return strings.TrimSuffix(url, ".git")
+}
+
+func TestNormalizeGitHubRepositoryURL(t *testing.T) {
+	const want = "https://github.com/melusina-os/melusina-os-smartcontract"
+	for _, spelling := range []string{
+		"https://github.com/melusina-os/melusina-os-smartcontract",
+		"https://github.com/melusina-os/melusina-os-smartcontract.git",
+		"git@github.com:melusina-os/melusina-os-smartcontract.git",
+		"ssh://git@github.com/melusina-os/melusina-os-smartcontract.git\n",
+	} {
+		if got := normalizeGitHubRepositoryURL(spelling); got != want {
+			t.Fatalf("normalize %q = %q, want %q", spelling, got, want)
+		}
+	}
+	for _, other := range []string{
+		"https://github.com/hrbrlife/melusina-static-store.git",
+		"https://github.com/someone/melusina-os-smartcontract",
+		"https://example.org/melusina-os/melusina-os-smartcontract",
+	} {
+		if got := normalizeGitHubRepositoryURL(other); got == want {
+			t.Fatalf("normalize %q matched the contracts repository", other)
+		}
+	}
 }
 
 func TestContractsSidecarVectorCopyMatchesItsRecordedProvenance(t *testing.T) {
@@ -154,15 +348,31 @@ func TestContractsSidecarVectorCopyMatchesItsRecordedProvenance(t *testing.T) {
 }
 
 // TestContractsSidecarVectorCopyIsByteIdenticalToTheNamedCommit reads the
-// vector at the commit the provenance names from a contracts clone. The
-// module's tests cannot assume where a sibling repository is checked out, so
-// the clone is named explicitly by MELUSINA_CONTRACTS_GIT_DIR.
+// vector at the commit the provenance names from a contracts clone, and checks
+// that the commit is on the clone's origin/main. The module's tests cannot
+// assume where a sibling repository is checked out, so the clone is named
+// explicitly by MELUSINA_CONTRACTS_GIT_DIR (scripts/run-tests.sh sets it from
+// its configuration). A dev run without it skips; the walk above has already
+// bound the copy to the commit id. A release or CI run without it fails.
 func TestContractsSidecarVectorCopyIsByteIdenticalToTheNamedCommit(t *testing.T) {
+	required := contractsCloneRequired(t)
 	gitDir := strings.TrimSpace(os.Getenv("MELUSINA_CONTRACTS_GIT_DIR"))
 	if gitDir == "" {
-		t.Skip("MELUSINA_CONTRACTS_GIT_DIR is unset; set it to a melusina-os-smartcontract clone to compare the copy with the named commit")
+		if required {
+			t.Fatal("contracts-clone-required: this is a release or CI run (MELUSINA_STORE_TEST_MODE=release or CI=true) and MELUSINA_CONTRACTS_GIT_DIR is unset; name a melusina-os-smartcontract clone with origin/main fetched")
+		}
+		t.Skip("MELUSINA_CONTRACTS_GIT_DIR is unset; set it to a melusina-os-smartcontract clone to check the named commit is on the contracts main line")
 	}
 	provenance := loadContractsSidecarProvenance(t)
+	if required {
+		origin, err := exec.Command("git", "-C", gitDir, "remote", "get-url", "origin").Output()
+		if err != nil {
+			t.Fatalf("contracts-clone-not-the-named-repository: %s has no origin remote: %v", gitDir, err)
+		}
+		if got := normalizeGitHubRepositoryURL(string(origin)); got != normalizeGitHubRepositoryURL(provenance.SourceRepository) {
+			t.Fatalf("contracts-clone-not-the-named-repository: %s has origin %s, provenance names %s", gitDir, got, provenance.SourceRepository)
+		}
+	}
 	local, err := os.ReadFile(contractsSidecarVectorPath)
 	if err != nil {
 		t.Fatal(err)
@@ -170,24 +380,27 @@ func TestContractsSidecarVectorCopyIsByteIdenticalToTheNamedCommit(t *testing.T)
 	object := provenance.SourceCommit + ":" + provenance.SourcePath
 	source, err := exec.Command("git", "-C", gitDir, "cat-file", "blob", object).Output()
 	if err != nil {
-		t.Fatalf("read %s from %s: %v", object, gitDir, err)
+		t.Fatalf("contracts-sidecar-vector-commit-unknown: %s cannot read %s: %v", gitDir, object, err)
 	}
 	if !bytes.Equal(source, local) {
 		t.Fatalf("contracts-sidecar-vector-copy-diverged: %s differs from %s at %s", contractsSidecarVectorPath, provenance.SourcePath, provenance.SourceCommit)
 	}
 	blob, err := exec.Command("git", "-C", gitDir, "rev-parse", object).Output()
 	if err != nil {
-		t.Fatalf("resolve %s: %v", object, err)
+		t.Fatalf("contracts-sidecar-vector-commit-unknown: %s cannot resolve %s: %v", gitDir, object, err)
 	}
 	if got := strings.TrimSpace(string(blob)); got != provenance.GitBlobSHA1 {
 		t.Fatalf("contracts-sidecar-vector-provenance-wrong: the commit holds blob %s, provenance records %s", got, provenance.GitBlobSHA1)
 	}
 	// A vector from a commit that never reached the contracts main line is not
-	// the contracts' fact. The check runs only when the clone has origin/main.
+	// the contracts' fact. A dev run checks it when the clone has origin/main;
+	// a release or CI run requires origin/main.
 	if exec.Command("git", "-C", gitDir, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/main").Run() == nil {
 		if err := exec.Command("git", "-C", gitDir, "merge-base", "--is-ancestor", provenance.SourceCommit, "refs/remotes/origin/main").Run(); err != nil {
 			t.Fatalf("contracts-sidecar-vector-commit-not-on-main: %s is not an ancestor of origin/main: %v", provenance.SourceCommit, err)
 		}
+	} else if required {
+		t.Fatalf("contracts-clone-has-no-origin-main: %s has no refs/remotes/origin/main, so the commit's place on the contracts main line is unchecked", gitDir)
 	}
 }
 
@@ -356,5 +569,58 @@ func TestStoreSidecarPDADerivationsReproduceContractsVectors(t *testing.T) {
 	}
 	if compared != wantCompared || compared == 0 {
 		t.Fatalf("compared %d derivations, want %d", compared, wantCompared)
+	}
+}
+
+// runContractsCloneTestInChild re-runs the contracts-clone test in a child of
+// this test binary with a hermetic environment, and returns its exit status
+// and output.
+func runContractsCloneTestInChild(t *testing.T, env ...string) (int, string) {
+	t.Helper()
+	var childEnv []string
+	for _, kv := range os.Environ() {
+		name, _, _ := strings.Cut(kv, "=")
+		if name == "CI" || name == "MELUSINA_STORE_TEST_MODE" || name == "MELUSINA_CONTRACTS_GIT_DIR" {
+			continue
+		}
+		childEnv = append(childEnv, kv)
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=^TestContractsSidecarVectorCopyIsByteIdenticalToTheNamedCommit$", "-test.v", "-test.count=1")
+	cmd.Env = append(childEnv, env...)
+	out, err := cmd.CombinedOutput()
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		return exitErr.ExitCode(), string(out)
+	}
+	if err != nil {
+		t.Fatalf("run child test binary: %v", err)
+	}
+	return 0, string(out)
+}
+
+// A declared release or CI run fails, by name, where a dev run skips. The dev
+// run is the positive control: the same child, with no mode, must skip.
+func TestContractsCloneTestFailsADeclaredRunWithoutTheContractsClone(t *testing.T) {
+	const cloneTest = "TestContractsSidecarVectorCopyIsByteIdenticalToTheNamedCommit"
+	exit, out := runContractsCloneTestInChild(t)
+	if exit != 0 || !strings.Contains(out, "--- SKIP: "+cloneTest) {
+		t.Fatalf("a dev run without a clone must skip, got exit %d:\n%s", exit, out)
+	}
+	top := storeCheckoutTopLevel(t)
+	for _, tc := range []struct {
+		env  []string
+		name string
+	}{
+		{[]string{"MELUSINA_STORE_TEST_MODE=release"}, "contracts-clone-required"},
+		{[]string{"CI=true"}, "contracts-clone-required"},
+		{[]string{"CI=1"}, "contracts-clone-required"},
+		{[]string{"MELUSINA_STORE_TEST_MODE=relase"}, "store-test-mode-unknown"},
+		// The Store's own checkout is a git repository that is not the
+		// contracts repository.
+		{[]string{"MELUSINA_STORE_TEST_MODE=release", "MELUSINA_CONTRACTS_GIT_DIR=" + top}, "contracts-clone-not-the-named-repository"},
+	} {
+		exit, out := runContractsCloneTestInChild(t, tc.env...)
+		if exit == 0 || !strings.Contains(out, "--- FAIL: "+cloneTest) || !strings.Contains(out, tc.name+":") {
+			t.Fatalf("%v: want %s to fail with %s, got exit %d:\n%s", tc.env, cloneTest, tc.name, exit, out)
+		}
 	}
 }

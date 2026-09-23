@@ -3,10 +3,15 @@
   "comment": [
     "sidecar-pda-vectors.json in this directory is a byte-for-byte copy of the contracts repository's cross-language",
     "sidecar PDA vector. Do not edit the copy. To take a newer contracts vector, copy the file from a newer contracts",
-    "commit on main and update every field below from that commit.",
-    "root_store_sidecar_vectors_test.go checks the copy's sha256 and git blob id against this record on every run. When",
-    "MELUSINA_CONTRACTS_GIT_DIR names a contracts clone, it also reads sourcePath at sourceCommit from that clone and",
-    "requires identical bytes."
+    "commit on main, update every field below from that commit, and replace git-objects/ with that commit's objects:",
+    "  git -C <contracts> cat-file commit <commit> > git-objects/<commit>.commit",
+    "  git -C <contracts> cat-file tree <id> > git-objects/<id>.tree, for <commit>^{tree}, <commit>:scripts,",
+    "  <commit>:scripts/estate and <commit>:scripts/estate/testdata.",
+    "root_store_sidecar_vectors_test.go checks on every run, without a contracts clone, that the copy's sha256 and git",
+    "blob id are the ones recorded here and that the recorded commit holds that blob at sourcePath: each object in",
+    "git-objects/ must hash to its file name, and the walk from the commit through its trees must end at the blob.",
+    "What only a contracts clone can show is that sourceCommit is on the contracts main line. scripts/run-tests.sh",
+    "passes a configured clone as MELUSINA_CONTRACTS_GIT_DIR, and a release or CI run fails without one."
   ],
   "file": "sidecar-pda-vectors.json",
   "sourceRepository": "https://github.com/melusina-os/melusina-os-smartcontract",

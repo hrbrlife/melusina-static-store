@@ -1,0 +1,44 @@
+tree 47749a5f940036ba92cfd9f30519ea9e0ca782ff
+parent 705330c73e04a0f66c963da8aa44a132b4473f7b
+author alexeikarp <ak@hrbr.life> 1790159791 +0400
+committer alexeikarp <ak@hrbr.life> 1790159791 +0400
+
+fix(estate): the root Store sidecar id is the protocol constant "store"
+
+A new estate's ceremony approved the Store's Foundation Global under
+`${rootStoreId}-v2`, while the Store boots with "store"
+(estate_store_config_render.go BootIdentity.SidecarID, boot-identity-prep
+default), the deployer's Foundation manifest has a `store` row
+(config/global-sidecars.tsv, SAN store.sidecar.host), and both repositories'
+estateprofile/store_enrollment.go forbid deriving the id from StoreID.
+register_sidecar_identity reads the Global, Reseller and Local approvals under
+the id it seeds the identity with, so the Store's identity registration would
+have found its Global uninitialized. `-v2` is the retiring estate's rotation
+label; that estate's own tooling keeps its pins.
+
+- profile.mjs: export ROOT_STORE_SIDECAR_ID = 'store'; ceremonySidecarId
+  returns it. The 29-byte rootStoreId cap (which existed only because the id
+  was folded into a seed) is replaced by a SAN/id agreement check: every
+  ceremony SAN must be <id>.sidecar.{host,hypervisor,local,remote}.
+- closure.mjs: the Store tree's sidecar pins call ceremonySidecarId instead
+  of a second, independent `${storeId}-v2` derivation.
+- plan.mjs: ApproveGlobalSidecar is init-only, so the root Store's Global is
+  ONE step (approve-root-store-sidecar, the executor's approve-global-sidecar
+  with the profile's values), and the manifest step runs after it and
+  excludes the `store` row (the emitter skips a row only when its PDA exists).
+- chain-ix.mjs: reseller/local sidecar and sidecar_identity PDAs; key_version
+  is refused unless it is a u32 (writeUInt32LE truncates a fraction).
+- testdata/sidecar-pda-vectors.json: cross-language vector (fixed synthetic
+  program/mints, id "store", key versions 1 and 2) plus the retiring estate's
+  root-Store PDAs as a finalized devnet observation. Generated with solders
+  (solana-program's Rust find_program_address); re-derived in the test by
+  @solana/web3.js (chain-ix) and lib/solana-address.mjs; its seed layout is
+  checked against every seeds = [...] of the four accounts in the program.
+- example profile SAN is store.sidecar.host.
+
+Mutation controls run: restoring `${rootStoreId}-v2` (profile and closure),
+approving `store` in two plan steps, ordering the manifest step first,
+altering a seed in chain-ix, the program source or the vector, and removing
+the SAN and u32 guards each fail by name.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>

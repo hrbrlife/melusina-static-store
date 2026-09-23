@@ -47,6 +47,14 @@
 // Config is env-only (MEL_RELEASE_*). mel-release holds no chain key: every
 // governed act is delegated to MEL_RELEASE_SIGNER_PROVIDER (see signer.go) and
 // the store alone operator-signs the served generation.
+//
+// It targets no Store of its own. The Store origin, domain and ID, the
+// license-registry program, the master mint and the release Squads authority
+// all come from the owner-signed estate profile named by
+// MEL_RELEASE_ESTATE_PROFILE and pinned by MEL_RELEASE_ESTATE_PROFILE_SHA256
+// (see estate.go); the catalog manifest must describe that same Store and
+// authority, and every subcommand refuses before it runs if either is absent
+// or disagrees.
 package main
 
 import (
@@ -85,7 +93,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := cfg.bindCatalogSquadsAuthority(catalog); err != nil {
+	if err := cfg.bindCatalog(catalog); err != nil {
 		return err
 	}
 

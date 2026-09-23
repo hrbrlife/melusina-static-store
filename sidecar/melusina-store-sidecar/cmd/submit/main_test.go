@@ -24,8 +24,13 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
+// testProgramID is the license-registry program of the fictitious new estate in
+// testdata/estate-profile-vectors.json. The client compiles no registry; every
+// test hands one in exactly as mel-release does.
+const testProgramID = "7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD"
+
 func TestControlRequestCannotMixLegacyPreparedHandoff(t *testing.T) {
-	base := []string{"--request-out", "/tmp/control.json", "--control-dossier", "aaaaaaaaaaaaaaaaaaaaaaaa", "--spk", "app.spk", "--metadata", "metadata.json", "--release", "RELEASE.json", "--publisher-key", "publisher.json", "--store-pubkey", "store.json"}
+	base := []string{"--request-out", "/tmp/control.json", "--control-dossier", "aaaaaaaaaaaaaaaaaaaaaaaa", "--spk", "app.spk", "--metadata", "metadata.json", "--release", "RELEASE.json", "--publisher-key", "publisher.json", "--store-pubkey", "store.json", "--program-id", testProgramID}
 	for _, flag := range []string{"--prepare-out", "--prepared-submission"} {
 		t.Run(flag, func(t *testing.T) {
 			args := append(append([]string{}, base...), flag, "/tmp/prepared.json")
@@ -56,7 +61,7 @@ func newTestIdentity(t *testing.T, sidecarID, licenseMint, domain string) *ident
 	ref := identity.Ref{
 		Kind:        identity.KindSidecar,
 		ChainID:     defaultChainID,
-		ProgramID:   programIDB58,
+		ProgramID:   testProgramID,
 		LicenseMint: licenseMint,
 		Domain:      domain,
 		PDA:         "11111111111111111111111111111111",
@@ -148,7 +153,7 @@ func (m *mockAuthzReader) FetchStoreOperatorAuthz(_ context.Context, addr string
 // pinAuthz wires the mock to vouch for the operator key at the derived PDA.
 func pinAuthz(t *testing.T, m *mockAuthzReader, licenseMintB58, domain string, operatorKey [32]byte) {
 	t.Helper()
-	programID, err := primitives.PubkeyFromBase58(programIDB58)
+	programID, err := primitives.PubkeyFromBase58(testProgramID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +245,7 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 12345, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, testProgramID, 12345, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -263,8 +268,8 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 	if sig.Payload.ChainEvidence.VerifiedSlot != 12345 {
 		t.Errorf("verified_slot = %d, want 12345", sig.Payload.ChainEvidence.VerifiedSlot)
 	}
-	if sig.Payload.ChainEvidence.ProgramID != programIDB58 {
-		t.Errorf("program_id = %s, want %s", sig.Payload.ChainEvidence.ProgramID, programIDB58)
+	if sig.Payload.ChainEvidence.ProgramID != testProgramID {
+		t.Errorf("program_id = %s, want %s", sig.Payload.ChainEvidence.ProgramID, testProgramID)
 	}
 	if sig.Payload.ChainEvidence.ReleaseEntryPDA == "" {
 		t.Error("expected ReleaseEntryPDA chain evidence to be populated")
@@ -293,7 +298,7 @@ func TestBuildEnvelope_DestinationMustMatchOperator(t *testing.T) {
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 	other := newTestIdentity(t, "other-operator", randPubkeyB58(t), "other.example.org")
 
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -327,7 +332,7 @@ func TestBuildEnvelopePurposeBindsStageAndPromoteBidirectionally(t *testing.T) {
 		{name: "promote-refuses-stage", target: appPromoteTarget, other: appStageTarget},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			signed, err := buildEnvelope(pub, opPub, tc.target, spk, releaseBytes, claims, 1, 5*time.Minute)
+			signed, err := buildEnvelope(pub, opPub, tc.target, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -354,7 +359,7 @@ func TestBuildEnvelopePurposeBindsStageAndPromoteBidirectionally(t *testing.T) {
 	}
 
 	for _, target := range []string{"", "/publish/installer", "/publish/"} {
-		if _, err := buildEnvelope(pub, opPub, target, spk, releaseBytes, claims, 1, 5*time.Minute); err == nil {
+		if _, err := buildEnvelope(pub, opPub, target, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute); err == nil {
 			t.Fatalf("buildEnvelope accepted non-app target %q", target)
 		}
 	}
@@ -363,7 +368,7 @@ func TestBuildEnvelopePurposeBindsStageAndPromoteBidirectionally(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	control, err := buildEnvelope(pub, opPub, controlTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	control, err := buildEnvelope(pub, opPub, controlTarget, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope control route: %v", err)
 	}
@@ -376,7 +381,7 @@ func TestBuildEnvelopePurposeBindsStageAndPromoteBidirectionally(t *testing.T) {
 		"/control/v1/releases/0123456789abcdef01234567/publish/extra",
 		"/control/v1/releases/0123456789abcdef0123456A/publish",
 	} {
-		if _, err := buildEnvelope(pub, opPub, target, spk, releaseBytes, claims, 1, 5*time.Minute); err == nil {
+		if _, err := buildEnvelope(pub, opPub, target, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute); err == nil {
 			t.Fatalf("buildEnvelope accepted non-Pearl control target %q", target)
 		}
 	}
@@ -391,7 +396,7 @@ func TestMarshalControlPublishRequestBindsExactPearlRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sig, err := buildEnvelope(pub, op.Public(), target, spk, releaseBytes, claims, 1, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), target, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,7 +418,7 @@ func TestMarshalControlPublishRequestBindsExactPearlRoute(t *testing.T) {
 		t.Fatalf("control request slot hint changed: %+v", request)
 	}
 
-	direct, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	direct, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,7 +448,7 @@ func TestPostPublishRefusesCrossRouteAndMethodMismatchLocally(t *testing.T) {
 		{name: "promote-envelope-to-stage", signedTarget: appPromoteTarget, postTarget: appStageTarget},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			signed, err := buildEnvelope(pub, op.Public(), tc.signedTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+			signed, err := buildEnvelope(pub, op.Public(), tc.signedTarget, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -453,7 +458,7 @@ func TestPostPublishRefusesCrossRouteAndMethodMismatchLocally(t *testing.T) {
 		})
 	}
 
-	promote, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	promote, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -487,7 +492,7 @@ func TestVerifyReceipt_ValidReceiptVerifies(t *testing.T) {
 	pinAuthz(t, m, licenseMint, domain, opKey)
 
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err != nil {
+	if err := verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt); err != nil {
 		t.Fatalf("expected valid receipt to verify, got: %v", err)
 	}
 }
@@ -540,6 +545,7 @@ func TestParseFlagsVerifyReceiptMode(t *testing.T) {
 		"--license-mint", randPubkeyB58(t),
 		"--domain", "store.example.org",
 		"--rpc-url", "https://rpc.example.org",
+		"--program-id", testProgramID,
 	}
 	parsed, err := parseFlags(base)
 	if err != nil {
@@ -555,18 +561,19 @@ func TestParseFlagsVerifyReceiptMode(t *testing.T) {
 	if prepared.preparedSubmission != "/tmp/prepared.json" {
 		t.Fatalf("unexpected prepared submission path: %q", prepared.preparedSubmission)
 	}
-	if _, err := parseFlags(append(base, "--publisher-key", "/tmp/publisher.json")); err == nil {
+	if _, err := parseFlags(append(base, "--publisher-key", "/tmp/publisher.json")); err == nil || !strings.Contains(err.Error(), "--verify-receipt cannot be combined") {
 		t.Fatal("verify mode accepted a publish credential")
 	}
 	withoutDomain := []string{
 		"--verify-receipt", "/tmp/publish-receipt.json",
 		"--license-mint", randPubkeyB58(t),
 		"--rpc-url", "https://rpc.example.org",
+		"--program-id", testProgramID,
 	}
-	if _, err := parseFlags(withoutDomain); err == nil {
+	if _, err := parseFlags(withoutDomain); err == nil || !strings.Contains(err.Error(), "--domain") {
 		t.Fatal("verify mode accepted a receipt without a serving domain")
 	}
-	if _, err := parseFlags([]string{"--prepared-submission", "/tmp/prepared.json"}); err == nil {
+	if _, err := parseFlags([]string{"--prepared-submission", "/tmp/prepared.json", "--program-id", testProgramID}); err == nil || !strings.Contains(err.Error(), "--prepared-submission requires --verify-receipt") {
 		t.Fatal("publish mode accepted a prepared submission without --verify-receipt")
 	}
 }
@@ -576,7 +583,7 @@ func TestPreparedSubmissionRoundTripAndConsistencyChecks(t *testing.T) {
 	spk, _, releaseBytes, claims := testRelease(t, master)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 9, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, testProgramID, 9, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -611,6 +618,7 @@ func TestParseFlagsControlRequestModeIsFileOnlyAndComplete(t *testing.T) {
 		"--control-dossier", "0123456789abcdef01234567",
 		"--spk", "app.spk", "--metadata", "metadata.json", "--release", "RELEASE.json",
 		"--publisher-key", "publisher.json", "--store-pubkey", "store.json",
+		"--program-id", testProgramID,
 	}
 	got, err := parseFlags(valid)
 	if err != nil {
@@ -689,7 +697,7 @@ func TestRunControlRequestWritesExactCandidateWithoutStoreConnection(t *testing.
 	spkPath := write("app.spk", spk)
 	metadataPath := write("metadata.json", metadata)
 	releasePath := write("RELEASE.json", releaseBytes)
-	pubRef := identity.Ref{Kind: identity.KindSidecar, ChainID: defaultChainID, ProgramID: programIDB58, LicenseMint: randPubkeyB58(t), Domain: "publisher.example.org", PDA: "11111111111111111111111111111111", SidecarID: "publisher", KeyVersion: 1}
+	pubRef := identity.Ref{Kind: identity.KindSidecar, ChainID: defaultChainID, ProgramID: testProgramID, LicenseMint: randPubkeyB58(t), Domain: "publisher.example.org", PDA: "11111111111111111111111111111111", SidecarID: "publisher", KeyVersion: 1}
 	publisherKey := writePublisherKey(t, pubRef)
 	operator := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 	opBytes, err := json.Marshal(operator.Public())
@@ -711,6 +719,7 @@ func TestRunControlRequestWritesExactCandidateWithoutStoreConnection(t *testing.
 		"--request-out", requestPath, "--control-dossier", "0123456789abcdef01234567",
 		"--spk", spkPath, "--metadata", metadataPath, "--release", releasePath,
 		"--publisher-key", publisherKey, "--store-pubkey", operatorPath,
+		"--program-id", testProgramID,
 	}, &stdout, &stderr)
 	if err != nil {
 		t.Fatalf("file-only request run: %v; stderr=%s", err, stderr.String())
@@ -739,11 +748,11 @@ func TestVerifyStageReceipt_AcceptsOnlyAuthorizedUntamperedReceipt(t *testing.T)
 	pinAuthz(t, m, licenseMint, domain, opKey)
 	stageID := sha256.Sum256([]byte("candidate"))
 	receipt := signStageReceipt(op, stageID, appHash, releaseHash, domainHash, 1_700_000_000)
-	if err := verifyStageReceipt(context.Background(), m, licenseMint, domain, receipt); err != nil {
+	if err := verifyStageReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt); err != nil {
 		t.Fatal(err)
 	}
 	receipt.StoredAt++
-	if err := verifyStageReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil {
+	if err := verifyStageReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt); err == nil {
 		t.Fatal("tampered stage receipt was accepted")
 	}
 }
@@ -792,14 +801,14 @@ func TestAcceptStageReceiptRejectsValidOtherCandidateBeforeReceiptOut(t *testing
 		StageID:     receipt.StageID,
 	}
 	out := filepath.Join(t.TempDir(), "stage-receipt.json")
-	if _, err := acceptStageReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err == nil || !strings.Contains(err.Error(), "check=receipt_submission") {
+	if _, err := acceptStageReceipt(context.Background(), m, testProgramID, licenseMint, domain, raw, expected, out); err == nil || !strings.Contains(err.Error(), "check=receipt_submission") {
 		t.Fatalf("valid signed receipt for another candidate was not rejected: %v", err)
 	}
 	if _, err := os.Stat(out); !os.IsNotExist(err) {
 		t.Fatalf("mismatched stage receipt reached receipt-out: %v", err)
 	}
 	expected.AppHash = receipt.AppHash
-	if _, err := acceptStageReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err != nil {
+	if _, err := acceptStageReceipt(context.Background(), m, testProgramID, licenseMint, domain, raw, expected, out); err != nil {
 		t.Fatalf("exact submitted stage receipt was rejected: %v", err)
 	}
 	if _, err := os.Stat(out); err != nil {
@@ -826,14 +835,14 @@ func TestAcceptPromotionReceiptRejectsValidStaleReceiptBeforeReceiptOut(t *testi
 		StageID:     receipt.Stage.StageID,
 	}
 	out := filepath.Join(t.TempDir(), "promotion-receipt.json")
-	if _, err := acceptPromotionReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err == nil || !strings.Contains(err.Error(), "check=receipt_submission") {
+	if _, err := acceptPromotionReceipt(context.Background(), m, testProgramID, licenseMint, domain, raw, expected, out); err == nil || !strings.Contains(err.Error(), "check=receipt_submission") {
 		t.Fatalf("valid signed stale promotion receipt was not rejected: %v", err)
 	}
 	if _, err := os.Stat(out); !os.IsNotExist(err) {
 		t.Fatalf("mismatched promotion receipt reached receipt-out: %v", err)
 	}
 	expected.ReleaseHash = receipt.ReleaseHash
-	if _, err := acceptPromotionReceipt(context.Background(), m, licenseMint, domain, raw, expected, out); err != nil {
+	if _, err := acceptPromotionReceipt(context.Background(), m, testProgramID, licenseMint, domain, raw, expected, out); err != nil {
 		t.Fatalf("exact submitted promotion receipt was rejected: %v", err)
 	}
 	if _, err := os.Stat(out); err != nil {
@@ -858,7 +867,7 @@ func TestVerifyReceipt_TamperedSignatureFails(t *testing.T) {
 	raw[0] ^= 0xFF
 	receipt.OperatorSignature = primitives.EncodeBase58(raw)
 
-	err = verifyReceipt(context.Background(), m, licenseMint, domain, receipt)
+	err = verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt)
 	if err == nil {
 		t.Fatal("expected tampered signature to fail verification")
 	}
@@ -879,7 +888,7 @@ func TestVerifyReceipt_WrongKeyFails(t *testing.T) {
 	pinAuthz(t, m, licenseMint, domain, authorizedKey)
 
 	receipt := signReceipt(signer, appHash, releaseHash, servingDomainHash)
-	err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt)
+	err := verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt)
 	if err == nil {
 		t.Fatal("expected a receipt signed by an unauthorized key to fail")
 	}
@@ -902,7 +911,7 @@ func TestVerifyReceipt_TamperedTupleFails(t *testing.T) {
 	other := sha256.Sum256([]byte("a different app"))
 	receipt.AppHash = hex.EncodeToString(other[:])
 
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil {
+	if err := verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt); err == nil {
 		t.Fatal("expected a tampered appHash to fail verification")
 	}
 }
@@ -916,7 +925,7 @@ func TestVerifyReceipt_TamperedNestedCatalogPointerFails(t *testing.T) {
 
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
 	receipt.Catalog.PackageID = "00000000000000000000000000000000"
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil || !strings.Contains(err.Error(), "check=catalog_pointer") {
+	if err := verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt); err == nil || !strings.Contains(err.Error(), "check=catalog_pointer") {
 		t.Fatalf("tampered catalog pointer was not rejected at catalog check: %v", err)
 	}
 }
@@ -930,7 +939,7 @@ func TestVerifyReceipt_MissingNestedProofFails(t *testing.T) {
 
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
 	receipt.Rollout = nil
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil || !strings.Contains(err.Error(), "signed stage, rollout and catalog") {
+	if err := verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt); err == nil || !strings.Contains(err.Error(), "signed stage, rollout and catalog") {
 		t.Fatalf("missing rollout proof was not rejected: %v", err)
 	}
 }
@@ -948,7 +957,7 @@ func TestVerifyReceipt_WrongServingDomainFails(t *testing.T) {
 	wrongDomainHash := primitives.StoreDomainHash("evil.example.org")
 	receipt := signReceipt(op, appHash, releaseHash, wrongDomainHash)
 
-	err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt)
+	err := verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt)
 	if err == nil {
 		t.Fatal("expected a receipt for the wrong serving domain to fail")
 	}
@@ -963,7 +972,7 @@ func TestVerifyReceipt_AuthzNotActiveFails(t *testing.T) {
 	opKey := signPub32(t, op)
 
 	// Wire the authz as Revoked.
-	programID, _ := primitives.PubkeyFromBase58(programIDB58)
+	programID, _ := primitives.PubkeyFromBase58(testProgramID)
 	lm, _ := primitives.PubkeyFromBase58(licenseMint)
 	dh := primitives.StoreDomainHash(domain)
 	authzPDA, _, _ := pda.StoreOperatorAuthorization(lm, dh, programID)
@@ -972,7 +981,7 @@ func TestVerifyReceipt_AuthzNotActiveFails(t *testing.T) {
 	}}
 
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
-	err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt)
+	err := verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt)
 	if err == nil {
 		t.Fatal("expected a non-Active store authorization to fail")
 	}
@@ -987,7 +996,7 @@ func TestVerifyReceipt_AuthzNotFoundFails(t *testing.T) {
 	m := &mockAuthzReader{byAddr: map[string]mockAuthz{}} // nothing pinned
 
 	receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err == nil {
+	if err := verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt); err == nil {
 		t.Fatal("expected a missing store authorization to fail closed")
 	}
 }
@@ -1023,7 +1032,7 @@ func TestLoadPublisherKey_FileAndEnv(t *testing.T) {
 	ref := identity.Ref{
 		Kind:        identity.KindSidecar,
 		ChainID:     defaultChainID,
-		ProgramID:   programIDB58,
+		ProgramID:   testProgramID,
 		LicenseMint: randPubkeyB58(t),
 		Domain:      "publisher.example.org",
 		PDA:         "11111111111111111111111111111111",
@@ -1180,7 +1189,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 999, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, testProgramID, 999, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("buildEnvelope: %v", err)
 	}
@@ -1202,7 +1211,7 @@ func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
 
 	m := &mockAuthzReader{byAddr: map[string]mockAuthz{}}
 	pinAuthz(t, m, licenseMint, domain, opKey)
-	if err := verifyReceipt(context.Background(), m, licenseMint, domain, receipt); err != nil {
+	if err := verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt); err != nil {
 		t.Fatalf("e2e receipt verification failed: %v", err)
 	}
 	if receipt.AppHash != claims.AppHash {
@@ -1226,6 +1235,7 @@ func TestParseFlagsRequiresCompleteSlotHint(t *testing.T) {
 		"--metadata", "metadata.json", "--release", "RELEASE.json",
 		"--publisher-key", "publisher.json", "--store-pubkey", "store.json",
 		"--license-mint", "mint", "--rpc-url", "https://rpc.example",
+		"--program-id", testProgramID,
 	}
 	if _, err := parseFlags(append(required, "--developer", "hrbrlife")); err == nil || !strings.Contains(err.Error(), "must be supplied together") {
 		t.Fatalf("partial slot hint error = %v", err)
@@ -1253,7 +1263,7 @@ func TestE2E_StoreRejectionSurfacesCheck(t *testing.T) {
 	spk, metadata, releaseBytes, claims := testRelease(t, master)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, 1, 5*time.Minute)
+	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

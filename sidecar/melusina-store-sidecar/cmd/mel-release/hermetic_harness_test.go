@@ -120,7 +120,7 @@ func testRef(domain, pda string) identity.Ref {
 	return identity.Ref{
 		Kind:        identity.KindPearl,
 		ChainID:     "solana:devnet",
-		ProgramID:   defaultProgramID,
+		ProgramID:   testProgramID,
 		LicenseMint: "LicenseMintFake1111111111111111111111111111",
 		Domain:      domain,
 		PDA:         pda,
@@ -180,7 +180,7 @@ func newHarness(t *testing.T) *harness {
 	}
 	masterMint := primitives.EncodeBase58(mm[:])
 
-	programID := defaultProgramID
+	programID := testProgramID
 
 	mkVersion := func(ver, tag, prevSha, prevVer string) provVersion {
 		spk := []byte("fake-spk-" + ver + "-" + strings.Repeat(tag, 8))
@@ -291,11 +291,13 @@ func newHarness(t *testing.T) *harness {
 		SquadsProgramID: "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
 		SignerProvider:  bin,
 		StoreURL:        store.server.URL,
+		StoreDomain:     "store.example.test",
 		StorePubkey:     storePubPath,
 		StoreID:         testStoreID,
 		BundleOrigin:    testBundle,
 		Channel:         "dev",
 		ProgramID:       programID,
+		MasterNftMint:   masterMint,
 		StateDir:        filepath.Join(base, "state"),
 		PublisherKey:    pubKeyPath,
 		OpTimeoutSecs:   60,

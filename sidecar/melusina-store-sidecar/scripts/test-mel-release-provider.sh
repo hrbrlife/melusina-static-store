@@ -25,15 +25,18 @@ printf '%s\n' '{"appId":"uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510","
 cat >"$TMP/bin/submit" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
-stage=no; out=; release=
+stage=no; out=; release=; program=
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --stage) stage=yes; shift ;;
     --receipt-out) out="$2"; shift 2 ;;
     --release) release="$2"; shift 2 ;;
+    --program-id) program="$2"; shift 2 ;;
     *) shift ;;
   esac
 done
+# submit compiles no registry: the provider must hand it the estate's.
+[[ -n "$program" && "$program" = "$MEL_PROGRAM_ID" ]] || { echo "fake submit: --program-id '$program' is not MEL_PROGRAM_ID" >&2; exit 64; }
 python3 - "$stage" "$out" "$release" <<'PY'
 import json,sys
 stage,out,release=sys.argv[1:]
@@ -70,6 +73,7 @@ export MEL_RELEASE_MASTER_NFT_MINT=B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe
 export MEL_RELEASE_STORE_LICENSE_MINT=6c1Y2gBQANEA8TX8Hqw9Kcnh7sJsEm6Zr1hZgGy6hUi3
 export MEL_RELEASE_STORE_DOMAIN=bazaar.melusina-os.org
 export MEL_RELEASE_STORE_URL=https://bazaar.melusina-os.org
+export MEL_PROGRAM_ID=7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD
 export MEL_RELEASE_STORE_PUBKEY="$TMP/store.pub"
 export MEL_RELEASE_RPC_URL=https://rpc.example.test
 export MEL_RELEASE_PUBLISHER_KEY=env:TEST_PUBLISHER

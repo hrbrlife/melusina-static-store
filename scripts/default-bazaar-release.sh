@@ -15,6 +15,13 @@
 # The runtime module contains only workstation paths to existing identity files;
 # it never copies a private key. App SPK keys remain package identity only. The
 # catalog is the sole selector for the shared Squads publishing authority.
+#
+# mel-release takes the Store, license registry, master mint and release
+# authority from an owner-signed estate profile (MEL_RELEASE_ESTATE_PROFILE and
+# its reviewed MEL_RELEASE_ESTATE_PROFILE_SHA256, from the caller's environment
+# or the runtime module). The values pinned below are the retiring default
+# Bazaar's; mel-release refuses each one that the profile does not repeat, so
+# this wrapper runs only with a signed profile for that estate.
 set -euo pipefail
 umask 077
 

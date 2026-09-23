@@ -8,19 +8,21 @@ import (
 	"testing"
 )
 
-const sampleCatalog = `# complete default-Bazaar catalog fixture
+// sampleCatalog describes the new-estate vector's Store and release authority
+// (estate_test.go), so it binds to that profile.
+const sampleCatalog = `# complete Store catalog fixture
 schema: melusina-bazaar-catalog/v1
-catalog_origin: https://bazaar.melusina-os.org
+catalog_origin: ` + testStoreOrigin + `
 expected_live_app_count: 3
 default_release_state: hold
 default_reconciliation_state: source-pinned
 installation_policy_version: 1
 release_squads_authority:
-  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
-  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
-  program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
-  threshold: 3
-  member_count: 4
+  multisig: ` + testSquadsMultisig + `
+  vault: ` + testSquadsVault + `
+  program_id: ` + testSquadsProgramID + `
+  threshold: 2
+  member_count: 3
 
 groups:
   money:
@@ -100,13 +102,13 @@ func TestLoadCatalogParsesApps(t *testing.T) {
 	if len(catalog.Apps) != 3 {
 		t.Fatalf("want 3 apps, got %d: %+v", len(catalog.Apps), catalog.Apps)
 	}
-	if catalog.Schema != bazaarCatalogSchema || catalog.Origin != defaultBazaarOrigin {
+	if catalog.Schema != bazaarCatalogSchema || catalog.Origin != testStoreOrigin {
 		t.Fatalf("catalog identity = schema %q origin %q", catalog.Schema, catalog.Origin)
 	}
 	if catalog.InstallationPolicyVersion != installationPolicyVersion {
 		t.Fatalf("installation policy version = %d, want %d", catalog.InstallationPolicyVersion, installationPolicyVersion)
 	}
-	if got := catalog.ReleaseSquadsAuthority; got.Multisig != "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V" || got.Vault != "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3" || got.ProgramID != "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf" || got.Threshold != defaultSquadsThreshold || got.MemberCount != defaultSquadsMemberCount {
+	if got := catalog.ReleaseSquadsAuthority; got != testSquadsAuthority() {
 		t.Fatalf("catalog shared Squads authority = %+v", got)
 	}
 
@@ -148,7 +150,7 @@ func TestLoadCatalogRejectsAppSpecificSquadsAuthority(t *testing.T) {
 	}
 	mutated := strings.Replace(string(content),
 		"        source_path: ccash_go_htmx\n",
-		"        source_path: ccash_go_htmx\n        squads_vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3\n", 1)
+		"        source_path: ccash_go_htmx\n        squads_vault: "+testSquadsVault+"\n", 1)
 	if err := os.WriteFile(path, []byte(mutated), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -157,10 +159,19 @@ func TestLoadCatalogRejectsAppSpecificSquadsAuthority(t *testing.T) {
 	}
 }
 
-func TestLoadCatalogRejectsAlternateSquadsQuorum(t *testing.T) {
+// The catalog loader compiles no authority: it accepts any complete,
+// well-formed release authority and leaves the choice to the estate profile
+// (TestBindCatalogRequiresTheEstateStoreAndAuthority). It spells out every
+// field; nothing is implied, including the quorum.
+func TestLoadCatalogRequiresACompleteWellFormedSquadsAuthority(t *testing.T) {
 	for name, change := range map[string]struct{ old, new string }{
-		"threshold":    {"  threshold: 3\n", "  threshold: 2\n"},
-		"member_count": {"  member_count: 4\n", "  member_count: 3\n"},
+		"no threshold":         {"  threshold: 2\n", ""},
+		"no member count":      {"  member_count: 3\n", ""},
+		"zero threshold":       {"  threshold: 2\n", "  threshold: 0\n"},
+		"quorum above members": {"  member_count: 3\n", "  member_count: 1\n"},
+		"no multisig":          {"  multisig: " + testSquadsMultisig + "\n", ""},
+		"malformed vault":      {"  vault: " + testSquadsVault + "\n", "  vault: not-a-public-key\n"},
+		"malformed program":    {"  program_id: " + testSquadsProgramID + "\n", "  program_id: 0x1234\n"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := writeCatalog(t)
@@ -168,21 +179,40 @@ func TestLoadCatalogRejectsAlternateSquadsQuorum(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(path, []byte(strings.Replace(string(content), change.old, change.new, 1)), 0o600); err != nil {
+			mutated := strings.Replace(string(content), change.old, change.new, 1)
+			if mutated == string(content) {
+				t.Fatal("mutation did not apply")
+			}
+			if err := os.WriteFile(path, []byte(mutated), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "release_squads_authority") {
-				t.Fatalf("LoadCatalog accepted alternate shared quorum: %v", err)
+				t.Fatalf("LoadCatalog accepted an incomplete or malformed authority: %v", err)
 			}
 		})
 	}
+	// Positive control: a different but well-formed authority loads; only the
+	// estate binding decides whether it may release.
+	path := writeCatalog(t)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(strings.Replace(string(content), "  vault: "+testSquadsVault+"\n", "  vault: 11111111111111111111111111111111\n", 1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadCatalog(path); err != nil {
+		t.Fatalf("well-formed alternate authority refused by the loader: %v", err)
+	}
 }
 
-func TestLoadCatalogRejectsAlternateSquadsCoordinates(t *testing.T) {
-	for name, change := range map[string]struct{ old, new string }{
-		"multisig":   {"  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V\n", "  multisig: 11111111111111111111111111111111\n"},
-		"vault":      {"  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3\n", "  vault: 11111111111111111111111111111111\n"},
-		"program_id": {"  program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf\n", "  program_id: 11111111111111111111111111111111\n"},
+func TestLoadCatalogRequiresABareHTTPSOrigin(t *testing.T) {
+	for name, origin := range map[string]string{
+		"plain http":     "http://bazaar.rehearsal.invalid",
+		"path":           testStoreOrigin + "/catalog",
+		"trailing slash": testStoreOrigin + "/",
+		"userinfo":       "https://operator@bazaar.rehearsal.invalid",
+		"absent":         "",
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := writeCatalog(t)
@@ -190,11 +220,15 @@ func TestLoadCatalogRejectsAlternateSquadsCoordinates(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(path, []byte(strings.Replace(string(content), change.old, change.new, 1)), 0o600); err != nil {
+			line := "catalog_origin: " + origin + "\n"
+			if origin == "" {
+				line = ""
+			}
+			if err := os.WriteFile(path, []byte(strings.Replace(string(content), "catalog_origin: "+testStoreOrigin+"\n", line, 1)), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "release_squads_authority") {
-				t.Fatalf("LoadCatalog accepted alternate shared %s: %v", name, err)
+			if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "catalog_origin") {
+				t.Fatalf("LoadCatalog accepted catalog_origin %q: %v", origin, err)
 			}
 		})
 	}
@@ -232,7 +266,7 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCatalog(real): %v", err)
 	}
-	if catalog.Schema != bazaarCatalogSchema || catalog.Origin != defaultBazaarOrigin {
+	if catalog.Schema != bazaarCatalogSchema || assertBareHTTPS(catalog.Origin) != nil {
 		t.Fatalf("real catalog identity = schema %q origin %q", catalog.Schema, catalog.Origin)
 	}
 	if len(catalog.Apps) != 35 || catalog.ExpectedLiveAppCount != 35 {

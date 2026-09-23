@@ -358,6 +358,79 @@ until a bootstrap release set packages and pins them. This ceremony does not
 choose a real domain or root Store hostname, create a chain foundation or
 sidecar identity, or establish that a new estate is ready.
 
+### Publishing the seed catalogue to an estate's Store
+
+The app release tools compile no Store. `cmd/mel-release`, the `cmd/submit`
+client it drives, and the providers it runs (`scripts/mel-release-provider.py`,
+`scripts/mel-release-catalog-provider.sh`, `scripts/mel-release-provider.sh`)
+carry no Store origin, domain or ID, license-registry program, master mint or
+release Squads authority of any estate. They take all of them from the same
+owner-signed `EstateProfileV1` the Store's own configuration is rendered from:
+
+| Required input | Value |
+|---|---|
+| `MEL_RELEASE_ESTATE_PROFILE` | absolute path to the owner-signed profile (a regular file) |
+| `MEL_RELEASE_ESTATE_PROFILE_SHA256` | the `profileSha256` that `estate-profile-review` prints, the pin the Store render input already carries |
+
+A profile that does not verify, or whose digest is not the pin, is refused
+before the catalog is read; so is a profile whose Store is not a root Store
+released by a Squads `store-release` role. From the verified profile
+`mel-release` derives:
+
+| Setting | Profile field |
+|---|---|
+| Store and bundle origin | `https://` + `store.rootDomain` |
+| Store serving domain | `store.rootDomain` |
+| Store ID | `store.storeId` |
+| license-registry program (`MEL_PROGRAM_ID`, `submit --program-id`) | `programs.license-registry.programId` |
+| ReleaseEntry master mint | `anchors.masterMint` |
+| release Squads authority | `roles.store-release` multisig, vault, threshold and member count, and `externalPrograms.squads-v4.programId` |
+
+It hands exactly these values to its provider, replacing whatever the
+caller's environment held. The older per-value variables
+(`MEL_RELEASE_STORE_URL`, `MEL_RELEASE_BUNDLE_ORIGIN`,
+`MEL_RELEASE_STORE_DOMAIN`, `MEL_RELEASE_STORE_ID`, `MEL_RELEASE_PROGRAM_ID`,
+`MEL_PROGRAM_ID`, `MEL_RELEASE_MASTER_NFT_MINT`) may still be set by a wrapper,
+but only to the profile's own value; any other value is refused by name.
+A provider build receipt whose `masterNftMint` is not the profile's is refused
+before anything is staged.
+
+The catalog manifest (`MEL_RELEASE_CONFIG`) is a snapshot of one Store. Its
+`catalog_origin` must be the profile's Store origin, and its
+`release_squads_authority` must spell out all five fields and equal the
+profile's release authority; there is no implied 3-of-4 quorum. The checked-in
+`fleet/bazaar-catalog.yaml` describes the retiring default Bazaar, so a new
+estate publishes with its own manifest.
+
+Still supplied by the operator, with no default: `MEL_RELEASE_STORE_LICENSE_MINT`
+(the Store's operating licence, which the profile does not carry),
+`MEL_RELEASE_STORE_PUBKEY`, `MEL_RELEASE_PUBLISHER_KEY` and
+`MEL_RELEASE_RPC_URL`. Used directly, `submit` requires `--program-id` in every
+mode (publish, `--verify-receipt`, `--request-out`); a publisher key minted
+under another registry is refused.
+
+`scripts/default-bazaar-release.sh` pins the retiring Bazaar's values. With
+these rules it runs only with a signed profile for that estate, which does not
+exist yet. Without a profile `mel-release` refuses with `missing required env:
+MEL_RELEASE_ESTATE_PROFILE, MEL_RELEASE_ESTATE_PROFILE_SHA256`; with another
+estate's profile it refuses the wrapper's pinned `MEL_RELEASE_STORE_URL` by
+name.
+
+`TestReleaseToolsSourceCarriesNoRetiringEstateValue` and
+`TestReleaseToolBinariesCarryNoRetiringEstateValue` scan these tools in both
+build flavors for every retiring-estate value (the retiring profile vector plus
+the catalog ledger's own Store and release authority): compiled Go string
+literals, every byte of the provider scripts, and the built programs as text,
+raw bytes, hex and base64. The single permitted exception is the standard
+(untagged) build's legacy runtime-contract `$schema` identifier, read from
+`internal/runtimecontract/schema_url_legacy.go`.
+
+That identifier is the remaining binding between these tools and a Store
+flavor. An estate-bootstrap Store requires `urn:melusina:runtime-contract:v1`,
+but the provider builds `submit` without build tags and copies each app's
+declared `$schema` unchanged, so a runtime-contract-bearing release does not
+yet validate against a new estate's Store.
+
 Pending (post-C2.3): reseller root-mirror worker hardening, sealed-v3
 submit-client (C3).
 

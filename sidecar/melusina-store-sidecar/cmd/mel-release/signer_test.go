@@ -122,7 +122,7 @@ printf 'source=%s\n' "$MEL_RELEASE_SOURCE_ROOT" >> "$MEL_CAPTURE"
 	} {
 		t.Setenv(key, "/credential/"+strings.ToLower(key))
 	}
-	p := newPreflightExecProvider(Config{SignerProvider: script, StoreURL: defaultBazaarOrigin, ConfigPath: "/catalog", StateDir: dir, OpTimeoutSecs: 1})
+	p := newPreflightExecProvider(Config{SignerProvider: script, StoreURL: testStoreOrigin, ConfigPath: "/catalog", StateDir: dir, OpTimeoutSecs: 1})
 	if err := p.Build("app", "1.2.3", filepath.Join(dir, "build.json")); err != nil {
 		t.Fatalf("preflight Build: %v", err)
 	}

@@ -135,6 +135,9 @@ func loadOrBuildPreflight(c Config, prov SignerProvider, app App, version string
 		if err := verifyAppHash(b); err != nil {
 			return buildReceipt{}, artifactRef{}, fmt.Errorf("preflight canonical app hash: %w", err)
 		}
+		if err := requireEstateMasterMint(c, b); err != nil {
+			return buildReceipt{}, artifactRef{}, fmt.Errorf("preflight build receipt: %w", err)
+		}
 		return b, ref, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return buildReceipt{}, artifactRef{}, fmt.Errorf("inspect preflight build receipt: %w", err)
@@ -151,6 +154,9 @@ func loadOrBuildPreflight(c Config, prov SignerProvider, app App, version string
 	}
 	if err := verifyAppHash(b); err != nil {
 		return buildReceipt{}, artifactRef{}, fmt.Errorf("preflight canonical app hash: %w", err)
+	}
+	if err := requireEstateMasterMint(c, b); err != nil {
+		return buildReceipt{}, artifactRef{}, fmt.Errorf("preflight build receipt: %w", err)
 	}
 	return b, ref, nil
 }

@@ -98,11 +98,18 @@ type componentSource struct {
 // files the release build compiles for the given build tags.
 func bootstrapComponentSources(t *testing.T, tags string) []componentSource {
 	t.Helper()
+	return compiledSources(t, tags, bootstrapComponentPackages...)
+}
+
+// compiledSources lists every Go and embedded file the toolchain compiles
+// into the given packages, dependencies and vendored code included.
+func compiledSources(t *testing.T, tags string, packages ...string) []componentSource {
+	t.Helper()
 	args := []string{"list", "-mod=vendor", "-deps", "-json"}
 	if tags != "" {
 		args = append(args, "-tags", tags)
 	}
-	cmd := exec.Command("go", append(args, bootstrapComponentPackages...)...)
+	cmd := exec.Command("go", append(args, packages...)...)
 	cmd.Env = append(os.Environ(), "GOFLAGS=", "GOWORK=off", "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

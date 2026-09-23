@@ -124,6 +124,9 @@ func ensureBuilt(c Config, prov SignerProvider, rec *walReceipt) error {
 	if err != nil {
 		return err
 	}
+	if err := requireEstateMasterMint(c, b); err != nil {
+		return err
+	}
 	// Local app_hash pre-check: recompute the on-chain app_hash from the staged
 	// {app.spk, metadata.json} and refuse if it disagrees with the build claim.
 	if err := verifyAppHash(b); err != nil {

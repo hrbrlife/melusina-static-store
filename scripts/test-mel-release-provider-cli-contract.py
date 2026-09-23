@@ -27,6 +27,21 @@ PRODUCTION_GOLDKEY_APP_ID = "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hv
 TEST_SQUADS_MULTISIG = "11111111111111111111111111111111"
 TEST_SQUADS_VAULT = "SysvarC1ock11111111111111111111111111111111"
 TEST_SQUADS_PROGRAM_ID = "Stake11111111111111111111111111111111111111"
+# The fictitious new estate of the Store's estate-profile vectors. The provider
+# compiles no Store; mel-release hands it these values from the signed profile,
+# and the tests hand them in the same way.
+TEST_STORE_ORIGIN = "https://bazaar.rehearsal.invalid"
+TEST_STORE_DOMAIN = "bazaar.rehearsal.invalid"
+TEST_PROGRAM_ID = "7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD"
+# The process default mirrors what mel-release passes to every provider run.
+os.environ["MEL_RELEASE_STORE_URL"] = TEST_STORE_ORIGIN
+
+
+def checked_in_catalog_env(config):
+    """Bind the checked-in ledger to the Store it itself names, as mel-release
+    would after checking that Store against the estate profile."""
+    own_origin = provider.yaml.safe_load(config.read_text(encoding="utf-8"))["catalog_origin"]
+    return {"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_STORE_URL": own_origin}
 
 
 def with_env(values):
@@ -518,8 +533,9 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
 def test_submit_binds_the_immutable_catalog_slot():
     old_bin = provider.ensure_bin
     old = with_env({
-        "MEL_RELEASE_STORE_URL": "https://bazaar.melusina-os.org",
+        "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN,
         "MEL_RELEASE_STORE_LICENSE_MINT": "license",
+        "MEL_PROGRAM_ID": TEST_PROGRAM_ID,
         "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
         "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
@@ -540,6 +556,9 @@ def test_submit_binds_the_immutable_catalog_slot():
     assert args[args.index("--repo") + 1] == "ccash_go_htmx", args
     assert args[args.index("--slug") + 1] == "popaye", args
     assert args[args.index("--runtime-contract") + 1] == "/tmp/RUNTIME-CONTRACT.json", args
+    assert args[args.index("--store") + 1] == TEST_STORE_ORIGIN, args
+    assert args[args.index("--domain") + 1] == TEST_STORE_DOMAIN, args
+    assert args[args.index("--program-id") + 1] == TEST_PROGRAM_ID, args
     assert "--stage" in args, args
     assert "--multipart" not in args, args
 
@@ -547,8 +566,9 @@ def test_submit_binds_the_immutable_catalog_slot():
 def test_submit_allows_only_explicit_multipart_transport():
     old_bin = provider.ensure_bin
     old = with_env({
-        "MEL_RELEASE_STORE_URL": "https://bazaar.melusina-os.org",
+        "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN,
         "MEL_RELEASE_STORE_LICENSE_MINT": "license",
+        "MEL_PROGRAM_ID": TEST_PROGRAM_ID,
         "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
         "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
@@ -596,8 +616,9 @@ def test_submit_socks_proxy_is_loopback_only_and_scoped():
 
 def test_submit_refuses_missing_catalog_slot():
     old = with_env({
-        "MEL_RELEASE_STORE_URL": "https://bazaar.melusina-os.org",
+        "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN,
         "MEL_RELEASE_STORE_LICENSE_MINT": "license",
+        "MEL_PROGRAM_ID": TEST_PROGRAM_ID,
         "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
         "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
@@ -613,27 +634,78 @@ def test_submit_refuses_missing_catalog_slot():
         restore_env(old)
 
 
-def test_submit_refuses_an_alternate_store_target():
-    old = with_env({
-        "MEL_RELEASE_STORE_URL": "https://example.test",
+def test_submit_refuses_a_missing_or_malformed_estate_target():
+    """No Store, domain or registry is compiled in; each is refused by name."""
+    base = {
+        "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN,
         "MEL_RELEASE_STORE_LICENSE_MINT": "license",
+        "MEL_PROGRAM_ID": TEST_PROGRAM_ID,
         "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
         "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
-    })
+    }
+    context = {
+        "spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json",
+        "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json", "releasePath": "/tmp/RELEASE.json",
+        "catalogSlot": {"developer": "hrbrlife", "repo": "repo", "slug": "app"},
+    }
+    old_bin = provider.ensure_bin
+    provider.ensure_bin = lambda *_: Path("/tmp/submit")
     try:
+        for change, expected in (
+            ({"MEL_RELEASE_STORE_URL": ""}, "MEL_RELEASE_STORE_URL is required"),
+            ({"MEL_RELEASE_STORE_URL": "http://bazaar.rehearsal.invalid"}, "MEL_RELEASE_STORE_URL must be a bare https origin"),
+            ({"MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN + "/catalog"}, "MEL_RELEASE_STORE_URL must be a bare https origin"),
+            ({"MEL_RELEASE_STORE_URL": "https://operator@bazaar.rehearsal.invalid"}, "MEL_RELEASE_STORE_URL must be a bare https origin"),
+            ({"MEL_RELEASE_STORE_DOMAIN": "store.example.test"}, "MEL_RELEASE_STORE_DOMAIN must equal the host of MEL_RELEASE_STORE_URL"),
+            ({"MEL_PROGRAM_ID": ""}, "MEL_PROGRAM_ID is required"),
+        ):
+            old = with_env({**base, **change})
+            try:
+                try:
+                    provider.submit_args(context, Path("/tmp/receipt.json"), stage_only=True)
+                except provider.ProviderError as exc:
+                    assert expected in str(exc), (change, exc)
+                else:
+                    raise AssertionError(f"provider accepted {change}")
+            finally:
+                restore_env(old)
+        # Positive control: another well-formed Store is the caller's (the
+        # estate profile's) decision, and a repeated domain is accepted.
+        old = with_env({**base, "MEL_RELEASE_STORE_URL": "https://store.example.test/", "MEL_RELEASE_STORE_DOMAIN": "store.example.test"})
         try:
-            provider.submit_args({
-                "spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json",
-                "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json", "releasePath": "/tmp/RELEASE.json",
-                "catalogSlot": {"developer": "hrbrlife", "repo": "repo", "slug": "app"},
-            }, Path("/tmp/receipt.json"), stage_only=True)
-        except provider.ProviderError as exc:
-            assert "MEL_RELEASE_STORE_URL must be" in str(exc), exc
-        else:
-            raise AssertionError("provider accepted an alternate Store target")
+            args = provider.submit_args(context, Path("/tmp/receipt.json"), stage_only=True)
+        finally:
+            restore_env(old)
+        assert args[args.index("--store") + 1] == "https://store.example.test", args
+        assert args[args.index("--domain") + 1] == "store.example.test", args
     finally:
-        restore_env(old)
+        provider.ensure_bin = old_bin
+
+
+def test_catalog_must_describe_the_bound_store():
+    with tempfile.TemporaryDirectory() as tmp:
+        config = Path(tmp) / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
+        old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN})
+        try:
+            assert provider.catalog_config()["catalog_origin"] == TEST_STORE_ORIGIN
+            os.environ["MEL_RELEASE_STORE_URL"] = "https://store.example.test"
+            try:
+                provider.catalog_config()
+            except provider.ProviderError as exc:
+                assert "catalog_origin must be the bound Store origin" in str(exc), exc
+            else:
+                raise AssertionError("a catalog for another Store was accepted")
+            del os.environ["MEL_RELEASE_STORE_URL"]
+            try:
+                provider.catalog_config()
+            except provider.ProviderError as exc:
+                assert "MEL_RELEASE_STORE_URL is required" in str(exc), exc
+            else:
+                raise AssertionError("a catalog was accepted with no bound Store")
+        finally:
+            restore_env(old)
 
 
 def test_release_helper_owns_index_and_atomic_approval_commands():
@@ -783,8 +855,9 @@ def test_promote_repairs_registered_resume_runtime_binding():
         write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
         old = with_env({
             "MEL_RELEASE_CONFIG": str(config),
-            "MEL_RELEASE_STORE_URL": "https://bazaar.melusina-os.org",
+            "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN,
             "MEL_RELEASE_STORE_LICENSE_MINT": "license",
+            "MEL_PROGRAM_ID": TEST_PROGRAM_ID,
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
             "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
             "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
@@ -909,7 +982,7 @@ def write_catalog_config(path, apps):
         normalized_apps[name] = normalized
     path.write_text(json.dumps({
         "schema": "melusina-bazaar-catalog/v1",
-        "catalog_origin": "https://bazaar.melusina-os.org",
+        "catalog_origin": TEST_STORE_ORIGIN,
         "expected_live_app_count": len(normalized_apps),
         "default_release_state": "ready",
         "default_reconciliation_state": "source-pinned",
@@ -1046,7 +1119,7 @@ def test_store_generation_template_pins_catalog_shared_squads_authority():
     """A first install must not omit or drift from the single release authority."""
     catalog = HERE.parent / "fleet" / "bazaar-catalog.yaml"
     template = HERE.parent / "deploy" / "store-generation" / "store.config.template.json"
-    old = with_env({"MEL_RELEASE_CONFIG": str(catalog)})
+    old = with_env(checked_in_catalog_env(catalog))
     try:
         expected = provider.require_shared_squads_authority()
     finally:
@@ -1774,7 +1847,7 @@ def test_catalog_requires_a_canonical_source_repository():
         config = Path(tmp) / "bazaar-catalog.yaml"
         base = {
             "schema": "melusina-bazaar-catalog/v1",
-            "catalog_origin": "https://bazaar.melusina-os.org",
+            "catalog_origin": TEST_STORE_ORIGIN,
             "expected_live_app_count": 1,
             "default_release_state": "hold",
             "default_reconciliation_state": "source-pinned",
@@ -1943,7 +2016,7 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
 
 def checked_in_catalog_entries():
     config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
-    old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+    old = with_env(checked_in_catalog_env(config))
     try:
         document = provider.catalog_config()
     finally:
@@ -2421,7 +2494,7 @@ def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
         app_id for app_id, app in entries.items()
         if app.get("release_state", "hold") != "ready"
     ]
-    old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+    old = with_env(checked_in_catalog_env(config))
     try:
         for app_id in held_app_ids:
             try:
@@ -3003,7 +3076,8 @@ if __name__ == "__main__":
     test_submit_allows_only_explicit_multipart_transport()
     test_submit_socks_proxy_is_loopback_only_and_scoped()
     test_submit_refuses_missing_catalog_slot()
-    test_submit_refuses_an_alternate_store_target()
+    test_submit_refuses_a_missing_or_malformed_estate_target()
+    test_catalog_must_describe_the_bound_store()
     test_release_helper_owns_index_and_atomic_approval_commands()
     test_promote_repairs_registered_resume_runtime_binding()
     test_release_entry_status_uses_zero_based_borsh_ordinals()

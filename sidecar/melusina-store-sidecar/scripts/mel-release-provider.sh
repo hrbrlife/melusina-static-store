@@ -399,7 +399,7 @@ PY
 
 stage() {
   need MEL_APP_ID; need MEL_NEW_APP_HASH; need MEL_RELEASE_HASH; need MEL_NEW_VERSION; need MEL_RELEASE_NONCE; need MEL_STAGE_RECEIPT_OUT
-  need MEL_RELEASE_MASTER_NFT_MINT; need MEL_RELEASE_STORE_LICENSE_MINT; need MEL_RELEASE_STORE_DOMAIN
+  need MEL_RELEASE_MASTER_NFT_MINT; need MEL_RELEASE_STORE_LICENSE_MINT; need MEL_RELEASE_STORE_DOMAIN; need MEL_PROGRAM_ID
   need MEL_RELEASE_STORE_URL; need MEL_RELEASE_STORE_PUBKEY; need MEL_RELEASE_RPC_URL; need MEL_RELEASE_PUBLISHER_KEY
   local state release
   state="$(app_dir_for)"
@@ -417,7 +417,8 @@ PY
   catalog_slot_args
   submit_cmd --store "$MEL_RELEASE_STORE_URL" --spk "$state/material/app.spk" --metadata "$state/material/metadata.json" \
     --release "$release" --publisher-key "$MEL_RELEASE_PUBLISHER_KEY" --store-pubkey "$MEL_RELEASE_STORE_PUBKEY" \
-    --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
+    --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --program-id "$MEL_PROGRAM_ID" \
+    --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
     "${SUBMIT_CATALOG_SLOT_ARGS[@]}" --stage --receipt-out "$MEL_STAGE_RECEIPT_OUT"
 }
 
@@ -508,7 +509,7 @@ PY
 
 promote() {
   need MEL_APP_ID; need MEL_NEW_APP_HASH; need MEL_RELEASE_HASH; need MEL_NEW_VERSION; need MEL_STAGE_ID; need MEL_PROMOTE_RECEIPT_OUT
-  need MEL_RELEASE_STORE_LICENSE_MINT; need MEL_RELEASE_STORE_DOMAIN
+  need MEL_RELEASE_STORE_LICENSE_MINT; need MEL_RELEASE_STORE_DOMAIN; need MEL_PROGRAM_ID
   need MEL_RELEASE_STORE_URL; need MEL_RELEASE_STORE_PUBKEY; need MEL_RELEASE_RPC_URL; need MEL_RELEASE_PUBLISHER_KEY
   local state release
   state="$(app_dir_for)"; release="$state/release.json"
@@ -518,7 +519,8 @@ promote() {
   catalog_slot_args
   submit_cmd --store "$MEL_RELEASE_STORE_URL" --spk "$state/material/app.spk" --metadata "$state/material/metadata.json" \
     --release "$release" --publisher-key "$MEL_RELEASE_PUBLISHER_KEY" --store-pubkey "$MEL_RELEASE_STORE_PUBKEY" \
-    --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
+    --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --program-id "$MEL_PROGRAM_ID" \
+    --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
     "${SUBMIT_CATALOG_SLOT_ARGS[@]}" --receipt-out "$MEL_PROMOTE_RECEIPT_OUT"
 }
 

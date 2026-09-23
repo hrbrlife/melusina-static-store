@@ -1,7 +1,10 @@
 package main
 
-// Loader for fleet/bazaar-catalog.yaml — the complete snapshot of the one
-// default Bazaar. It keys the rail on the IMMUTABLE appId (never a source-dir
+// Loader for a Bazaar catalog manifest (fleet/bazaar-catalog.yaml) — the
+// complete snapshot of one Store's catalog. The manifest names the Store it
+// describes (catalog_origin) and that Store's shared release authority; both
+// must equal the owner-signed estate profile before any release runs
+// (Config.bindCatalog). It keys the rail on the IMMUTABLE appId (never a source-dir
 // name, publish slug, or catalog display name, all three of which legitimately
 // differ). We deliberately do NOT pull in a general YAML dependency: the
 // manifest has one fixed, 2-space-indented shape (groups -> <group> -> apps ->
@@ -15,9 +18,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/hrbrlife/melusina-attest/pda"
 )
 
-// App is one default-Bazaar catalog entry. AppID is the sole identity;
+// App is one Store catalog entry. AppID is the sole identity;
 // Slug/CatalogName/SourcePath are descriptive and may all differ from each
 // other and from AppID. SourceCommit, when set, pins the source checkout that
 // the provider may build after the entry is explicitly ready.
@@ -47,8 +52,8 @@ type App struct {
 	ReleaseState           string
 }
 
-// Catalog is the closed, complete default-Bazaar snapshot. It is deliberately
-// not a local package scan or a smaller release subset.
+// Catalog is the closed, complete snapshot of one Store's catalog. It is
+// deliberately not a local package scan or a smaller release subset.
 type Catalog struct {
 	Schema                      string
 	Origin                      string
@@ -61,10 +66,11 @@ type Catalog struct {
 	Apps                        []App
 }
 
-// SquadsAuthority is the one publisher authority for the whole default Bazaar.
+// SquadsAuthority is the one publisher authority for the whole Store catalog.
 // It is deliberately catalog-level: apps retain their own SPK keys, but an app
 // may never choose a different multisig, vault, or Squads program at release
-// time.
+// time. Its value is the estate profile's roles.store-release authority and
+// externalPrograms.squads-v4 program; the catalog must repeat it exactly.
 type SquadsAuthority struct {
 	Multisig    string
 	Vault       string
@@ -84,13 +90,7 @@ const (
 	// same appId binding here so a catalog edit cannot point another app at it.
 	claudeMelusinaAppID                  = "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"
 	claudeMelusinaPackagedRuntimeProfile = "claude-melusina-packaged-runtime"
-	defaultBazaarOrigin                  = "https://bazaar.melusina-os.org"
 	bazaarCatalogSchema                  = "melusina-bazaar-catalog/v1"
-	defaultSquadsMultisig                = "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
-	defaultSquadsVault                   = "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3"
-	defaultSquadsProgramID               = "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
-	defaultSquadsThreshold               = 3
-	defaultSquadsMemberCount             = 4
 	installationPolicyVersion            = 1
 )
 
@@ -256,8 +256,10 @@ func LoadCatalog(path string) (*Catalog, error) {
 	if catalog.Schema != bazaarCatalogSchema {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s has schema %q, want %q", path, catalog.Schema, bazaarCatalogSchema)
 	}
-	if catalog.Origin != defaultBazaarOrigin {
-		return nil, fmt.Errorf("Bazaar catalog manifest %s has origin %q, want %q", path, catalog.Origin, defaultBazaarOrigin)
+	// The manifest's Store is checked against the estate profile when the
+	// catalog is bound; here it must at least be a bare https origin.
+	if err := assertBareHTTPS(catalog.Origin); err != nil || strings.HasSuffix(catalog.Origin, "/") {
+		return nil, fmt.Errorf("Bazaar catalog manifest %s has catalog_origin %q; want a bare https origin with no trailing slash", path, catalog.Origin)
 	}
 	if catalog.ExpectedLiveAppCount < 1 {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s has no expected_live_app_count", path)
@@ -279,16 +281,6 @@ func LoadCatalog(path string) (*Catalog, error) {
 	}
 	if len(catalog.Apps) != catalog.ExpectedLiveAppCount {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s names %d apps, want expected_live_app_count %d", path, len(catalog.Apps), catalog.ExpectedLiveAppCount)
-	}
-	// Older already-governed manifests did not spell out quorum fields. Their
-	// only supported meaning is the Bazaar-wide fixed 3-of-4 policy; normalize
-	// that representation before validation. Any explicit alternate value still
-	// fails closed below.
-	if catalog.ReleaseSquadsAuthority.Threshold == 0 {
-		catalog.ReleaseSquadsAuthority.Threshold = defaultSquadsThreshold
-	}
-	if catalog.ReleaseSquadsAuthority.MemberCount == 0 {
-		catalog.ReleaseSquadsAuthority.MemberCount = defaultSquadsMemberCount
 	}
 	// Fail closed on a malformed identity.
 	seen := map[string]bool{}
@@ -344,7 +336,9 @@ func LoadCatalog(path string) (*Catalog, error) {
 		}
 		seen[a.AppID] = true
 	}
-	if !validSquadsAuthority(catalog.ReleaseSquadsAuthority) {
+	// Every field is spelled out: there is no implied quorum or program. The
+	// values themselves must equal the estate profile (Config.bindCatalog).
+	if !wellFormedSquadsAuthority(catalog.ReleaseSquadsAuthority) {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s has an incomplete or malformed release_squads_authority", path)
 	}
 	return catalog, nil
@@ -550,12 +544,16 @@ func assignReleaseSquadsAuthority(authority *SquadsAuthority, key, value, path s
 	return nil
 }
 
-func validSquadsAuthority(authority SquadsAuthority) bool {
-	return authority.Multisig == defaultSquadsMultisig &&
-		authority.Vault == defaultSquadsVault &&
-		authority.ProgramID == defaultSquadsProgramID &&
-		authority.Threshold == defaultSquadsThreshold &&
-		authority.MemberCount == defaultSquadsMemberCount
+// wellFormedSquadsAuthority is structural only: three public keys and a
+// quorum no larger than its membership. Which authority is the right one is
+// the estate profile's decision, never a compiled value.
+func wellFormedSquadsAuthority(authority SquadsAuthority) bool {
+	for _, key := range []string{authority.Multisig, authority.Vault, authority.ProgramID} {
+		if _, err := pda.FromBase58(key); err != nil {
+			return false
+		}
+	}
+	return authority.Threshold >= 1 && authority.MemberCount >= authority.Threshold
 }
 
 func isLowerHexCommit(value string) bool {

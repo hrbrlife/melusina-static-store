@@ -6,15 +6,7 @@ import (
 )
 
 func TestLoadConfigRequiresStoreLicenseMint(t *testing.T) {
-	for key, value := range map[string]string{
-		"MEL_RELEASE_CONFIG":          "/tmp/bazaar-catalog.yaml",
-		"MEL_RELEASE_SIGNER_PROVIDER": "provider",
-		"MEL_RELEASE_STORE_URL":       defaultBazaarOrigin,
-		"MEL_RELEASE_STORE_PUBKEY":    "/tmp/store-pubkey.json",
-		"MEL_RELEASE_PUBLISHER_KEY":   "/tmp/publisher.key",
-	} {
-		t.Setenv(key, value)
-	}
+	setNewEstateReleaseEnv(t)
 	t.Setenv("MEL_RELEASE_STORE_LICENSE_MINT", "")
 
 	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "MEL_RELEASE_STORE_LICENSE_MINT") {
@@ -32,15 +24,9 @@ func TestLoadConfigRequiresStoreLicenseMint(t *testing.T) {
 }
 
 func TestLoadPreflightConfigDoesNotRequireOrRetainMutationCredentials(t *testing.T) {
-	for key, value := range map[string]string{
-		"MEL_RELEASE_CONFIG":             "/tmp/bazaar-catalog.yaml",
-		"MEL_RELEASE_SIGNER_PROVIDER":    "provider",
-		"MEL_RELEASE_STORE_URL":          defaultBazaarOrigin,
-		"MEL_RELEASE_STORE_PUBKEY":       "",
-		"MEL_RELEASE_STORE_LICENSE_MINT": "",
-		"MEL_RELEASE_PUBLISHER_KEY":      "",
-	} {
-		t.Setenv(key, value)
+	setNewEstateReleaseEnv(t)
+	for _, key := range []string{"MEL_RELEASE_STORE_PUBKEY", "MEL_RELEASE_STORE_LICENSE_MINT", "MEL_RELEASE_PUBLISHER_KEY"} {
+		t.Setenv(key, "")
 	}
 	preflight, err := loadPreflightConfig()
 	if err != nil {
@@ -54,33 +40,8 @@ func TestLoadPreflightConfigDoesNotRequireOrRetainMutationCredentials(t *testing
 	}
 }
 
-func TestLoadConfigRejectsAlternateStore(t *testing.T) {
-	for key, value := range map[string]string{
-		"MEL_RELEASE_CONFIG":             "/tmp/bazaar-catalog.yaml",
-		"MEL_RELEASE_SIGNER_PROVIDER":    "provider",
-		"MEL_RELEASE_STORE_URL":          "https://example.test",
-		"MEL_RELEASE_STORE_PUBKEY":       "/tmp/store-pubkey.json",
-		"MEL_RELEASE_STORE_LICENSE_MINT": "store-license-mint",
-		"MEL_RELEASE_PUBLISHER_KEY":      "/tmp/publisher.key",
-	} {
-		t.Setenv(key, value)
-	}
-	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "MEL_RELEASE_STORE_URL must be") {
-		t.Fatalf("loadConfig() alternate Store error = %v", err)
-	}
-}
-
 func TestLoadConfigHonorsBoundedOperationTimeout(t *testing.T) {
-	for key, value := range map[string]string{
-		"MEL_RELEASE_CONFIG":             "/tmp/bazaar-catalog.yaml",
-		"MEL_RELEASE_SIGNER_PROVIDER":    "provider",
-		"MEL_RELEASE_STORE_URL":          defaultBazaarOrigin,
-		"MEL_RELEASE_STORE_PUBKEY":       "/tmp/store-pubkey.json",
-		"MEL_RELEASE_STORE_LICENSE_MINT": "store-license-mint",
-		"MEL_RELEASE_PUBLISHER_KEY":      "/tmp/publisher.key",
-	} {
-		t.Setenv(key, value)
-	}
+	setNewEstateReleaseEnv(t)
 	t.Setenv("MEL_RELEASE_OP_TIMEOUT_SECS", "1800")
 	config, err := loadConfig()
 	if err != nil {
@@ -102,26 +63,5 @@ func TestExecProviderForwardsStoreLicenseMint(t *testing.T) {
 	provider := newExecProvider(Config{StoreLicenseMint: "store-license-mint"})
 	if provider.env["MEL_RELEASE_STORE_LICENSE_MINT"] != "store-license-mint" {
 		t.Fatalf("provider Store license mint = %q", provider.env["MEL_RELEASE_STORE_LICENSE_MINT"])
-	}
-}
-
-func TestConfigBindsOneCatalogPinnedSquadsAuthority(t *testing.T) {
-	authority := SquadsAuthority{
-		Multisig:    "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
-		Vault:       "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
-		ProgramID:   "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
-		Threshold:   defaultSquadsThreshold,
-		MemberCount: defaultSquadsMemberCount,
-	}
-	catalog := &Catalog{ReleaseSquadsAuthority: authority}
-	var cfg Config
-	if err := cfg.bindCatalogSquadsAuthority(catalog); err != nil {
-		t.Fatalf("bindCatalogSquadsAuthority: %v", err)
-	}
-	if cfg.SquadsMultisig != authority.Multisig || cfg.SquadsVault != authority.Vault || cfg.SquadsProgramID != authority.ProgramID || cfg.SquadsThreshold != authority.Threshold || cfg.SquadsMemberCount != authority.MemberCount {
-		t.Fatalf("bound authority = %+v, want %+v", cfg, authority)
-	}
-	if err := (&Config{SquadsVault: authority.Multisig}).bindCatalogSquadsAuthority(catalog); err == nil || !strings.Contains(err.Error(), "cannot override") {
-		t.Fatalf("foreign authority override error = %v", err)
 	}
 }

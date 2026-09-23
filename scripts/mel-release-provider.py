@@ -8,6 +8,14 @@ later approves/executes that proposal, promotes the staged bytes, and revokes
 only declared stale ReleaseEntries.  Signing paths are supplied by environment
 variables; key material is never read from the Bazaar catalog manifest or written to a
 receipt.
+
+The provider targets no Store of its own.  mel-release binds the Store origin
+and domain (MEL_RELEASE_STORE_URL, MEL_RELEASE_STORE_DOMAIN), the
+license-registry program (MEL_PROGRAM_ID), the master mint
+(MEL_RELEASE_MASTER_NFT_MINT) and the release Squads authority to the
+owner-signed estate profile before it starts this process, and the catalog
+manifest must name that same Store.  An absent or malformed value is refused
+by name; nothing falls back to a compiled Store, domain or program.
 """
 
 from __future__ import annotations
@@ -25,6 +33,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -69,7 +78,6 @@ CLAUDE_MELUSINA_PACKAGED_RUNTIME_PROFILE = "claude-melusina-packaged-runtime"
 # verifies it BEFORE handing the path over, so an operator cannot substitute
 # an unreviewed archive through the release environment.
 CLAUDE_MELUSINA_RUNTIME_PIN = "tools/claude-runtime.sha256"
-DEFAULT_BAZAAR_ORIGIN = "https://bazaar.melusina-os.org"
 BAZAAR_CATALOG_SCHEMA = "melusina-bazaar-catalog/v1"
 DEV_PUBLISH_BRANCH = "dev-publish"
 PREPUBLISH_BRANCH = "feat1-prepublish"
@@ -214,12 +222,37 @@ def env(name: str, *, required: bool = False, default: str = "") -> str:
     return value
 
 
-def default_bazaar_origin() -> str:
-    """Return the one authorized Store origin, rejecting any alternate target."""
+def store_origin() -> str:
+    """Return the estate Store origin mel-release bound to the signed profile.
+
+    There is no default Store.  The value must be a bare https origin; which
+    origin is right is decided by the owner-signed estate profile in
+    mel-release, never here.
+    """
     value = env("MEL_RELEASE_STORE_URL", required=True).rstrip("/")
-    if value != DEFAULT_BAZAAR_ORIGIN:
-        raise ProviderError(f"MEL_RELEASE_STORE_URL must be {DEFAULT_BAZAAR_ORIGIN}")
+    try:
+        parsed = urllib.parse.urlsplit(value)
+        parsed.port  # a malformed port raises ValueError
+    except ValueError as exc:
+        raise ProviderError("MEL_RELEASE_STORE_URL must be a bare https origin") from exc
+    if (parsed.scheme != "https" or not parsed.hostname or "@" in parsed.netloc or
+            parsed.path or "?" in value or "#" in value):
+        raise ProviderError("MEL_RELEASE_STORE_URL must be a bare https origin")
     return value
+
+
+def store_domain() -> str:
+    """Return the Store serving domain: the host of the bound Store origin.
+
+    The StoreOperatorAuthorization that vouches for a receipt is keyed by this
+    domain.  MEL_RELEASE_STORE_DOMAIN may repeat it; a different value is
+    refused rather than preferred.
+    """
+    host = urllib.parse.urlsplit(store_origin()).hostname or ""
+    supplied = env("MEL_RELEASE_STORE_DOMAIN")
+    if supplied and supplied != host:
+        raise ProviderError("MEL_RELEASE_STORE_DOMAIN must equal the host of MEL_RELEASE_STORE_URL")
+    return host
 
 
 def clean_abs(value: str, name: str) -> Path:
@@ -520,8 +553,8 @@ def catalog_config() -> dict[str, Any]:
         raise ProviderError("bazaar-catalog.yaml must be a mapping")
     if value.get("schema") != BAZAAR_CATALOG_SCHEMA:
         raise ProviderError("bazaar-catalog.yaml has an unsupported schema")
-    if value.get("catalog_origin") != DEFAULT_BAZAAR_ORIGIN:
-        raise ProviderError("bazaar-catalog.yaml must target the default Bazaar")
+    if value.get("catalog_origin") != store_origin():
+        raise ProviderError("bazaar-catalog.yaml catalog_origin must be the bound Store origin MEL_RELEASE_STORE_URL")
     parse_shared_squads_authority(value)
     expected_count = value.get("expected_live_app_count")
     if not isinstance(expected_count, int) or expected_count < 1:
@@ -1908,7 +1941,7 @@ def ensure_bin(name: str, command: str) -> Path:
 
 def current_pointer(app_id: str) -> dict[str, Any] | None:
     """Read a served pointer with the catalog rail's bounded acceptance window."""
-    url = default_bazaar_origin() + f"/apps/pointers/{app_id}.json"
+    url = store_origin() + f"/apps/pointers/{app_id}.json"
     try:
         with urllib.request.urlopen(url, timeout=STORE_READ_TIMEOUT_SECONDS) as response:
             value = json.loads(response.read())
@@ -2303,12 +2336,11 @@ def bind_runtime_contract_to_release(context: dict[str, Any]) -> Path:
 
 
 def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool) -> list[str]:
-    store_url = default_bazaar_origin()
+    store_url = store_origin()
+    domain = store_domain()
     store_license = env("MEL_RELEASE_STORE_LICENSE_MINT", required=True)
+    program_id = env("MEL_PROGRAM_ID", required=True)
     rpc = env("MEL_RELEASE_RPC_URL", required=True)
-    domain = env("MEL_RELEASE_STORE_DOMAIN", default="bazaar.melusina-os.org")
-    if domain != "bazaar.melusina-os.org":
-        raise ProviderError("MEL_RELEASE_STORE_DOMAIN must be bazaar.melusina-os.org")
     slot = context.get("catalogSlot")
     if not isinstance(slot, dict) or not all(isinstance(slot.get(k), str) and slot[k].strip() for k in ("developer", "repo", "slug")):
         raise ProviderError("provider context lacks immutable catalogSlot")
@@ -2321,6 +2353,7 @@ def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool)
         "--release", str(context["releasePath"]), "--publisher-key", env("MEL_RELEASE_PUBLISHER_KEY", required=True),
         "--runtime-contract", str(context["runtimeContractPath"]),
         "--store-pubkey", env("MEL_RELEASE_STORE_PUBKEY", required=True), "--license-mint", store_license,
+        "--program-id", program_id,
         "--domain", domain, "--rpc-url", rpc, "--timeout", submit_timeout(), "--receipt-out", str(receipt_out),
         "--developer", slot["developer"], "--repo", slot["repo"], "--slug", slot["slug"],
     ]

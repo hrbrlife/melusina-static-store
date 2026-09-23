@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -112,13 +113,19 @@ func newExecProvider(c Config) *execProvider {
 			"MEL_RELEASE_RPC_URL":            c.RPCURL,
 			"MEL_RELEASE_STATE_DIR":          c.StateDir,
 			"MEL_RELEASE_STORE_URL":          c.StoreURL,
+			"MEL_RELEASE_STORE_DOMAIN":       c.StoreDomain,
 			"MEL_RELEASE_STORE_PUBKEY":       c.StorePubkey,
 			"MEL_RELEASE_STORE_LICENSE_MINT": c.StoreLicenseMint,
 			"MEL_RELEASE_PUBLISHER_KEY":      c.PublisherKey,
 			"MEL_RELEASE_SQUADS_MULTISIG":    c.SquadsMultisig,
 			"MEL_RELEASE_SQUADS_VAULT":       c.SquadsVault,
 			"MEL_RELEASE_SQUADS_PROGRAM_ID":  c.SquadsProgramID,
-			"MEL_PROGRAM_ID":                 c.ProgramID,
+			// Estate-derived values replace whatever the caller's environment
+			// held, so the provider sees exactly the profile's estate.
+			"MEL_RELEASE_SQUADS_THRESHOLD":    strconv.Itoa(c.SquadsThreshold),
+			"MEL_RELEASE_SQUADS_MEMBER_COUNT": strconv.Itoa(c.SquadsMemberCount),
+			"MEL_RELEASE_MASTER_NFT_MINT":     c.MasterNftMint,
+			"MEL_PROGRAM_ID":                  c.ProgramID,
 		},
 		timeout: time.Duration(c.OpTimeoutSecs) * time.Second,
 	}

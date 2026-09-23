@@ -2,28 +2,26 @@
   "schema": "melusina-source-selection-v1",
   "appId": "q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360",
   "sourceRepository": "https://github.com/hrbrlife/melusina-bureau-paint-app",
-  "sourceCommit": "0fe0a04e83fe59d62f4aef6a4a3047acd04af813",
+  "sourceCommit": "a645df2141877dc9269d31d110011d14c134ed23",
   "selectionMethod": "direct-dev",
   "mainBaselineRelation": "ancestor",
-  "decisionSummary": "The Aug 20 dev-publish v23/2.0.30 source is canonical. It is the direct forward release-identity cut from the reviewed rich miniPaint/Jinn peer line: it retains the tested scoped read-only GrainContext integration for Jinn, the full PowerBox-gated image editor, and candidate-bound metadata while making the signed package, runtime contract, and catalog name agree on Bureau Paint. It intentionally omits the Store-gallery screenshot declaration until the governed transport carries its bytes, while retaining the embedded in-app image. Main is its reviewed stable ancestor; the divergent metadata and historical publish/codex refs are old package or release lines and contain no newer runnable Paint source.",
+  "decisionSummary": "The Aug 21 dev-publish v24/2.0.31 source is canonical. It is the direct forward fix from the reviewed rich miniPaint/Jinn peer line: it removes the unavailable sandbox mkdir invocation that prevented a new Paint grain from starting, retains the scoped read-only GrainContext integration for Jinn and the full PowerBox-gated image editor, and keeps candidate-bound metadata aligned with the signed Bureau Paint identity. Main remains its reviewed stable ancestor; the divergent metadata and historical publish/codex refs are older package or release lines with no newer runnable Paint source.",
   "internalControls": {
     "status": "passed",
     "checks": [
-      "fresh detached checkout at the selected source commit with the recorded spkmodule revision",
-      "complete current remote-head snapshot reviewed",
-      "make release-inputs mutation-test and make test (234 passed)",
-      "go test ./internal/capabilities ./internal/service in grain/go/grainlinkd",
-      "two independent commit-level candidate packages matched SHA-256 e7d6e4398713f9f62cc4d7ebec453f3bb3a050aa6b3d9da79eb17ef37c00f7fb and packageId e7d6e4398713f9f62cc4d7ebec453f3b",
-      "make verify-candidate-metadata verified the generated catalog metadata against the exact SPK",
-      "the selected source's catalog metadata, package manifest, and runtime contract all use the requested public name Bureau Paint with an empty Store-gallery declaration",
-      "the governed candidate bound that exact SPK to AppHash 69f02122328b62843f277b41613131880024dd899b81ec76be5160628619340f and release hash 860c49ce0414296b39fa29189fe4a3dd91e23edc7e5d84eaaf178e00dcf4bcd7",
-      "the shared 3-of-4 Squads authority approved the candidate; the public 32-app catalog and Chromium-rendered Bazaar card serve Bureau Paint 2.0.30 with packageId e7d6e4398713f9f62cc4d7ebec453f3b"
+      "complete current remote-head snapshot reviewed; only dev-publish advanced from the prior receipt",
+      "clean tracked dev-publish source at the selected commit passed release-inputs and the sandbox-launcher mutation control",
+      "make build and make test passed, including 234 Python and integration tests",
+      "two independent selected-commit candidates matched SHA-256 7d49c2057d684248ecd1172033ba6b9ab5801ab1d57e285bf6ae34988cfb3a57 and packageId 7d49c2057d684248ecd1172033ba6b9a",
+      "make verify-candidate-metadata verified the generated 2.0.31 catalog metadata against the exact SPK",
+      "the selected source metadata and package manifest agree on Bureau Paint v24/2.0.31 with an empty Store-gallery declaration",
+      "the new source removes the unavailable sandbox mkdir command that caused first-grain exit 127; governed publication and clean-tenant runtime retest remain required"
     ]
   },
   "reviewedRefs": [
     {"ref": "refs/heads/codex/canonical-release-paint-20260713", "commit": "c9081052f14776cf15bb37e73dc0c3f98149b5ef", "outcome": "archive"},
     {"ref": "refs/heads/cut/paint-bureau-v21-greenfield-20260814", "commit": "dcc39eee32d4b49427a7d98b69ac124851be675a", "outcome": "archive"},
-    {"ref": "refs/heads/dev-publish", "commit": "0fe0a04e83fe59d62f4aef6a4a3047acd04af813", "outcome": "selected"},
+    {"ref": "refs/heads/dev-publish", "commit": "a645df2141877dc9269d31d110011d14c134ed23", "outcome": "selected"},
     {"ref": "refs/heads/feat/greenfield-ready", "commit": "258e4ac2a435b8906f0e930a39650fc8ec0a9240", "outcome": "archive"},
     {"ref": "refs/heads/fix/metadata-defects-2026-08-05", "commit": "ab5694fb7be8076cdc935022133f5638a7be785b", "outcome": "archive"},
     {"ref": "refs/heads/main", "commit": "b7dd188638043e5f8a8d9646d60fe312e572de97", "outcome": "baseline"},

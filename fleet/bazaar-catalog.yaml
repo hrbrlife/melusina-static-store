@@ -565,15 +565,14 @@ groups:
       paint-bureau:
         appId: q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360
         source_path: paint-bureau
-        # The current dev-publish v23/2.0.30 source adds Paint's native,
-        # permission-scoped GrainContext provider for Jinn's generic peer
-        # attachment, removes stale offline release state, and validates
-        # candidate-bound catalog metadata from the exact SPK.
-        source_commit: 0fe0a04e83fe59d62f4aef6a4a3047acd04af813
+        # The current dev-publish v24/2.0.31 source fixes first-grain startup
+        # in the real Sandstorm sandbox while retaining Paint's native,
+        # permission-scoped GrainContext provider and candidate-bound metadata.
+        source_commit: a645df2141877dc9269d31d110011d14c134ed23
         reconciliation_state: source-pinned
         publish_slug: paint-bureau
         catalog_name: Bureau Paint
-        live_version: 2.0.30
+        live_version: 2.0.31
         release_state: ready
         source_selection_state: direct-dev-verified
         source_selection_receipt: prepublish-selections/q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360.json

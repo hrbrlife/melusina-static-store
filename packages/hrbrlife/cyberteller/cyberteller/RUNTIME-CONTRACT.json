@@ -1,0 +1,51 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "schema": "melusina-app-runtime-contract-v1",
+  "app": {
+    "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
+    "version": "0.1.89",
+    "spkSha256": "fe9e4287cb127fb67a79f86fba544ada5982d6e91ff2ae5c96b0ef1fb541f13e",
+    "appHash": "fffe1650310accb8695f06ffe5ef2a76373a9540d8668a0dc97634faac19f62a"
+  },
+  "sidecars": [],
+  "launchProbe": {
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Install this release from the Melusina store, create a new CyberTeller grain through the normal app action, and open it as the signed-in grain owner.",
+        "expectedResult": "The grain launches and redirects to the page headed \"Admin Dashboard\" with the subheading \"Operations console \u00b7 crypto payment processor\". It renders a \"First-launch setup\" card marked \"3 steps\" and does not show a blank page, process-failure curtain, or an operational payment console."
+      },
+      {
+        "action": "Read the first-launch card without submitting any form or granting any capability.",
+        "expectedResult": "Step 1 is headed \"Connect the admin Solana wallet\", is marked \"Required\", and offers an \"Admin wallet public key (base58)\" field plus \"Build challenge to sign\". The page explains that onboarding uses a proof-of-possession signature from the offline signer and calls POST /admin/onboard with a real Ed25519 signature. No pre-filled admin identity or signature is present."
+      },
+      {
+        "action": "Inspect steps 2 and 3 and the payment-slips section, still without clicking or entering data.",
+        "expectedResult": "Step 2 is \"Public static publishing URL\" and is marked \"Waiting on step 1\"; its setup controls are disabled. Step 3 is \"Live-status web API endpoint\" and is marked \"Waiting on step 2\"; its save control is disabled. The empty payment-slips section says \"First-launch setup is incomplete.\" and states that slip intake is disabled until the admin wallet, static publisher URL, and live-status API endpoint are wired."
+      },
+      {
+        "action": "Open the Connections navigation item without granting ConfigGate, AdminGate, or any sidecar slot.",
+        "expectedResult": "The page headed \"Connections\" renders the real capability-grant surface. It truthfully reports the unconfigured state and offers the product controls for granting configuration and AdminGate capabilities; merely viewing the page creates no sturdyref, sidecar lease, invoice, or external request."
+      }
+    ],
+    "expectedResult": "A fresh CyberTeller grain launches into its fail-closed, three-step owner setup flow. It requires a real signed admin-wallet onboarding before static publishing can be configured, requires static publishing before the live-status endpoint can be saved, and keeps payment-slip intake disabled while those prerequisites are absent. The bounded probe performs no onboarding, capability grant, sidecar call, invoice creation, settlement, or money movement."
+  },
+  "fixtures": [
+    {
+      "name": "Signed-in grain owner",
+      "purpose": "Prove the release launches through the normal account-owned Sandstorm surface and exposes only the product's real first-launch controls.",
+      "setup": "Open the new grain from a signed-in Melusina owner account. Do not use an anonymous share link, paste an admin key, or invoke a shell method directly."
+    },
+    {
+      "name": "Intentionally unconfigured fresh grain",
+      "purpose": "Prove the release reports its dependency ordering honestly and does not present payment intake as ready before its signed admin and platform capability setup exists.",
+      "setup": "Do not onboard an admin wallet, set up static publishing, save a web API endpoint, claim ConfigGate or AdminGate, create an invoice, or contact any sidecar. This launch probe is intentionally bounded before every external effect."
+    }
+  ],
+  "cleanup": {
+    "steps": [
+      "Move only the temporary acceptance-test grain to Sandstorm Trash through its visible grain menu after the probe completes.",
+      "No admin identity, static publisher, web API endpoint, capability sturdyref, invoice, audit event, chain transaction, or money state was created by this read-only probe."
+    ]
+  }
+}

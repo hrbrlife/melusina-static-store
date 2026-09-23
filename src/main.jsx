@@ -74,6 +74,9 @@ const timeAgo = (v) => {
 };
 
 const imgUrl = (id) => (id ? `${APP_INDEX_BASE}/images/${id}` : null);
+const packageIconUrl = (appId) => (
+  /^[a-z0-9]{52}$/.test(appId || "") ? `${APP_INDEX_BASE}/app-icons/${appId}.png` : null
+);
 
 const screenshotUrl = (appId, shot) => {
   const file = typeof shot === "string" ? shot : shot.url || "";
@@ -1023,28 +1026,25 @@ function Badge({ children, neon }) {
 }
 
 function AppIcon({ app, size = 48 }) {
-  const [err, setErr] = useState(false);
-  const src = imgUrl(app.imageId);
-  if (!src || err) {
-    const letter = (app.name || "?")[0].toUpperCase();
-    return (
-      <div style={{
-        width: size, height: size, borderRadius: T.radiusSm,
-        background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
-        border: `1px solid ${T.cyan}44`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: size * .42, fontWeight: 700,
-        fontFamily: "'Orbitron', sans-serif",
-        color: T.cyan, flexShrink: 0,
-        textShadow: `0 0 10px ${T.cyan}66`,
-        boxShadow: `0 0 15px ${T.accentGlow}`,
-      }}>
-        {letter}
-      </div>
-    );
-  }
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const catalogSrc = imgUrl(app.imageId);
+  const packageSrc = packageIconUrl(app.appId);
+  // First prefer the catalog's explicitly published image. Older rows did not
+  // have one, so the governed UI carries a hash-locked app-grid icon extracted
+  // from that row's exact signed SPK. The Bazaar mark is only the final, honest
+  // fallback; no app-name letters and no retired/static external origin.
+  const sources = [catalogSrc, packageSrc, LOGO_URL].filter(Boolean);
+  const src = sources[Math.min(sourceIndex, sources.length - 1)];
+  const isFallback = src !== catalogSrc;
+
+  useEffect(() => setSourceIndex(0), [app.appId, app.imageId]);
   return (
-    <img src={src} alt="" loading="lazy" onError={() => setErr(true)}
+    <img
+      src={src}
+      alt={isFallback ? `${app.name || "App"} — icon pending publication` : `${app.name || "App"} icon`}
+      loading="lazy"
+      onError={() => setSourceIndex((index) => Math.min(index + 1, sources.length - 1))}
+      title={isFallback ? "Package-derived icon from this release's signed SPK." : undefined}
       style={{
         width: size, height: size, borderRadius: T.radiusSm,
         objectFit: "contain", background: T.bgAlt, flexShrink: 0,
@@ -1122,7 +1122,12 @@ function CardSlideshow({ app, shots }) {
 function AppCard({ app, onSelect, onInstall }) {
   const [hov, setHov] = useState(false);
   const shots = (app.screenshots || []).slice(0, 5);
-  const updatedAgo = timeAgo(app.updatedAt || app.createdAt);
+  // This is the release signature time supplied by the live, signed catalog.
+  // Do not make an old release look current by treating a catalog refresh as an
+  // app update.  Showing both forms makes the provenance visible at a glance.
+  const signedAt = app.updatedAt || app.createdAt;
+  const updatedAgo = timeAgo(signedAt);
+  const signedDate = fmtDate(signedAt);
   const runtime = runtimeContractInfo(app);
 
   return (
@@ -1182,7 +1187,9 @@ function AppCard({ app, onSelect, onInstall }) {
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
             <span>v{app.version || app.versionNumber || '—'}</span>
-            {updatedAgo && <span style={{ opacity: 0.7 }}>· updated {updatedAgo}</span>}
+            {updatedAgo && <span style={{ opacity: 0.7 }} title={`Signed release: ${signedDate}`}>
+              · signed {signedDate} ({updatedAgo})
+            </span>}
           </div>
           {(app.shortDescription || app.summary) && (
             <p style={{
@@ -2107,8 +2114,11 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                 </span>
               )}
               {timeAgo(app.updatedAt || app.createdAt) && (
-                <span style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}>
-                  {'\u00b7'} updated {timeAgo(app.updatedAt || app.createdAt)}
+                <span
+                  title={`Signed release: ${fmtDate(app.updatedAt || app.createdAt)}`}
+                  style={{ fontSize: 11, color: T.textDim, fontFamily: "'JetBrains Mono', monospace" }}
+                >
+                  {'\u00b7'} signed {fmtDate(app.updatedAt || app.createdAt)} ({timeAgo(app.updatedAt || app.createdAt)})
                 </span>
               )}
               {app.author?.name && (

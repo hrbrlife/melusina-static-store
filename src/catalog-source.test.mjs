@@ -60,6 +60,16 @@ test("the app never seeds its catalog from a bundled import", () => {
   );
 });
 
+test("missing catalog icons use the governed Bazaar mark, never an app-name letter", () => {
+  const main = readFileSync(join(SRC, "main.jsx"), "utf8");
+  assert.ok(main.includes("const LOGO_URL = `${APP_INDEX_BASE}/icons/melulogo-cyan.svg`;"),
+    "the governed embedded Bazaar icon fallback is missing");
+  assert.ok(main.includes("const src = catalogSrc && !catalogImageFailed ? catalogSrc : LOGO_URL;"),
+    "AppIcon must fall back only to the governed Bazaar mark when a catalog image is absent");
+  assert.ok(!main.includes('const letter = (app.name || "?")[0].toUpperCase();'),
+    "AppIcon still fabricates an app-name letter instead of reporting a missing published icon");
+});
+
 test("the store generator refuses to rebuild a baked catalog", () => {
   const build = readFileSync(join(ROOT, "build-store.sh"), "utf8");
   assert.ok(

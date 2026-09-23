@@ -14,8 +14,28 @@ import (
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
+
+// controllerProfileVectors holds the fictitious new estate the chain-gate
+// tests are bound to (owner and publisher keys derived from public labels).
+const controllerProfileVectors = "../../testdata/estate-profile-vectors.json"
+
+// estateBoundConfig is a chain-gate config pinned to p: the program and master
+// mint are the profile's, and the profile file and its digest are pinned as a
+// production config pins them. The RPC is unroutable until a test replaces it.
+func estateBoundConfig(t *testing.T, p releasetest.Profile) ControllerConfig {
+	t.Helper()
+	return ControllerConfig{
+		ProgramID:           releasetest.ProgramID(t, p.Profile),
+		MasterNftMint:       p.Profile.Anchors.MasterMint,
+		LicenseNftMint:      randPubkeyB58(t),
+		SolanaRPCURL:        "http://127.0.0.1:1/unroutable",
+		EstateProfilePath:   releasetest.Write(t, p),
+		EstateProfileSha256: p.SHA256,
+	}
+}
 
 func randPubkeyB58(t *testing.T) string {
 	t.Helper()
@@ -110,10 +130,6 @@ func (r *tierGateRPC) FetchGlobalSidecarBinaryHash(context.Context, string) ([32
 
 func (*tierGateRPC) FetchGlobalSidecarStatus(context.Context, string) (verify.ApprovalStatus, error) {
 	return verify.ApprovalStatusActive, nil
-}
-
-func (r *tierGateRPC) FetchInstallerReleaseEntry(context.Context, string) ([32]byte, verify.AttestationStatus, error) {
-	return r.want, verify.AttestationStatusActive, nil
 }
 
 func (r *tierGateRPC) FetchLicenseEntrySummary(context.Context, string) (verify.LicenseEntrySummary, error) {
@@ -287,12 +303,7 @@ func mustPubkey(t *testing.T, b58 string) primitives.Pubkey {
 // in the local derive-and-assert phase, before any account was fetched.
 func newOfflineGate(t *testing.T) (*solanaChainGate, ControllerConfig) {
 	t.Helper()
-	cfg := ControllerConfig{
-		ProgramID:      randPubkeyB58(t),
-		MasterNftMint:  randPubkeyB58(t),
-		LicenseNftMint: randPubkeyB58(t),
-		SolanaRPCURL:   "http://127.0.0.1:1/unroutable",
-	}
+	cfg := estateBoundConfig(t, releasetest.LoadProfileVector(t, controllerProfileVectors, releasetest.NewEstateVector))
 	g, err := newSolanaChainGate(cfg)
 	if err != nil {
 		t.Fatalf("construct chain gate: %v", err)

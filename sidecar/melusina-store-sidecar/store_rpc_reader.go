@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -166,14 +167,6 @@ func (c *rpcFailoverChainReader) FetchBlacklistEntry(ctx context.Context, addr s
 		return err
 	})
 	return present, entryType, err
-}
-
-func (c *rpcFailoverChainReader) FetchInstallerReleaseEntry(ctx context.Context, addr string) (installerHash [32]byte, status verify.AttestationStatus, err error) {
-	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
-		installerHash, status, err = reader.FetchInstallerReleaseEntry(ctx, addr)
-		return err
-	})
-	return installerHash, status, err
 }
 
 func (c *rpcFailoverChainReader) FetchInstallerReleaseEntryMeta(ctx context.Context, addr string) (meta installerReleaseMeta, err error) {
@@ -448,40 +441,15 @@ func readReleaseEntryMeta(data []byte) (releaseEntryMeta, error) {
 	return meta, nil
 }
 
+// readInstallerReleaseEntryMeta decodes the exact K3 account layout
+// (internal/installerrelease): discriminator, LEN bytes, every field. The
+// pre-K3 layout, which carried no publisher binding, is refused by size.
 func readInstallerReleaseEntryMeta(data []byte) (installerReleaseMeta, error) {
-	var meta installerReleaseMeta
-	offset := verify.AccountDiscriminatorLen
-	var err error
-	if offset, err = skipFixed(data, offset, 32, "installer_release", "master_nft_mint"); err != nil {
-		return meta, err
-	}
-	if offset, err = copyFixed(data, offset, meta.InstallerHash[:], "installer_release", "installer_hash"); err != nil {
-		return meta, err
-	}
-	version, next, err := readBorshStringLocal(data, offset)
+	entry, err := installerrelease.Decode(data)
 	if err != nil {
-		return meta, fmt.Errorf("installer_release: version: %w", err)
+		return installerReleaseMeta{}, err
 	}
-	meta.Version = version
-	offset = next
-	for _, step := range []struct {
-		name string
-		n    int
-	}{
-		{"publisher_squads_vault", 32},
-		{"registered_by", 32},
-		{"registered_at", 8},
-	} {
-		if offset, err = skipFixed(data, offset, step.n, "installer_release", step.name); err != nil {
-			return meta, err
-		}
-	}
-	status, err := verify.ReadAttestationStatusByte(data, offset)
-	if err != nil {
-		return meta, err
-	}
-	meta.Status = status
-	return meta, nil
+	return installerReleaseMeta{Entry: entry}, nil
 }
 
 // readStoreReleaseListingMeta decodes the exact current Anchor/Borsh account

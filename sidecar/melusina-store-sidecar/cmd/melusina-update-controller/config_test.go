@@ -35,6 +35,8 @@ func validConfigMap(t *testing.T, stateDir string) map[string]any {
 		"solanaRpcUrl":           "https://devnet.example/rpc",
 		"stateDir":               stateDir,
 		"receiptDir":             filepath.Join(stateDir, "receipts"),
+		"estateProfilePath":      filepath.Join(stateDir, "estate-profile.json"),
+		"estateProfileSha256":    strings.Repeat("0a", 32),
 	}
 }
 
@@ -154,5 +156,35 @@ func TestLoadControllerConfigRejectsReceiptDirMismatch(t *testing.T) {
 	if _, err := loadControllerConfigOwned(path, uint32(os.Getuid())); err == nil ||
 		!strings.Contains(err.Error(), "receiptDir must be") {
 		t.Fatalf("receiptDir divergence not rejected: %v", err)
+	}
+}
+
+// The installer-release gate has no trust without the pinned estate profile,
+// so a config that does not name both refuses to load, by field.
+func TestLoadControllerConfigRequiresThePinnedEstateProfile(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		edit func(map[string]any)
+		want string
+	}{
+		{"no profile path", func(m map[string]any) { delete(m, "estateProfilePath") }, `"estateProfilePath" is empty`},
+		{"no profile pin", func(m map[string]any) { delete(m, "estateProfileSha256") }, `"estateProfileSha256" is empty`},
+		{"relative profile path", func(m map[string]any) { m["estateProfilePath"] = "estate-profile.json" }, `"estateProfilePath" must be an absolute clean path`},
+		{"uppercase pin", func(m map[string]any) { m["estateProfileSha256"] = strings.Repeat("0A", 32) }, `"estateProfileSha256" must be the 64-character lowercase profileSha256`},
+		{"short pin", func(m map[string]any) { m["estateProfileSha256"] = strings.Repeat("0a", 31) }, `"estateProfileSha256" must be the 64-character lowercase profileSha256`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			m := validConfigMap(t, dir)
+			c.edit(m)
+			body, err := json.Marshal(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := writeConfigFile(t, dir, body, 0o600)
+			if _, err := loadControllerConfigOwned(path, uint32(os.Getuid())); err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("got %v, want %q", err, c.want)
+			}
+		})
 	}
 }

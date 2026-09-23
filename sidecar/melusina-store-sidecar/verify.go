@@ -89,13 +89,13 @@ type chainReader interface {
 	FetchReleaseEntryAppID(ctx context.Context, addrB58 string) (appID [32]byte, err error)
 	FetchStoreOperatorAuthz(ctx context.Context, addrB58 string) (status verify.AuthorizationStatus, storeAuthority verify.Pubkey, allowedTierMask uint8, isRoot bool, storeDomainHash [32]byte, err error)
 	FetchBlacklistEntry(ctx context.Context, addrB58 string) (present bool, entryType verify.BlacklistType, err error)
-	// FetchInstallerReleaseEntry + FetchFoundationAppEntry are the reseller
-	// ROOT-MIRROR worker's re-verification reads (FEDERATED-STORE-MVP §C2.6): the
-	// base installer's InstallerReleaseEntry must be Active and each basic app's
-	// FoundationAppEntry must be Active with the advertised tier before the
-	// reseller re-serves the root's mirrored bytes. FetchFoundationAppEntry is
-	// ALSO the publish-gate tier reader (B1-05/B2-05).
-	FetchInstallerReleaseEntry(ctx context.Context, addrB58 string) (installerHash [32]byte, status verify.AttestationStatus, err error)
+	// FetchInstallerReleaseEntryMeta is the one InstallerReleaseEntry read: the
+	// whole account decoded exactly (internal/installerrelease), for the serve,
+	// publish and generation gates and the reseller ROOT-MIRROR worker, each of
+	// which admits it under the estate's installer-release trust.
+	// FetchFoundationAppEntry is the ROOT-MIRROR worker's basic-app read
+	// (FEDERATED-STORE-MVP §C2.6) and ALSO the publish-gate tier reader
+	// (B1-05/B2-05).
 	FetchInstallerReleaseEntryMeta(ctx context.Context, addrB58 string) (installerReleaseMeta, error)
 	FetchFoundationAppEntry(ctx context.Context, addrB58 string) (appID [32]byte, tier uint8, status verify.ApprovalStatus, err error)
 	// FetchSidecarIdentity is the boot-identity ceremony's anchor read (B1-02):
@@ -466,17 +466,22 @@ var errReleaseMasterMintRequired = errors.New("release_master_nft_mint is requir
 
 // VerifyInstallerReleaseHash is the serve-time gate for whole-file artifacts
 // under /releases/<class>/<name>. It verifies that sha256(file bytes) has an
-// Active InstallerReleaseEntry under the configured Master NFT mint. This is the
-// binary-artifact sibling of VerifyServeHash: app SPKs use ReleaseEntry over the
-// canonical tree hash; shell bundles/sidecar binaries/venv bundles use
-// InstallerReleaseEntry over the exact file sha256.
+// InstallerReleaseEntry under the configured Master NFT mint that the estate's
+// installer-release trust admits: Active, registered by the master NFT
+// custodian (the enrolled profile's core vault), and carrying a publisher key
+// the profile's releaseTrust names with that key's signature over the entry's
+// own fields. A Store with no enrolled profile has no such trust and refuses
+// (installer-release-trust-unconfigured). This is the binary-artifact sibling
+// of VerifyServeHash: app SPKs use ReleaseEntry over the canonical tree hash;
+// shell bundles/sidecar binaries/venv bundles use InstallerReleaseEntry over
+// the exact file sha256.
 func VerifyInstallerReleaseHash(ctx context.Context, cr chainReader, cfg Config, installerHash [32]byte) error {
 	meta, err := fetchInstallerReleaseMetaForHash(ctx, cr, cfg, installerHash)
 	if err != nil {
 		return err
 	}
-	if err := meta.Status.RequireActive(); err != nil {
-		return fmt.Errorf("check=installer_release: status %s not Active: %w", meta.Status, err)
+	if err := cfg.installerReleaseTrust.Admit(meta.Entry, installerHash); err != nil {
+		return fmt.Errorf("check=installer_release: %s: %w", meta.PDA, err)
 	}
 	return nil
 }

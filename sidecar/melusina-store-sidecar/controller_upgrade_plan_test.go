@@ -18,6 +18,7 @@ import (
 func (f hostApplyPlanFixture) addControllerUpgradeCandidate(t *testing.T) componentrelease.ComponentRelease {
 	t.Helper()
 	f.svc.cfg.ReleaseMasterNftMint = testMaster
+	bindTestInstallerReleaseEstate(t, f.chain, &f.svc.cfg)
 	artifact := []byte("fineract-controller-governed-candidate")
 	sum := sha256.Sum256(artifact)
 	name := "melusina-update-controller-" + hex.EncodeToString(sum[:])[:16] + ".bin"

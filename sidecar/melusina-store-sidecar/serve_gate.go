@@ -19,6 +19,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -696,7 +697,7 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 	}
 	if err != nil {
 		code := http.StatusForbidden
-		if errors.Is(err, errReleaseMasterMintRequired) {
+		if errors.Is(err, errReleaseMasterMintRequired) || errors.Is(err, installerrelease.ErrTrustUnconfigured) {
 			code = http.StatusServiceUnavailable
 		}
 		http.Error(w, "store release-gate refused: "+err.Error(), code)

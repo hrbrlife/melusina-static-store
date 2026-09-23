@@ -9,6 +9,7 @@ import (
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -20,7 +21,9 @@ import (
 // content hash. A compromised or malicious operator therefore cannot point the
 // controller at a wrong-but-Active PDA — the seeds (not the document) decide which
 // account is authoritative. Account decode uses the shared, verified
-// melusina-identity-gate/verify readers (no hand-rolled Borsh, base58, or curve math).
+// melusina-identity-gate/verify readers, except the InstallerReleaseEntry: its
+// K3 layout (publisher binding after `status`) is decoded exactly by
+// internal/installerrelease, which the identity-gate reader predates.
 type solanaChainGate struct {
 	rpc               chainRPC
 	program           primitives.Pubkey
@@ -29,6 +32,10 @@ type solanaChainGate struct {
 	programB58        string
 	masterB58         string
 	licenseB58        string
+	// installerTrust is the estate profile's installer-release trust: the
+	// master NFT custodian (roles.core vault) and releaseTrust. Never nil on a
+	// constructed gate.
+	installerTrust *installerrelease.Trust
 }
 
 func newSolanaChainGate(cfg ControllerConfig) (*solanaChainGate, error) {
@@ -48,6 +55,10 @@ func newSolanaChainGate(cfg ControllerConfig) (*solanaChainGate, error) {
 	if err != nil {
 		return nil, err
 	}
+	trust, err := loadControllerInstallerTrust(cfg, program, master)
+	if err != nil {
+		return nil, err
+	}
 	return &solanaChainGate{
 		rpc:               newFailoverRPC(primaryRPC, fallbackRPCs, attempts),
 		program:           program,
@@ -56,7 +67,19 @@ func newSolanaChainGate(cfg ControllerConfig) (*solanaChainGate, error) {
 		programB58:        cfg.ProgramID,
 		masterB58:         cfg.MasterNftMint,
 		licenseB58:        cfg.LicenseNftMint,
+		installerTrust:    trust,
 	}, nil
+}
+
+// loadControllerInstallerTrust reads the pinned owner-signed estate profile
+// and refuses a controller whose program or master-mint pin is another
+// estate's.
+func loadControllerInstallerTrust(cfg ControllerConfig, program, master primitives.Pubkey) (*installerrelease.Trust, error) {
+	trust, err := installerrelease.LoadBoundTrust(cfg.EstateProfilePath, cfg.EstateProfileSha256, program, master)
+	if err != nil {
+		return nil, fmt.Errorf("estate profile: %w", err)
+	}
+	return trust, nil
 }
 
 // contentIdentity is the hash the chain pins: ContentSHA256 when present (apps pin a
@@ -129,15 +152,19 @@ func (g *solanaChainGate) gateInstallerRelease(ctx context.Context, c componentr
 	if err := assertDerivedPDA("InstallerReleaseEntry", c.Chain.ReleasePDA, derived); err != nil {
 		return fmt.Errorf("chain gate %s: %w", c.ComponentID, err)
 	}
-	hash, status, err := g.rpc.FetchInstallerReleaseEntry(ctx, derived.Base58())
+	data, err := g.rpc.GetAccountInfo(ctx, derived.Base58())
 	if err != nil {
 		return fmt.Errorf("chain gate %s: fetch InstallerReleaseEntry: %w", c.ComponentID, err)
 	}
-	if err := status.RequireActive(); err != nil {
-		return fmt.Errorf("chain gate %s: installer release not Active: %w", c.ComponentID, err)
+	if data == nil {
+		return fmt.Errorf("chain gate %s: fetch InstallerReleaseEntry: %w", c.ComponentID, verify.ErrPDANotFound)
 	}
-	if hex32(hash) != hex32(want) {
-		return fmt.Errorf("chain gate %s: installer_hash %s != artifact %s", c.ComponentID, hex32(hash), hex32(want))
+	entry, err := installerrelease.Decode(data)
+	if err != nil {
+		return fmt.Errorf("chain gate %s: decode InstallerReleaseEntry: %w", c.ComponentID, err)
+	}
+	if err := g.installerTrust.Admit(entry, want); err != nil {
+		return fmt.Errorf("chain gate %s: InstallerReleaseEntry %s refused: %w", c.ComponentID, derived.Base58(), err)
 	}
 	return nil
 }

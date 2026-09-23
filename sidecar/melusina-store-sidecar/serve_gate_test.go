@@ -18,6 +18,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -684,6 +685,7 @@ func releaseSetup(t *testing.T) (Config, *mockChainReader, *serveGate, []byte, [
 	hash := writeReleaseArtifact(t, cfg.DistDir, class, name, body)
 	pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
 	m := newMockChainReader()
+	bindTestInstallerReleaseEstate(t, m, &cfg)
 	g := newServeGate(cfg, m, http.FileServer(http.Dir(cfg.DistDir)))
 	return cfg, m, g, body, hash, pda, class, name
 }
@@ -814,7 +816,26 @@ func TestServeGate_InstallerReleaseRefusals(t *testing.T) {
 				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusRevoked}
 			},
 			wantCode: http.StatusForbidden,
-			wantBody: "check=installer_release",
+			wantBody: "installer-release-not-active: status Revoked",
+		},
+		{
+			// The custodian registered it and the program verified this
+			// publisher's signature; the enrolled profile does not name the key.
+			name: "installer_release_untrusted_publisher",
+			mutate: func(t *testing.T, cfg *Config, m *mockChainReader, hash [32]byte, pda string) {
+				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusActive, publisher: releasetest.UntrustedPublisher()}
+			},
+			wantCode: http.StatusForbidden,
+			wantBody: "installer-release-publisher-untrusted",
+		},
+		{
+			name: "installer_release_unenrolled_store",
+			mutate: func(t *testing.T, cfg *Config, m *mockChainReader, hash [32]byte, pda string) {
+				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusActive}
+				cfg.installerReleaseTrust = nil
+			},
+			wantCode: http.StatusServiceUnavailable,
+			wantBody: "installer-release-trust-unconfigured",
 		},
 		{
 			name: "installer_hash_mismatch",
@@ -864,6 +885,7 @@ func TestServeGate_InstallerReleaseNoChainReaderFailsClosed(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
 	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	bindTestInstallerReleaseEstate(t, nil, &cfg)
 	writeReleaseArtifact(t, cfg.DistDir, "sidecar", "store-sidecar", []byte("binary"))
 	g := newServeGate(cfg, nil, http.FileServer(http.Dir(cfg.DistDir)))
 

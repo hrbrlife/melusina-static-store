@@ -26,6 +26,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -55,6 +56,8 @@ type options struct {
 	rpcURL               string
 	programID            string
 	masterNFTMint        string
+	estateProfile        string
+	estateProfileSHA256  string
 	installedELF         string
 	expectedOldELFSHA256 string
 	newELF               string
@@ -107,8 +110,11 @@ type securityPolicy struct {
 	newChainVerifier     func(string) installerReleaseVerifier
 }
 
+// installerReleaseVerifier is the raw account read; the entry is decoded and
+// admitted by internal/installerrelease, the rule the update controller's
+// installer-release gate applies.
 type installerReleaseVerifier interface {
-	FetchInstallerReleaseEntry(context.Context, string) ([32]byte, verify.AttestationStatus, error)
+	GetAccountInfo(context.Context, string) ([]byte, error)
 }
 
 func productionSecurityPolicy() securityPolicy {
@@ -157,6 +163,8 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&opts.rpcURL, "rpc-url", "", "Solana JSON-RPC URL used for an independent InstallerReleaseEntry fetch")
 	fs.StringVar(&opts.programID, "program-id", "", "license-registry program that owns the InstallerReleaseEntry: the Store config's program_id (required; there is no default registry)")
 	fs.StringVar(&opts.masterNFTMint, "master-nft-mint", "", "Master NFT mint used to derive the InstallerReleaseEntry PDA")
+	fs.StringVar(&opts.estateProfile, "estate-profile", "", "owner-signed EstateProfileV1 whose releaseTrust and core vault the InstallerReleaseEntry must satisfy (the Store's enrolled profile)")
+	fs.StringVar(&opts.estateProfileSHA256, "estate-profile-sha256", "", "reviewed profileSha256 of --estate-profile")
 	fs.StringVar(&opts.installedELF, "installed-elf", "", "installed governed store ELF")
 	fs.StringVar(&opts.expectedOldELFSHA256, "expected-old-elf-sha256", "", "expected installed governed store ELF sha256")
 	fs.StringVar(&opts.newELF, "new-elf", "", "pulled governed store ELF")
@@ -176,6 +184,7 @@ func parseOptions(args []string) (options, error) {
 		"--chain-receipt": opts.chainReceipt, "--rpc-url": opts.rpcURL,
 		"--program-id":      opts.programID,
 		"--master-nft-mint": opts.masterNFTMint, "--installed-elf": opts.installedELF,
+		"--estate-profile": opts.estateProfile, "--estate-profile-sha256": opts.estateProfileSHA256,
 		"--expected-old-elf-sha256": opts.expectedOldELFSHA256,
 		"--new-elf":                 opts.newELF, "--new-elf-member": opts.newELFMember,
 		"--new-elf-sha256":      opts.newELFSHA256,
@@ -224,6 +233,12 @@ func parseOptions(args []string) (options, error) {
 	masterMint, err := primitives.PubkeyFromBase58(opts.masterNFTMint)
 	if err != nil || masterMint.Base58() != opts.masterNFTMint {
 		return options{}, errors.New("--master-nft-mint must be a canonical base58 Solana pubkey")
+	}
+	if !filepath.IsAbs(opts.estateProfile) || filepath.Clean(opts.estateProfile) != opts.estateProfile {
+		return options{}, errors.New("--estate-profile must be an absolute clean path")
+	}
+	if opts.estateProfileSHA256, err = canonicalSHA256(opts.estateProfileSHA256); err != nil {
+		return options{}, fmt.Errorf("--estate-profile-sha256: %w", err)
 	}
 	if err := validateArchiveMemberName(opts.newELFMember); err != nil {
 		return options{}, fmt.Errorf("--new-elf-member: %w", err)
@@ -391,6 +406,10 @@ func verifyChainAndReceipt(opts options, policy securityPolicy, receipt chainVer
 	if receipt.VerifiedSlot == 0 || receipt.VerifiedAtUnix <= 0 {
 		return errors.New("verifiedSlot and verifiedAtUnix must be positive")
 	}
+	trust, err := installerrelease.LoadBoundTrust(opts.estateProfile, opts.estateProfileSHA256, programID, masterMint)
+	if err != nil {
+		return fmt.Errorf("estate profile: %w", err)
+	}
 	if policy.newChainVerifier == nil {
 		return errors.New("independent chain verifier is unavailable")
 	}
@@ -400,18 +419,22 @@ func verifyChainAndReceipt(opts options, policy securityPolicy, receipt chainVer
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), chainVerificationTimeout)
 	defer cancel()
-	onChainHash, status, err := verifier.FetchInstallerReleaseEntry(ctx, releasePDA.Base58())
+	data, err := verifier.GetAccountInfo(ctx, releasePDA.Base58())
 	if err != nil {
 		return fmt.Errorf("independent fetch %s: %w", releasePDA.Base58(), err)
 	}
-	if onChainHash != archiveHash {
-		return fmt.Errorf("on-chain installer hash %x does not match archive sha256 %x", onChainHash, archiveHash)
+	if data == nil {
+		return fmt.Errorf("independent fetch %s: %w", releasePDA.Base58(), verify.ErrPDANotFound)
 	}
-	if err := status.RequireActive(); err != nil {
-		return fmt.Errorf("on-chain status %s is not Active: %w", status, err)
+	entry, err := installerrelease.Decode(data)
+	if err != nil {
+		return fmt.Errorf("independent fetch %s: %w", releasePDA.Base58(), err)
 	}
-	if receipt.Status != status.String() {
-		return fmt.Errorf("receipt status %q does not match independently fetched status %q", receipt.Status, status.String())
+	if err := trust.Admit(entry, archiveHash); err != nil {
+		return fmt.Errorf("independently fetched InstallerReleaseEntry %s refused: %w", releasePDA.Base58(), err)
+	}
+	if receipt.Status != entry.Status.String() {
+		return fmt.Errorf("receipt status %q does not match independently fetched status %q", receipt.Status, entry.Status.String())
 	}
 	return nil
 }

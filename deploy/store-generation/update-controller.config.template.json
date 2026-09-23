@@ -15,6 +15,9 @@
   "solanaRpcUrl": "REPLACE_WITH_PRIMARY_TRUSTED_SOLANA_RPC_URL",
   "_comment_solanaRpcFallbackUrls": "Second and further TRUSTED same-cluster endpoints. A single endpoint is what took the catalog to HTTP 503 when one key hit its quota (F-235/F-238); worse here, because boot identity turns any chain error into log.Fatalf under Restart=on-failure. Must not duplicate solanaRpcUrl.",
   "solanaRpcFallbackUrls": [],
+  "_comment_estateProfile": "The owner-signed EstateProfileV1 of this estate and its reviewed profileSha256 (melusina-store-sidecar estate-profile-review). The installer-release gate admits an InstallerReleaseEntry only when its publisher key is in the profile's releaseTrust and its custodian is the profile's core vault; programId and masterNftMint must be the profile's.",
+  "estateProfilePath": "/etc/melusina/update-controller/estate-profile.json",
+  "estateProfileSha256": "REPLACE_WITH_REVIEWED_PROFILE_SHA256",
   "stateDir": "/var/lib/melusina/update-controller",
   "receiptDir": "/var/lib/melusina/update-controller/receipts"
 }

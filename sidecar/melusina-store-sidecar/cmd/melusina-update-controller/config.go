@@ -63,6 +63,18 @@ type ControllerConfig struct {
 	SolanaRPCFallbackURLs []string `json:"solanaRpcFallbackUrls,omitempty"`
 	SolanaRPCAttempts     int      `json:"solanaRpcAttempts,omitempty"`
 
+	// EstateProfilePath and EstateProfileSha256 bind the controller to its
+	// estate's owner-signed EstateProfileV1. The installer-release gate admits
+	// an InstallerReleaseEntry only when its recorded publisher key is one the
+	// profile's releaseTrust names and its custodian is the profile's core
+	// vault; programId and masterNftMint above must be that profile's. A
+	// signed profile is not its own authority, so the reviewed digest (the
+	// profileSha256 `melusina-store-sidecar estate-profile-review` prints) is
+	// pinned here, in this root-owned file, and compared before any value of
+	// the profile is used. There is no default and no fallback.
+	EstateProfilePath   string `json:"estateProfilePath"`
+	EstateProfileSha256 string `json:"estateProfileSha256"`
+
 	// Persistent state.
 	StateDir    string `json:"stateDir"`              // ControllerState + active WAL
 	ReceiptDir  string `json:"receiptDir"`            // immutable terminal receipts
@@ -175,6 +187,8 @@ func (c ControllerConfig) validate() error {
 		"licenseNftMint":        c.LicenseNftMint,
 		"solanaRpcUrl":          c.SolanaRPCURL,
 		"componentRegistryPath": c.ComponentRegistryPath,
+		"estateProfilePath":     c.EstateProfilePath,
+		"estateProfileSha256":   c.EstateProfileSha256,
 	} {
 		if strings.TrimSpace(value) == "" {
 			return fmt.Errorf("required config field %q is empty", name)
@@ -192,10 +206,14 @@ func (c ControllerConfig) validate() error {
 		"componentRegistryPath": c.ComponentRegistryPath,
 		"stateDir":              c.StateDir,
 		"receiptDir":            c.ReceiptDir,
+		"estateProfilePath":     c.EstateProfilePath,
 	} {
 		if !filepath.IsAbs(value) || filepath.Clean(value) != value {
 			return fmt.Errorf("config field %q must be an absolute clean path", name)
 		}
+	}
+	if !isLowerHex64Value(c.EstateProfileSha256) {
+		return errors.New("config field \"estateProfileSha256\" must be the 64-character lowercase profileSha256")
 	}
 	// The WAL is rooted at stateDir and derives <stateDir>/receipts; receiptDir must
 	// name that exact location so the configured receipt path can't diverge from where

@@ -24,7 +24,6 @@ type chainRPC interface {
 	GetAccountInfo(ctx context.Context, addr string) ([]byte, error)
 	FetchGlobalSidecarBinaryHash(ctx context.Context, addr string) ([32]byte, error)
 	FetchGlobalSidecarStatus(ctx context.Context, addr string) (verify.ApprovalStatus, error)
-	FetchInstallerReleaseEntry(ctx context.Context, addr string) ([32]byte, verify.AttestationStatus, error)
 	FetchLicenseEntrySummary(ctx context.Context, addr string) (verify.LicenseEntrySummary, error)
 	FetchLocalSidecarBinaryHash(ctx context.Context, addr string) ([32]byte, bool, error)
 	FetchLocalSidecarStatus(ctx context.Context, addr string) (verify.ApprovalStatus, error)
@@ -117,14 +116,6 @@ func (f *failoverRPC) GetAccountInfo(ctx context.Context, addr string) (out []by
 func (f *failoverRPC) FetchGlobalSidecarStatus(ctx context.Context, addr string) (out verify.ApprovalStatus, err error) {
 	err = f.call(ctx, func(c context.Context, r chainRPC) error { out, err = r.FetchGlobalSidecarStatus(c, addr); return err })
 	return out, err
-}
-
-func (f *failoverRPC) FetchInstallerReleaseEntry(ctx context.Context, addr string) (h [32]byte, s verify.AttestationStatus, err error) {
-	err = f.call(ctx, func(c context.Context, r chainRPC) error {
-		h, s, err = r.FetchInstallerReleaseEntry(c, addr)
-		return err
-	})
-	return h, s, err
 }
 
 func (f *failoverRPC) FetchLicenseEntrySummary(ctx context.Context, addr string) (out verify.LicenseEntrySummary, err error) {

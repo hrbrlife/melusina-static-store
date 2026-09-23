@@ -31,17 +31,22 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 // controllerPins is the strict subset of the controller config this ceremony
 // needs. It is decoded leniently on purpose: the controller itself is the strict
 // decoder of its own config, and duplicating that here would fail the ceremony
-// for fields it has no business judging.
+// for fields it has no business judging. The estate profile pin is among them:
+// the ceremony admits an entry by exactly the rule the controller's gate does
+// (internal/installerrelease), under the same pinned profile.
 type controllerPins struct {
-	MasterNftMint string `json:"masterNftMint"`
-	ProgramID     string `json:"programId"`
-	SolanaRPCURL  string `json:"solanaRpcUrl"`
+	MasterNftMint       string `json:"masterNftMint"`
+	ProgramID           string `json:"programId"`
+	SolanaRPCURL        string `json:"solanaRpcUrl"`
+	EstateProfilePath   string `json:"estateProfilePath"`
+	EstateProfileSha256 string `json:"estateProfileSha256"`
 }
 
 type evidence struct {
@@ -53,6 +58,9 @@ type evidence struct {
 	ProgramID        string `json:"programId"`
 	InstallerRelease string `json:"installerReleaseEntryPda"`
 	Status           string `json:"status"`
+	Version          string `json:"version"`
+	EstateProfile    string `json:"estateProfileSha256"`
+	PublisherKey     string `json:"publisherEd25519PublicKey"`
 	VerifiedAtUnix   int64  `json:"verifiedAtUnix"`
 }
 
@@ -81,6 +89,9 @@ func run(configPath, artifact string) error {
 	if pins.MasterNftMint == "" || pins.ProgramID == "" || pins.SolanaRPCURL == "" {
 		return fmt.Errorf("config is missing masterNftMint, programId or solanaRpcUrl")
 	}
+	if pins.EstateProfilePath == "" || pins.EstateProfileSha256 == "" {
+		return fmt.Errorf("config is missing estateProfilePath or estateProfileSha256")
+	}
 
 	sum, size, err := hashNoFollow(artifact)
 	if err != nil {
@@ -94,6 +105,10 @@ func run(configPath, artifact string) error {
 	if err != nil {
 		return fmt.Errorf("programId: %w", err)
 	}
+	trust, err := installerrelease.LoadBoundTrust(pins.EstateProfilePath, pins.EstateProfileSha256, program, master)
+	if err != nil {
+		return fmt.Errorf("estate profile: %w", err)
+	}
 	pda, _, err := primitives.DeriveInstallerRelease(master, sum, program)
 	if err != nil {
 		return fmt.Errorf("derive InstallerReleaseEntry PDA: %w", err)
@@ -101,18 +116,22 @@ func run(configPath, artifact string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
-	onChainHash, status, err := verify.NewRPCClient(pins.SolanaRPCURL).FetchInstallerReleaseEntry(ctx, pda.Base58())
+	data, err := verify.NewRPCClient(pins.SolanaRPCURL).GetAccountInfo(ctx, pda.Base58())
 	if err != nil {
 		return fmt.Errorf("fetch InstallerReleaseEntry %s: %w", pda.Base58(), err)
 	}
-	if err := status.RequireActive(); err != nil {
-		return fmt.Errorf("installer release for %s is not Active: %w", hex.EncodeToString(sum[:]), err)
+	if data == nil {
+		return fmt.Errorf("fetch InstallerReleaseEntry %s: %w", pda.Base58(), verify.ErrPDANotFound)
 	}
-	// Belt and braces: the PDA is derived FROM the artifact hash, so a mismatch
-	// here should be unreachable. Assert it anyway -- an unreachable check that
-	// costs nothing is the one that catches a future seed change.
-	if onChainHash != sum {
-		return fmt.Errorf("installer_hash %s != artifact %s", hex.EncodeToString(onChainHash[:]), hex.EncodeToString(sum[:]))
+	entry, err := installerrelease.Decode(data)
+	if err != nil {
+		return fmt.Errorf("decode InstallerReleaseEntry %s: %w", pda.Base58(), err)
+	}
+	// Admit re-checks the installer hash even though the PDA is derived FROM
+	// it: an unreachable check that costs nothing is the one that catches a
+	// future seed change.
+	if err := trust.Admit(entry, sum); err != nil {
+		return fmt.Errorf("InstallerReleaseEntry %s for %s refused: %w", pda.Base58(), hex.EncodeToString(sum[:]), err)
 	}
 
 	out, err := json.MarshalIndent(evidence{
@@ -123,7 +142,10 @@ func run(configPath, artifact string) error {
 		MasterNftMint:    pins.MasterNftMint,
 		ProgramID:        pins.ProgramID,
 		InstallerRelease: pda.Base58(),
-		Status:           "Active",
+		Status:           entry.Status.String(),
+		Version:          entry.Version,
+		EstateProfile:    pins.EstateProfileSha256,
+		PublisherKey:     hex.EncodeToString(entry.PublisherEd25519Pubkey[:]),
 		VerifiedAtUnix:   time.Now().UTC().Unix(),
 	}, "", "  ")
 	if err != nil {

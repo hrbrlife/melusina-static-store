@@ -47,6 +47,10 @@ func TestParseOptionsRequiresTheEstateRegistry(t *testing.T) {
 		{"blank", withFlag(f.args, "--program-id", "  "), "--program-id is required"},
 		{"malformed", withFlag(f.args, "--program-id", "not-a-program"), "--program-id must be the canonical base58 license-registry program"},
 		{"system program", withFlag(f.args, "--program-id", systemProgramID), "--program-id must be the canonical base58 license-registry program, not the System Program"},
+		{"no estate profile", withoutFlag(f.args, "--estate-profile"), "--estate-profile is required"},
+		{"relative estate profile", withFlag(f.args, "--estate-profile", "estate-profile.json"), "--estate-profile must be an absolute clean path"},
+		{"no estate profile pin", withoutFlag(f.args, "--estate-profile-sha256"), "--estate-profile-sha256 is required"},
+		{"malformed estate profile pin", withFlag(f.args, "--estate-profile-sha256", "abc"), "--estate-profile-sha256"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := parseOptions(tc.args); err == nil || !strings.Contains(err.Error(), tc.want) {

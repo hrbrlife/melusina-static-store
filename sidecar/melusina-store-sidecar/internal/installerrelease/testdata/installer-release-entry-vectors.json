@@ -1,0 +1,102 @@
+{
+  "schema": "melusina.store.installer-release-entry-vectors.v1",
+  "source": "license-registry-excerpt.rs",
+  "len": 319,
+  "discriminatorHex": "25e0b4bac29dadf4",
+  "fieldOrder": [
+    [
+      "master_nft_mint",
+      "Pubkey"
+    ],
+    [
+      "installer_hash",
+      "[u8; 32]"
+    ],
+    [
+      "version",
+      "String"
+    ],
+    [
+      "publisher_squads_vault",
+      "Pubkey"
+    ],
+    [
+      "registered_by",
+      "Pubkey"
+    ],
+    [
+      "registered_at",
+      "i64"
+    ],
+    [
+      "status",
+      "AttestationStatus"
+    ],
+    [
+      "publisher_ed25519_pubkey",
+      "[u8; 32]"
+    ],
+    [
+      "publisher_signature",
+      "[u8; 64]"
+    ],
+    [
+      "signed_payload_hash",
+      "[u8; 32]"
+    ],
+    [
+      "revoked_at",
+      "Option<i64>"
+    ],
+    [
+      "bump",
+      "u8"
+    ]
+  ],
+  "statusVariants": [
+    "Active",
+    "Revoked",
+    "Superseded"
+  ],
+  "publisherSeedLabel": "melusina-installer-release-vector-publisher",
+  "vectors": [
+    {
+      "name": "active-none",
+      "fields": {
+        "master_nft_mint": "ERvoH4uacn7tWZ3Ye54jreyMi7LBXiSoHZGVB8BtbgNp",
+        "installer_hash": "2285d59d8cd05a305d7ea33ec2c1648cfbcba89654258a089a03a4c48be2e848",
+        "version": "1.0.64",
+        "publisher_squads_vault": "2Cgm9WhQcUCLLyWwkzKodBy6SBv2bYwvRBih3uaJGgXd",
+        "registered_by": "2Cgm9WhQcUCLLyWwkzKodBy6SBv2bYwvRBih3uaJGgXd",
+        "registered_at": 1767225600,
+        "status": "Active",
+        "publisher_ed25519_pubkey": "62b1bc7061eda10be4dbb7820370ee902f171ff0b0bea0d0f43fc27361ce5829",
+        "publisher_signature": "b13abd1bbe4213f752efa144c58559d502af2d627086a0f93c192d3953b352e57481f9f13c651adc6d0200aaea3743f7137ceb48a1c04a941304ff2b4206620a",
+        "signed_payload_hash": "d95f70a1f782008372fa16382dee69a808198fe26f4d5eae4bbf2a133ed94b7d",
+        "revoked_at": null,
+        "bump": 254
+      },
+      "serializedLength": 285,
+      "accountHex": "25e0b4bac29dadf4c78ab2ec37cf48931b36fc44f745af0437b846572c2d43f9416e45f1ea7c07ed2285d59d8cd05a305d7ea33ec2c1648cfbcba89654258a089a03a4c48be2e84806000000312e302e363411da08addd40d31c65cb31c25cd9efe6610aa2e658a65028adc4e5e49a31db7411da08addd40d31c65cb31c25cd9efe6610aa2e658a65028adc4e5e49a31db7400b95569000000000062b1bc7061eda10be4dbb7820370ee902f171ff0b0bea0d0f43fc27361ce5829b13abd1bbe4213f752efa144c58559d502af2d627086a0f93c192d3953b352e57481f9f13c651adc6d0200aaea3743f7137ceb48a1c04a941304ff2b4206620ad95f70a1f782008372fa16382dee69a808198fe26f4d5eae4bbf2a133ed94b7d00fe00000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "name": "superseded-some-max-version",
+      "fields": {
+        "master_nft_mint": "ERvoH4uacn7tWZ3Ye54jreyMi7LBXiSoHZGVB8BtbgNp",
+        "installer_hash": "6e161a9f31d747a83df171475b9b55db539fa25b1459f987c2d07116ab95db84",
+        "version": "0123456789abcdefghijklmnopqrstuv",
+        "publisher_squads_vault": "2Cgm9WhQcUCLLyWwkzKodBy6SBv2bYwvRBih3uaJGgXd",
+        "registered_by": "2Cgm9WhQcUCLLyWwkzKodBy6SBv2bYwvRBih3uaJGgXd",
+        "registered_at": 1767225601,
+        "status": "Superseded",
+        "publisher_ed25519_pubkey": "62b1bc7061eda10be4dbb7820370ee902f171ff0b0bea0d0f43fc27361ce5829",
+        "publisher_signature": "99b0cadba3b3a9db42e0e13c53c80c614294e5645bcb9d9d39fdce89f7742b93a48fdb65d74618af9aa0c75080bdcdb93666add4bebfbbd3b16207641abaa507",
+        "signed_payload_hash": "a0282d4868a2e48caaa6c996b18a6344467e978e9b874561ea0a02a6d2141266",
+        "revoked_at": 1790000000,
+        "bump": 253
+      },
+      "serializedLength": 319,
+      "accountHex": "25e0b4bac29dadf4c78ab2ec37cf48931b36fc44f745af0437b846572c2d43f9416e45f1ea7c07ed6e161a9f31d747a83df171475b9b55db539fa25b1459f987c2d07116ab95db8420000000303132333435363738396162636465666768696a6b6c6d6e6f7071727374757611da08addd40d31c65cb31c25cd9efe6610aa2e658a65028adc4e5e49a31db7411da08addd40d31c65cb31c25cd9efe6610aa2e658a65028adc4e5e49a31db7401b95569000000000262b1bc7061eda10be4dbb7820370ee902f171ff0b0bea0d0f43fc27361ce582999b0cadba3b3a9db42e0e13c53c80c614294e5645bcb9d9d39fdce89f7742b93a48fdb65d74618af9aa0c75080bdcdb93666add4bebfbbd3b16207641abaa507a0282d4868a2e48caaa6c996b18a6344467e978e9b874561ea0a02a6d214126601803bb16a00000000fd"
+    }
+  ]
+}

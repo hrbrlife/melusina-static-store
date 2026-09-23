@@ -11,11 +11,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/bundle"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -223,6 +225,8 @@ func (f rootMirrorFixture) pinAccept(m *mockChainReader) {
 
 func newFixtureMirror(t *testing.T, f rootMirrorFixture, m *mockChainReader) *rootMirror {
 	t.Helper()
+	// The mirror admits the root's installer under an enrolled estate trust.
+	bindTestInstallerReleaseEstate(t, m, &f.cfg)
 	mir, err := newRootMirror(f.cfg, m, f.fetcher, nil)
 	if err != nil {
 		t.Fatalf("newRootMirror: %v", err)
@@ -367,6 +371,33 @@ func TestRootMirror_RejectInstallerNotActive_KeepsLastGood(t *testing.T) {
 			status:        verify.AttestationStatusRevoked,
 		}
 	})
+}
+
+// The root's installer is re-served only under a publisher the enrolled
+// estate profile trusts, whatever the chain says about its status.
+func TestRootMirror_RejectUntrustedInstallerPublisher_KeepsLastGood(t *testing.T) {
+	runWithGoodThenBad(t, func(f *rootMirrorFixture, m *mockChainReader) {
+		m.installerEntry[f.installerPDA] = mockInstallerEntry{
+			installerHash: f.installerHsh,
+			status:        verify.AttestationStatusActive,
+			publisher:     releasetest.UntrustedPublisher(),
+		}
+	})
+}
+
+// A reseller with no enrolled estate profile has no installer-release trust.
+func TestRootMirror_UnenrolledResellerRefusesTheInstaller(t *testing.T) {
+	f := buildRootMirrorFixture(t)
+	m := newMockChainReader()
+	f.pinAccept(m)
+	mir := newFixtureMirror(t, f, m)
+	if err := mir.runOnce(context.Background()); err != nil {
+		t.Fatalf("control: enrolled mirror refused: %v", err)
+	}
+	mir.cfg.installerReleaseTrust = nil
+	if err := mir.runOnce(context.Background()); err == nil || !strings.Contains(err.Error(), "installer-release-trust-unconfigured") {
+		t.Fatalf("unenrolled mirror: %v", err)
+	}
 }
 
 func TestRootMirror_RejectInstallerMissing_KeepsLastGood(t *testing.T) {

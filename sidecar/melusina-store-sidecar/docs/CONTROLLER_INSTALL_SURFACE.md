@@ -43,6 +43,8 @@ duplicate / trailing keys are refused. `schema` must be
 | `masterNftMint` | string | yes | installer_release/release_v2 + global-approval seed pin |
 | `licenseNftMint` | string | yes | sidecar_identity / local-approval seed pin |
 | `solanaRpcUrl` | string | yes | Solana RPC endpoint (getAccountInfo) |
+| `estateProfilePath` | string (abs) | yes | the estate's owner-signed `EstateProfileV1` (installer-release trust) |
+| `estateProfileSha256` | string (hex) | yes | its reviewed `profileSha256` (`estate-profile-review`); a profile with another digest is refused |
 | `stateDir` | string (abs) | yes | `ControllerState` + active WAL root (`<stateDir>/active`, `<stateDir>/receipts`) |
 | `receiptDir` | string (abs) | yes | must equal `<stateDir>/receipts` (the WAL-derived receipt dir) |
 | `stagingRoot` | string (abs) | no | adapter download/stage root; default `<stateDir>/staging` |
@@ -66,6 +68,8 @@ duplicate / trailing keys are refused. `schema` must be
   "masterNftMint": "<base58-master-nft-mint>",
   "licenseNftMint": "<base58-license-nft-mint>",
   "solanaRpcUrl": "https://devnet.helius-rpc.com/?api-key=<key>",
+  "estateProfilePath": "/etc/melusina/update-controller/estate-profile.json",
+  "estateProfileSha256": "<reviewed-profileSha256>",
   "stateDir": "/var/lib/melusina/update-controller",
   "receiptDir": "/var/lib/melusina/update-controller/receipts"
 }
@@ -206,8 +210,17 @@ PDA != the seed-derived PDA (constant-time compare) BEFORE fetching any account
 - `LicenseEntry` / `ResellerSidecarApproval`: derived from licenseMint / the
   LicenseEntry-carried reseller mint (never the document).
 
-Once the address is proven seed-derived, the gate confirms Active + hash pin. The
-sidecar path additionally requires `LicenseEntry` Active with the pinned master and,
+Once the address is proven seed-derived, the gate confirms Active + hash pin. An
+`InstallerReleaseEntry` is decoded exactly in its contracts K3 layout
+(`internal/installerrelease`: discriminator, 319 bytes, the publisher binding after
+`status`; the 191-byte pre-K3 layout is refused by size) and admitted only when it
+is Active with no revocation time, `registered_by == publisher_squads_vault ==` the
+pinned profile's `core` vault, `signed_payload_hash` equals the digest recomputed
+from the entry's own fields, `publisher_ed25519_pubkey` is one of the profile's
+`releaseTrust.publisherKeys` (an entry records one signature, so a profile
+`releaseTrust.threshold` above 1 admits none), and that signature verifies. The
+controller refuses to start when `programId` or `masterNftMint` is not the pinned
+profile's. The sidecar path additionally requires `LicenseEntry` Active with the pinned master and,
 for a resold license, an Active `ResellerSidecarApproval`. (`ResellerEntry` status is
 enforced by the store's publish-side five-fact cascade; the controller lacks a
 `verify.RPCClient` `ResellerEntry` reader, so that record is not re-checked

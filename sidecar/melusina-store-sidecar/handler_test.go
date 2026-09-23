@@ -1370,6 +1370,7 @@ func TestHandlePublishInstaller_Accept(t *testing.T) {
 	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 	m := newMockChainReader()
+	bindTestInstallerReleaseEstate(t, m, &cfg)
 	pinRootStoreOperator(t, cfg, m, op)
 
 	artifact := []byte("prebuilt sandstorm release bytes")
@@ -1403,6 +1404,7 @@ func TestHandlePublishInstaller_StagesSidecarWithoutInstallerRelease(t *testing.
 	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 	m := newMockChainReader()
+	bindTestInstallerReleaseEstate(t, m, &cfg)
 	pinRootStoreOperator(t, cfg, m, op)
 
 	artifact := []byte("pre-generation sidecar bytes")
@@ -1530,6 +1532,9 @@ func TestHandlePublishInstaller_Rejects(t *testing.T) {
 			}
 			op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 			m := newMockChainReader()
+			if cfg.ReleaseMasterNftMint != "" {
+				bindTestInstallerReleaseEstate(t, m, &cfg)
+			}
 			artifact := []byte("installer artifact " + tc.name)
 			tc.setup(t, cfg, m, op, artifact)
 			svc := newTestService(t, cfg, m, op)
@@ -1660,6 +1665,7 @@ func TestHandlePublishInstaller_AuthorAndVersionMatrix(t *testing.T) {
 			cfg.ReleaseMasterNftMint = randPubkeyB58(t)
 			op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 			m := newMockChainReader()
+			bindTestInstallerReleaseEstate(t, m, &cfg)
 			artifact := []byte("new installer artifact " + tc.name)
 			sig := tc.setup(t, cfg, m, op, artifact)
 			svc := newTestService(t, cfg, m, op)
@@ -1939,6 +1945,7 @@ func TestHandlePublishInstaller_AcceptPublishersRequired(t *testing.T) {
 	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 	m := newMockChainReader()
+	bindTestInstallerReleaseEstate(t, m, &cfg)
 	pinRootStoreOperator(t, cfg, m, op)
 
 	artifact := []byte("installer publish requires an allowlisted publisher")

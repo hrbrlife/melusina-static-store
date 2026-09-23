@@ -18,6 +18,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -1064,7 +1065,7 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 		// sidecar protocol impossible to complete.
 		if err := VerifyInstallerReleaseHash(r.Context(), s.cr, s.cfg, artifactHash); err != nil {
 			code := http.StatusForbidden
-			if errors.Is(err, errReleaseMasterMintRequired) {
+			if errors.Is(err, errReleaseMasterMintRequired) || errors.Is(err, installerrelease.ErrTrustUnconfigured) {
 				code = http.StatusServiceUnavailable
 			}
 			http.Error(w, err.Error(), code)

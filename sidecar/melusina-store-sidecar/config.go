@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -212,6 +213,12 @@ type Config struct {
 	// deploy-provisioned attest shards and binds it on-chain before enabling
 	// /publish (fail-closed). See README "Boot identity (gated /publish)".
 	BootIdentity BootIdentityConfig `json:"boot_identity"`
+
+	// installerReleaseTrust is never read from the config document. Startup
+	// projects it from the enrolled owner-signed estate profile
+	// (bindInstallerReleaseTrust); every InstallerReleaseEntry gate admits
+	// through it, and a Store with no enrolled profile has none and refuses.
+	installerReleaseTrust *installerrelease.Trust
 }
 
 // BootIdentityConfig provisions the gated /publish operator boot-identity

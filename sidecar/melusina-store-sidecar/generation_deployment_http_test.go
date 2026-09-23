@@ -55,6 +55,7 @@ func TestGenerationDeploymentServesSignedPointerAndPinnedArtifact(t *testing.T) 
 		ReleaseMasterNftMint: masterMint,
 	}
 	chain := newMockChainReader()
+	bindTestInstallerReleaseEstate(t, chain, &cfg)
 	chain.installerEntry[releasePDA] = mockInstallerEntry{
 		installerHash: artifactHash,
 		status:        verify.AttestationStatusActive,

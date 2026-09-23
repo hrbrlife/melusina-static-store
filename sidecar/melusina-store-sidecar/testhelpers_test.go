@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -14,6 +15,9 @@ import (
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -56,6 +60,11 @@ type mockChainReader struct {
 	installerEntry  map[string]mockInstallerEntry
 	foundationApp   map[string]mockFoundationApp
 	sidecarIdentity map[string]mockSidecarIdentity
+
+	// installerMaster and installerVault are the bound estate's anchors
+	// (bindTestInstallerReleaseEstate) that synthesized installer entries name.
+	installerMaster [32]byte
+	installerVault  [32]byte
 
 	// rawAccounts backs fetchRawAccount (the cascade raw-read capability): base58
 	// address -> account data. Owner is always programID for seeded accounts.
@@ -119,10 +128,16 @@ type mockBlacklist struct {
 	err       error
 }
 
+// mockInstallerEntry is one InstallerReleaseEntry. Unless entry is set, the
+// mock serves the account the program writes when the bound estate's core
+// vault registers installerHash under publisher (default: a key the estate
+// profile trusts); see bindTestInstallerReleaseEstate.
 type mockInstallerEntry struct {
 	installerHash [32]byte
 	version       string
 	status        verify.AttestationStatus
+	publisher     ed25519.PrivateKey
+	entry         *installerrelease.Entry
 	err           error
 }
 
@@ -286,20 +301,6 @@ func (m *mockChainReader) FetchBlacklistEntry(_ context.Context, addr string) (b
 	return b.present, b.entryType, nil
 }
 
-func (m *mockChainReader) FetchInstallerReleaseEntry(_ context.Context, addr string) ([32]byte, verify.AttestationStatus, error) {
-	if m.installerErr != nil {
-		return [32]byte{}, 0, m.installerErr
-	}
-	e, ok := m.installerEntry[addr]
-	if !ok {
-		return [32]byte{}, 0, verify.ErrPDANotFound
-	}
-	if e.err != nil {
-		return [32]byte{}, 0, e.err
-	}
-	return e.installerHash, e.status, nil
-}
-
 func (m *mockChainReader) FetchInstallerReleaseEntryMeta(_ context.Context, addr string) (installerReleaseMeta, error) {
 	if m.installerErr != nil {
 		return installerReleaseMeta{}, m.installerErr
@@ -311,12 +312,70 @@ func (m *mockChainReader) FetchInstallerReleaseEntryMeta(_ context.Context, addr
 	if e.err != nil {
 		return installerReleaseMeta{}, e.err
 	}
-	return installerReleaseMeta{
-		PDA:           addr,
-		InstallerHash: e.installerHash,
-		Version:       e.version,
-		Status:        e.status,
-	}, nil
+	if e.entry != nil {
+		return installerReleaseMeta{PDA: addr, Entry: *e.entry}, nil
+	}
+	publisher := e.publisher
+	if publisher == nil {
+		publisher = releasetest.TrustedPublisher()
+	}
+	entry := installerrelease.Entry{
+		MasterNFTMint:        m.installerMaster,
+		InstallerHash:        e.installerHash,
+		Version:              e.version,
+		PublisherSquadsVault: m.installerVault,
+		RegisteredBy:         m.installerVault,
+		RegisteredAt:         1790000000,
+		Status:               e.status,
+		Bump:                 254,
+	}
+	if e.status != verify.AttestationStatusActive {
+		revokedAt := int64(1790000500)
+		entry.RevokedAt = &revokedAt
+	}
+	// The mock returns what the strict decoder reads from the program's bytes.
+	decoded, err := installerrelease.Decode(releasetest.Encode(releasetest.Sign(entry, publisher)))
+	if err != nil {
+		return installerReleaseMeta{}, err
+	}
+	return installerReleaseMeta{PDA: addr, Entry: decoded}, nil
+}
+
+// testEstateProfileVectors is the fictitious new estate the installer-release
+// fixtures bind to (owner and publisher keys derived from public labels).
+const testEstateProfileVectors = "testdata/estate-profile-vectors.json"
+
+// bindTestInstallerReleaseEstate makes cfg an enrolled Store of the vector
+// estate for installer releases, as bindInstallerReleaseTrust does at startup:
+// the trust is the profile's releaseTrust and core vault. A master mint the
+// test already configured is kept and the profile is re-signed with it as
+// anchors.masterMint, so PDAs the test derived stay valid; with none, the
+// vector's mint is configured. m then serves entries registered under that
+// estate. It returns the profile.
+func bindTestInstallerReleaseEstate(t *testing.T, m *mockChainReader, cfg *Config) releasetest.Profile {
+	t.Helper()
+	p := releasetest.LoadProfileVector(t, testEstateProfileVectors, releasetest.NewEstateVector)
+	master := strings.TrimSpace(cfg.ReleaseMasterNftMint)
+	if master == "" {
+		master = strings.TrimSpace(cfg.Mirror.RootMasterNftMint)
+	}
+	switch {
+	case master == "":
+		cfg.ReleaseMasterNftMint = p.Profile.Anchors.MasterMint
+	case master != p.Profile.Anchors.MasterMint:
+		profile := p.Profile
+		profile.Anchors.MasterMint = master
+		p = releasetest.Resign(t, profile)
+	}
+	state := &storeEnrollmentState{Profile: p.Profile, ProfilePin: estateprofile.Pin{ProfileSHA256: p.SHA256}}
+	if err := bindInstallerReleaseTrust(cfg, state); err != nil {
+		t.Fatal(err)
+	}
+	if m != nil {
+		m.installerMaster = cfg.installerReleaseTrust.MasterNFTMint()
+		m.installerVault = releasetest.CoreVault(t, p.Profile)
+	}
+	return p
 }
 
 func (m *mockChainReader) FetchFoundationAppEntry(_ context.Context, addr string) ([32]byte, uint8, verify.ApprovalStatus, error) {

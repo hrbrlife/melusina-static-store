@@ -194,6 +194,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("boot identity / estate enrollment: %v", err)
 	}
+	if err := bindInstallerReleaseTrust(&cfg, enrolledState); err != nil {
+		log.Fatalf("estate enrollment: %v", err)
+	}
+	if enrolledState == nil {
+		log.Printf("installer releases: no enrolled estate profile — every InstallerReleaseEntry gate refuses (installer-release-trust-unconfigured)")
+	}
 	var operator *identity.Private
 	if bootIdentity != nil {
 		operator = bootIdentity.operator

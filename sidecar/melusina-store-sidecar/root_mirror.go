@@ -372,22 +372,21 @@ func (m *rootMirror) verifyTrustBundleSignature(wireBody []byte) error {
 }
 
 // verifyBaseInstaller re-derives InstallerReleaseEntry[rootMasterMint,
-// baseInstaller] and asserts it exists, pins this installer_hash, and is Active.
+// baseInstaller] and asserts it exists and that the estate's installer-release
+// trust admits it for this installer_hash: Active, registered by the master NFT
+// custodian, under a publisher key the enrolled profile's releaseTrust names.
+// A reseller with no enrolled profile has no such trust and refuses.
 func (m *rootMirror) verifyBaseInstaller(ctx context.Context) error {
 	relPDA, _, err := pda.InstallerRelease(m.rootMasterMint, m.baseInstaller, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("check=installer_release: derive PDA: %w", err)
 	}
-	onchainHash, status, err := m.cr.FetchInstallerReleaseEntry(ctx, relPDA.Base58())
+	meta, err := m.cr.FetchInstallerReleaseEntryMeta(ctx, relPDA.Base58())
 	if err != nil {
 		return fmt.Errorf("check=installer_release: fetch %s: %w", relPDA.Base58(), err)
 	}
-	if onchainHash != m.baseInstaller {
-		return fmt.Errorf("check=installer_release: on-chain installer_hash %x != configured %x",
-			onchainHash[:], m.baseInstaller[:])
-	}
-	if err := status.RequireActive(); err != nil {
-		return fmt.Errorf("check=installer_release: status %s not Active: %w", status, err)
+	if err := m.cfg.installerReleaseTrust.Admit(meta.Entry, m.baseInstaller); err != nil {
+		return fmt.Errorf("check=installer_release: %s: %w", relPDA.Base58(), err)
 	}
 	return nil
 }

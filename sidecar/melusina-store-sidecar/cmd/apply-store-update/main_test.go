@@ -17,14 +17,19 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-// Test fixtures only: the updater compiles no license registry, and these are
-// not any estate's program or mint.
+// Test fixtures only: the updater compiles no license registry. These are the
+// program and master mint of the fictitious new estate of
+// testdata/estate-profile-vectors.json, which newTestFixture pins; the
+// fixture refuses to build if they drift from the vector.
 const (
-	testProgramID     = "7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD"
-	testMasterNFTMint = "G4Ps7fo3cud6NxSWoJS78fozqCWtCmAT9ZdoM3t4vHWb"
+	testProgramID      = "7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD"
+	testMasterNFTMint  = "Arum4b6QykqtkcKpfxbHSU1TTiHjxVDCxL1EPg9ka7sz"
+	testProfileVectors = "../../testdata/estate-profile-vectors.json"
 )
 
 type testFixture struct {
@@ -34,22 +39,23 @@ type testFixture struct {
 	migrations string
 	receipts   string
 	chain      *mockInstallerVerifier
+	profile    releasetest.Profile
 }
 
+// mockInstallerVerifier serves one raw account at the derived PDA.
 type mockInstallerVerifier struct {
-	hash    [32]byte
-	status  verify.AttestationStatus
+	account []byte
 	err     error
 	wantPDA string
 	calls   int
 }
 
-func (m *mockInstallerVerifier) FetchInstallerReleaseEntry(_ context.Context, got string) ([32]byte, verify.AttestationStatus, error) {
+func (m *mockInstallerVerifier) GetAccountInfo(_ context.Context, got string) ([]byte, error) {
 	m.calls++
 	if m.wantPDA != "" && got != m.wantPDA {
-		return [32]byte{}, 0, errors.New("unexpected derived PDA: " + got)
+		return nil, errors.New("unexpected derived PDA: " + got)
 	}
-	return m.hash, m.status, m.err
+	return m.account, m.err
 }
 
 func TestPrepareStoreUpdateCreatesDurableAuthorizationAndIsIdempotent(t *testing.T) {
@@ -212,18 +218,38 @@ func TestExistingReceiptMismatchRefuses(t *testing.T) {
 func TestIndependentChainVerificationRefusesWrongHashOrInactive(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
-		mutate func(*mockInstallerVerifier)
+		mutate func(*testing.T, *testFixture)
 		want   string
 	}{
-		{"wrong hash", func(m *mockInstallerVerifier) { m.hash[0] ^= 0xff }, "on-chain installer hash"},
-		{"revoked", func(m *mockInstallerVerifier) { m.status = verify.AttestationStatusRevoked }, "on-chain status Revoked"},
-		{"rpc failure", func(m *mockInstallerVerifier) { m.err = errors.New("rpc unavailable") }, "independent fetch"},
+		{"wrong hash", func(t *testing.T, f *testFixture) {
+			var other [32]byte
+			other[0] = 0xff
+			f.chain.account = releasetest.Encode(releasetest.Entry(t, f.profile.Profile, other, "1.0.7", releasetest.TrustedPublisher()))
+		}, installerrelease.ErrHashMismatch.Error()},
+		{"revoked", func(t *testing.T, f *testFixture) {
+			e := releasetest.Entry(t, f.profile.Profile, mustHash32(t, f.opts.archiveSHA256), "1.0.7", releasetest.TrustedPublisher())
+			e.Status = verify.AttestationStatusRevoked
+			at := int64(1790000300)
+			e.RevokedAt = &at
+			f.chain.account = releasetest.Encode(e)
+		}, installerrelease.ErrNotActive.Error() + ": status Revoked"},
+		{"untrusted publisher", func(t *testing.T, f *testFixture) {
+			f.chain.account = releasetest.Encode(releasetest.Entry(t, f.profile.Profile, mustHash32(t, f.opts.archiveSHA256), "1.0.7", releasetest.UntrustedPublisher()))
+		}, installerrelease.ErrPublisherUntrusted.Error()},
+		{"pre-K3 layout", func(t *testing.T, f *testFixture) { f.chain.account = f.chain.account[:191] }, installerrelease.ErrMalformed.Error() + ":size"},
+		{"absent entry", func(t *testing.T, f *testFixture) { f.chain.account = nil }, verify.ErrPDANotFound.Error()},
+		{"rpc failure", func(t *testing.T, f *testFixture) { f.chain.err = errors.New("rpc unavailable") }, "independent fetch"},
+		{"another estate's profile", func(t *testing.T, f *testFixture) {
+			other := releasetest.WithPublishers(t, f.profile, 1, releasetest.TrustedPublisher(), releasetest.UntrustedPublisher())
+			f.opts.estateProfile = releasetest.Write(t, other)
+			f.opts.estateProfileSHA256 = f.profile.SHA256
+		}, installerrelease.ErrProfile.Error()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
-			tc.mutate(f.chain)
+			tc.mutate(t, &f)
 			if _, err := prepareStoreUpdate(f.opts, f.policy); err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("untrusted chain state accepted: %v", err)
+				t.Fatalf("got %v, want %q", err, tc.want)
 			}
 		})
 	}
@@ -340,6 +366,10 @@ func newTestFixture(t *testing.T) testFixture {
 	writeTarXZ(t, archive, []tarEntry{{member, "deterministic 1.0.7 binary"}})
 	archiveHash := fileSHA256(t, archive)
 	archiveHashBytes := mustHash32(t, archiveHash)
+	profile := releasetest.LoadProfileVector(t, testProfileVectors, releasetest.NewEstateVector)
+	if releasetest.ProgramID(t, profile.Profile) != testProgramID || profile.Profile.Anchors.MasterMint != testMasterNFTMint {
+		t.Fatal("testProgramID/testMasterNFTMint drifted from the new-estate profile vector")
+	}
 	masterMint, err := primitives.PubkeyFromBase58(testMasterNFTMint)
 	if err != nil {
 		t.Fatal(err)
@@ -368,6 +398,7 @@ func newTestFixture(t *testing.T) testFixture {
 		fromVersion: "1.0.6", toVersion: "1.0.7",
 		archive: archive, archiveSHA256: archiveHash, chainReceipt: chainPath,
 		rpcURL: "https://rpc.example.invalid", programID: testProgramID, masterNFTMint: masterMint.Base58(),
+		estateProfile: releasetest.Write(t, profile), estateProfileSHA256: profile.SHA256,
 		installedELF: oldELF, expectedOldELFSHA256: fileSHA256(t, oldELF),
 		newELF: newELF, newELFMember: member, newELFSHA256: fileSHA256(t, newELF),
 		migrationStateDir: migrations, updateReceiptDir: receipts,
@@ -378,14 +409,18 @@ func newTestFixture(t *testing.T) testFixture {
 		"--archive", opts.archive, "--archive-sha256", opts.archiveSHA256,
 		"--chain-receipt", opts.chainReceipt,
 		"--rpc-url", opts.rpcURL, "--program-id", opts.programID, "--master-nft-mint", opts.masterNFTMint,
+		"--estate-profile", opts.estateProfile, "--estate-profile-sha256", opts.estateProfileSHA256,
 		"--installed-elf", opts.installedELF, "--expected-old-elf-sha256", opts.expectedOldELFSHA256,
 		"--new-elf", opts.newELF, "--new-elf-member", opts.newELFMember, "--new-elf-sha256", opts.newELFSHA256,
 		"--migration-state-dir", opts.migrationStateDir, "--update-receipt-dir", opts.updateReceiptDir,
 	}
-	mock := &mockInstallerVerifier{hash: archiveHashBytes, status: verify.AttestationStatusActive, wantPDA: releasePDA.Base58()}
+	mock := &mockInstallerVerifier{
+		account: releasetest.Encode(releasetest.Entry(t, profile.Profile, archiveHashBytes, "1.0.7", releasetest.TrustedPublisher())),
+		wantPDA: releasePDA.Base58(),
+	}
 	return testFixture{
 		opts: opts, args: args, migrations: migrations, receipts: receipts,
-		chain:  mock,
+		chain: mock, profile: profile,
 		policy: securityPolicy{expectedUID: uint32(os.Geteuid()), expectedGID: uint32(os.Getegid()), newChainVerifier: func(string) installerReleaseVerifier { return mock }},
 	}
 }

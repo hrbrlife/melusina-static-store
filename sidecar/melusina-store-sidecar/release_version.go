@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 )
 
 var (
@@ -35,11 +36,11 @@ type releaseEntryMeta struct {
 	RegisteredAt int64
 }
 
+// installerReleaseMeta is one decoded InstallerReleaseEntry and the address
+// it was read from. Reading it judges nothing; Trust.Admit does.
 type installerReleaseMeta struct {
-	PDA           string
-	InstallerHash [32]byte
-	Version       string
-	Status        verify.AttestationStatus
+	PDA string
+	installerrelease.Entry
 }
 
 func verifyReleaseVersionForward(ctx context.Context, cr chainReader, submitted releaseEntryMeta) error {

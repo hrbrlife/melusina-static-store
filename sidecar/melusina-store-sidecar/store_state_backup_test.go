@@ -219,8 +219,8 @@ func (f storeStateFixture) destroyHost(t *testing.T) string {
 // A Store exported, lost and imported onto empty roots at the same paths
 // starts through the ordinary startup path and serves the identical
 // generation: the same current generation, index, pointer and package bytes.
-// The nonce ledger came back with it, so the envelopes the lost Store
-// accepted are still refused as replays.
+// The nonce ledger came back as it was at the backup, so the envelopes the
+// lost Store accepted before the backup are still refused as replays.
 func TestStoreRestoreServesIdenticalGeneration(t *testing.T) {
 	f := newStoreStateFixture(t)
 	raw, exported := f.export(t)
@@ -615,4 +615,97 @@ func TestStoreStateImportRefusesAStreamNamingAnotherCurrent(t *testing.T) {
 		t.Fatalf("import of a stream naming another current = %v, want %s", err, refusalStoreStateCurrentMismatch)
 	}
 	requireEmptyStoreParent(t, f.parent)
+}
+
+// The nonce sentinel must name the genesis ledger, not only its path. A
+// sentinel whose ledger path is right but whose ledger ID is another is
+// refused by the export and, in a stream the operator signed anyway, by the
+// import before anything reaches a root, rather than first by the restored
+// Store's startup gate. The genuine sentinel is the positive control.
+func TestStoreStateRefusesASentinelOfAnotherLedger(t *testing.T) {
+	f := newStoreStateFixture(t)
+	if _, err := exportStoreState(f.cfg, f.operator, &bytes.Buffer{}, f.opts); err != nil {
+		t.Fatalf("positive control: %v", err)
+	}
+	genesis, err := readCatalogGenesisState(filepath.Join(f.cfg.CatalogMigrationStateDir, catalogGenesisStateName), f.opts.expectedUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sentinelPath := filepath.Join(f.cfg.CatalogGenerationRoot, catalogNonceSentinelName)
+	raw, err := os.ReadFile(sentinelPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sentinel catalogNonceSentinel
+	if err := decodeCatalogStrictJSON(raw, &sentinel); err != nil {
+		t.Fatal(err)
+	}
+	if sentinel.LedgerID != genesis.LedgerID {
+		t.Fatalf("fixture: sentinel ledger %q, genesis ledger %q", sentinel.LedgerID, genesis.LedgerID)
+	}
+	sentinel.LedgerID = "another-ledger-" + strings.Repeat("0", 32)
+	if validatePublishNonceLedgerID(sentinel.LedgerID) != nil || sentinel.LedgerID == genesis.LedgerID {
+		t.Fatal("fixture: the substitute ledger ID is not a distinct well-formed ID")
+	}
+	// The path hash still binds the right private stage, so the ledger path
+	// check passes and only the sentinel's identity can refuse it.
+	finalLedgerRoot := filepath.Join(f.cfg.PrivateStageDir, publishNonceLedgerDirName)
+	if sentinel.LedgerPathSHA256 != desiredCatalogSentinel(finalLedgerRoot, genesis.LedgerID).LedgerPathSHA256 {
+		t.Fatal("fixture: the sentinel no longer binds the private stage")
+	}
+	edited, err := marshalBoundedJSON(sentinel, maxCatalogBootstrapJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sentinelPath, edited, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	requireSentinelRefusal := func(step string, err error) {
+		t.Helper()
+		if storerecovery.RefusalName(err) != refusalStoreStateTrustRootUncommitted || !strings.Contains(err.Error(), "nonce sentinel identity mismatch") {
+			t.Fatalf("%s with another ledger's sentinel = %v, want %s naming the sentinel identity", step, err, refusalStoreStateTrustRootUncommitted)
+		}
+	}
+	_, err = exportStoreState(f.cfg, f.operator, &bytes.Buffer{}, f.opts)
+	requireSentinelRefusal("export", err)
+
+	roots, err := storeStateRoots(f.cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var signed bytes.Buffer
+	if _, err := storerecovery.ExportState(&signed, roots, storerecovery.StateHeader{StoreID: f.cfg.StoreID, OperatorKey: f.operator.Public().SignPubkeyB58, CurrentGeneration: f.current}, f.operator.Sign); err != nil {
+		t.Fatal(err)
+	}
+	f.destroyHost(t)
+	_, err = importStoreState(f.cfg, bytes.NewReader(signed.Bytes()), f.operator.Public().SignPubkeyB58, f.opts)
+	requireSentinelRefusal("import", err)
+	requireEmptyStoreParent(t, f.parent)
+}
+
+// The stream carries no owner, so restored files are owned by the user that
+// runs the import. The Store runs as root, and the production import checks
+// the staged state for root's ownership: an import run as another user is
+// refused before anything reaches a root. The same stream imported with the
+// running user as the expected owner is the positive control.
+func TestStoreStateImportAsAnotherUserRefuses(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("the refusal is observable only when the test runs as a non-root user")
+	}
+	f := newStoreStateFixture(t)
+	raw, _ := f.export(t)
+	f.destroyHost(t)
+	production := productionStoreStateOptions()
+	if production.expectedUID != 0 || production.expectedGID != 0 {
+		t.Fatalf("the production import expects %d:%d, want root", production.expectedUID, production.expectedGID)
+	}
+	_, err := importStoreState(f.cfg, bytes.NewReader(raw), f.operator.Public().SignPubkeyB58, production)
+	if storerecovery.RefusalName(err) != refusalStoreStateTrustRootNotGenesis || !strings.Contains(err.Error(), "owner") {
+		t.Fatalf("import as uid %d with the production owner = %v, want %s naming the owner", os.Geteuid(), err, refusalStoreStateTrustRootNotGenesis)
+	}
+	requireEmptyStoreParent(t, f.parent)
+	if _, err := importStoreState(f.cfg, bytes.NewReader(raw), f.operator.Public().SignPubkeyB58, f.opts); err != nil {
+		t.Fatalf("positive control: %v", err)
+	}
 }

@@ -629,8 +629,22 @@ when a new path field has no class.
   onto another path refuses with `store-state-ledger-path-mismatch`; the
   profile-bound renderer always writes the same paths. The import derives no
   operator. The restored Store passes the ordinary startup gate, and the nonce
-  ledger comes back with it, so envelopes the lost Store accepted still refuse
-  as replays (`TestStoreRestoreServesIdenticalGeneration`).
+  ledger comes back as it was at the backup, so envelopes the lost Store
+  accepted before the backup still refuse as replays
+  (`TestStoreRestoreServesIdenticalGeneration`). The restore rolls the ledger
+  back to that point: an app publish envelope (`/publish/stage`, `/publish`,
+  and the control routes that run through them) that the lost Store accepted
+  after the backup is not in it, and the restored Store accepts it once more
+  until it expires. That is at most 32 minutes after the lost Store accepted
+  it: a signed lifetime of at most 30 minutes (`maxAppEnvelopeTTL`), plus the
+  2-minute allowance for a signed time in the future. A restored Store started
+  32 minutes or more after the lost Store's last accepted publish is past that
+  window. Restored files are owned by the user that runs the import. The
+  Store runs as `root:root` (the repository's
+  `deploy/store-generation/melusina-store-sidecar.service`), and the import
+  checks the staged state for that owner, so an import run as any other user
+  refuses before anything reaches a root
+  (`TestStoreStateImportAsAnotherUserRefuses`).
 
 **Store identity** is the three attest shards. An escrow envelope opens for
 any one of its recipients, so each shard is escrowed on its own, and no holder

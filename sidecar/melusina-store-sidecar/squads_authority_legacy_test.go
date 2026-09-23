@@ -4,14 +4,16 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"testing"
 )
 
-// These two rules exist only in the standard build, whose
+// These rules exist only in the standard build, whose
 // squads_authority_legacy.go compiles the retiring Bazaar's fixed release
-// authority and its unenrolled 3-of-4 quorum. The estate-bootstrap build
-// compiles neither; its equivalents are in
+// authority, its unenrolled 3-of-4 quorum, its unenrolled Store and its
+// serve-time admission of releases attested before the quorum claim. The
+// estate-bootstrap build compiles none of them; its equivalents are in
 // squads_authority_estatebootstrap_test.go.
 
 func TestLoadConfig_DefaultBazaarPinsOneSquadsAuthority(t *testing.T) {
@@ -44,5 +46,37 @@ func TestLegacyEnrollmentGatePassesTheUnenrolledStore(t *testing.T) {
 	verified, state, err := deriveEnrolledBootIdentity(context.Background(), cfg, "", newMockChainReader())
 	if err != nil || verified != nil || state != nil {
 		t.Fatalf("legacy unenrolled Store through the gate = %v, %v, %v; want no identity, no state, no refusal", verified, state, err)
+	}
+}
+
+// The standard build keeps serving the retiring Bazaar's releases attested
+// before RELEASE.json carried the quorumPolicy claim: the serve gate, its
+// cached re-check and the package route all admit one once both vaults match
+// (TestVerifyServeHash_QuorumClaimRulesInEveryBuild, both flavors). Publishing
+// still refuses it. The estate-bootstrap build refuses it at serve time too
+// (TestEstateBootstrapServesNoReleaseWithoutQuorumClaim).
+func TestLegacyServeAdmitsReleaseWithoutQuorumClaim(t *testing.T) {
+	cfg, m, f, g, base := serveSetup(t)
+	pinReleaseActive(m, f)
+	ctx := context.Background()
+	unclaimed := f.rel
+	unclaimed.QuorumPolicy = QuorumPolicy{}
+
+	if err := VerifyServeHash(ctx, m, cfg, unclaimed.AppHash, unclaimed); err != nil {
+		t.Errorf("serve gate refused a historically attested release with no quorum claim: %v", err)
+	}
+	if err := verifyCurrentStoreReleaseListing(ctx, m, cfg, unclaimed.AppHash, unclaimed); err != nil {
+		t.Errorf("cached serve re-check refused a historically attested release with no quorum claim: %v", err)
+	}
+
+	if w := serveWithRelease(t, cfg, g, base, f.rel); w.Code != http.StatusOK {
+		t.Fatalf("control: release with its quorum claim got %d: %s", w.Code, w.Body.String())
+	}
+	if w := serveWithRelease(t, cfg, g, base, unclaimed); w.Code != http.StatusOK {
+		t.Errorf("package route, cached verdict: release with no quorum claim got %d: %s", w.Code, w.Body.String())
+	}
+	g.verifyTTL = 0
+	if w := serveWithRelease(t, cfg, g, base, unclaimed); w.Code != http.StatusOK {
+		t.Errorf("package route, fresh verdict: release with no quorum claim got %d: %s", w.Code, w.Body.String())
 	}
 }

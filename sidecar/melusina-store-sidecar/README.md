@@ -272,6 +272,16 @@ count; the preflight and enrollment runtime then require that exact tuple to
 project from the signed profile's `roles.store-release` record. Supplying a
 structurally valid but different quorum does not authorize a Store.
 
+A release's `RELEASE.json` must carry the same quorum as a complete
+`quorumPolicy` claim (`multisigPda`, `threshold`, `memberCount`). No build
+publishes a release without one: it is refused as
+`release-quorum-claim-absent`. The estate-bootstrap build also refuses to serve
+such a release, by the same name, on the serve gate, its cached re-check and
+the package route. Only the standard build still serves one. That exception is
+for the retiring Bazaar's releases attested before the claim existed, and it
+applies only once the served and on-chain publisher vaults both match the
+configured vault.
+
 #### Render a profile-bound candidate instead of editing the legacy template
 
 `deploy/store-generation/store.config.template.json` remains a legacy

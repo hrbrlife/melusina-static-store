@@ -49,63 +49,87 @@ func TestVerifyServeHash_LegacyStoreSkipsListingUntilAuthorityConfigured(t *test
 	}
 }
 
-func TestVerifyServeHash_AllowsOnlyCompleteLegacyQuorumOmission(t *testing.T) {
+// newQuorumClaimFixture is a release the Store would publish and serve: the
+// complete quorum claim, an active ReleaseEntry under the configured vault,
+// and an active listing for this Store.
+func newQuorumClaimFixture(t *testing.T, cfg Config, operatorPub [32]byte) (*publishFixture, *mockChainReader) {
+	t.Helper()
+	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	reader := newMockChainReader()
+	fixture.pinAccept(reader, operatorPub)
+	fixture.pinServeListingActive(reader)
+	return &fixture, reader
+}
+
+// A release with no quorum claim at all is served only by the standard build
+// (TestLegacyServeAdmitsReleaseWithoutQuorumClaim) and refused by the
+// estate-bootstrap build (TestEstateBootstrapServesNoReleaseWithoutQuorumClaim).
+// These rules hold in both: no build publishes such a release, a partial claim
+// is checked in full, and the absent claim never stands in for the vault
+// binding, which is decided before the build is consulted.
+func TestVerifyServeHash_QuorumClaimRulesInEveryBuild(t *testing.T) {
 	cfg, _ := testConfig(t)
 	operator := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 	operatorPub := operatorSignPub32(t, operator)
+	ctx := context.Background()
 
-	newFixture := func(t *testing.T) (*publishFixture, *mockChainReader) {
-		t.Helper()
+	t.Run("publish_refuses_absent_claim_by_name", func(t *testing.T) {
 		fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
 		reader := newMockChainReader()
 		fixture.pinAccept(reader, operatorPub)
-		fixture.pinServeListingActive(reader)
-		return &fixture, reader
-	}
-
-	t.Run("complete_legacy_omission_is_serve_only", func(t *testing.T) {
-		fixture, reader := newFixture(t)
+		if err := VerifyPublish(ctx, reader, cfg, fixture.spk, fixture.metadata, fixture.rel, operatorPub); err != nil {
+			t.Fatalf("control: the complete claim was refused at publish: %v", err)
+		}
 		fixture.rel.QuorumPolicy = QuorumPolicy{}
-		if err := VerifyServeHash(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err != nil {
-			t.Fatalf("historically attested release with an absent quorum claim rejected at serve time: %v", err)
-		}
-		if err := verifyCurrentStoreReleaseListing(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err != nil {
-			t.Fatalf("cached serve path rejected the same historic release: %v", err)
-		}
-		if err := VerifyPublish(context.Background(), reader, cfg, fixture.spk, fixture.metadata, fixture.rel, operatorPub); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
-			t.Fatalf("new publish accepted missing quorum claim: %v", err)
+		err := VerifyPublish(ctx, reader, cfg, fixture.spk, fixture.metadata, fixture.rel, operatorPub)
+		if !errors.Is(err, errReleaseQuorumClaimAbsent) || !strings.Contains(err.Error(), "check=publisher_squads_authority: release-quorum-claim-absent") {
+			t.Fatalf("publish of a release with no quorum claim = %v, want the named release-quorum-claim-absent refusal", err)
 		}
 	})
 
-	t.Run("partial_legacy_omission_refuses", func(t *testing.T) {
-		fixture, reader := newFixture(t)
+	t.Run("partial_claim_is_checked_in_full", func(t *testing.T) {
+		fixture, reader := newQuorumClaimFixture(t, cfg, operatorPub)
 		fixture.rel.QuorumPolicy = QuorumPolicy{Threshold: cfg.ReleaseSquadsAuthority.Threshold}
-		if err := VerifyServeHash(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
-			t.Fatalf("partial quorum claim accepted at serve time: %v", err)
+		err := VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.rel)
+		if err == nil || errors.Is(err, errReleaseQuorumClaimAbsent) || !strings.Contains(err.Error(), "check=publisher_squads_authority: release.quorumPolicy.multisigPda is invalid") {
+			t.Fatalf("partial quorum claim at serve time = %v, want the multisig refusal", err)
 		}
 
-		fixture, reader = newFixture(t)
+		fixture, reader = newQuorumClaimFixture(t, cfg, operatorPub)
 		fixture.rel.QuorumPolicy.Threshold--
-		if err := VerifyServeHash(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
-			t.Fatalf("explicit quorum threshold override accepted at serve time: %v", err)
+		err = VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.rel)
+		if err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority: release quorumPolicy") {
+			t.Fatalf("explicit quorum threshold override at serve time = %v, want the quorum refusal", err)
 		}
 	})
 
-	t.Run("legacy_omission_still_binds_both_vaults", func(t *testing.T) {
-		fixture, reader := newFixture(t)
+	t.Run("absent_claim_still_binds_both_vaults", func(t *testing.T) {
+		fixture, reader := newQuorumClaimFixture(t, cfg, operatorPub)
 		fixture.rel.QuorumPolicy = QuorumPolicy{}
 		fixture.rel.LicenseSquadsVault = randPubkeyB58(t)
-		if err := VerifyServeHash(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
-			t.Fatalf("legacy omission accepted substituted release vault: %v", err)
+		err := VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.rel)
+		if err == nil || errors.Is(err, errReleaseQuorumClaimAbsent) || !strings.Contains(err.Error(), "check=publisher_squads_authority: release licenseSquadsVault") {
+			t.Fatalf("absent quorum claim with a substituted release vault = %v, want the release vault refusal", err)
 		}
 
-		fixture, reader = newFixture(t)
+		fixture, reader = newQuorumClaimFixture(t, cfg, operatorPub)
 		fixture.rel.QuorumPolicy = QuorumPolicy{}
 		entry := reader.releaseEntry[fixture.relPDA]
 		entry.publisherSquadsVault = mustPubkey(randPubkeyB58(t))
 		reader.releaseEntry[fixture.relPDA] = entry
-		if err := VerifyServeHash(context.Background(), reader, cfg, fixture.rel.AppHash, fixture.rel); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
-			t.Fatalf("legacy omission accepted substituted on-chain vault: %v", err)
+		for _, path := range []struct {
+			name  string
+			check func() error
+		}{
+			{"serve_gate", func() error { return VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.rel) }},
+			{"cached_serve_recheck", func() error {
+				return verifyCurrentStoreReleaseListing(ctx, reader, cfg, fixture.rel.AppHash, fixture.rel)
+			}},
+		} {
+			err := path.check()
+			if err == nil || errors.Is(err, errReleaseQuorumClaimAbsent) || !strings.Contains(err.Error(), "check=publisher_squads_authority: on-chain publisher_squads_vault") {
+				t.Errorf("%s: absent quorum claim with a substituted on-chain vault = %v, want the on-chain vault refusal", path.name, err)
+			}
 		}
 	})
 }

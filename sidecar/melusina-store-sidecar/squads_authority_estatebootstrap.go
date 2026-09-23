@@ -26,3 +26,12 @@ func configuredReleaseSquadsAuthorityPolicy(cfg Config, _, _, _ pda.Pubkey, thre
 func unenrolledStoreRefusal() error {
 	return fmt.Errorf("%w: the estate-bootstrap build has no unenrolled Store; estate_enrollment_state_path is required", errStoreEstateProfileNotEnrolled)
 }
+
+// servedReleaseWithoutQuorumClaimRefusal is why a bootstrap component serves no
+// release without a quorumPolicy claim. A new estate has no release attested
+// before the claim existed, so the serve-time admission the standard build
+// keeps for the retiring Bazaar is not compiled here: serving refuses such a
+// release by the same name as publishing does.
+func servedReleaseWithoutQuorumClaimRefusal() error {
+	return fmt.Errorf("check=publisher_squads_authority: %w; the estate-bootstrap build serves no release attested before the claim", errReleaseQuorumClaimAbsent)
+}

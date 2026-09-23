@@ -115,6 +115,32 @@ func pinReleaseActive(m *mockChainReader, f publishFixture) {
 	f.pinServeListingActive(m)
 }
 
+// serveWithRelease replaces the RELEASE.json a serveSetup dist holds for its
+// one app, drops the gate's resolve index so the request reads it from disk,
+// and requests that app's package. The verdict cache is left as it is. It
+// fails if the gate decided the request on any other release, so a caller's
+// verdict is never about a stale index.
+func serveWithRelease(t *testing.T, cfg Config, g *serveGate, base string, rel ReleaseJSON) *httptest.ResponseRecorder {
+	t.Helper()
+	relBytes, err := json.Marshal(rel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.DistDir, "attest", "app-"+base[:8], "RELEASE.json"), relBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	g.apps = nil
+	w := serveGet(t, g, http.MethodGet, "/packages/"+base)
+	resolved, err := json.Marshal(g.apps[base].rel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(resolved, relBytes) {
+		t.Fatalf("serve gate resolved RELEASE.json %s, not the one written %s", resolved, relBytes)
+	}
+	return w
+}
+
 func serveGet(t *testing.T, h http.Handler, method, target string) *httptest.ResponseRecorder {
 	t.Helper()
 	r := httptest.NewRequest(method, target, nil)

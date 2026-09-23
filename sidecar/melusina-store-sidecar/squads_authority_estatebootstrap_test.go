@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -113,5 +114,50 @@ func TestEstateBootstrapEnrollmentGateHasNoUnenrolledStore(t *testing.T) {
 	_, _, err = deriveEnrolledBootIdentity(context.Background(), cfg, "", newMockChainReader())
 	if err == nil || strings.Contains(err.Error(), "has no unenrolled Store") || !strings.Contains(err.Error(), "estate enrollment: store-estate-profile-not-enrolled: publish-provisioned boot identity is required") {
 		t.Fatalf("control: bootstrap-build gate with the path configured = %v; want the absent-identity refusal", err)
+	}
+}
+
+// The standard build serves a release attested before RELEASE.json carried the
+// quorumPolicy claim (TestLegacyServeAdmitsReleaseWithoutQuorumClaim, standard
+// build only). A new estate has no such release, and the bootstrap build
+// compiles no admission for one: the serve gate, its cached re-check and the
+// package route, with a cached verdict and without, all refuse it by name. The
+// same release with its claim is the control on each path: it is served, so
+// each refusal is the absent claim alone.
+func TestEstateBootstrapServesNoReleaseWithoutQuorumClaim(t *testing.T) {
+	const refusal = "check=publisher_squads_authority: release-quorum-claim-absent: RELEASE.json carries no quorumPolicy claim; the estate-bootstrap build serves no release attested before the claim"
+	cfg, m, f, g, base := serveSetup(t)
+	pinReleaseActive(m, f)
+	ctx := context.Background()
+	unclaimed := f.rel
+	unclaimed.QuorumPolicy = QuorumPolicy{}
+
+	for _, path := range []struct {
+		name  string
+		check func(ReleaseJSON) error
+	}{
+		{"serve_gate", func(rel ReleaseJSON) error { return VerifyServeHash(ctx, m, cfg, rel.AppHash, rel) }},
+		{"cached_serve_recheck", func(rel ReleaseJSON) error { return verifyCurrentStoreReleaseListing(ctx, m, cfg, rel.AppHash, rel) }},
+	} {
+		if err := path.check(f.rel); err != nil {
+			t.Errorf("control: %s refused the release with its quorum claim: %v", path.name, err)
+		}
+		if err := path.check(unclaimed); !errors.Is(err, errReleaseQuorumClaimAbsent) || err.Error() != refusal {
+			t.Errorf("%s: release with no quorum claim = %v; want the named refusal %q", path.name, err, refusal)
+		}
+	}
+
+	if w := serveWithRelease(t, cfg, g, base, f.rel); w.Code != http.StatusOK {
+		t.Fatalf("control: release with its quorum claim got %d: %s", w.Code, w.Body.String())
+	}
+	if w := serveWithRelease(t, cfg, g, base, unclaimed); w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), refusal) {
+		t.Errorf("package route, cached verdict: release with no quorum claim got %d: %s; want 403 naming %q", w.Code, w.Body.String(), refusal)
+	}
+	g.verifyTTL = 0
+	if w := serveWithRelease(t, cfg, g, base, unclaimed); w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), refusal) {
+		t.Errorf("package route, fresh verdict: release with no quorum claim got %d: %s; want 403 naming %q", w.Code, w.Body.String(), refusal)
+	}
+	if w := serveWithRelease(t, cfg, g, base, f.rel); w.Code != http.StatusOK {
+		t.Errorf("control: release with its quorum claim, fresh verdict, got %d: %s", w.Code, w.Body.String())
 	}
 }

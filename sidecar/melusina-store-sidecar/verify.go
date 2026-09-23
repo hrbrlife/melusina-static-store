@@ -528,15 +528,18 @@ func verifyReleaseEntryHash(ctx context.Context, cr chainReader, cfg Config, app
 	return verifyReleaseEntryHashWithAuthorityPolicy(ctx, cr, cfg, appHashHex, rel, false)
 }
 
-// verifyReleaseEntryHashForServe retains access to historically attested
-// RELEASE.json files that predate the redundant quorumPolicy claim. It never
-// relaxes the chain-bound publisher vault check, and it is intentionally not
-// used by either publish path.
+// verifyReleaseEntryHashForServe is the serve-time form of
+// verifyReleaseEntryHash. It differs only for a RELEASE.json that carries no
+// quorumPolicy claim at all, which it hands to
+// servedReleaseWithoutQuorumClaimRefusal: the standard build admits such a
+// historically attested release there, and the estate-bootstrap build refuses
+// it by name. It never relaxes the chain-bound publisher vault check, and it is
+// intentionally not used by either publish path.
 func verifyReleaseEntryHashForServe(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
 	return verifyReleaseEntryHashWithAuthorityPolicy(ctx, cr, cfg, appHashHex, rel, true)
 }
 
-func verifyReleaseEntryHashWithAuthorityPolicy(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON, allowLegacyQuorumClaim bool) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
+func verifyReleaseEntryHashWithAuthorityPolicy(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON, serving bool) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
 	var zeroMint pda.Pubkey
 	var zeroHash [32]byte
 	var zeroPDA pda.Pubkey
@@ -570,14 +573,8 @@ func verifyReleaseEntryHashWithAuthorityPolicy(ctx context.Context, cr chainRead
 	if err := meta.Status.RequireActive(); err != nil {
 		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: status %s not Active: %w", meta.Status, err)
 	}
-	var authorityErr error
-	if allowLegacyQuorumClaim {
-		authorityErr = verifySharedSquadsAuthorityForServe(cfg, rel, meta)
-	} else {
-		authorityErr = verifySharedSquadsAuthority(cfg, rel, meta)
-	}
-	if authorityErr != nil {
-		return zeroMint, zeroHash, zeroPDA, zeroMeta, authorityErr
+	if err := checkSharedSquadsAuthority(cfg, rel, meta, serving); err != nil {
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, err
 	}
 	if meta.PDA == "" {
 		meta.PDA = relPDA.Base58()
@@ -585,26 +582,35 @@ func verifyReleaseEntryHashWithAuthorityPolicy(ctx context.Context, cr chainRead
 	return masterMint, appHashBytes, relPDA, meta, nil
 }
 
+// errReleaseQuorumClaimAbsent names a RELEASE.json with no quorumPolicy claim
+// at all: no threshold, no member count and no multisig. No build publishes
+// one. Only the standard build serves one, and only one attested before the
+// claim existed (servedReleaseWithoutQuorumClaimRefusal).
+var errReleaseQuorumClaimAbsent = errors.New("release-quorum-claim-absent: RELEASE.json carries no quorumPolicy claim")
+
 // verifySharedSquadsAuthority binds both representations of publisher custody
 // to the one catalog-level Squads authority. RELEASE.json is a served claim;
 // ReleaseEntry.publisher_squads_vault is the chain-authenticated fact. Both
 // must name the configured vault, and the served quorum claim must name the
-// configured multisig. App SPK keys are intentionally not consulted here: they
-// remain per-app signing keys and are verified by the package path separately.
+// configured multisig and quorum. App SPK keys are intentionally not consulted
+// here: they remain per-app signing keys and are verified by the package path
+// separately.
 func verifySharedSquadsAuthority(cfg Config, rel ReleaseJSON, meta releaseEntryMeta) error {
-	return verifySharedSquadsAuthorityWithLegacyQuorumClaim(cfg, rel, meta, false)
+	return checkSharedSquadsAuthority(cfg, rel, meta, false)
 }
 
 // verifySharedSquadsAuthorityForServe is deliberately narrower than a publish
-// exception. A fully absent legacy quorum claim adds no authority: the active
-// ReleaseEntry's publisher vault and the Store configuration remain mandatory
-// and are still compared exactly. New publisher input must continue to provide
-// the complete, fixed quorum claim through verifySharedSquadsAuthority.
+// exception. It differs from verifySharedSquadsAuthority only for a release
+// with no quorum claim at all, and the build decides that case
+// (servedReleaseWithoutQuorumClaimRefusal). Even where the standard build
+// admits it, the absent claim adds no authority: the served vault claim and the
+// active ReleaseEntry's publisher vault have already been compared exactly with
+// the Store configuration. A partial claim is checked in full.
 func verifySharedSquadsAuthorityForServe(cfg Config, rel ReleaseJSON, meta releaseEntryMeta) error {
-	return verifySharedSquadsAuthorityWithLegacyQuorumClaim(cfg, rel, meta, true)
+	return checkSharedSquadsAuthority(cfg, rel, meta, true)
 }
 
-func verifySharedSquadsAuthorityWithLegacyQuorumClaim(cfg Config, rel ReleaseJSON, meta releaseEntryMeta, allowLegacyQuorumClaim bool) error {
+func checkSharedSquadsAuthority(cfg Config, rel ReleaseJSON, meta releaseEntryMeta, serving bool) error {
 	want, err := cfg.sharedSquadsAuthority()
 	if err != nil {
 		return fmt.Errorf("check=publisher_squads_authority: %w", err)
@@ -616,12 +622,15 @@ func verifySharedSquadsAuthorityWithLegacyQuorumClaim(cfg Config, rel ReleaseJSO
 	if claimedVault != want.Vault {
 		return fmt.Errorf("check=publisher_squads_authority: release licenseSquadsVault %s != configured vault %s", claimedVault.Base58(), want.Vault.Base58())
 	}
-	if allowLegacyQuorumClaim && rel.QuorumPolicy.Threshold == 0 && rel.QuorumPolicy.MemberCount == 0 && rel.QuorumPolicy.MultisigPda == "" {
-		if meta.PublisherSquadsVault != want.Vault {
-			got := pda.Pubkey(meta.PublisherSquadsVault)
-			return fmt.Errorf("check=publisher_squads_authority: on-chain publisher_squads_vault %s != configured vault %s", got.Base58(), want.Vault.Base58())
+	if meta.PublisherSquadsVault != want.Vault {
+		got := pda.Pubkey(meta.PublisherSquadsVault)
+		return fmt.Errorf("check=publisher_squads_authority: on-chain publisher_squads_vault %s != configured vault %s", got.Base58(), want.Vault.Base58())
+	}
+	if rel.QuorumPolicy == (QuorumPolicy{}) {
+		if serving {
+			return servedReleaseWithoutQuorumClaimRefusal()
 		}
-		return nil
+		return fmt.Errorf("check=publisher_squads_authority: %w", errReleaseQuorumClaimAbsent)
 	}
 	claimedMultisig, err := canonicalSquadsPubkey("release.quorumPolicy.multisigPda", rel.QuorumPolicy.MultisigPda)
 	if err != nil {
@@ -632,10 +641,6 @@ func verifySharedSquadsAuthorityWithLegacyQuorumClaim(cfg Config, rel ReleaseJSO
 	}
 	if rel.QuorumPolicy.Threshold != want.Threshold || rel.QuorumPolicy.MemberCount != want.MemberCount {
 		return fmt.Errorf("check=publisher_squads_authority: release quorumPolicy %d/%d != configured quorum %d/%d", rel.QuorumPolicy.Threshold, rel.QuorumPolicy.MemberCount, want.Threshold, want.MemberCount)
-	}
-	if meta.PublisherSquadsVault != want.Vault {
-		got := pda.Pubkey(meta.PublisherSquadsVault)
-		return fmt.Errorf("check=publisher_squads_authority: on-chain publisher_squads_vault %s != configured vault %s", got.Base58(), want.Vault.Base58())
 	}
 	return nil
 }

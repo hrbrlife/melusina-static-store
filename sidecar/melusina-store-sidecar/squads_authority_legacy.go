@@ -61,3 +61,12 @@ func requireDefaultBazaarSquadsAuthority(domain string, multisig, vault, program
 func unenrolledStoreRefusal() error {
 	return nil
 }
+
+// servedReleaseWithoutQuorumClaimRefusal keeps the standard build serving the
+// retiring Bazaar's releases attested before RELEASE.json carried the redundant
+// quorumPolicy claim. It is reached only when serving a release with no claim
+// at all, after the served vault claim and the active ReleaseEntry's publisher
+// vault have both matched the configured vault; publishing never reaches it.
+func servedReleaseWithoutQuorumClaimRefusal() error {
+	return nil
+}

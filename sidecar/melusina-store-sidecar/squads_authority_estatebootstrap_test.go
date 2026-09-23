@@ -3,6 +3,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -89,5 +91,27 @@ func TestLoadConfig_EstateBootstrapHasNoUnenrolledStore(t *testing.T) {
 	enrolled := profileEnrolledStoreConfig(t, filepath.Join(t.TempDir(), "estate-enrollment.json"))
 	if _, err := LoadConfig(writeJSONConfig(t, enrolled)); err != nil {
 		t.Fatalf("enrolled profile config refused: %v", err)
+	}
+}
+
+// The standard build passes a Store with no enrollment state path through the
+// enrollment gate as its legacy Store
+// (TestLegacyEnrollmentGatePassesTheUnenrolledStore, standard build only). The
+// bootstrap build has no such Store: the gate refuses it by name even for a
+// Config that never went through LoadConfig. The same Config with the path
+// configured is the control: it reaches a different named refusal, the absent
+// publish identity, so the refusal above is the missing-path rule alone.
+func TestEstateBootstrapEnrollmentGateHasNoUnenrolledStore(t *testing.T) {
+	cfg := Config{LicenseNFTMint: randPubkeyB58(t), Domain: "fresh-store.example.invalid"}
+	const missingPath = "estate enrollment: store-estate-profile-not-enrolled: the estate-bootstrap build has no unenrolled Store"
+	verified, state, err := deriveEnrolledBootIdentity(context.Background(), cfg, "", newMockChainReader())
+	if verified != nil || state != nil || !errors.Is(err, errStoreEstateProfileNotEnrolled) || err == nil || !strings.Contains(err.Error(), missingPath) {
+		t.Fatalf("bootstrap-build gate with no enrollment state path = %v, %v, %v; want the named refusal %q", verified, state, err, missingPath)
+	}
+
+	cfg.EstateEnrollmentStatePath = filepath.Join(t.TempDir(), "estate-enrollment.json")
+	_, _, err = deriveEnrolledBootIdentity(context.Background(), cfg, "", newMockChainReader())
+	if err == nil || strings.Contains(err.Error(), "has no unenrolled Store") || !strings.Contains(err.Error(), "estate enrollment: store-estate-profile-not-enrolled: publish-provisioned boot identity is required") {
+		t.Fatalf("control: bootstrap-build gate with the path configured = %v; want the absent-identity refusal", err)
 	}
 }

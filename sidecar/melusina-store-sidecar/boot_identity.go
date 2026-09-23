@@ -137,20 +137,8 @@ func deriveVerifiedBootIdentity(ctx context.Context, cfg Config, cr chainReader)
 	}, nil
 }
 
-// deriveOperatorIdentity preserves the established callers while newer
-// enrollment-aware callers use deriveVerifiedBootIdentity directly. Keeping
-// this adapter means the existing read-only semantics remain byte-for-byte:
-// no shards still yields (nil, nil).
-func deriveOperatorIdentity(ctx context.Context, cfg Config, cr chainReader) (*identity.Private, error) {
-	verified, err := deriveVerifiedBootIdentity(ctx, cfg, cr)
-	if err != nil || verified == nil {
-		return nil, err
-	}
-	return verified.operator, nil
-}
-
 // sidecarIdentityRef builds the attest identity ref the operator key is derived
-// under. Shared by deriveOperatorIdentity and its tests so the two can never
+// under. Shared by deriveVerifiedBootIdentity and its tests so the two can never
 // drift (a drifted ref derives a different key, which then fails the on-chain
 // signing_pubkey check — fail-closed, but the helper removes the footgun).
 func sidecarIdentityRef(cfg Config, sidecarID string, keyVersion uint32, sidecarPDAB58 string) identity.Ref {

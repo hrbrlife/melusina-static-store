@@ -137,10 +137,10 @@ func runListingBootstrapSubcommand(args []string) {
 	}
 	cr := newConfiguredStoreRPCReader(cfg)
 	bootCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	operator, err := deriveOperatorIdentity(bootCtx, cfg, cr)
+	operator, err := deriveEnrolledOperator(bootCtx, cfg, opts.configPath, cr)
 	cancel()
 	if err != nil {
-		log.Fatalf("listing-bootstrap boot identity: %v", err)
+		log.Fatalf("listing-bootstrap: %v", err)
 	}
 	if operator == nil {
 		log.Fatalf("listing-bootstrap requires a write-capable boot identity")

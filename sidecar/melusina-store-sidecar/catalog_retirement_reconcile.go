@@ -282,9 +282,9 @@ func runCatalogReconcileRetirementSubcommand(args []string) {
 	cr := newConfiguredStoreRPCReader(cfg)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	operator, err := deriveOperatorIdentity(ctx, cfg, cr)
+	operator, err := deriveEnrolledOperator(ctx, cfg, *config, cr)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("catalog-reconcile-retirement: %v", err)
 	}
 	lock, err := acquireExistingWriterLock(filepath.Join(cfg.CatalogMigrationStateDir, "writer.lock"))
 	if err != nil {

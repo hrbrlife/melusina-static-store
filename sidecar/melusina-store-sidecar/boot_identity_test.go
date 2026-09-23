@@ -132,18 +132,18 @@ func TestVerifySidecarIdentity(t *testing.T) {
 	}
 }
 
-// ── deriveOperatorIdentity ────────────────────────────────────────────────
+// ── deriveVerifiedBootIdentity ────────────────────────────────────────────
 
-func TestDeriveOperatorIdentity_ReadOnly(t *testing.T) {
+func TestDeriveVerifiedBootIdentity_ReadOnly(t *testing.T) {
 	// No shards_dir => deliberately read-only: nil operator, no error.
 	cfg := Config{LicenseNFTMint: randPubkeyB58(t), Domain: "store.example.org"}
-	op, err := deriveOperatorIdentity(context.Background(), cfg, newMockChainReader())
+	op, err := deriveVerifiedBootIdentity(context.Background(), cfg, newMockChainReader())
 	if err != nil || op != nil {
 		t.Fatalf("read-only boot: op=%v err=%v (want nil,nil)", op, err)
 	}
 }
 
-func TestDeriveOperatorIdentity_FailClosed(t *testing.T) {
+func TestDeriveVerifiedBootIdentity_FailClosed(t *testing.T) {
 	dir := t.TempDir()
 	writeTestShards(t, dir)
 	certPath, _ := writeTestTLSCert(t, dir)
@@ -156,26 +156,26 @@ func TestDeriveOperatorIdentity_FailClosed(t *testing.T) {
 
 	// shards provisioned but no chain reader => cannot bind => fail closed.
 	noRPC := base
-	if _, err := deriveOperatorIdentity(context.Background(), noRPC, nil); err == nil {
+	if _, err := deriveVerifiedBootIdentity(context.Background(), noRPC, nil); err == nil {
 		t.Fatal("shards set + nil reader must fail closed")
 	}
 
 	// shards provisioned but no TLS cert => cannot bind tls fingerprint.
 	noTLS := base
 	noTLS.TLS = TLSConfig{}
-	if _, err := deriveOperatorIdentity(context.Background(), noTLS, newMockChainReader()); err == nil {
+	if _, err := deriveVerifiedBootIdentity(context.Background(), noTLS, newMockChainReader()); err == nil {
 		t.Fatal("shards set + no TLS must fail closed")
 	}
 
 	// invalid sidecar_id => fail closed.
 	badID := base
 	badID.BootIdentity.SidecarID = "Bad ID With Spaces"
-	if _, err := deriveOperatorIdentity(context.Background(), badID, newMockChainReader()); err == nil {
+	if _, err := deriveVerifiedBootIdentity(context.Background(), badID, newMockChainReader()); err == nil {
 		t.Fatal("invalid sidecar_id must fail closed")
 	}
 
 	// shards set + valid config but NO on-chain SidecarIdentityEntry => fail closed.
-	if _, err := deriveOperatorIdentity(context.Background(), base, newMockChainReader()); err == nil {
+	if _, err := deriveVerifiedBootIdentity(context.Background(), base, newMockChainReader()); err == nil {
 		t.Fatal("missing on-chain SidecarIdentityEntry must fail closed")
 	}
 }
@@ -212,7 +212,7 @@ func TestBootIdentityTLSCertPathOverride(t *testing.T) {
 	}
 }
 
-func TestDeriveOperatorIdentity_EndToEnd(t *testing.T) {
+func TestDeriveVerifiedBootIdentity_EndToEnd(t *testing.T) {
 	dir := t.TempDir()
 	writeTestShards(t, dir)
 	certPath, tlsFP := writeTestTLSCert(t, dir)
@@ -270,26 +270,18 @@ func TestDeriveOperatorIdentity_EndToEnd(t *testing.T) {
 	if verified.facts.signingPubkey != good.SigningPubkey || verified.facts.encryptionPubkey != good.EncryptionPubkey || verified.facts.tlsFingerprint != good.TLSCertFingerprint || verified.facts.binaryHash != good.BinaryHash {
 		t.Fatalf("verified snapshot facts differ from the accepted on-chain binding")
 	}
-	got, err := deriveOperatorIdentity(context.Background(), cfg, m)
-	if err != nil {
-		t.Fatalf("expected ACCEPT, got: %v", err)
-	}
-	if got == nil || got.Public().SignPubkeyB58 != op.Public().SignPubkeyB58 {
-		t.Fatal("returned operator does not match the derived identity")
-	}
-
 	// Mismatch: a different binary hash on-chain => fail closed, even though the
 	// shards (and thus the derived keys) are correct.
 	bad := good
 	bad.BinaryHash = bytes32sidecar(0xEE)
 	mBad := newMockChainReader()
 	mBad.sidecarIdentity[sidecarPDA.Base58()] = mockSidecarIdentity{sid: bad}
-	if _, err := deriveOperatorIdentity(context.Background(), cfg, mBad); err == nil {
+	if _, err := deriveVerifiedBootIdentity(context.Background(), cfg, mBad); err == nil {
 		t.Fatal("binary_hash mismatch must fail closed")
 	}
 }
 
-func TestDeriveOperatorIdentity_RotatesBindingWithoutRotatingOperator(t *testing.T) {
+func TestDeriveVerifiedBootIdentity_RotatesBindingWithoutRotatingOperator(t *testing.T) {
 	dir := t.TempDir()
 	writeTestShards(t, dir)
 	certPath, tlsFP := writeTestTLSCert(t, dir)
@@ -344,12 +336,12 @@ func TestDeriveOperatorIdentity_RotatesBindingWithoutRotatingOperator(t *testing
 		EncryptionPubkey:   boxPub,
 		Status:             verify.AttestationStatusActive,
 	}}
-	got, err := deriveOperatorIdentity(context.Background(), cfg, m)
-	if err != nil {
+	got, err := deriveVerifiedBootIdentity(context.Background(), cfg, m)
+	if err != nil || got == nil {
 		t.Fatalf("expected rotated binding to ACCEPT: %v", err)
 	}
-	if got.Public().SignPubkeyB58 != want.Public().SignPubkeyB58 {
-		t.Fatalf("operator rotated with binding: got %s want %s", got.Public().SignPubkeyB58, want.Public().SignPubkeyB58)
+	if got.operator.Public().SignPubkeyB58 != want.Public().SignPubkeyB58 {
+		t.Fatalf("operator rotated with binding: got %s want %s", got.operator.Public().SignPubkeyB58, want.Public().SignPubkeyB58)
 	}
 }
 

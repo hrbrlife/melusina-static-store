@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -31,5 +32,17 @@ func TestLoadConfig_LegacyStoreRetainsFixedReleaseQuorum(t *testing.T) {
 	_, err := LoadConfig(writeJSONConfig(t, config))
 	if err == nil || !strings.Contains(err.Error(), "release_squads_authority quorum must be 3/4") {
 		t.Fatalf("unenrolled Store accepted profile-specific 2/3 quorum: %v", err)
+	}
+}
+
+// The standard build keeps its legacy Store through the enrollment gate: with
+// no estate_enrollment_state_path the gate passes it with no state, so its
+// read-only behaviour is unchanged. The estate-bootstrap build refuses the same
+// Store by name (TestEstateBootstrapEnrollmentGateHasNoUnenrolledStore).
+func TestLegacyEnrollmentGatePassesTheUnenrolledStore(t *testing.T) {
+	cfg := Config{LicenseNFTMint: randPubkeyB58(t), Domain: "legacy-store.example.invalid"}
+	verified, state, err := deriveEnrolledBootIdentity(context.Background(), cfg, "", newMockChainReader())
+	if err != nil || verified != nil || state != nil {
+		t.Fatalf("legacy unenrolled Store through the gate = %v, %v, %v; want no identity, no state, no refusal", verified, state, err)
 	}
 }

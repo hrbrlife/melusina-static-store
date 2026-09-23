@@ -54,3 +54,10 @@ func requireDefaultBazaarSquadsAuthority(domain string, multisig, vault, program
 	}
 	return nil
 }
+
+// unenrolledStoreRefusal keeps the standard build's legacy Store: with no
+// estate_enrollment_state_path, the enrollment gate passes it with no state and
+// its established read-only or publish behaviour is unchanged.
+func unenrolledStoreRefusal() error {
+	return nil
+}

@@ -925,13 +925,14 @@ groups:
       opensanctions:
         appId: msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh
         source_path: melusina-app-opensanctions
-        # v0.1.27/appVersion-29. Carries the PowerBox targetOrigin fix: the
-        # grain posted its grant request to a document.referrer-derived origin,
-        # which inside a Sandstorm iframe is the GRAIN's own ui-<hash> origin,
-        # so the browser dropped the message, the shell never opened the
-        # address-selector, and Claim hung at "Waiting for approval..." forever
-        # — the pearl could never reach its sanctions sidecar.
-        source_commit: a4ab5a12aaa877105c93bec8bdcf8d5bfa934401
+        # v0.1.28/appVersion-30. Screens over the sidecar's ad-hoc
+        # /sanctions/search route instead of /api/screen/{person,entity}. The
+        # latter is the durable evidence boundary: it demands a delivered
+        # process scope and lease (21 fields) that no caller of this grain can
+        # ever hold, so every screening 422'd. Keeps 0.1.27's PowerBox
+        # targetOrigin fix, without which Claim hung at "Waiting for
+        # approval..." forever and the pearl never reached its sidecar.
+        source_commit: 464b840d9afd9d61981d7dcfa91835117899ac37
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

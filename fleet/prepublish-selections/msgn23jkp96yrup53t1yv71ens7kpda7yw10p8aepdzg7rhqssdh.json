@@ -2,17 +2,18 @@
     "schema": "melusina-source-selection-v1",
     "appId": "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh",
     "sourceRepository": "https://github.com/hrbrlife/melusina-app-opensanctions",
-    "sourceCommit": "a4ab5a12aaa877105c93bec8bdcf8d5bfa934401",
+    "sourceCommit": "464b840d9afd9d61981d7dcfa91835117899ac37",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "ancestor",
-    "decisionSummary": "0.1.27 / appVersion 29 carries the PowerBox targetOrigin fix. The grain posted its grant request to a document.referrer-derived origin, which inside a Sandstorm iframe is the grain's own ui-<hash> origin, so the browser dropped the message, the shell never opened the address-selector, and Claim hung at 'Waiting for approval' forever - the pearl could never reach its sanctions sidecar. Diagnosed from the live browser console on us.paype.cc and fixed to post with '*', matching the working sibling implementation in melusina-app-creeper.",
+    "mainBaselineRelation": "same",
+    "decisionSummary": "0.1.28/appVersion-30: screening moves off the sidecar's durable evidence boundary (/api/screen/{person,entity}), which requires a delivered process scope and lease that no caller of this grain can hold, onto the ad-hoc /sanctions/search route. Before this cut every screening the app attempted returned 422.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean detached checkout at the selected commit; git status --porcelain --untracked-files=all is empty",
-            "full go test ./... suite passes at this commit",
-            "version cohort moves together: metadata.json version/versionNumber/marketingVersion, pkgdef appVersion/appMarketingVersion, and the release_candidate_test.go constants that pin them",
-            "powerbox targetOrigin regression guard added and mutation-proven: restoring the referrer logic fails the test and names the offending line"
+            "go test ./... passes at 464b840 (grain + release-candidate cohort guards)",
+            "mutation control: removing the request_id injection fails TestScreeningRequestCarriesStableRequestID by name",
+            "closed-schema completeness guard admits no allowed route without a fixture; both new person//sanctions/search and entity//sanctions/search pairs carry one",
+            "console tests fail by name if either caller is repointed at /api/screen/{person,entity}",
+            "clean clone of hrbrlife/melusina-app-opensanctions at 464b840, git status empty"
         ]
     },
     "reviewedRefs": [
@@ -23,12 +24,12 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "a4ab5a12aaa877105c93bec8bdcf8d5bfa934401",
+            "commit": "464b840d9afd9d61981d7dcfa91835117899ac37",
             "outcome": "selected"
         },
         {
             "ref": "refs/heads/main",
-            "commit": "fdfa93417002b11483e0eebfe8152343c4ec7da0",
+            "commit": "464b840d9afd9d61981d7dcfa91835117899ac37",
             "outcome": "baseline"
         },
         {
@@ -53,5 +54,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "ancestor"
+    "baselineRelation": "same"
 }

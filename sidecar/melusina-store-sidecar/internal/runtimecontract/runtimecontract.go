@@ -19,6 +19,7 @@ package runtimecontract
 import (
 	"bytes"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -27,6 +28,11 @@ import (
 	"regexp"
 	"strings"
 )
+
+// SchemaJSON is the exact immutable schema served at SchemaURL.
+//
+//go:embed melusina-app-runtime-contract-v1.schema.json
+var SchemaJSON []byte
 
 const (
 	// Schema is the stable, versioned contract identifier.  A new shape needs a

@@ -588,7 +588,7 @@ func (g *serveGate) buildAppIndex(snapshot AppCatalogSnapshot, hasSnapshot bool)
 		if err != nil || state.PreviousStageID == "" || state.PreviousValidUntil < g.now().UTC().Unix() {
 			continue
 		}
-		manifest, spk, meta, releaseBytes, err := loadStagedApp(g.cfg.PrivateStageDir, state.PreviousStageID)
+		manifest, spk, meta, releaseBytes, runtimeContract, err := loadStagedAppWithRuntime(g.cfg.PrivateStageDir, state.PreviousStageID)
 		if err != nil || manifest.AppID != appID {
 			continue
 		}
@@ -600,15 +600,29 @@ func (g *serveGate) buildAppIndex(snapshot AppCatalogSnapshot, hasSnapshot bool)
 		if json.Unmarshal(releaseBytes, &rel) != nil {
 			continue
 		}
+		status := "uncertified"
+		if runtimecontract.RequiresContract(runtimecontract.Binding{
+			ReleaseContractSHA256: rel.RuntimeContractSHA256,
+			ReleaseContractSchema: rel.RuntimeContractSchema,
+		}) {
+			// loadStagedAppWithRuntime already validated these exact v2 bytes
+			// against RELEASE.json, SPK, and metadata. A legacy stage that merely
+			// claims a contract is malformed, not an uncertified fallback.
+			if manifest.Schema != appStageSchemaV2 || len(runtimeContract) == 0 {
+				continue
+			}
+			status = "declared"
+		}
 		if _, exists := idx[pkgID]; exists {
 			continue
 		}
-		_ = spk // loadStagedApp already verified the exact private SPK bytes.
+		_ = spk // loadStagedAppWithRuntime verified the exact private bytes.
 		idx[pkgID] = servedApp{
-			rel:        rel,
-			metadata:   meta,
-			spkPath:    filepath.Join(g.cfg.PrivateStageDir, state.PreviousStageID, "app.spk"),
-			validUntil: state.PreviousValidUntil,
+			rel:                   rel,
+			metadata:              meta,
+			spkPath:               filepath.Join(g.cfg.PrivateStageDir, state.PreviousStageID, "app.spk"),
+			validUntil:            state.PreviousValidUntil,
+			runtimeContractStatus: status,
 		}
 	}
 	return idx

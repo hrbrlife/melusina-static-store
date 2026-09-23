@@ -54,6 +54,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -388,6 +389,7 @@ func runSign(args []string) error {
 	releasePath := fs.String("release", "", "path to the exact-current RELEASE.json bytes (envelope Body) (required)")
 	spkPath := fs.String("spk", "", "path to the exact-current app.spk bytes (RequestHash=sha256) (required)")
 	metadataPath := fs.String("metadata", "", "path to the exact-current metadata.json bytes (required)")
+	runtimeContractPath := fs.String("runtime-contract", "", "path to the exact-current release-bound RUNTIME-CONTRACT.json bytes (required)")
 	releaseEntryPDA := fs.String("release-entry-pda", "", "chain evidence: the app's on-chain ReleaseEntry PDA (base58) (required)")
 	verifiedSlot := fs.Uint64("verified-slot", 0, "chain evidence: verified_slot (a real finalized slot; must be > 0) (required)")
 	chainID := fs.String("chain-id", defaultChainID, "chain evidence chain_id")
@@ -406,6 +408,7 @@ func runSign(args []string) error {
 	for name, v := range map[string]string{
 		"--operator-public": *operatorPublic, "--publisher-identity": *publisherKey,
 		"--release": *releasePath, "--spk": *spkPath, "--metadata": *metadataPath,
+		"--runtime-contract":  *runtimeContractPath,
 		"--release-entry-pda": *releaseEntryPDA, "--stage-nonce": *stageNonce,
 		"--promote-nonce": *promoteNonce, "--txid": *txid, "--wal-digest": *walDigest,
 		"--out-fixture": *outFixture,
@@ -462,6 +465,13 @@ func runSign(args []string) error {
 	if err != nil {
 		return err
 	}
+	runtimeContract, err := readNonEmpty(*runtimeContractPath)
+	if err != nil {
+		return err
+	}
+	if err := validateRuntimeMaterial(release, spk, metadata, runtimeContract); err != nil {
+		return err
+	}
 
 	now := time.Now().UTC()
 	if *nowUnix != 0 {
@@ -511,15 +521,16 @@ func runSign(args []string) error {
 	// OUTER envelope with the same key; the fixture is written 0600 and the seed
 	// is never printed (HT13).
 	fixture := map[string]any{
-		"publisher_seed_hex": strings.TrimSpace(pk.SignSeed),
-		"authorized_signer":  pub.Public().SignPubkeyB58,
-		"release_b64":        base64.StdEncoding.EncodeToString(release),
-		"spk_b64":            base64.StdEncoding.EncodeToString(spk),
-		"metadata_b64":       base64.StdEncoding.EncodeToString(metadata),
-		"txid":               strings.TrimSpace(*txid),
-		"wal_digest":         strings.TrimSpace(*walDigest),
-		"stage_wire":         stageWire,
-		"promote_wire":       promoteWire,
+		"publisher_seed_hex":   strings.TrimSpace(pk.SignSeed),
+		"authorized_signer":    pub.Public().SignPubkeyB58,
+		"release_b64":          base64.StdEncoding.EncodeToString(release),
+		"spk_b64":              base64.StdEncoding.EncodeToString(spk),
+		"metadata_b64":         base64.StdEncoding.EncodeToString(metadata),
+		"runtime_contract_b64": base64.StdEncoding.EncodeToString(runtimeContract),
+		"txid":                 strings.TrimSpace(*txid),
+		"wal_digest":           strings.TrimSpace(*walDigest),
+		"stage_wire":           stageWire,
+		"promote_wire":         promoteWire,
 	}
 	fixBytes, err := json.MarshalIndent(fixture, "", "  ")
 	if err != nil {
@@ -541,6 +552,26 @@ func runSign(args []string) error {
 	fmt.Fprintf(os.Stderr, "stage   payload_hash/nonce = %s / %s\n", stageWire.PayloadHash, *stageNonce)
 	fmt.Fprintf(os.Stderr, "promote payload_hash/nonce = %s / %s\n", promoteWire.PayloadHash, *promoteNonce)
 	fmt.Fprintf(os.Stderr, "fixture written            = %s (0600)\n", *outFixture)
+	return nil
+}
+
+func validateRuntimeMaterial(release, spk, metadata, runtimeContractBytes []byte) error {
+	var claims struct {
+		AppHash               string `json:"appHash"`
+		Version               string `json:"version"`
+		RuntimeContractSHA256 string `json:"runtimeContractSha256"`
+		RuntimeContractSchema string `json:"runtimeContractSchema"`
+	}
+	if err := json.Unmarshal(release, &claims); err != nil {
+		return fmt.Errorf("parse RELEASE.json runtime binding: %w", err)
+	}
+	if _, err := runtimecontract.Validate(runtimeContractBytes, runtimecontract.Binding{
+		SPK: spk, Metadata: metadata, AppHash: claims.AppHash, Version: claims.Version,
+		ReleaseContractSHA256: claims.RuntimeContractSHA256,
+		ReleaseContractSchema: claims.RuntimeContractSchema,
+	}); err != nil {
+		return fmt.Errorf("validate exact-current runtime contract: %w", err)
+	}
 	return nil
 }
 

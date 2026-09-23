@@ -169,6 +169,7 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 	relPath := filepath.Join(out, "material-release.json")
 	spkPath := filepath.Join(out, "material-app.spk")
 	metaPath := filepath.Join(out, "material-metadata.json")
+	runtimeContractPath := filepath.Join(out, "material-runtime-contract.json")
 	if err := os.WriteFile(relPath, release, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -176,6 +177,9 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(metaPath, f.metadata, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(runtimeContractPath, f.runtimeContract, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	origUser := os.Getenv("ISO_USER")
@@ -204,6 +208,7 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 		"release_path":           relPath,
 		"spk_path":               spkPath,
 		"metadata_path":          metaPath,
+		"runtime_contract_path":  runtimeContractPath,
 		"release_entry_pda":      f.rel.ReleaseEntryPda,
 		"app_id":                 f.rel.AppHash, // metadata appId is the served-slot key; app_hash binds the receipt
 		"private_stage_dir":      cfg.PrivateStageDir,
@@ -213,6 +218,7 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 		"release_b64":            base64.StdEncoding.EncodeToString(release),
 		"spk_b64":                base64.StdEncoding.EncodeToString(f.spk),
 		"metadata_b64":           base64.StdEncoding.EncodeToString(f.metadata),
+		"runtime_contract_b64":   base64.StdEncoding.EncodeToString(f.runtimeContract),
 	}
 	handoffPath := filepath.Join(out, "handoff.json")
 	isoWriteJSON(t, handoffPath, handoff)

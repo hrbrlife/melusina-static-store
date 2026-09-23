@@ -125,7 +125,7 @@ if $PROMOTE_EXISTING; then
 else
   "$SCRIPT_DIR/stage-into-catalog.sh" "$APP_DIR/app.spk" "$CAT_PATH"
 fi
-for name in app.spk metadata.json RELEASE.json; do need_file "$CAT_PATH/$name"; done
+for name in app.spk metadata.json RELEASE.json RUNTIME-CONTRACT.json; do need_file "$CAT_PATH/$name"; done
 
 RPC_URL="${MELUSINA_STORE_RPC_URL:-${MELUSINA_RPC_URL:-}}"
 [[ -n "$RPC_URL" ]] || fail "MELUSINA_STORE_RPC_URL or MELUSINA_RPC_URL is required"
@@ -189,6 +189,8 @@ cmp -s "$ACTIVE_BEFORE" "$ACTIVE_AFTER" || fail "Active ReleaseEntry set changed
 APP_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["appId"])' "$CAT_PATH/metadata.json")"
 POINTER_URL="$STORE_URL/apps/pointers/$APP_ID.json"
 curl -fsS --max-time 30 "$POINTER_URL" -o "$RECEIPT_DIR/$APP_SLUG-pointer.json"
+CONTRACT_URL="$STORE_URL/attest/$APP_ID/RUNTIME-CONTRACT.json"
+curl -fsS --max-time 30 "$CONTRACT_URL" -o "$RECEIPT_DIR/$APP_SLUG-runtime-contract.json"
 python3 - "$PROMOTE_RECEIPT" "$RECEIPT_DIR/$APP_SLUG-pointer.json" <<'PY' || fail "served pointer differs from verified promotion receipt"
 import json,sys
 r=json.load(open(sys.argv[1], encoding="utf-8"))
@@ -196,5 +198,14 @@ p=json.load(open(sys.argv[2], encoding="utf-8"))
 assert r["catalog"] == p
 assert r["stage"]["stageId"] == r["rollout"]["currentStageId"] == p["stageId"]
 assert r["appHash"] == p["appHash"]
+PY
+python3 - "$CAT_PATH/RELEASE.json" "$CAT_PATH/RUNTIME-CONTRACT.json" "$RECEIPT_DIR/$APP_SLUG-runtime-contract.json" <<'PY' || fail "served runtime contract differs from the release-bound candidate"
+import hashlib,json,sys
+release=json.load(open(sys.argv[1], encoding="utf-8"))
+local=open(sys.argv[2], "rb").read()
+served=open(sys.argv[3], "rb").read()
+assert local == served
+assert release.get("runtimeContractSchema") == "melusina-app-runtime-contract-v1"
+assert release.get("runtimeContractSha256") == hashlib.sha256(local).hexdigest()
 PY
 info "PROMOTED + PULL-VERIFIED: $PROMOTE_RECEIPT"

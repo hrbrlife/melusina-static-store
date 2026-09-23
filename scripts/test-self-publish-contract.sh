@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DRIVER="$ROOT/scripts/self-publish.sh"
 RELEASE_BUILDER="$ROOT/scripts/build-store-release.sh"
+KEYGEN="$ROOT/sidecar/melusina-store-sidecar/cmd/keygen/main.go"
 
 for retired in \
   scripts/publish-app-full.sh scripts/publish-apps.sh scripts/ship-changes.sh \
@@ -26,6 +27,14 @@ grep -q 'PRESERVE_EXISTING_RELEASE=1' "$DRIVER"
 grep -q 'no app-chain writer' "$DRIVER"
 grep -q 'Active ReleaseEntry set changed' "$DRIVER"
 grep -q 'requires exactly one Active ReleaseEntry before promotion' "$DRIVER"
+grep -q 'RUNTIME-CONTRACT.json' "$DRIVER"
+grep -q -- '--runtime-contract "$CAT_PATH/RUNTIME-CONTRACT.json"' "$DRIVER"
+grep -q 'served runtime contract differs from the release-bound candidate' "$DRIVER"
+grep -q '9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J' "$DRIVER"
+grep -q '4J2hbufiTKmvgfxjGVNqhoQXiKVDsYwaor6hcaDKjzZV' "$KEYGEN"
+grep -q 'D62iWtghh4s6majv1xm5bbeTnLmzrkycF1tA9bgcnKJ5' "$KEYGEN"
+grep -q '7eESnZ9hvVAVTDCwSq73FGygqhp9bQZ5jF672NZsSKr6' "$KEYGEN"
+grep -q 'melusina-os-root-store-v2' "$KEYGEN"
 
 for target in apply apply-locked deploy publish; do
   if make -C "$ROOT" "$target" >/tmp/melusina-retired-$target.out 2>&1; then
@@ -55,6 +64,10 @@ compare = s.index('cmp -s "$ACTIVE_BEFORE" "$ACTIVE_AFTER"')
 assert stage < stop < readonly < active_before < promote < active_after < compare
 assert s.count('"$SUBMIT_BIN" "${submit_common[@]}" --stage') == 1
 assert s.count('"$SUBMIT_BIN" "${submit_common[@]}" --receipt-out "$PROMOTE_RECEIPT"') == 1
+assert '--runtime-contract "$CAT_PATH/RUNTIME-CONTRACT.json"' in s
+assert s.index('curl -fsS --max-time 30 "$CONTRACT_URL"') > promote
+assert 'assert local == served' in s
+assert 'hashlib.sha256(local).hexdigest()' in s
 PY
 
 python3 - "$RELEASE_BUILDER" <<'PY'

@@ -13,6 +13,7 @@ receipt.
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import json
 import os
@@ -30,6 +31,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "sidecar" / "melusina-store-sidecar"
+RUNTIME_CONTRACT_SCHEMA = "melusina-app-runtime-contract-v1"
+RELEASE_ENTRY_DISCRIMINATOR = hashlib.sha256(b"account:ReleaseEntry").digest()[:8]
 
 
 class ProviderError(RuntimeError):
@@ -85,6 +88,23 @@ def hex_sha(path: Path) -> str:
         for block in iter(lambda: f.read(1024 * 1024), b""):
             h.update(block)
     return h.hexdigest()
+
+
+def runtime_contract_binding(context: dict[str, Any]) -> tuple[str, str]:
+    path = clean_abs(str(context.get("runtimeContractPath", "")), "provider runtimeContractPath")
+    contract = read_json(path)
+    if contract.get("schema") != RUNTIME_CONTRACT_SCHEMA:
+        raise ProviderError(f"runtime contract schema must be {RUNTIME_CONTRACT_SCHEMA}")
+    return RUNTIME_CONTRACT_SCHEMA, hex_sha(path)
+
+
+def runtime_contract_ref(path: Path) -> dict[str, Any]:
+    return {
+        "path": str(path),
+        "sha256": hex_sha(path),
+        "size": path.stat().st_size,
+        "schema": RUNTIME_CONTRACT_SCHEMA,
+    }
 
 
 def state_root(app_id: str) -> Path:
@@ -180,7 +200,7 @@ def catalog_package(app_id: str) -> Path:
 
 def require_context(app_id: str) -> dict[str, Any]:
     context = read_json(context_path(app_id))
-    for key in ("catalogDir", "ceremonyDir", "spkPath", "metadataPath", "releasePath", "statePath"):
+    for key in ("catalogDir", "ceremonyDir", "spkPath", "metadataPath", "releasePath", "runtimeContractPath", "statePath"):
         if not context.get(key):
             raise ProviderError(f"provider context lacks {key}")
     return context
@@ -244,6 +264,9 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     )
     spk = catalog / "app.spk"
     metadata = catalog / "metadata.json"
+    runtime_contract = catalog / "RUNTIME-CONTRACT.json"
+    if not runtime_contract.is_file():
+        raise ProviderError(f"candidate catalog lacks release-bound {runtime_contract.name}")
     # The on-chain ReleaseEntry AppHash is the canonical two-file tree
     # {app.spk, metadata.json}.  The catalog directory also carries mutable
     # presentation assets (icons, descriptions, screenshots), which the Pearl
@@ -266,6 +289,19 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     apphash = run([str(ensure_bin("apphash", "./cmd/apphash")), "-spk", str(spk), "-metadata", str(metadata)]).strip()
     if len(apphash) != 64 or any(c not in "0123456789abcdef" for c in apphash):
         raise ProviderError("canonical apphash command returned an invalid digest")
+    contract = read_json(runtime_contract)
+    contract_app = contract.get("app")
+    if contract.get("schema") != RUNTIME_CONTRACT_SCHEMA or not isinstance(contract_app, dict):
+        raise ProviderError("candidate runtime contract has an unsupported schema or no app binding")
+    expected_contract_app = {
+        "appId": app_id,
+        "version": version,
+        "spkSha256": artifact_sha,
+        "appHash": apphash,
+    }
+    for field, expected in expected_contract_app.items():
+        if contract_app.get(field) != expected:
+            raise ProviderError(f"candidate runtime contract app.{field} does not bind the built release")
     # A catalog RELEASE.json is an old, mutable handoff artifact and may carry
     # an offline placeholder. The governed authority is configured outside the
     # catalog and must be the same value used to derive/propose the ReleaseEntry.
@@ -281,6 +317,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "spkPath": str(spk),
         "metadataPath": str(metadata),
         "releasePath": str(release),
+        "runtimeContractPath": str(runtime_contract),
         "statePath": str(work / "ceremony-state.json"),
         "sourceReceipt": str(work / "source-build.json"),
         "catalogSlot": slot,
@@ -295,12 +332,14 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "masterNftMint": master,
         "spkPath": str(spk),
         "metadataPath": str(metadata),
+        "runtimeContract": runtime_contract_ref(runtime_contract),
     })
 
 
 def rewrite_release(context: dict[str, Any], app_id: str, app_hash: str, release_hash: str, version: str, nonce: str) -> Path:
     release_path = clean_abs(str(context["releasePath"]), "provider releasePath")
     release = read_json(release_path)
+    contract_schema, contract_sha = runtime_contract_binding(context)
     release.update({
         "$schema": "melusina-release-v1",
         "appHash": app_hash,
@@ -309,6 +348,8 @@ def rewrite_release(context: dict[str, Any], app_id: str, app_hash: str, release
         "releaseNonce": nonce,
         "masterNftMint": env("MEL_RELEASE_MASTER_NFT_MINT", default=str(release.get("masterNftMint", ""))),
         "licenseSquadsVault": env("MEL_RELEASE_SQUADS_VAULT", required=True),
+        "runtimeContractSchema": contract_schema,
+        "runtimeContractSha256": contract_sha,
     })
     if not release["masterNftMint"]:
         raise ProviderError("MEL_RELEASE_MASTER_NFT_MINT is required")
@@ -328,6 +369,7 @@ def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool)
         str(ensure_bin("submit", "./cmd/submit")), "--store", store_url,
         "--spk", str(context["spkPath"]), "--metadata", str(context["metadataPath"]),
         "--release", str(context["releasePath"]), "--publisher-key", env("MEL_RELEASE_PUBLISHER_KEY", required=True),
+        "--runtime-contract", str(context["runtimeContractPath"]),
         "--store-pubkey", env("MEL_RELEASE_STORE_PUBKEY", required=True), "--license-mint", store_license,
         "--domain", domain, "--rpc-url", rpc, "--timeout", "480s", "--receipt-out", str(receipt_out),
         "--developer", slot["developer"], "--repo", slot["repo"], "--slug", slot["slug"],
@@ -408,10 +450,20 @@ def release_entry_exists(pda: str) -> bool:
 
 def finalize_release(context: dict[str, Any]) -> None:
     pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
+    before = read_json(clean_abs(str(context["releasePath"]), "provider releasePath"))
+    contract_schema = before.get("runtimeContractSchema")
+    contract_sha = before.get("runtimeContractSha256")
+    if not isinstance(contract_schema, str) or not contract_schema or not isinstance(contract_sha, str) or not contract_sha:
+        raise ProviderError("staged release lacks its runtime-contract binding")
     run([
         str(pearl), "finalize-release", "--app-dir", str(context["ceremonyDir"]), "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
         "--rpc-url", env("MEL_RELEASE_RPC_URL", required=True),
     ])
+    release_path = clean_abs(str(context["releasePath"]), "provider releasePath")
+    finalized = read_json(release_path)
+    finalized["runtimeContractSchema"] = contract_schema
+    finalized["runtimeContractSha256"] = contract_sha
+    write_json(release_path, finalized)
 
 
 def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str, vault: str, release_out: Path, receipt_out: Path) -> None:
@@ -510,6 +562,47 @@ def served_hash(app_id: str) -> None:
         sys.stdout.write(value)
 
 
+def decode_release_status(pda: str, value: Any, expected_program: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ProviderError(f"ReleaseEntry {pda} is not present")
+    if value.get("owner") != expected_program:
+        raise ProviderError(f"ReleaseEntry {pda} owner does not match MEL_PROGRAM_ID")
+    encoded = value.get("data")
+    if not isinstance(encoded, list) or not encoded or not isinstance(encoded[0], str):
+        raise ProviderError(f"ReleaseEntry {pda} has no base64 account data")
+    try:
+        raw = base64.b64decode(encoded[0], validate=True)
+    except (ValueError, binascii.Error) as exc:
+        raise ProviderError(f"ReleaseEntry {pda} base64 decode failed: {exc}") from exc
+    if raw[:8] != RELEASE_ENTRY_DISCRIMINATOR:
+        raise ProviderError(f"ReleaseEntry {pda} has the wrong account discriminator")
+    # Anchor discriminator + master/appHash/appId/releaseHash + Borsh version.
+    offset = 8 + 32 + 32 + 32 + 32
+    if len(raw) < offset + 4:
+        raise ProviderError("ReleaseEntry is truncated before version")
+    n = int.from_bytes(raw[offset:offset + 4], "little")
+    offset += 4
+    if n < 1 or len(raw) < offset + n + 32 + 32 + 64 + 32 + 32 + 8 + 1:
+        raise ProviderError("ReleaseEntry has an invalid version/status layout")
+    try:
+        version = raw[offset:offset + n].decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ProviderError(f"ReleaseEntry version is not UTF-8: {exc}") from exc
+    offset += n + 32 + 32 + 64 + 32 + 32 + 8
+    status = raw[offset]
+    # AttestationStatus is the Anchor/Borsh ordinal used by the live release_v2
+    # program: Active=0, Revoked=1, Superseded=2.
+    statuses = ("Active", "Revoked", "Superseded")
+    if status >= len(statuses):
+        raise ProviderError(f"ReleaseEntry {pda} has unknown status {status}")
+    return {
+        "pda": pda,
+        "appHash": raw[8 + 32:8 + 64].hex(),
+        "version": version,
+        "status": statuses[status],
+    }
+
+
 def release_status(pda: str) -> None:
     rpc = env("MEL_RELEASE_RPC_URL", required=True)
     req = urllib.request.Request(rpc, data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo", "params": [pda, {"encoding": "base64", "commitment": "confirmed"}]}).encode(), headers={"Content-Type": "application/json"})
@@ -518,26 +611,10 @@ def release_status(pda: str) -> None:
             payload = json.loads(response.read())
     except (OSError, json.JSONDecodeError) as exc:
         raise ProviderError(f"read ReleaseEntry {pda}: {exc}") from exc
+    if payload.get("error"):
+        raise ProviderError(f"ReleaseEntry RPC error: {payload['error']}")
     value = payload.get("result", {}).get("value")
-    if not isinstance(value, dict) or not value.get("data"):
-        raise ProviderError(f"ReleaseEntry {pda} is not present")
-    raw = base64.b64decode(value["data"][0])
-    # Anchor discriminator + master/appHash/appId/releaseHash + Borsh version
-    offset = 8 + 32 + 32 + 32 + 32
-    if len(raw) < offset + 4:
-        raise ProviderError("ReleaseEntry is truncated before version")
-    n = int.from_bytes(raw[offset:offset + 4], "little")
-    offset += 4
-    if n < 1 or len(raw) < offset + n + 32 + 32 + 64 + 32 + 32 + 8 + 1:
-        raise ProviderError("ReleaseEntry has an invalid version/status layout")
-    version = raw[offset:offset + n].decode("utf-8")
-    offset += n
-    offset += 32 + 32 + 64 + 32 + 32 + 8
-    status = raw[offset]
-    if status not in (1, 2):
-        raise ProviderError(f"ReleaseEntry {pda} has unknown status {status}")
-    app_hash = raw[8 + 32:8 + 64].hex()
-    print(json.dumps({"pda": pda, "appHash": app_hash, "version": version, "status": "Active" if status == 1 else "Revoked"}, separators=(",", ":")))
+    print(json.dumps(decode_release_status(pda, value, env("MEL_PROGRAM_ID", required=True)), separators=(",", ":")))
 
 
 def revoke(pda: str, receipt_out: Path) -> None:

@@ -23,10 +23,35 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 var enc = base64.StdEncoding
+
+func TestRuntimeContractSchemaRouteServesExactEmbeddedSchema(t *testing.T) {
+	cfg, _ := testConfig(t)
+	router := newRouter(cfg, nil, nil, nil)
+	request := httptest.NewRequest(http.MethodGet, "/schemas/melusina-app-runtime-contract-v1.schema.json", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("schema GET = %d: %s", response.Code, response.Body.String())
+	}
+	if !bytes.Equal(response.Body.Bytes(), runtimecontract.SchemaJSON) {
+		t.Fatal("schema route did not serve the exact embedded governed bytes")
+	}
+	if got := response.Header().Get("Content-Type"); got != "application/schema+json" {
+		t.Fatalf("schema content type = %q", got)
+	}
+	var schema map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &schema); err != nil {
+		t.Fatal(err)
+	}
+	if schema["$id"] != runtimecontract.SchemaURL || schema["additionalProperties"] != false {
+		t.Fatalf("served schema identity/strictness mismatch: %+v", schema)
+	}
+}
 
 // stubAssembler gives each handler test an isolated in-process read surface.
 func stubAssembler(t *testing.T) *CatalogAssembler {
@@ -583,7 +608,7 @@ func TestAppStageExistingCorruptCandidateRefusesBeforeNonceClaim(t *testing.T) {
 	if got := doStagePublish(t, svc, jsonPublishBody(t, first, release, fixture.spk, fixture.metadata)); got.Code != http.StatusOK {
 		t.Fatalf("first stage = %d: %s", got.Code, got.Body.String())
 	}
-	manifest, err := buildStagedAppManifest(fixture.spk, fixture.metadata, release, fixture.rel, slotHint{}, now)
+	manifest, err := buildStagedAppManifest(fixture.spk, fixture.metadata, release, fixture.rel, slotHint{}, now, fixture.runtimeContract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1309,6 +1334,87 @@ func TestHandlePublish_RequiresPrivateStage(t *testing.T) {
 	w := doPublish(t, svc, jsonPublishBody(t, signPublish(t, pub, op.Public(), f.spk, release), release, f.spk, f.metadata))
 	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "check=stage") {
 		t.Fatalf("expected unstaged promotion to fail 409 at stage gate, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestRuntimeContractIsRequiredPersistedAndServedFromSelectedGeneration(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.CatalogRepoRoot = t.TempDir()
+	op := newTestIdentity(t, "runtime-contract-operator", cfg.LicenseNFTMint, cfg.Domain)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	slotDir := seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "runtime-contract", "app", f.metadata)
+	chain := newMockChainReader()
+	f.pinAccept(chain, operatorSignPub32(t, op))
+	svc := newTestService(t, cfg, chain, op)
+	publisher := newTestIdentity(t, "runtime-contract-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
+	release := mustJSON(t, f.rel)
+	now := time.Now().UTC()
+	svc.now = func() time.Time { return now }
+
+	missingEnvelope := signPublishForRoute(t, publisher, op.Public(), f.spk, release, "/publish/stage", now, 5*time.Minute, "missing-runtime-contract")
+	missing := doStagePublish(t, svc, jsonPublishBody(t, missingEnvelope, release, f.spk, f.metadata, []byte{}))
+	if missing.Code != http.StatusBadRequest || !strings.Contains(missing.Body.String(), "check=runtime_contract") {
+		t.Fatalf("missing runtime contract = %d: %s", missing.Code, missing.Body.String())
+	}
+	claims, err := os.ReadDir(filepath.Join(svc.cfg.PrivateStageDir, publishNonceLedgerDirName, publishNonceClaimsDirName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(claims) != 0 {
+		t.Fatalf("runtime-contract refusal allocated %d durable nonce claims", len(claims))
+	}
+
+	stageEnvelope := signPublishForRoute(t, publisher, op.Public(), f.spk, release, "/publish/stage", now, 5*time.Minute, "exact-runtime-contract-stage")
+	stage := doStagePublish(t, svc, jsonPublishBody(t, stageEnvelope, release, f.spk, f.metadata, f.runtimeContract))
+	if stage.Code != http.StatusOK {
+		t.Fatalf("runtime-bound stage = %d: %s", stage.Code, stage.Body.String())
+	}
+	var stageReceipt StageReceipt
+	if err := json.Unmarshal(stage.Body.Bytes(), &stageReceipt); err != nil {
+		t.Fatal(err)
+	}
+	manifest, _, _, _, stagedRuntime, err := loadStagedAppWithRuntime(svc.cfg.PrivateStageDir, stageReceipt.StageID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Schema != appStageSchemaV2 || !bytes.Equal(stagedRuntime, f.runtimeContract) {
+		t.Fatal("private stage did not retain the exact release-bound runtime contract")
+	}
+
+	promoteEnvelope := signPublishForRoute(t, publisher, op.Public(), f.spk, release, "/publish", now, 5*time.Minute, "exact-runtime-contract-promote")
+	promote := doPublish(t, svc, jsonPublishBody(t, promoteEnvelope, release, f.spk, f.metadata, f.runtimeContract))
+	if promote.Code != http.StatusOK {
+		t.Fatalf("runtime-bound promotion = %d: %s", promote.Code, promote.Body.String())
+	}
+	for label, path := range map[string]string{
+		"governed source": filepath.Join(slotDir, "RUNTIME-CONTRACT.json"),
+	} {
+		got, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s runtime contract: %v", label, err)
+		}
+		if !bytes.Equal(got, f.runtimeContract) {
+			t.Fatalf("%s runtime contract differs from staged bytes", label)
+		}
+	}
+
+	appID := metadataAppID(f.metadata)
+	readRouter := newRouterWithCatalogRuntime(svc.cfg, op, chain, nil, catalogRuntime{
+		appNonces:          svc.appNonces,
+		catalogGenerations: svc.catalogGenerations,
+	})
+	served := httptest.NewRecorder()
+	readRouter.ServeHTTP(served, httptest.NewRequest(http.MethodGet, "/attest/"+appID+"/RUNTIME-CONTRACT.json", nil))
+	if served.Code != http.StatusOK {
+		t.Fatalf("runtime contract GET = %d: %s", served.Code, served.Body.String())
+	}
+	if !bytes.Equal(served.Body.Bytes(), f.runtimeContract) {
+		t.Fatal("served runtime contract differs from the exact staged bytes")
+	}
+	servedSum := sha256.Sum256(served.Body.Bytes())
+	if got := hex.EncodeToString(servedSum[:]); got != f.rel.RuntimeContractSHA256 {
+		t.Fatalf("served runtime contract sha256 = %s, RELEASE.json binds %s", got, f.rel.RuntimeContractSHA256)
 	}
 }
 

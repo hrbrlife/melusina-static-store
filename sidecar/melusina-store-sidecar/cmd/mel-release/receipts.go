@@ -15,6 +15,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 )
 
 const (
@@ -78,16 +80,24 @@ type buildReceipt struct {
 		SHA256 string `json:"sha256"`
 		Size   int64  `json:"size"`
 	} `json:"artifact"`
-	AppHash       string `json:"appHash"`       // on-chain app_hash claim (tree hash over {app.spk, metadata.json})
-	PackageID     string `json:"packageId"`     // immutable served filename
-	MasterNftMint string `json:"masterNftMint"` // ReleaseEntry PDA seed
-	SpkPath       string `json:"spkPath"`       // absolute staged app.spk
-	MetadataPath  string `json:"metadataPath"`  // absolute staged metadata.json
+	AppHash         string             `json:"appHash"`       // on-chain app_hash claim (tree hash over {app.spk, metadata.json})
+	PackageID       string             `json:"packageId"`     // immutable served filename
+	MasterNftMint   string             `json:"masterNftMint"` // ReleaseEntry PDA seed
+	SpkPath         string             `json:"spkPath"`       // absolute staged app.spk
+	MetadataPath    string             `json:"metadataPath"`  // absolute staged metadata.json
+	RuntimeContract runtimeContractRef `json:"runtimeContract"`
 
 	// Optional: the currently-served release being superseded (the per-component
 	// rollback floor). Empty for a first publication.
 	PreviousSHA256  string `json:"previousSha256,omitempty"`
 	PreviousVersion string `json:"previousVersion,omitempty"`
+}
+
+type runtimeContractRef struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+	Size   int64  `json:"size"`
+	Schema string `json:"schema"`
 }
 
 func readBuildReceipt(path, appID, version string) (buildReceipt, artifactRef, error) {
@@ -108,6 +118,10 @@ func readBuildReceipt(path, appID, version string) (buildReceipt, artifactRef, e
 	if b.PackageID == "" || b.MasterNftMint == "" || b.SpkPath == "" || b.MetadataPath == "" {
 		return b, artifactRef{}, errors.New("build receipt is missing packageId/masterNftMint/spkPath/metadataPath")
 	}
+	if !filepath.IsAbs(b.RuntimeContract.Path) || filepath.Clean(b.RuntimeContract.Path) != b.RuntimeContract.Path ||
+		!isLowerHex(b.RuntimeContract.SHA256, 64) || b.RuntimeContract.Size <= 0 || b.RuntimeContract.Schema != runtimecontract.Schema {
+		return b, artifactRef{}, errors.New("build receipt carries an invalid runtime-contract binding")
+	}
 	if b.PreviousSHA256 != "" && !isLowerHex(b.PreviousSHA256, 64) {
 		return b, artifactRef{}, errors.New("build receipt previousSha256 must be 64 lowercase hex chars")
 	}
@@ -117,15 +131,17 @@ func readBuildReceipt(path, appID, version string) (buildReceipt, artifactRef, e
 // ── finalRelease (provider RELEASE.json) ───────────────────────────────────────
 
 type finalRelease struct {
-	Schema          string `json:"$schema"`
-	AppHash         string `json:"appHash"`
-	ReleaseHash     string `json:"releaseHash"`
-	Version         string `json:"version"`
-	ReleaseNonce    string `json:"releaseNonce"`
-	ReleaseEntryPDA string `json:"releaseEntryPda"`
+	Schema                string `json:"$schema"`
+	AppHash               string `json:"appHash"`
+	ReleaseHash           string `json:"releaseHash"`
+	Version               string `json:"version"`
+	ReleaseNonce          string `json:"releaseNonce"`
+	ReleaseEntryPDA       string `json:"releaseEntryPda"`
+	RuntimeContractSHA256 string `json:"runtimeContractSha256"`
+	RuntimeContractSchema string `json:"runtimeContractSchema"`
 }
 
-func readFinalReleaseJSON(path, appHash, version, nonce string) (finalRelease, artifactRef, error) {
+func readFinalReleaseJSON(path, appHash, version, nonce string, runtimeRef runtimeContractRef) (finalRelease, artifactRef, error) {
 	var rel finalRelease
 	ref, err := readNativeJSON(path, &rel)
 	if err != nil {
@@ -133,6 +149,9 @@ func readFinalReleaseJSON(path, appHash, version, nonce string) (finalRelease, a
 	}
 	if rel.Schema != releaseSchema || rel.AppHash != appHash || rel.Version != version || rel.ReleaseNonce != nonce || rel.ReleaseEntryPDA == "" {
 		return rel, artifactRef{}, errors.New("final RELEASE.json schema or binding mismatch")
+	}
+	if rel.RuntimeContractSchema != runtimeRef.Schema || rel.RuntimeContractSHA256 != runtimeRef.SHA256 {
+		return rel, artifactRef{}, errors.New("final RELEASE.json runtime-contract binding mismatch")
 	}
 	want := sha256.Sum256([]byte(appHash + version + nonce))
 	if rel.ReleaseHash != hex.EncodeToString(want[:]) {
@@ -308,21 +327,22 @@ type squadsProposalRef struct {
 }
 
 type candidateReceipt struct {
-	Schema         string             `json:"schema"`
-	AppID          string             `json:"appId"`
-	PublishSlug    string             `json:"publishSlug"`
-	CatalogName    string             `json:"catalogName"`
-	Version        string             `json:"version"`
-	Component      candidateComponent `json:"component"`
-	Artifact       artifactRef        `json:"artifact"`
-	ReleaseNonce   string             `json:"releaseNonce"`
-	StageReceipt   artifactRef        `json:"stageReceipt"`
-	SquadsProposal squadsProposalRef  `json:"squadsProposal"`
-	StalePDAs      []string           `json:"stalePdas"`
-	StoreID        string             `json:"storeId"`
-	BundleOrigin   string             `json:"bundleOrigin"`
-	Channel        string             `json:"channel"`
-	CreatedAtUnix  int64              `json:"createdAtUnix"`
+	Schema          string             `json:"schema"`
+	AppID           string             `json:"appId"`
+	PublishSlug     string             `json:"publishSlug"`
+	CatalogName     string             `json:"catalogName"`
+	Version         string             `json:"version"`
+	Component       candidateComponent `json:"component"`
+	Artifact        artifactRef        `json:"artifact"`
+	RuntimeContract runtimeContractRef `json:"runtimeContract"`
+	ReleaseNonce    string             `json:"releaseNonce"`
+	StageReceipt    artifactRef        `json:"stageReceipt"`
+	SquadsProposal  squadsProposalRef  `json:"squadsProposal"`
+	StalePDAs       []string           `json:"stalePdas"`
+	StoreID         string             `json:"storeId"`
+	BundleOrigin    string             `json:"bundleOrigin"`
+	Channel         string             `json:"channel"`
+	CreatedAtUnix   int64              `json:"createdAtUnix"`
 }
 
 // readCandidate reads and hash-binds an immutable candidate receipt.

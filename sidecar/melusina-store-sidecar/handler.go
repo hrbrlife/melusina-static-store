@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -31,7 +32,8 @@ import (
 // nginx 502 with no check= line. Bound each route generously and separately;
 // the real gate stays on-chain.
 const (
-	// maxAppPublishBody bounds /publish (envelope + RELEASE.json + SPK).
+	// maxAppPublishBody bounds /publish (envelope + RELEASE.json + SPK +
+	// metadata.json + RUNTIME-CONTRACT.json).
 	// Catalog SPKs stay under 100 MiB; keep this narrow because app publication
 	// has no reason to accept shell-sized payloads.
 	maxAppPublishBody int64 = 256 << 20 // 256 MiB
@@ -163,6 +165,18 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 	return appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel}, nil
 }
 
+func validateAppRuntimeContract(preflight appPublishPreflight) error {
+	_, err := runtimecontract.Validate(preflight.runtimeContract, runtimecontract.Binding{
+		SPK:                   preflight.spk,
+		Metadata:              preflight.metadata,
+		AppHash:               strings.ToLower(strings.TrimSpace(preflight.release.AppHash)),
+		Version:               preflight.release.Version,
+		ReleaseContractSHA256: preflight.release.RuntimeContractSHA256,
+		ReleaseContractSchema: preflight.release.RuntimeContractSchema,
+	})
+	return err
+}
+
 func verifyTightAppEnvelopeWindow(payload envelope.Payload, now time.Time) error {
 	if payload.ExpiresAtMs < now.UTC().UnixMilli() {
 		return errors.New("check=envelope_expiry: app publish envelope expired")
@@ -288,6 +302,14 @@ func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chai
 	// binds its PID to systemd+/proc.  A store without that local marker returns
 	// 503 instead of fabricating a version from its binary or catalog.
 	mux.HandleFunc("/release-info", handleRuntimeReleaseInfo)
+	mux.HandleFunc("/schemas/melusina-app-runtime-contract-v1.schema.json", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/schema+json")
+		http.ServeContent(w, r, "melusina-app-runtime-contract-v1.schema.json", time.Unix(0, 0), bytes.NewReader(runtimecontract.SchemaJSON))
+	})
 
 	mux.HandleFunc("/publish", svc.handlePublish)
 	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
@@ -405,7 +427,11 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "check=slot: "+err.Error(), slotErrorStatus(err))
 		return
 	}
-	manifest, err := buildStagedAppManifest(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.release, preflight.hint, lockedNow)
+	if err := validateAppRuntimeContract(preflight); err != nil {
+		http.Error(w, "check=runtime_contract: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	manifest, err := buildStagedAppManifest(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.release, preflight.hint, lockedNow, preflight.runtimeContract)
 	if err != nil {
 		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
 		return
@@ -420,7 +446,7 @@ func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Reque
 		http.Error(w, err.Error(), appClaimErrorStatus(err))
 		return
 	}
-	if err := persistStagedAppPlanned(s.cfg.PrivateStageDir, manifest, preflight.spk, preflight.metadata, preflight.releaseBytes, stagePlan); err != nil {
+	if err := persistStagedAppPlanned(s.cfg.PrivateStageDir, manifest, preflight.spk, preflight.metadata, preflight.releaseBytes, stagePlan, preflight.runtimeContract); err != nil {
 		http.Error(w, "check=stage_persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -488,6 +514,10 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), publishErrorStatus(err))
 		return
 	}
+	if err := validateAppRuntimeContract(preflight); err != nil {
+		http.Error(w, "check=runtime_contract: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 	if strings.TrimSpace(s.catalogGenerations.Root) == "" {
 		http.Error(w, "check=catalog_generation: generation store is not initialized", http.StatusServiceUnavailable)
 		return
@@ -502,24 +532,6 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	}
 	activeCfg := s.cfg
 	activeCfg.DistDir = activeGeneration.Root
-
-	// Runtime-contract gate.  The on-chain ReleaseEntry remains the authority
-	// for what bytes may be served; this additional release-bound declaration
-	// makes a future app publish state exactly how its real UI + sidecar behavior
-	// must be proven after installation.  It is intentionally AFTER the chain
-	// gate so an invalid or revoked artifact still reports its load-bearing
-	// on-chain refusal, never a distracting metadata error.
-	if _, err := runtimecontract.Validate(preflight.runtimeContract, runtimecontract.Binding{
-		SPK:                   preflight.spk,
-		Metadata:              preflight.metadata,
-		AppHash:               strings.ToLower(strings.TrimSpace(preflight.release.AppHash)),
-		Version:               preflight.release.Version,
-		ReleaseContractSHA256: preflight.release.RuntimeContractSHA256,
-		ReleaseContractSchema: preflight.release.RuntimeContractSchema,
-	}); err != nil {
-		http.Error(w, "check=runtime_contract: "+err.Error(), http.StatusBadRequest)
-		return
-	}
 
 	// (b-time) STORE HYGIENE — monotonic release time. The claimed signedAtUnix must
 	// strictly advance past the version this app's slot currently serves (located by
@@ -546,12 +558,12 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 	// the chain mutation. Recompute its content address from the submitted bytes,
 	// load the private copy, and promote those persisted bytes rather than the
 	// request body. A direct register→POST flow now fails closed.
-	wantStage, err := buildStagedAppManifest(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.release, preflight.hint, lockedNow)
+	wantStage, err := buildStagedAppManifest(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.release, preflight.hint, lockedNow, preflight.runtimeContract)
 	if err != nil {
 		http.Error(w, "check=stage: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	staged, stagedSPK, stagedMetadata, _, err := loadStagedApp(s.cfg.PrivateStageDir, wantStage.StageID)
+	staged, stagedSPK, stagedMetadata, _, stagedRuntimeContract, err := loadStagedAppWithRuntime(s.cfg.PrivateStageDir, wantStage.StageID)
 	if err != nil {
 		http.Error(w, "check=stage: candidate was not durably staged before activation: "+err.Error(), http.StatusConflict)
 		return
@@ -560,7 +572,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=stage: persisted candidate does not match promotion request", http.StatusConflict)
 		return
 	}
-	spk, metadata := stagedSPK, stagedMetadata
+	spk, metadata, runtimeContract := stagedSPK, stagedMetadata, stagedRuntimeContract
 	promotedAt := lockedNow
 	rollout, err := prepareAppRollout(activeCfg, staged, promotedAt)
 	if err != nil {
@@ -599,7 +611,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=catalog_index_capacity: "+err.Error(), status)
 		return
 	}
-	if err := validateCatalogAssemblyTargets(activeGeneration, projection); err != nil {
+	if err := validateCatalogAssemblyTargets(activeGeneration, projection, runtimeContract); err != nil {
 		http.Error(w, "check=catalog_assembly_plan: "+err.Error(), http.StatusConflict)
 		return
 	}
@@ -608,7 +620,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check=catalog_pointer_plan: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := ensureCatalogPromotionMemberCapacity(activeGeneration, staged.AppID, metadataPackageID(metadata), len(pointerPlan.rolloutAppIDs)); err != nil {
+	if err := ensureCatalogPromotionMemberCapacity(activeGeneration, staged.AppID, metadataPackageID(metadata), len(pointerPlan.rolloutAppIDs), runtimeContract); err != nil {
 		http.Error(w, "check=catalog_member_capacity: "+err.Error(), http.StatusInsufficientStorage)
 		return
 	}
@@ -635,7 +647,7 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), appClaimErrorStatus(err))
 		return
 	}
-	if err := persistPublishedAppPlanned(sourcePlan, preflight.spk, preflight.releaseBytes, preflight.metadata, preflight.runtimeContract); err != nil {
+	if err := persistPublishedAppPlanned(sourcePlan, spk, preflight.releaseBytes, metadata, runtimeContract); err != nil {
 		http.Error(w, "check=persist: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -657,14 +669,17 @@ func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
 		// release bytes, and the preflight gate already refused any contract whose
 		// sha256 did not equal that binding. So these bytes are the ones the
 		// staged release names, not an unverified request-body substitute.
-		if err := candidateAssembler.assemblePublishedAppProjection(spk, preflight.releaseBytes, metadata, projection, preflight.runtimeContract); err != nil {
+		if err := candidateAssembler.assemblePublishedAppProjection(spk, preflight.releaseBytes, metadata, projection, runtimeContract); err != nil {
 			return fmt.Errorf("assemble: %w", err)
 		}
 		return WriteSignedAppCatalogPointersForGeneration(candidateRoot, pointerPlan)
 	}, func(snapshot AppCatalogSnapshot) error {
-		return ValidateAppCatalogSnapshot(snapshot, pointerPlan.rolloutAppIDs, func(pointer AppCatalogPointer) error {
+		if err := ValidateAppCatalogSnapshot(snapshot, pointerPlan.rolloutAppIDs, func(pointer AppCatalogPointer) error {
 			return verifyAppCatalogPointer(operatorKey, pointer)
-		})
+		}); err != nil {
+			return err
+		}
+		return validateAppCatalogRuntimeContracts(snapshot, s.cfg.PrivateStageDir, pointerPlan)
 	})
 	if err != nil {
 		log.Printf("publish: catalog generation failed: %v", err)

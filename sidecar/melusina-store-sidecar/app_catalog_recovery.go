@@ -36,10 +36,7 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 		rolloutAppIDs = append(rolloutAppIDs, appID)
 	}
 	sort.Strings(rolloutAppIDs)
-	validate := func(snapshot AppCatalogSnapshot) error {
-		if err := validateSealedCatalogTree(snapshot.Root, expectedUID, expectedGID); err != nil {
-			return err
-		}
+	validateContent := func(snapshot AppCatalogSnapshot) error {
 		if err := ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
 			if err := verifyAppCatalogPointer(operatorKey, pointer); err != nil {
 				return err
@@ -63,32 +60,43 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 		}
 		return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot)
 	}
+	validateCommitted := func(snapshot AppCatalogSnapshot) error {
+		if err := validateSealedCatalogTree(snapshot.Root, expectedUID, expectedGID); err != nil {
+			return err
+		}
+		return validateContent(snapshot)
+	}
 
 	current, currentErr := s.ResolveCurrent()
 	if currentErr == nil {
-		if err := validate(current); err == nil {
+		if err := validateCommitted(current); err == nil {
 			if err := s.cleanupRecoveryOrphans(); err != nil {
 				return AppCatalogSnapshot{}, fmt.Errorf("clean app catalog recovery orphans: %w", err)
 			}
 			return current, nil
 		} else {
 			currentErr = fmt.Errorf("validate current app catalog generation: %w", err)
-			// Legacy imports can have an otherwise valid signed pointer set whose
-			// materialized package/metadata bytes predate the durable private
-			// stage.  Do not weaken validation or serve those bytes.  Instead make
-			// a new immutable generation by copying the signed pointer/index plan
-			// and rehydrating every payload from its hash-verified selected stage.
-			// This is the recovery counterpart to the promotion-time repair; it is
-			// needed before a freshly upgraded server can validate the old current
-			// generation at startup.
-			if repaired, repairErr := s.rehydrateRecoveryCurrent(current, rollouts, operatorKey, servingDomainHash, stagedRoot, validate); repairErr == nil {
-				if err := s.SwitchCurrent(repaired); err != nil {
-					return AppCatalogSnapshot{}, fmt.Errorf("select rehydrated app catalog generation: %w", err)
+			// A generation whose ownership/modes or canonical SPK, metadata, or
+			// release bytes are wrong is not a migration candidate: repairing it
+			// would silently sanitize tampering. The only automatic rewrite is the
+			// narrow v2-upgrade case where every other selected byte is exact and
+			// the release-bound runtime contract alone is absent or differs.
+			sealedErr := validateSealedCatalogTree(current.Root, expectedUID, expectedGID)
+			repairable, eligibilityErr := recoveryRuntimeContractRepairEligible(current, rollouts, stagedRoot)
+			if sealedErr == nil && eligibilityErr == nil && repairable {
+				if repaired, repairErr := s.rehydrateRecoveryCurrent(current, rollouts, operatorKey, servingDomainHash, stagedRoot, validateContent); repairErr == nil {
+					if err := validateCommitted(repaired); err == nil {
+						if err := s.SwitchCurrent(repaired); err != nil {
+							return AppCatalogSnapshot{}, fmt.Errorf("select rehydrated app catalog generation: %w", err)
+						}
+						if err := s.cleanupRecoveryOrphans(); err != nil {
+							return AppCatalogSnapshot{}, fmt.Errorf("clean app catalog recovery orphans: %w", err)
+						}
+						return repaired, nil
+					} else {
+						currentErr = fmt.Errorf("validate rehydrated app catalog generation: %w", err)
+					}
 				}
-				if err := s.cleanupRecoveryOrphans(); err != nil {
-					return AppCatalogSnapshot{}, fmt.Errorf("clean app catalog recovery orphans: %w", err)
-				}
-				return repaired, nil
 			}
 		}
 	}
@@ -102,7 +110,7 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 		if current.ID != "" && candidate.snapshot.ID == current.ID {
 			continue
 		}
-		if err := validate(candidate.snapshot); err != nil {
+		if err := validateCommitted(candidate.snapshot); err != nil {
 			rejected = append(rejected, candidate.snapshot.ID)
 			continue
 		}
@@ -120,11 +128,64 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 	return AppCatalogSnapshot{}, fmt.Errorf("no fully verified app catalog generation (current: %v; rejected: %s)", currentErr, strings.Join(rejected, ","))
 }
 
+// recoveryRuntimeContractRepairEligible distinguishes the one safe migration
+// repair from arbitrary sealed-generation corruption. It requires exact staged
+// SPK/metadata and immutable release intent for every selection, requires all
+// legacy v1 selections to remain contract-free, and returns true only when at
+// least one v2 contract is missing or differs from its exact staged bytes.
+func recoveryRuntimeContractRepairEligible(snapshot AppCatalogSnapshot, rollouts map[string]appRolloutState, stagedRoot string) (bool, error) {
+	if strings.TrimSpace(stagedRoot) == "" {
+		return false, errors.New("private-stage root is required")
+	}
+	needsRepair := false
+	for appID, rollout := range rollouts {
+		manifest, stagedSPK, stagedMetadata, stagedRelease, stagedContract, err := loadStagedAppWithRuntime(stagedRoot, rollout.CurrentStageID)
+		if err != nil {
+			return false, err
+		}
+		pointerBytes, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("apps", "pointers", appID+".json")), maxAppCatalogJSONBytes)
+		if err != nil {
+			return false, nil
+		}
+		var pointer AppCatalogPointer
+		if err := json.Unmarshal(pointerBytes, &pointer); err != nil {
+			return false, nil
+		}
+		for path, want := range map[string][]byte{
+			filepath.ToSlash(filepath.Join("packages", pointer.PackageID)):        stagedSPK,
+			filepath.ToSlash(filepath.Join("signatures", appID, "metadata.json")): stagedMetadata,
+		} {
+			got, err := readSnapshotFileExact(snapshot, path, int64(len(want)))
+			if err != nil || !bytes.Equal(got, want) {
+				return false, nil
+			}
+		}
+		servedRelease, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")), maxAppCatalogJSONBytes)
+		if err != nil || validateFinalizedReleaseAgainstStage(stagedRelease, servedRelease) != nil {
+			return false, nil
+		}
+		contractPath := filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json"))
+		if manifest.Schema == appStageSchemaV1 {
+			if requireSnapshotFileAbsent(snapshot, contractPath) != nil {
+				return false, nil
+			}
+			continue
+		}
+		servedContract, err := readSnapshotFileExact(snapshot, contractPath, int64(len(stagedContract)))
+		if err != nil || !bytes.Equal(servedContract, stagedContract) {
+			needsRepair = true
+		}
+	}
+	return needsRepair, nil
+}
+
 // rehydrateRecoveryCurrent creates a new candidate only after the frozen public
 // pointer set has been authenticated against durable rollout state.  It never
-// edits an existing generation and validates the completed candidate with the
-// caller's full sealed-tree, pointer, and exact-stage-byte verifier.
-func (s AppCatalogGenerationStore) rehydrateRecoveryCurrent(current AppCatalogSnapshot, rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, validate func(AppCatalogSnapshot) error) (AppCatalogSnapshot, error) {
+// edits an existing generation. The caller supplies content validation because
+// BuildCommittedFrom must validate its writable candidate before it can seal
+// it; RecoverCurrent repeats the full sealed-tree validation after commit and
+// before switching current.
+func (s AppCatalogGenerationStore) rehydrateRecoveryCurrent(current AppCatalogSnapshot, rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, validateContent func(AppCatalogSnapshot) error) (AppCatalogSnapshot, error) {
 	if current.ID == "" || current.Root == "" || strings.TrimSpace(stagedRoot) == "" {
 		return AppCatalogSnapshot{}, errors.New("no recoverable current catalog generation or private stage root")
 	}
@@ -152,12 +213,12 @@ func (s AppCatalogGenerationStore) rehydrateRecoveryCurrent(current AppCatalogSn
 	}
 	return s.BuildCommittedFrom(current.Root, func(candidateRoot string) error {
 		return RehydrateAppCatalogPayloadsFromRollouts(Config{PrivateStageDir: stagedRoot}, candidateRoot, plan)
-	}, validate)
+	}, validateContent)
 }
 
 func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts map[string]appRolloutState, stagedRoot string) error {
 	for appID, rollout := range rollouts {
-		_, stagedSPK, stagedMetadata, stagedRelease, err := loadStagedApp(stagedRoot, rollout.CurrentStageID)
+		manifest, stagedSPK, stagedMetadata, stagedRelease, stagedRuntimeContract, err := loadStagedAppWithRuntime(stagedRoot, rollout.CurrentStageID)
 		if err != nil {
 			return fmt.Errorf("load exact staged bytes for %s: %w", appID, err)
 		}
@@ -182,6 +243,21 @@ func validateSnapshotBytesAgainstStaged(snapshot AppCatalogSnapshot, rollouts ma
 			}
 			if !bytes.Equal(got, check.want) {
 				return fmt.Errorf("generation %s bytes differ from exact staged candidate for %s", name, appID)
+			}
+		}
+		if manifest.Schema == appStageSchemaV2 {
+			contractPath := filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json"))
+			servedContract, err := readSnapshotFileExact(snapshot, contractPath, int64(len(stagedRuntimeContract)))
+			if err != nil {
+				return fmt.Errorf("generation runtime-contract bytes differ from exact staged candidate for %s: %w", appID, err)
+			}
+			if !bytes.Equal(servedContract, stagedRuntimeContract) {
+				return fmt.Errorf("generation runtime-contract bytes differ from exact staged candidate for %s", appID)
+			}
+		} else {
+			contractPath := filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json"))
+			if err := requireSnapshotFileAbsent(snapshot, contractPath); err != nil {
+				return fmt.Errorf("legacy stage has an unbound runtime contract for %s: %w", appID, err)
 			}
 		}
 		// A stage is intentionally created before the Squads ceremony: its
@@ -228,10 +304,19 @@ func validateFinalizedReleaseAgainstStage(stagedBytes, finalizedBytes []byte) er
 	if staged.Version != finalized.Version {
 		return errors.New("version changed")
 	}
+	if staged.RuntimeContractSchema != finalized.RuntimeContractSchema {
+		return errors.New("runtimeContractSchema changed")
+	}
+	if staged.RuntimeContractSHA256 != finalized.RuntimeContractSHA256 {
+		return errors.New("runtimeContractSha256 changed")
+	}
 	if staged.MasterNftMint != finalized.MasterNftMint {
 		return errors.New("masterNftMint changed")
 	}
-	if staged.LicenseSquadsVault != finalized.LicenseSquadsVault {
+	// The stage may precede creation of the Squads proposal that reveals the
+	// custody vault. A blank staged value may therefore be filled by ceremony;
+	// an already-declared value may never be replaced or erased.
+	if staged.LicenseSquadsVault != "" && staged.LicenseSquadsVault != finalized.LicenseSquadsVault {
 		return errors.New("licenseSquadsVault changed")
 	}
 	if staged.ReleaseNonce != finalized.ReleaseNonce {

@@ -78,7 +78,7 @@ func NewCatalogAssembler(_ string, distDir string) *CatalogAssembler {
 // contract; when RELEASE.json DOES bind one, the exact artifact must land in
 // attest/<appId>/ or serve_gate.buildAppIndex will refuse to index the row
 // (a release that claims a contract must carry it).
-func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte, runtimeContract ...[]byte) error {
+func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte, runtimeContracts ...[]byte) error {
 	if strings.TrimSpace(a.DistDir) == "" {
 		return fmt.Errorf("catalog dist dir is empty")
 	}
@@ -86,10 +86,14 @@ func (a *CatalogAssembler) AssemblePublishedApp(spk, release, metadata []byte, r
 	if err != nil {
 		return err
 	}
-	return a.assemblePublishedAppProjection(spk, release, metadata, projection, runtimeContract...)
+	return a.assemblePublishedAppProjection(spk, release, metadata, projection, runtimeContracts...)
 }
 
-func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata []byte, projection catalogProjection, runtimeContract ...[]byte) error {
+func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata []byte, projection catalogProjection, runtimeContracts ...[]byte) error {
+	runtimeContract, err := oneRuntimeContract(runtimeContracts)
+	if err != nil {
+		return err
+	}
 	appID, packageID := projection.appID, projection.packageID
 
 	for _, dir := range []string{
@@ -118,8 +122,8 @@ func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata
 	}
 	// The contract lands before RELEASE.json, which binds its sha256: a reader
 	// that can see the binding can always already fetch the artifact it names.
-	if len(runtimeContract) != 0 && len(runtimeContract[0]) != 0 {
-		if err := atomicWriteInto(filepath.Join(a.DistDir, "attest", appID), "RUNTIME-CONTRACT.json", runtimeContract[0]); err != nil {
+	if len(runtimeContract) != 0 {
+		if err := atomicWriteInto(filepath.Join(a.DistDir, "attest", appID), "RUNTIME-CONTRACT.json", runtimeContract); err != nil {
 			return err
 		}
 	}
@@ -132,13 +136,19 @@ func (a *CatalogAssembler) assemblePublishedAppProjection(spk, release, metadata
 // validateCatalogAssemblyTargets proves that every path the postclaim
 // candidate assembler replaces is absent or already a regular no-follow file.
 // Parent type/symlink conflicts are surfaced by Snapshot.Open as well.
-func validateCatalogAssemblyTargets(snapshot AppCatalogSnapshot, projection catalogProjection) error {
+func validateCatalogAssemblyTargets(snapshot AppCatalogSnapshot, projection catalogProjection, runtimeContracts ...[]byte) error {
+	runtimeContract, err := oneRuntimeContract(runtimeContracts)
+	if err != nil {
+		return err
+	}
 	targets := []string{
 		filepath.ToSlash(filepath.Join("packages", projection.packageID)),
 		filepath.ToSlash(filepath.Join("signatures", projection.appID, "metadata.json")),
 		filepath.ToSlash(filepath.Join("attest", projection.appID, "RELEASE.json")),
-		filepath.ToSlash(filepath.Join("attest", projection.appID, "RUNTIME-CONTRACT.json")),
 		"apps/index.json",
+	}
+	if len(runtimeContract) != 0 {
+		targets = append(targets, filepath.ToSlash(filepath.Join("attest", projection.appID, "RUNTIME-CONTRACT.json")))
 	}
 	for _, imageID := range sortedIconIDs(projection.icons) {
 		targets = append(targets, filepath.ToSlash(filepath.Join("images", imageID)))

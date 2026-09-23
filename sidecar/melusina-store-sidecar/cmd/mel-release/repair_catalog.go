@@ -223,7 +223,7 @@ func verifyCatalogRepairInputs(app App, rec walReceipt, candidate candidateRecei
 	if _, err := readPromoteReceipt(rec.PromoteReceipt.Path, rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, rec.Version); err != nil {
 		return fmt.Errorf("terminal promote receipt: %w", err)
 	}
-	if _, _, err := readFinalReleaseJSON(rec.ReleaseJSON.Path, rec.NewAppHash, rec.Version, rec.ReleaseNonce); err != nil {
+	if _, _, err := readFinalReleaseJSON(rec.ReleaseJSON.Path, rec.NewAppHash, rec.Version, rec.ReleaseNonce, rec.RuntimeContract); err != nil {
 		return fmt.Errorf("terminal final release: %w", err)
 	}
 	if terminal.ServedAppHash != rec.NewAppHash {

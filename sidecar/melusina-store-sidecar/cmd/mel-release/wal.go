@@ -83,14 +83,15 @@ type walReceipt struct {
 	ReleaseNonce string `json:"releaseNonce"`
 	ReleaseHash  string `json:"releaseHash,omitempty"`
 
-	PackageID      string `json:"packageId,omitempty"`
-	MasterNftMint  string `json:"masterNftMint,omitempty"`
-	ArtifactSHA    string `json:"artifactSha256,omitempty"`
-	ArtifactSize   int64  `json:"artifactSize,omitempty"`
-	NewReleasePDA  string `json:"newReleasePda,omitempty"`
-	StageID        string `json:"stageId,omitempty"`
-	TransactionPDA string `json:"transactionPda,omitempty"`
-	ServedAppHash  string `json:"servedAppHash,omitempty"`
+	PackageID       string             `json:"packageId,omitempty"`
+	MasterNftMint   string             `json:"masterNftMint,omitempty"`
+	ArtifactSHA     string             `json:"artifactSha256,omitempty"`
+	ArtifactSize    int64              `json:"artifactSize,omitempty"`
+	RuntimeContract runtimeContractRef `json:"runtimeContract,omitempty"`
+	NewReleasePDA   string             `json:"newReleasePda,omitempty"`
+	StageID         string             `json:"stageId,omitempty"`
+	TransactionPDA  string             `json:"transactionPda,omitempty"`
+	ServedAppHash   string             `json:"servedAppHash,omitempty"`
 
 	PreviousSHA256  string `json:"previousSha256,omitempty"`
 	PreviousVersion string `json:"previousVersion,omitempty"`

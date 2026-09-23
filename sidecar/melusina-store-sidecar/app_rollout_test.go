@@ -18,18 +18,34 @@ import (
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 type rolloutFixture struct {
-	manifest  stagedAppManifest
-	spk       []byte
-	metadata  []byte
-	release   []byte
-	rel       ReleaseJSON
-	packageID string
-	appIDRaw  [32]byte
-	relPDA    string
+	manifest        stagedAppManifest
+	spk             []byte
+	metadata        []byte
+	release         []byte
+	runtimeContract []byte
+	rel             ReleaseJSON
+	packageID       string
+	appIDRaw        [32]byte
+	relPDA          string
+}
+
+func bindRolloutRuntimeContract(t *testing.T, f *rolloutFixture) {
+	t.Helper()
+	f.runtimeContract = runtimeContractForTest(t, f.spk, f.metadata, f.rel)
+	sum := sha256.Sum256(f.runtimeContract)
+	f.rel.RuntimeContractSHA256 = hex.EncodeToString(sum[:])
+	f.rel.RuntimeContractSchema = runtimecontract.Schema
+	f.release = mustJSON(t, f.rel)
+	manifest, err := buildStagedAppManifest(f.spk, f.metadata, f.release, f.rel, slotHint{}, time.Unix(f.manifest.StoredAt, 0), f.runtimeContract)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.manifest = manifest
 }
 
 func makeRolloutFixture(t *testing.T, masterMint, appID, version, label string, at time.Time) rolloutFixture {
@@ -106,6 +122,27 @@ func writeRolloutDist(t *testing.T, cfg Config, f rolloutFixture) {
 	}
 	if err := os.WriteFile(filepath.Join(cfg.DistDir, "attest", f.manifest.AppID, "RELEASE.json"), f.release, 0o644); err != nil {
 		t.Fatal(err)
+	}
+	if len(f.runtimeContract) != 0 {
+		if err := os.WriteFile(filepath.Join(cfg.DistDir, "attest", f.manifest.AppID, "RUNTIME-CONTRACT.json"), f.runtimeContract, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestCaptureCurrentlyServedRelease_RejectsClaimedMissingRuntimeContract(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0).UTC()
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	fixture := makeRolloutFixture(t, randPubkeyB58(t), "claimed-runtime-app", "1.0.0", "claimed-runtime", now)
+	fixture.rel.RuntimeContractSchema = "melusina-app-runtime-contract-v1"
+	fixture.rel.RuntimeContractSHA256 = strings.Repeat("a", 64)
+	fixture.release = mustJSON(t, fixture.rel)
+	writeRolloutDist(t, cfg, fixture)
+
+	_, ok, err := captureCurrentlyServedRelease(cfg, fixture.manifest.AppID, now)
+	if err == nil || ok || !strings.Contains(err.Error(), "claims a runtime contract") {
+		t.Fatalf("claimed-but-missing runtime contract was not rejected: ok=%v err=%v", ok, err)
 	}
 }
 
@@ -257,6 +294,7 @@ func TestServeGate_PreviousReleaseRequiresWindowAndActiveChainEntry(t *testing.T
 	cfg.ServeVerifyTTLSeconds = -1
 	master := randPubkeyB58(t)
 	old := makeRolloutFixture(t, master, "rollout-serve-app", "1.0.0", "old", now.Add(-time.Hour))
+	bindRolloutRuntimeContract(t, &old)
 	current := makeRolloutFixture(t, master, "rollout-serve-app", "2.0.0", "current", now)
 	writeRolloutDist(t, cfg, old)
 	if err := persistStagedApp(cfg.PrivateStageDir, current.manifest, current.spk, current.metadata, current.release); err != nil {
@@ -292,6 +330,9 @@ func TestServeGate_PreviousReleaseRequiresWindowAndActiveChainEntry(t *testing.T
 	gate.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/packages/"+old.packageID, nil))
 	if w.Code != http.StatusOK || !bytes.Equal(w.Body.Bytes(), old.spk) {
 		t.Fatalf("active previous release not served: code=%d body=%s", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("X-Melusina-Runtime-Contract"); got != "declared" {
+		t.Fatalf("retained v2 runtime-contract header=%q, want declared", got)
 	}
 	clock = time.Unix(state.PreviousValidUntil, 0)
 	w = httptest.NewRecorder()

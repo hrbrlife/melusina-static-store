@@ -500,7 +500,11 @@ func ValidateAppCatalogSnapshot(snapshot AppCatalogSnapshot, rolloutAppIDs []str
 // cloning the immutable current tree, assembling this app, and materializing the
 // complete replacement pointer directory. It runs before nonce claim; the active
 // generation cannot change under the service writer lock.
-func ensureCatalogPromotionMemberCapacity(snapshot AppCatalogSnapshot, appID, packageID string, pointerCount int) error {
+func ensureCatalogPromotionMemberCapacity(snapshot AppCatalogSnapshot, appID, packageID string, pointerCount int, runtimeContracts ...[]byte) error {
+	runtimeContract, err := oneRuntimeContract(runtimeContracts)
+	if err != nil {
+		return err
+	}
 	if !isSafePathSegment(appID) || !isSafePathSegment(packageID) {
 		return errors.New("unsafe appId/packageId for catalog capacity reservation")
 	}
@@ -541,6 +545,12 @@ func ensureCatalogPromotionMemberCapacity(snapshot AppCatalogSnapshot, appID, pa
 			steadyAdds++
 		}
 	}
+	if len(runtimeContract) != 0 {
+		relative := filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json"))
+		if _, exists := present[relative]; !exists {
+			steadyAdds++
+		}
+	}
 
 	if pointerCount < 1 || pointerCount > maxRetentionRootEntries {
 		return fmt.Errorf("invalid frozen pointer count %d", pointerCount)
@@ -566,9 +576,14 @@ type appCatalogPointerPlan struct {
 // in a candidate generation from the immutable, hash-verified private stages
 // selected by a frozen pointer plan.  Early catalog migrations imported a few
 // legacy package/metadata pairs whose public bytes no longer matched the
-// already-signed stage.  Carrying those bytes forward made every unrelated
-// publish fail validation.  The stage is the authoritative release object;
-// this function changes no rollout, pointer, index, or chain state.
+// already-signed stage. Carrying those bytes forward made every unrelated
+// publish fail validation. SPK/metadata/runtime-contract bytes come from the
+// stage. RELEASE.json is different: when the cloned generation already selects
+// the same StageID, its ceremony-final bytes are preserved after their immutable
+// intent is checked against the stage. This prevents an unrelated promotion or
+// contract repair from replacing a finalized PDA/signature/quorum/timestamp
+// with the provisional pre-ceremony release. The function changes no rollout,
+// pointer, index, or chain state.
 func RehydrateAppCatalogPayloadsFromRollouts(cfg Config, candidateRoot string, plan appCatalogPointerPlan) error {
 	if strings.TrimSpace(candidateRoot) == "" {
 		return errors.New("empty candidate catalog root")
@@ -578,7 +593,7 @@ func RehydrateAppCatalogPayloadsFromRollouts(cfg Config, candidateRoot string, p
 		if !ok {
 			return fmt.Errorf("missing frozen pointer for rollout %s", appID)
 		}
-		manifest, spk, metadata, release, err := loadStagedApp(cfg.PrivateStageDir, pointer.StageID)
+		manifest, spk, metadata, release, runtimeContract, err := loadStagedAppWithRuntime(cfg.PrivateStageDir, pointer.StageID)
 		if err != nil {
 			return fmt.Errorf("load selected staged payload for %s: %w", appID, err)
 		}
@@ -602,11 +617,116 @@ func RehydrateAppCatalogPayloadsFromRollouts(cfg Config, candidateRoot string, p
 		if err := atomicWriteInto(filepath.Join(candidateRoot, "signatures", appID), "metadata.json", metadata); err != nil {
 			return fmt.Errorf("write selected metadata for %s: %w", appID, err)
 		}
-		if err := atomicWriteInto(filepath.Join(candidateRoot, "attest", appID), "RELEASE.json", release); err != nil {
+		releaseToWrite, err := releaseForRehydratedSelection(candidateRoot, pointer, release)
+		if err != nil {
+			return fmt.Errorf("select finalized release for %s: %w", appID, err)
+		}
+		if err := atomicWriteInto(filepath.Join(candidateRoot, "attest", appID), "RELEASE.json", releaseToWrite); err != nil {
 			return fmt.Errorf("write selected release for %s: %w", appID, err)
+		}
+		runtimePath := filepath.Join(candidateRoot, "attest", appID, "RUNTIME-CONTRACT.json")
+		if len(runtimeContract) != 0 {
+			if err := atomicWriteInto(filepath.Dir(runtimePath), filepath.Base(runtimePath), runtimeContract); err != nil {
+				return fmt.Errorf("write selected runtime contract for %s: %w", appID, err)
+			}
+		} else if err := removeRegularFileIfPresent(runtimePath); err != nil {
+			return fmt.Errorf("remove unselected runtime contract for %s: %w", appID, err)
 		}
 	}
 	return nil
+}
+
+func releaseForRehydratedSelection(candidateRoot string, selected AppCatalogPointer, stagedRelease []byte) ([]byte, error) {
+	snapshot := AppCatalogSnapshot{Root: candidateRoot}
+	pointerPath := filepath.ToSlash(filepath.Join("apps", "pointers", selected.AppID+".json"))
+	pointerBytes, err := readSnapshotFileBounded(snapshot, pointerPath, maxAppCatalogJSONBytes)
+	if errors.Is(err, os.ErrNotExist) {
+		return stagedRelease, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var existing AppCatalogPointer
+	if err := json.Unmarshal(pointerBytes, &existing); err != nil {
+		return nil, fmt.Errorf("decode existing pointer: %w", err)
+	}
+	if existing.AppID != selected.AppID || existing.StageID != selected.StageID {
+		return stagedRelease, nil
+	}
+	releasePath := filepath.ToSlash(filepath.Join("attest", selected.AppID, "RELEASE.json"))
+	finalized, err := readSnapshotFileBounded(snapshot, releasePath, maxAppCatalogJSONBytes)
+	if err != nil {
+		return nil, fmt.Errorf("read existing finalized release: %w", err)
+	}
+	if err := validateFinalizedReleaseAgainstStage(stagedRelease, finalized); err != nil {
+		return nil, fmt.Errorf("existing finalized release differs from staged immutable intent: %w", err)
+	}
+	return finalized, nil
+}
+
+// validateAppCatalogRuntimeContracts proves that every runtime-aware frozen
+// stage has its exact contract bytes in the candidate generation. Legacy v1
+// stages do not require a contract, but they must not expose an unbound stale
+// contract copied from another generation.
+func validateAppCatalogRuntimeContracts(snapshot AppCatalogSnapshot, stagedRoot string, plan appCatalogPointerPlan) error {
+	for _, appID := range plan.rolloutAppIDs {
+		pointer, ok := plan.pointers[appID]
+		if !ok {
+			return fmt.Errorf("missing frozen pointer for runtime-contract validation: %s", appID)
+		}
+		manifest, _, _, stagedRelease, stagedRuntimeContract, err := loadStagedAppWithRuntime(stagedRoot, pointer.StageID)
+		if err != nil {
+			return fmt.Errorf("load staged runtime contract for %s: %w", appID, err)
+		}
+		servedRelease, err := readSnapshotFileBounded(snapshot, filepath.ToSlash(filepath.Join("attest", appID, "RELEASE.json")), maxAppCatalogJSONBytes)
+		if err != nil {
+			return fmt.Errorf("read finalized release for %s: %w", appID, err)
+		}
+		if err := validateFinalizedReleaseAgainstStage(stagedRelease, servedRelease); err != nil {
+			return fmt.Errorf("finalized release differs from staged runtime intent for %s: %w", appID, err)
+		}
+		contractPath := filepath.ToSlash(filepath.Join("attest", appID, "RUNTIME-CONTRACT.json"))
+		if manifest.Schema != appStageSchemaV2 {
+			if err := requireSnapshotFileAbsent(snapshot, contractPath); err != nil {
+				return fmt.Errorf("legacy stage has an unbound runtime contract for %s: %w", appID, err)
+			}
+			continue
+		}
+		servedContract, err := readSnapshotFileExact(snapshot, contractPath, int64(len(stagedRuntimeContract)))
+		if err != nil {
+			return fmt.Errorf("read runtime contract for %s: %w", appID, err)
+		}
+		if !bytes.Equal(servedContract, stagedRuntimeContract) {
+			return fmt.Errorf("runtime contract differs from exact staged bytes for %s", appID)
+		}
+	}
+	return nil
+}
+
+func requireSnapshotFileAbsent(snapshot AppCatalogSnapshot, relativePath string) error {
+	f, err := snapshot.Open(relativePath)
+	if err == nil {
+		_ = f.Close()
+		return errors.New("unexpected file is present")
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
+func removeRegularFileIfPresent(path string) error {
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return errors.New("catalog member is not a regular no-follow file")
+	}
+	return os.Remove(path)
 }
 
 // buildSignedAppCatalogPointerPlan freezes every rollout/stage semantic input

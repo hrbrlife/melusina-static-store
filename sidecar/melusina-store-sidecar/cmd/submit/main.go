@@ -351,6 +351,10 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("read release %s: %w", o.releasePath, err)
 	}
+	runtimeContractBytes, err := os.ReadFile(o.runtimeContractPath)
+	if err != nil {
+		return fmt.Errorf("read runtime contract %s: %w", o.runtimeContractPath, err)
+	}
 
 	// Local pre-check: the on-chain appHash is the TREE-HASH over {app.spk,
 	// metadata.json} (apphash.Canonical), NOT sha256(spk); it must equal
@@ -360,20 +364,6 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if err := json.Unmarshal(releaseBytes, &claims); err != nil {
 		return fmt.Errorf("parse RELEASE.json %s: %w", o.releasePath, err)
 	}
-	runtimeContract, err := os.ReadFile(o.runtimeContractPath)
-	if err != nil {
-		return fmt.Errorf("read runtime contract %s: %w", o.runtimeContractPath, err)
-	}
-	if _, err := runtimecontract.Validate(runtimeContract, runtimecontract.Binding{
-		SPK:                   spk,
-		Metadata:              metadata,
-		AppHash:               strings.ToLower(strings.TrimSpace(claims.AppHash)),
-		Version:               claims.Version,
-		ReleaseContractSHA256: claims.RuntimeContractSHA256,
-		ReleaseContractSchema: claims.RuntimeContractSchema,
-	}); err != nil {
-		return fmt.Errorf("check=runtime_contract: %w", err)
-	}
 	appHashHex, err := apphash.Canonical(bytes.NewReader(spk), metadata)
 	if err != nil {
 		return fmt.Errorf("check=app_hash: compute app-hash: %w", err)
@@ -382,7 +372,17 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if appHashHex != wantAppHash {
 		return fmt.Errorf("check=app_hash: apphash(spk,metadata)=%s != release.appHash=%s", appHashHex, wantAppHash)
 	}
-	expectedReceipt, err := buildSubmittedReceiptIntent(spk, metadata, claims, o.developer, o.repo, o.slug)
+	if _, err := runtimecontract.Validate(runtimeContractBytes, runtimecontract.Binding{
+		SPK:                   spk,
+		Metadata:              metadata,
+		AppHash:               wantAppHash,
+		Version:               claims.Version,
+		ReleaseContractSHA256: claims.RuntimeContractSHA256,
+		ReleaseContractSchema: claims.RuntimeContractSchema,
+	}); err != nil {
+		return fmt.Errorf("check=runtime_contract: %w", err)
+	}
+	expectedReceipt, err := buildSubmittedReceiptIntent(spk, metadata, claims, o.developer, o.repo, o.slug, runtimeContractBytes)
 	if err != nil {
 		return fmt.Errorf("check=receipt_submission: %w", err)
 	}
@@ -422,7 +422,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("envelope: %w", err)
 	}
 
-	resp, status, err := postPublish(context.Background(), o, target, sig, releaseBytes, spk, metadata, runtimeContract)
+	resp, status, err := postPublish(context.Background(), o, target, sig, releaseBytes, spk, metadata, runtimeContractBytes)
 	if err != nil {
 		return fmt.Errorf("publish POST: %w", err)
 	}
@@ -455,7 +455,14 @@ func run(args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, developer, repo, slug string) (submittedReceiptIntent, error) {
+func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, developer, repo, slug string, runtimeContracts ...[]byte) (submittedReceiptIntent, error) {
+	if len(runtimeContracts) > 1 {
+		return submittedReceiptIntent{}, errors.New("at most one runtime contract may be supplied")
+	}
+	var runtimeContract []byte
+	if len(runtimeContracts) == 1 {
+		runtimeContract = runtimeContracts[0]
+	}
 	var metadataIdentity struct {
 		AppID string `json:"appId"`
 	}
@@ -487,13 +494,21 @@ func buildSubmittedReceiptIntent(spk, metadata []byte, claims ReleaseClaims, dev
 	metadataHash := sha256.Sum256(metadata)
 	versionHash := sha256.Sum256([]byte(version))
 	masterMintHash := sha256.Sum256([]byte(masterMint))
+	runtimeContractHash := sha256.Sum256(runtimeContract)
 	stageHasher := sha256.New()
-	_, _ = stageHasher.Write([]byte("melusina-app-stage-v1\x00"))
+	stageSchema := "melusina-app-stage-v1"
+	if len(runtimeContract) != 0 {
+		stageSchema = "melusina-app-stage-v2"
+	}
+	_, _ = stageHasher.Write([]byte(stageSchema + "\x00"))
 	_, _ = stageHasher.Write(spkHash[:])
 	_, _ = stageHasher.Write(metadataHash[:])
 	_, _ = stageHasher.Write(releaseHash[:])
 	_, _ = stageHasher.Write(versionHash[:])
 	_, _ = stageHasher.Write(masterMintHash[:])
+	if len(runtimeContract) != 0 {
+		_, _ = stageHasher.Write(runtimeContractHash[:])
+	}
 	for _, part := range []string{developer, repo, slug} {
 		var size [4]byte
 		binary.BigEndian.PutUint32(size[:], uint32(len(part)))
@@ -678,6 +693,13 @@ func releaseEntryPDA(masterMintB58 string, appHash [32]byte) (string, error) {
 // form keeps low-level wire-format tests able to exercise an intentionally empty
 // payload without pretending that it passes the sidecar's release gate.
 func postPublish(ctx context.Context, o options, endpoint string, sig envelope.Signed, releaseBytes, spk, metadata []byte, runtimeContracts ...[]byte) ([]byte, int, error) {
+	if len(runtimeContracts) > 1 {
+		return nil, 0, errors.New("at most one runtime contract may be supplied")
+	}
+	var runtimeContract []byte
+	if len(runtimeContracts) == 1 {
+		runtimeContract = runtimeContracts[0]
+	}
 	if endpoint != appPromoteTarget && endpoint != appStageTarget {
 		return nil, 0, fmt.Errorf("app publish endpoint must be exactly %q or %q", appPromoteTarget, appStageTarget)
 	}
@@ -686,11 +708,6 @@ func postPublish(ctx context.Context, o options, endpoint string, sig envelope.S
 	}
 	url := strings.TrimRight(o.store, "/") + endpoint
 	client := &http.Client{Timeout: o.timeout}
-	var runtimeContract []byte
-	if len(runtimeContracts) > 0 {
-		runtimeContract = runtimeContracts[0]
-	}
-
 	var (
 		req *http.Request
 		err error

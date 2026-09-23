@@ -195,10 +195,10 @@ func runCatalogRehydrateSubcommand(args []string) {
 	}
 	chain := newConfiguredStoreRPCReader(cfg)
 	bootCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	operator, err := deriveOperatorIdentity(bootCtx, cfg, chain)
+	operator, err := deriveEnrolledOperator(bootCtx, cfg, opts.configPath, chain)
 	cancel()
 	if err != nil {
-		log.Fatalf("catalog-rehydrate boot identity: %v", err)
+		log.Fatalf("catalog-rehydrate: %v", err)
 	}
 	if operator == nil || operator.Public().SignPubkeyB58 != cfg.StoreAuthority {
 		log.Fatalf("catalog-rehydrate requires the active boot operator matching store_authority")

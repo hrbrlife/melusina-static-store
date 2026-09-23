@@ -262,10 +262,10 @@ func runCatalogReconcileUnservedSubcommand(args []string) {
 	}
 	cr := newConfiguredStoreRPCReader(cfg)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	operator, err := deriveOperatorIdentity(ctx, cfg, cr)
+	operator, err := deriveEnrolledOperator(ctx, cfg, opts.configPath, cr)
 	cancel()
 	if err != nil {
-		log.Fatalf("catalog-reconcile-unserved boot identity: %v", err)
+		log.Fatalf("catalog-reconcile-unserved: %v", err)
 	}
 	if operator == nil || operator.Public().SignPubkeyB58 != cfg.StoreAuthority {
 		log.Fatalf("catalog-reconcile-unserved requires the active boot operator matching store_authority")

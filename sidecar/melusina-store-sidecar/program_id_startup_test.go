@@ -76,7 +76,7 @@ func TestStoreStartupRefusesConfigWithoutLicenseRegistryProgramID(t *testing.T) 
 
 	withProgram := writeJSONConfig(t, config)
 	code, out := runStoreStartup(t, "-config", withProgram)
-	if code != 1 || !strings.Contains(out, pinned) || !strings.Contains(out, chainReader) || strings.Contains(out, "program_id") || !strings.Contains(out, "boot identity / estate enrollment:") {
+	if code != 1 || !strings.Contains(out, pinned) || !strings.Contains(out, chainReader) || strings.Contains(out, "program_id") || !strings.Contains(out, "store startup: estate enrollment: store-estate-profile-not-enrolled") {
 		t.Fatalf("positive control: startup with program_id exited %d without pinning %q from config:\n%s", code, pinned, out)
 	}
 
@@ -199,18 +199,18 @@ func TestEveryStoreEntryPointPinsItsConfiguredLicenseRegistry(t *testing.T) {
 		args  []string
 		after string
 	}{
-		{name: "", args: []string{"-config", configPath}, after: "boot identity / estate enrollment:"},
-		{name: "genesis-bootstrap", args: []string{"-config", configPath}, after: "genesis-bootstrap requires a write-capable operator"},
+		{name: "", args: []string{"-config", configPath}, after: "store startup: estate enrollment: store-estate-profile-not-enrolled"},
+		{name: "genesis-bootstrap", args: []string{"-config", configPath}, after: "genesis-bootstrap: estate enrollment: store-estate-profile-not-enrolled"},
 		{name: "estate-enrollment-request", args: []string{"-config", configPath, "-estate-profile", requestProfile}, after: "boot_identity.shards_dir is required"},
 		{name: "estate-enroll", args: []string{"-config", configPath, "-estate-profile", enrollProfile, "-enrollment", enrollDocument}, after: "boot_identity.shards_dir is required"},
 		{name: "estate-enrollment-successor-request", args: []string{"-config", configPath}, after: "store-estate-profile-not-enrolled: enrollment state is absent"},
 		{name: "estate-enroll-successor", args: []string{"-config", configPath, "-enrollment", successorDocument}, after: "store estate enrollment successor requires an absolute catalog_migration_state_dir"},
-		{name: "listing-bootstrap", args: []string{"-config", configPath, "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "listing-bootstrap requires a write-capable boot identity"},
-		{name: "listing-signer", args: []string{"-config", signerConfigPath}, after: "listing-signer boot identity:"},
-		{name: "catalog-retire", args: []string{"-config", configPath, "-app-id", "pin-probe", "-reason", "entry-point pin probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-retire requires the active boot operator matching store_authority"},
-		{name: "catalog-reconcile-retirement", args: []string{"-config", configPath, "-dry-run"}, after: "open existing writer.lock:"},
-		{name: "catalog-reconcile-unserved", args: []string{"-config", configPath, "-app-id", "pin-probe", "-reason", "entry-point pin probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-reconcile-unserved requires the active boot operator matching store_authority"},
-		{name: "catalog-rehydrate", args: []string{"-config", configPath, "-cohort-dir", cohortDir, "-expected-app-count", "1", "-expected-rollout-count", "1", "-dry-run"}, after: "catalog-rehydrate requires the active boot operator matching store_authority"},
+		{name: "listing-bootstrap", args: []string{"-config", configPath, "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "listing-bootstrap: estate enrollment: store-estate-profile-not-enrolled"},
+		{name: "listing-signer", args: []string{"-config", signerConfigPath}, after: "listing-signer: estate enrollment: store-estate-profile-not-enrolled"},
+		{name: "catalog-retire", args: []string{"-config", configPath, "-app-id", "pin-probe", "-reason", "entry-point pin probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-retire: estate enrollment: store-estate-profile-not-enrolled"},
+		{name: "catalog-reconcile-retirement", args: []string{"-config", configPath, "-dry-run"}, after: "catalog-reconcile-retirement: estate enrollment: store-estate-profile-not-enrolled"},
+		{name: "catalog-reconcile-unserved", args: []string{"-config", configPath, "-app-id", "pin-probe", "-reason", "entry-point pin probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-reconcile-unserved: estate enrollment: store-estate-profile-not-enrolled"},
+		{name: "catalog-rehydrate", args: []string{"-config", configPath, "-cohort-dir", cohortDir, "-expected-app-count", "1", "-expected-rollout-count", "1", "-dry-run"}, after: "catalog-rehydrate: estate enrollment: store-estate-profile-not-enrolled"},
 	}
 
 	// Coverage: the table and the registry-free list together are exactly the

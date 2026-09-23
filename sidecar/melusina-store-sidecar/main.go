@@ -183,16 +183,14 @@ func main() {
 	// deliberately read-only: operator stays nil and /publish 503s (it NEVER accepts
 	// an unverified upload). When SET, any failure (missing shard, RPC error, missing
 	// or mismatched on-chain entry) is FATAL — a publish-provisioned store refuses to
-	// start with an unverified identity (Inv 5).
+	// start with an unverified identity (Inv 5). An enrolled Store also proves its
+	// durable estate enrollment here, through the same gate every operator
+	// subcommand uses (enrolled_operator.go).
 	bootCtx, bootCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	bootIdentity, err := deriveVerifiedBootIdentity(bootCtx, cfg, cr)
-	var enrolledState *storeEnrollmentState
-	if err == nil {
-		enrolledState, err = verifyConfiguredStoreEnrollment(bootCtx, cfg, *configPath, bootIdentity, cr)
-	}
+	bootIdentity, enrolledState, err := deriveEnrolledBootIdentity(bootCtx, cfg, *configPath, cr)
 	bootCancel()
 	if err != nil {
-		log.Fatalf("boot identity / estate enrollment: %v", err)
+		log.Fatalf("store startup: %v", err)
 	}
 	if err := bindInstallerReleaseTrust(&cfg, enrolledState); err != nil {
 		log.Fatalf("estate enrollment: %v", err)
@@ -335,8 +333,10 @@ func main() {
 // runGenesisBootstrapSubcommand establishes the honest first-generation trust root
 // on a virgin target, then exits. It reuses the exact server boot preamble — config
 // load, program-id pinning, on-chain reader, operator derivation from the deploy
-// shards, and the process-lifetime writer lock — so genesis runs under the SAME
-// verified operator identity and single-writer exclusion the serving store uses.
+// shards, the estate-enrollment gate, and the process-lifetime writer lock — so
+// genesis runs under the SAME verified, enrolled operator identity and
+// single-writer exclusion the serving store uses. An enrolled estate therefore
+// runs estate-enroll before genesis-bootstrap.
 // On a virgin target it is also the one creator of that lock (see
 // acquireGenesisWriterLock). A read-only store (no operator provisioned) cannot
 // mint a trust root and is refused.
@@ -366,10 +366,10 @@ func runGenesisBootstrapSubcommand(args []string) {
 		cr = newConfiguredStoreRPCReader(cfg)
 	}
 	bootCtx, bootCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	operator, err := deriveOperatorIdentity(bootCtx, cfg, cr)
+	operator, err := deriveEnrolledOperator(bootCtx, cfg, *configPath, cr)
 	bootCancel()
 	if err != nil {
-		log.Fatalf("boot identity: %v", err)
+		log.Fatalf("genesis-bootstrap: %v", err)
 	}
 	if operator == nil {
 		log.Fatalf("genesis-bootstrap requires a write-capable operator (boot_identity.shards_dir must be provisioned) — a first-publish trust root cannot be established read-only")

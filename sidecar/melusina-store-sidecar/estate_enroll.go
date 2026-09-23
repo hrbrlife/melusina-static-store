@@ -360,13 +360,15 @@ func loadStoreEnrollmentDocuments(profilePath, enrollmentPath string) (estatepro
 	return profile, enrollment, nil
 }
 
-// verifyConfiguredStoreEnrollment is normal server startup's enrolled-estate
-// gate. Empty EstateEnrollmentStatePath preserves legacy Store behavior; once
-// the explicit path is configured, there is no fallback to defaults, a profile
-// file, or a successful earlier preflight.
+// verifyConfiguredStoreEnrollment is the enrolled-estate check behind
+// deriveEnrolledBootIdentity, the one gate server startup and every operator
+// subcommand pass. An empty EstateEnrollmentStatePath is the legacy Store only
+// in the standard build; the estate-bootstrap build refuses it by name
+// (unenrolledStoreRefusal). Once the explicit path is configured, there is no
+// fallback to defaults, a profile file, or a successful earlier preflight.
 func verifyConfiguredStoreEnrollment(ctx context.Context, cfg Config, configPath string, identity *verifiedBootIdentity, chain chainReader) (*storeEnrollmentState, error) {
 	if strings.TrimSpace(cfg.EstateEnrollmentStatePath) == "" {
-		return nil, nil
+		return nil, unenrolledStoreRefusal()
 	}
 	if identity == nil {
 		return nil, fmt.Errorf("%w: publish-provisioned boot identity is required", errStoreEstateProfileNotEnrolled)

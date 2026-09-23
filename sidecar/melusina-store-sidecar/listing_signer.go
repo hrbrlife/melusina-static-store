@@ -183,10 +183,13 @@ func runListingSignerSubcommand(args []string) {
 	}
 	cr := newConfiguredStoreRPCReader(cfg)
 	bootCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	operator, err := deriveOperatorIdentity(bootCtx, cfg, cr)
+	operator, err := deriveEnrolledOperator(bootCtx, cfg, configPath, cr)
 	cancel()
-	if err != nil || operator == nil {
-		panic(fmt.Sprintf("listing-signer boot identity: %v", err))
+	if err != nil {
+		panic("listing-signer: " + err.Error())
+	}
+	if operator == nil {
+		panic("listing-signer requires a write-capable boot identity")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

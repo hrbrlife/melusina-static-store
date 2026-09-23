@@ -392,8 +392,31 @@ caller's environment held. The older per-value variables
 `MEL_RELEASE_STORE_DOMAIN`, `MEL_RELEASE_STORE_ID`, `MEL_RELEASE_PROGRAM_ID`,
 `MEL_PROGRAM_ID`, `MEL_RELEASE_MASTER_NFT_MINT`) may still be set by a wrapper,
 but only to the profile's own value; any other value is refused by name.
-A provider build receipt whose `masterNftMint` is not the profile's is refused
-before anything is staged.
+
+A release built under another estate is refused wherever it would be used,
+before the Store or the chain sees it:
+
+- a fresh provider build receipt (`publish`, `preflight`) and a cached
+  preflight build receipt, whose `masterNftMint` must be the profile's;
+- a saved preflight receipt, which `preflight` otherwise returns as it stands;
+- a `publish` resumed from its WAL, whose journaled `masterNftMint` must be the
+  profile's (a WAL resumed from `BUILT` goes straight to staging); and
+- the frozen candidate that `approve`, `reject-proposed` and `repair-catalog`
+  act on, whose master mint, license-registry program, Store ID and bundle
+  origin must all be the profile's.
+
+The state directory (`MEL_RELEASE_STATE_DIR`, default `~/.mel-release`) belongs
+to one estate's Store. Before any subcommand reads or writes it, `mel-release`
+stamps an empty or absent directory with `estate.json` (the profile's
+`estateId`, `store.storeId` and Store origin) and refuses a directory stamped
+for another estate or Store. It also refuses a non-empty directory that has no
+stamp: that is state written before these tools were bound to an estate
+profile, such as the retiring Bazaar's, and it may belong to any Store. Keep
+such a directory as evidence and point `MEL_RELEASE_STATE_DIR` at a fresh one.
+The stamp names the estate rather than one revision of its profile, so a
+re-signed profile for the same estate and Store keeps its release history (the
+terminal receipts `manifest` re-reads). A resumed release still re-checks the
+master mint and registry against the new revision, as listed above.
 
 The catalog manifest (`MEL_RELEASE_CONFIG`) is a snapshot of one Store. Its
 `catalog_origin` must be the profile's Store origin, and its
@@ -405,7 +428,13 @@ estate publishes with its own manifest.
 Still supplied by the operator, with no default: `MEL_RELEASE_STORE_LICENSE_MINT`
 (the Store's operating licence, which the profile does not carry),
 `MEL_RELEASE_STORE_PUBKEY`, `MEL_RELEASE_PUBLISHER_KEY` and
-`MEL_RELEASE_RPC_URL`. Used directly, `submit` requires `--program-id` in every
+`MEL_RELEASE_RPC_URL`. `MEL_RELEASE_STORE_PUBKEY` is the Store operator's
+`identity.Public` file, the destination `submit` seals each stage and promote
+request to. `publish`, `approve` and the other mutating subcommands refuse it
+unless it is a regular file holding a sidecar identity whose `sign_pubkey_b58`
+is the profile's `store.operatorKey` (the key the Store checks its own
+operator identity against) and whose `ref.program_id` is the profile's
+license registry. Used directly, `submit` requires `--program-id` in every
 mode (publish, `--verify-receipt`, `--request-out`); a publisher key minted
 under another registry is refused.
 
@@ -414,7 +443,8 @@ these rules it runs only with a signed profile for that estate, which does not
 exist yet. Without a profile `mel-release` refuses with `missing required env:
 MEL_RELEASE_ESTATE_PROFILE, MEL_RELEASE_ESTATE_PROFILE_SHA256`; with another
 estate's profile it refuses the wrapper's pinned `MEL_RELEASE_STORE_URL` by
-name.
+name. Its default state directory holds release state written before estate
+binding, so it is refused as well.
 
 `TestReleaseToolsSourceCarriesNoRetiringEstateValue` and
 `TestReleaseToolBinariesCarryNoRetiringEstateValue` scan these tools in both

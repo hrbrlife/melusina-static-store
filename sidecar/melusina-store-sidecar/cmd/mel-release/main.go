@@ -53,8 +53,9 @@
 // all come from the owner-signed estate profile named by
 // MEL_RELEASE_ESTATE_PROFILE and pinned by MEL_RELEASE_ESTATE_PROFILE_SHA256
 // (see estate.go); the catalog manifest must describe that same Store and
-// authority, and every subcommand refuses before it runs if either is absent
-// or disagrees.
+// authority, and the state directory must be this estate's (see
+// state_estate.go). Every subcommand refuses before it runs if any of them is
+// absent or disagrees.
 package main
 
 import (
@@ -94,6 +95,11 @@ func run(args []string) error {
 		return err
 	}
 	if err := cfg.bindCatalog(catalog); err != nil {
+		return err
+	}
+	// Release state is the bound estate's or it is not opened at all (see
+	// state_estate.go); every subcommand below reads or writes it.
+	if err := cfg.bindStateDir(); err != nil {
 		return err
 	}
 

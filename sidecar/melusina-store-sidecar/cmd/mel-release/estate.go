@@ -21,19 +21,22 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 )
 
 // estateBinding is every estate fact mel-release and its provider use. Each
 // field is a projection of the verified profile; none has a default.
 type estateBinding struct {
-	ProfileSHA256 string
-	StoreOrigin   string          // "https://" + store.rootDomain
-	StoreDomain   string          // store.rootDomain
-	StoreID       string          // store.storeId
-	ProgramID     string          // programs.license-registry.programId
-	MasterNftMint string          // anchors.masterMint
-	Squads        SquadsAuthority // roles.store-release + externalPrograms.squads-v4
+	ProfileSHA256    string
+	EstateID         string          // estateId (immutable for the estate)
+	StoreOrigin      string          // "https://" + store.rootDomain
+	StoreDomain      string          // store.rootDomain
+	StoreID          string          // store.storeId
+	StoreOperatorKey string          // store.operatorKey
+	ProgramID        string          // programs.license-registry.programId
+	MasterNftMint    string          // anchors.masterMint
+	Squads           SquadsAuthority // roles.store-release + externalPrograms.squads-v4
 }
 
 // loadEstateBinding reads, verifies and pins the owner-signed profile, then
@@ -67,6 +70,11 @@ func loadEstateBinding(path, pin string) (estateBinding, error) {
 // requireEstateMasterMint refuses a build whose ReleaseEntry seed is not the
 // estate's master mint. The provider names the mint it will register under;
 // a mint from another estate would derive a ReleaseEntry the Store never reads.
+// Every path that uses a build runs it: a fresh build (ensureBuilt,
+// loadOrBuildPreflight), a cached preflight build, and a saved preflight
+// receipt (verifyExistingPreflight). A publish resumed past INIT and a frozen
+// candidate carry the build's mint instead; requireWALEstate and
+// requireCandidateEstate check those.
 func requireEstateMasterMint(c Config, b buildReceipt) error {
 	if c.MasterNftMint == "" {
 		return errors.New("no estate master mint is bound; refusing a build receipt")
@@ -77,25 +85,108 @@ func requireEstateMasterMint(c Config, b buildReceipt) error {
 	return nil
 }
 
+// requireWALEstate refuses to resume a release WAL whose build was seeded by
+// another master mint. A WAL past INIT journals the mint its build receipt
+// named, and a resume from BUILT goes straight to staging without reading the
+// build again, so the check belongs to the WAL itself.
+func requireWALEstate(c Config, rec walReceipt) error {
+	if rec.State == stateInit && rec.MasterNftMint == "" {
+		return nil
+	}
+	if c.MasterNftMint == "" {
+		return errors.New("no estate master mint is bound; refusing to resume a release WAL")
+	}
+	if rec.MasterNftMint != c.MasterNftMint {
+		return fmt.Errorf("%s WAL for app %s: masterNftMint %s is not the estate profile's anchors.masterMint %s; "+
+			"it was built for another estate and cannot be resumed under this profile", rec.State, rec.AppID, rec.MasterNftMint, c.MasterNftMint)
+	}
+	return nil
+}
+
+// requireCandidateEstate refuses a frozen candidate that another estate
+// produced: approve, reject-proposed and repair-catalog act on the release it
+// names, so its ReleaseEntry seed and registry, its Store and its bundle
+// origin must all be the bound estate's.
+func requireCandidateEstate(c Config, rec walReceipt, cand candidateReceipt) error {
+	if err := requireWALEstate(c, rec); err != nil {
+		return err
+	}
+	for _, field := range []struct{ name, got, want, source string }{
+		{"chain.masterNftMint", cand.Component.Chain.MasterNftMint, c.MasterNftMint, "anchors.masterMint"},
+		{"chain.program", cand.Component.Chain.Program, c.ProgramID, "programs.license-registry"},
+		{"storeId", cand.StoreID, c.StoreID, "store.storeId"},
+		{"bundleOrigin", cand.BundleOrigin, c.BundleOrigin, "Store origin"},
+	} {
+		if field.want == "" {
+			return fmt.Errorf("no estate %s is bound; refusing a frozen candidate", field.source)
+		}
+		if field.got != field.want {
+			return fmt.Errorf("candidate for app %s: %s %s is not the estate profile's %s %s; it belongs to another estate",
+				rec.AppID, field.name, field.got, field.source, field.want)
+		}
+	}
+	return nil
+}
+
+// requireEstateStoreIdentity refuses a Store operator identity
+// (MEL_RELEASE_STORE_PUBKEY, the destination submit seals every stage and
+// promote request to) that is not the estate's Store. Its signing key must be
+// the profile's store.operatorKey, the key the Store checks its own operator
+// identity against (its store_authority is projected onto store.operatorKey),
+// and it must be a sidecar identity derived under the estate's registry.
+func requireEstateStoreIdentity(path string, estate estateBinding) error {
+	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+		return errors.New("must be an absolute clean path")
+	}
+	raw, err := readRegularFile(path, maxReceiptBytes)
+	if err != nil {
+		return err
+	}
+	public, err := identity.ParsePublicJSON(raw)
+	if err != nil {
+		return fmt.Errorf("store operator identity.Public: %w", err)
+	}
+	if public.Ref.Kind != identity.KindSidecar {
+		return fmt.Errorf("ref.kind %q is not a Store sidecar identity", public.Ref.Kind)
+	}
+	if estate.StoreOperatorKey == "" || public.SignPubkeyB58 != estate.StoreOperatorKey {
+		return fmt.Errorf("sign_pubkey_b58 %s is not the estate profile's store.operatorKey %s; this identity names another Store", public.SignPubkeyB58, estate.StoreOperatorKey)
+	}
+	if public.Ref.ProgramID != estate.ProgramID {
+		return fmt.Errorf("ref.program_id %s is not the estate profile's programs.license-registry %s", public.Ref.ProgramID, estate.ProgramID)
+	}
+	return nil
+}
+
 func readEstateProfile(path string) ([]byte, error) {
-	info, err := os.Lstat(path)
+	raw, err := readRegularFile(path, estateprofile.MaxProfileJSONBytes)
 	if err != nil {
 		return nil, fmt.Errorf("estate profile: %w", err)
 	}
+	return raw, nil
+}
+
+// readRegularFile reads a regular file (never a symlink or device) of at most
+// limit bytes.
+func readRegularFile(path string, limit int) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
 	if !info.Mode().IsRegular() {
-		return nil, errors.New("estate profile must be a regular file, not a symlink or device")
+		return nil, errors.New("must be a regular file, not a symlink or device")
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("estate profile: %w", err)
+		return nil, err
 	}
 	defer file.Close()
-	raw, err := io.ReadAll(io.LimitReader(file, estateprofile.MaxProfileJSONBytes+1))
+	raw, err := io.ReadAll(io.LimitReader(file, int64(limit)+1))
 	if err != nil {
-		return nil, fmt.Errorf("estate profile: %w", err)
+		return nil, err
 	}
-	if len(raw) > estateprofile.MaxProfileJSONBytes {
-		return nil, fmt.Errorf("estate profile exceeds %d bytes", estateprofile.MaxProfileJSONBytes)
+	if len(raw) > limit {
+		return nil, fmt.Errorf("exceeds %d bytes", limit)
 	}
 	return raw, nil
 }
@@ -141,12 +232,14 @@ func estateBindingOf(profile estateprofile.EstateProfileV1, digest string) (esta
 		return estateBinding{}, fmt.Errorf("estate profile has no externalPrograms.%s", estateprofile.ExternalRoleSquadsV4)
 	}
 	binding := estateBinding{
-		ProfileSHA256: digest,
-		StoreOrigin:   "https://" + profile.Store.RootDomain,
-		StoreDomain:   profile.Store.RootDomain,
-		StoreID:       profile.Store.StoreID,
-		ProgramID:     registry,
-		MasterNftMint: profile.Anchors.MasterMint,
+		ProfileSHA256:    digest,
+		EstateID:         profile.EstateID,
+		StoreOrigin:      "https://" + profile.Store.RootDomain,
+		StoreDomain:      profile.Store.RootDomain,
+		StoreID:          profile.Store.StoreID,
+		StoreOperatorKey: profile.Store.OperatorKey,
+		ProgramID:        registry,
+		MasterNftMint:    profile.Anchors.MasterMint,
 		Squads: SquadsAuthority{
 			Multisig:    release.Multisig,
 			Vault:       release.Vault,

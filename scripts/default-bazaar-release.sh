@@ -21,7 +21,10 @@
 # its reviewed MEL_RELEASE_ESTATE_PROFILE_SHA256, from the caller's environment
 # or the runtime module). The values pinned below are the retiring default
 # Bazaar's; mel-release refuses each one that the profile does not repeat, so
-# this wrapper runs only with a signed profile for that estate.
+# this wrapper runs only with a signed profile for that estate. mel-release also
+# refuses a state directory that is not stamped for the profile's estate and
+# Store; DEFAULT_STATE_DIR holds release state written before that stamp
+# existed, so it is refused too and a run needs a fresh MEL_RELEASE_STATE_DIR.
 set -euo pipefail
 umask 077
 

@@ -12,7 +12,9 @@ package main
 // default: without a verified, pinned profile the CLI refuses before it reads
 // the catalog. The older per-value variables (MEL_RELEASE_STORE_URL,
 // MEL_RELEASE_PROGRAM_ID, ...) may still be set by a wrapper, but only to the
-// profile's own value; a different value is refused, never preferred.
+// profile's own value; a different value is refused, never preferred. The
+// Store operator identity (MEL_RELEASE_STORE_PUBKEY) is supplied as a file but
+// must be the profile's Store: its signing key is store.operatorKey.
 
 import (
 	"errors"
@@ -48,7 +50,7 @@ type Config struct {
 	SquadsThreshold   int    // MEL_RELEASE_SQUADS_THRESHOLD
 	SquadsMemberCount int    // MEL_RELEASE_SQUADS_MEMBER_COUNT
 	SignerProvider    string // MEL_RELEASE_SIGNER_PROVIDER — off-host governed command (required)
-	StorePubkey       string // MEL_RELEASE_STORE_PUBKEY — path to store operator identity.Public JSON (required)
+	StorePubkey       string // MEL_RELEASE_STORE_PUBKEY — path to the Store operator identity.Public JSON (required; its signing key must be store.operatorKey)
 	StoreLicenseMint  string // MEL_RELEASE_STORE_LICENSE_MINT — Store license authority for signed stage/promote (required)
 
 	// Estate-derived settings. A wrapper may repeat the profile's value in the
@@ -64,7 +66,7 @@ type Config struct {
 	// for both halves: private staging is itself a signed store mutation, so
 	// publish must fail before building if it cannot sign the stage request.
 	Channel       string // MEL_RELEASE_CHANNEL        (default dev)
-	StateDir      string // MEL_RELEASE_STATE_DIR      (default ~/.mel-release or /tmp fallback)
+	StateDir      string // MEL_RELEASE_STATE_DIR      (default ~/.mel-release or /tmp fallback; stamped for one estate, see state_estate.go)
 	PublisherKey  string // MEL_RELEASE_PUBLISHER_KEY  (env:NAME or path; required by publish and approve)
 	OpTimeoutSecs int    // MEL_RELEASE_OP_TIMEOUT_SECS (default 480)
 	// AllowGlobalReleaseRevoke is deliberately OFF by default. ReleaseEntry is
@@ -160,6 +162,11 @@ func loadConfigForMutation(needsMutationInputs bool) (Config, error) {
 	}
 	if err := refuseEstateOverrides(estate); err != nil {
 		return Config{}, err
+	}
+	if needsMutationInputs {
+		if err := requireEstateStoreIdentity(c.StorePubkey, estate); err != nil {
+			return Config{}, fmt.Errorf("MEL_RELEASE_STORE_PUBKEY: %w", err)
+		}
 	}
 	c.estate = estate
 	c.StoreURL = estate.StoreOrigin

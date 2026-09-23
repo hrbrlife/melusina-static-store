@@ -85,7 +85,7 @@ func runPreflight(c Config, catalog *Catalog, selector, version string) (string,
 	}
 	path := c.preflightPath(app.AppID, version, app.SourceCommit)
 	if existing, statErr := os.ReadFile(path); statErr == nil {
-		if err := verifyExistingPreflight(existing, app, version); err != nil {
+		if err := verifyExistingPreflight(c, existing, app, version); err != nil {
 			return "", err
 		}
 		return path, nil
@@ -198,7 +198,7 @@ func makePreflightReceipt(app App, version string, b buildReceipt, ref artifactR
 	}, nil
 }
 
-func verifyExistingPreflight(raw []byte, app App, version string) error {
+func verifyExistingPreflight(c Config, raw []byte, app App, version string) error {
 	var existing preflightReceipt
 	if err := decodeStrictJSON(raw, &existing); err != nil {
 		return fmt.Errorf("decode existing preflight receipt: %w", err)
@@ -218,6 +218,11 @@ func verifyExistingPreflight(raw []byte, app App, version string) error {
 	}
 	if err := verifyAppHash(b); err != nil {
 		return fmt.Errorf("preflight canonical app hash: %w", err)
+	}
+	// A saved receipt is returned as it stands: it must still name a build
+	// seeded by the bound estate's master mint.
+	if err := requireEstateMasterMint(c, b); err != nil {
+		return fmt.Errorf("saved preflight receipt: %w", err)
 	}
 	want, err := makePreflightReceipt(app, version, b, ref)
 	if err != nil {

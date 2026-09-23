@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 )
 
@@ -121,16 +122,17 @@ var estateOverrideNames = []string{
 }
 
 // setReleaseEnv sets a complete mutation configuration bound to the given
-// profile.
+// profile, including a Store operator identity for that profile's Store.
 func setReleaseEnv(t *testing.T, profilePath, profileSHA256 string) {
 	t.Helper()
 	for _, name := range estateOverrideNames {
 		t.Setenv(name, "")
 	}
+	operatorKey, registry := testEstateStoreFacts(profilePath)
 	for key, value := range map[string]string{
 		"MEL_RELEASE_CONFIG":                "/tmp/bazaar-catalog.yaml",
 		"MEL_RELEASE_SIGNER_PROVIDER":       "provider",
-		"MEL_RELEASE_STORE_PUBKEY":          "/tmp/store-pubkey.json",
+		"MEL_RELEASE_STORE_PUBKEY":          writeStoreIdentity(t, operatorKey, registry, func(*identity.Public) {}),
 		"MEL_RELEASE_STORE_LICENSE_MINT":    "store-license-mint",
 		"MEL_RELEASE_PUBLISHER_KEY":         "/tmp/publisher.key",
 		"MEL_RELEASE_ESTATE_PROFILE":        profilePath,
@@ -139,6 +141,61 @@ func setReleaseEnv(t *testing.T, profilePath, profileSHA256 string) {
 	} {
 		t.Setenv(key, value)
 	}
+}
+
+// testEstateStoreFacts reads the Store operator key and registry a profile
+// file names, or placeholders when it names none (a test of a profile that
+// must be refused).
+func testEstateStoreFacts(profilePath string) (string, string) {
+	operatorKey, registry := "11111111111111111111111111111111", testProgramID
+	raw, err := os.ReadFile(profilePath)
+	if err != nil {
+		return operatorKey, registry
+	}
+	var profile estateprofile.EstateProfileV1
+	if json.Unmarshal(raw, &profile) != nil {
+		return operatorKey, registry
+	}
+	if profile.Store.OperatorKey != "" {
+		operatorKey = profile.Store.OperatorKey
+	}
+	for _, program := range profile.Programs {
+		if program.Role == estateprofile.ProgramRoleLicenseRegistry {
+			registry = program.ProgramID
+		}
+	}
+	return operatorKey, registry
+}
+
+// writeStoreIdentity writes a Store operator identity.Public whose signing key
+// is operatorKey, derived under registry; mutate edits it first.
+func writeStoreIdentity(t *testing.T, operatorKey, registry string, mutate func(*identity.Public)) string {
+	t.Helper()
+	public := identity.Public{
+		Version: identity.CurrentVersion,
+		Ref: identity.Ref{
+			Kind:        identity.KindSidecar,
+			ChainID:     "solana:devnet",
+			ProgramID:   registry,
+			LicenseMint: "11111111111111111111111111111111",
+			Domain:      strings.TrimPrefix(testStoreOrigin, "https://"),
+			PDA:         "11111111111111111111111111111111",
+			SidecarID:   "rehearsal-root-store-v2",
+			KeyVersion:  1,
+		},
+		SignPubkeyB58: operatorKey,
+		BoxPubkeyB58:  "11111111111111111111111111111111",
+	}
+	mutate(&public)
+	raw, err := json.Marshal(public)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "store-operator.public.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }
 
 // setNewEstateReleaseEnv binds a complete configuration to the unmodified

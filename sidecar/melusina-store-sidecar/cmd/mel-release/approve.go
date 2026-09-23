@@ -150,6 +150,9 @@ func revalidateCandidate(c Config, app App, rec *walReceipt) (candidateReceipt, 
 		cand.Component.Chain.ReleasePDA != rec.NewReleasePDA || cand.SquadsProposal.TransactionPDA != rec.TransactionPDA {
 		return candidateReceipt{}, fmt.Errorf("candidate receipt does not bind the WAL for app %s", rec.AppID)
 	}
+	if err := requireCandidateEstate(c, *rec, cand); err != nil {
+		return candidateReceipt{}, err
+	}
 	// Staged bytes still proven by the retained stage receipt.
 	if err := verifyArtifactRef(rec.StageReceiptRef); err != nil {
 		return candidateReceipt{}, fmt.Errorf("staged stage receipt: %w", err)

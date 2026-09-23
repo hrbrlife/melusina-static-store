@@ -76,6 +76,11 @@ func runPublish(c Config, catalog *Catalog, selector, version string) (string, e
 	if err != nil {
 		return "", err
 	}
+	// A resumed WAL goes straight to its next step; the build it journaled
+	// must be this estate's before anything is staged or proposed.
+	if err := requireWALEstate(c, rec); err != nil {
+		return "", err
+	}
 
 	for stateRank(rec.State) < stateRank(statePosed) {
 		switch rec.State {

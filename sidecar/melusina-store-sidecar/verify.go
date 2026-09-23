@@ -14,23 +14,53 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-const defaultLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
-
 // programID is the license-registry program the federated store verifies
-// against (FEDERATED-STORE-MVP §1). It defaults to the current devnet registry
-// and is overwritten from validated operator config at process boot.
-var programID = mustPubkey(defaultLicenseProgramID)
+// against (FEDERATED-STORE-MVP §1). The Store compiles no registry: which
+// program an estate trusts is a fact of that estate. It is carried by the
+// operator config (rendered from the owner-signed estate profile for an
+// enrolled Store) and pinned once per process by setProgramIDFromConfig.
+// Production code reads it only through licenseRegistryProgramID.
+var programID pda.Pubkey
 
-func mustPubkey(s string) pda.Pubkey {
-	p, err := primitives.PubkeyFromBase58(s)
-	if err != nil {
-		panic("melusina-store-sidecar: bad programID: " + err.Error())
+// licenseRegistryProgramID returns the registry program pinned from config.
+// Reading it before a pin is a programming error, not a state to serve from:
+// the zero key is the System Program, so a PDA derived from it, or an account
+// owner compared with it, would silently trust the wrong program.
+func licenseRegistryProgramID() pda.Pubkey {
+	if programID == (pda.Pubkey{}) {
+		panic("melusina-store-sidecar: license-registry program_id read before it was pinned from config")
 	}
-	return p
+	return programID
 }
 
-func setProgramIDFromConfig(s string) {
-	programID = mustPubkey(strings.TrimSpace(s))
+// parseLicenseRegistryProgramID is the single validation of config.program_id,
+// shared by LoadConfig and the process pin. There is no default to fall back
+// to: a missing value is a named refusal.
+func parseLicenseRegistryProgramID(raw string) (pda.Pubkey, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return pda.Pubkey{}, errors.New("config: program_id is required")
+	}
+	program, err := primitives.PubkeyFromBase58(value)
+	if err != nil {
+		return pda.Pubkey{}, fmt.Errorf("config: program_id is invalid: %w", err)
+	}
+	if program == (pda.Pubkey{}) {
+		return pda.Pubkey{}, errors.New("config: program_id must not be the System Program")
+	}
+	return program, nil
+}
+
+// setProgramIDFromConfig pins the registry program for this process. Every
+// entry point calls it with the value LoadConfig has already validated, and
+// refuses to continue when it fails.
+func setProgramIDFromConfig(raw string) error {
+	program, err := parseLicenseRegistryProgramID(raw)
+	if err != nil {
+		return err
+	}
+	programID = program
+	return nil
 }
 
 // chainReader is the subset of *verify.RPCClient the /publish gate needs. It is
@@ -228,7 +258,7 @@ func VerifyStoreOperator(ctx context.Context, cr chainReader, cfg Config, operat
 	if err != nil {
 		return 0, pda.Pubkey{}, fmt.Errorf("check=store_operator_authz: bad cfg.license_nft_mint: %w", err)
 	}
-	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, storeDomainHash, programID)
+	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, storeDomainHash, licenseRegistryProgramID())
 	if err != nil {
 		return 0, pda.Pubkey{}, fmt.Errorf("check=store_operator_authz: derive PDA: %w", err)
 	}
@@ -267,7 +297,7 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 	if err != nil {
 		return 0, fmt.Errorf("check=foundation_tier: fetch release app_id %s: %w", relPDA.Base58(), err)
 	}
-	faPDA, _, err := pda.FoundationApp(appID, programID)
+	faPDA, _, err := pda.FoundationApp(appID, licenseRegistryProgramID())
 	if err != nil {
 		return 0, fmt.Errorf("check=foundation_tier: derive FoundationApp PDA: %w", err)
 	}
@@ -339,7 +369,7 @@ func verifyCurrentStoreReleaseListing(ctx context.Context, cr chainReader, cfg C
 	if err != nil {
 		return fmt.Errorf("check=release_entry: bad release.masterNftMint: %w", err)
 	}
-	releasePDA, _, err := pda.Release(masterMint, appHash, programID)
+	releasePDA, _, err := pda.Release(masterMint, appHash, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("check=release_entry: derive PDA: %w", err)
 	}
@@ -377,7 +407,7 @@ func verifyStoreReleaseListing(ctx context.Context, cr chainReader, cfg Config, 
 		return fmt.Errorf("check=store_release_listing: bad cfg.license_nft_mint: %w", err)
 	}
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
-	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, domainHash, programID)
+	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, domainHash, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("check=store_release_listing: derive store operator authorization: %w", err)
 	}
@@ -395,7 +425,7 @@ func verifyStoreReleaseListing(ctx context.Context, cr chainReader, cfg Config, 
 		return fmt.Errorf("check=store_release_listing: StoreOperatorAuthorization domain hash %x != cfg domain hash %x", onchainDomainHash[:], domainHash[:])
 	}
 
-	listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, programID)
+	listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("check=store_release_listing: derive listing PDA: %w", err)
 	}
@@ -458,7 +488,7 @@ func fetchInstallerReleaseMetaForHash(ctx context.Context, cr chainReader, cfg C
 	if err != nil {
 		return zero, fmt.Errorf("check=installer_release: bad release_master_nft_mint: %w", err)
 	}
-	relPDA, _, err := pda.InstallerRelease(masterMint, installerHash, programID)
+	relPDA, _, err := pda.InstallerRelease(masterMint, installerHash, licenseRegistryProgramID())
 	if err != nil {
 		return zero, fmt.Errorf("check=installer_release: derive PDA: %w", err)
 	}
@@ -515,7 +545,7 @@ func verifyReleaseEntryHashWithAuthorityPolicy(ctx context.Context, cr chainRead
 	if err != nil {
 		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: bad release.masterNftMint: %w", err)
 	}
-	relPDA, _, err := pda.Release(masterMint, appHashBytes, programID)
+	relPDA, _, err := pda.Release(masterMint, appHashBytes, licenseRegistryProgramID())
 	if err != nil {
 		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: derive PDA: %w", err)
 	}
@@ -605,7 +635,7 @@ func verifySharedSquadsAuthorityWithLegacyQuorumClaim(cfg Config, rel ReleaseJSO
 // the common, expected "clear" case. label names the check in the error
 // ("app" / "license").
 func verifyNotBlacklisted(ctx context.Context, cr chainReader, target pda.Pubkey, label string) error {
-	blPDA, _, err := pda.BlacklistEntry(target, programID)
+	blPDA, _, err := pda.BlacklistEntry(target, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("check=blacklist[%s]: derive PDA: %w", label, err)
 	}

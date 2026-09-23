@@ -18,6 +18,26 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
+// testLicenseProgramID is the registry program the package tests pin before
+// any test runs. It is a test fixture only: production compiles no registry
+// and pins exactly the program_id its validated config names.
+const testLicenseProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+
+func init() {
+	if err := setProgramIDFromConfig(testLicenseProgramID); err != nil {
+		panic("pin test license-registry program: " + err.Error())
+	}
+}
+
+// mustPubkey decodes a base58 fixture key.
+func mustPubkey(s string) pda.Pubkey {
+	p, err := primitives.PubkeyFromBase58(s)
+	if err != nil {
+		panic("melusina-store-sidecar test: bad pubkey: " + err.Error())
+	}
+	return p
+}
+
 // ── mock chainReader ──────────────────────────────────────────────────────
 
 // mockChainReader is a deterministic stand-in for *verify.RPCClient. No live

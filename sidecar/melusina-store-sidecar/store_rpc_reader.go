@@ -313,7 +313,7 @@ func (c *storeRPCReader) getProgramAccountsByAppID(ctx context.Context, appID [3
 		ID:      1,
 		Method:  "getProgramAccounts",
 		Params: []any{
-			programID.Base58(),
+			licenseRegistryProgramID().Base58(),
 			map[string]any{
 				"encoding":   "base64",
 				"commitment": "confirmed",

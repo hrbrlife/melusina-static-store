@@ -147,7 +147,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("governed UI: %v", err)
 	}
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		log.Fatalf("config: %v", err)
+	}
 
 	// The on-chain reader is the trust gate for /publish (VerifyPublish). It is
 	// always wired from cfg.RPCURL; the production client (*verify.RPCClient)
@@ -334,7 +336,9 @@ func runGenesisBootstrapSubcommand(args []string) {
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		log.Fatalf("config after overrides: %v", err)
 	}
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		log.Fatalf("config: %v", err)
+	}
 
 	var cr chainReader
 	if cfg.RPCURL != "" {

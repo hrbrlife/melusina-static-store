@@ -129,7 +129,9 @@ func runListingBootstrapSubcommand(args []string) {
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		log.Fatalf("listing-bootstrap config: %v", err)
 	}
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		log.Fatalf("listing-bootstrap config: %v", err)
+	}
 	if cfg.RPCURL == "" {
 		log.Fatalf("listing-bootstrap requires rpc_url")
 	}
@@ -181,7 +183,7 @@ func runListingBootstrap(ctx context.Context, cfg Config, cr chainReader, operat
 		return report, err
 	}
 	domainHash := primitives.StoreDomainHash(cfg.Domain)
-	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, domainHash, programID)
+	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, domainHash, licenseRegistryProgramID())
 	if err != nil {
 		return report, fmt.Errorf("derive StoreOperatorAuthorization: %w", err)
 	}
@@ -226,7 +228,7 @@ func runListingBootstrap(ctx context.Context, cfg Config, cr chainReader, operat
 		ExpectedAppCount:     opts.expectedAppCount,
 		StoreAuthority:       storeAuthority.Base58(),
 		LicenseNFTMint:       licenseMint.Base58(),
-		ProgramID:            programID.Base58(),
+		ProgramID:            licenseRegistryProgramID().Base58(),
 		StoreDomainHash:      hex.EncodeToString(domainHash[:]),
 		StoreCertFingerprint: hex.EncodeToString(certFingerprint[:]),
 		Items:                items,
@@ -440,7 +442,7 @@ func buildListingBootstrapItems(ctx context.Context, snapshot AppCatalogSnapshot
 		if err != nil {
 			return nil, fmt.Errorf("current release %s master mint: %w", appID, err)
 		}
-		releasePDA, _, err := pda.Release(masterMint, appHash, programID)
+		releasePDA, _, err := pda.Release(masterMint, appHash, licenseRegistryProgramID())
 		if err != nil {
 			return nil, fmt.Errorf("derive current ReleaseEntry for %s: %w", appID, err)
 		}
@@ -448,7 +450,7 @@ func buildListingBootstrapItems(ctx context.Context, snapshot AppCatalogSnapshot
 		if err != nil {
 			return nil, fmt.Errorf("fetch current ReleaseEntry app id for %s: %w", appID, err)
 		}
-		foundationPDA, _, err := pda.FoundationApp(chainAppID, programID)
+		foundationPDA, _, err := pda.FoundationApp(chainAppID, licenseRegistryProgramID())
 		if err != nil {
 			return nil, fmt.Errorf("derive FoundationAppEntry for %s: %w", appID, err)
 		}
@@ -457,7 +459,7 @@ func buildListingBootstrapItems(ctx context.Context, snapshot AppCatalogSnapshot
 		} else if tier != 0 && (allowedTierMask&tier) != tier {
 			return nil, fmt.Errorf("Store operator tier mask 0x%02x does not cover %s tier 0x%02x", allowedTierMask, appID, tier)
 		}
-		listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, programID)
+		listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, licenseRegistryProgramID())
 		if err != nil {
 			return nil, fmt.Errorf("derive StoreReleaseListing for %s: %w", appID, err)
 		}
@@ -940,7 +942,7 @@ func buildRegisterStoreReleaseListingTransaction(operator *identity.Private, sto
 	data = append(data, licenseMint[:]...)
 	data = append(data, domainHash[:]...)
 	return buildListingLegacyTransaction([]listingTxInstruction{{
-		ProgramID: programID,
+		ProgramID: licenseRegistryProgramID(),
 		Accounts: []listingTxAccountMeta{
 			{Key: listing, IsWritable: true},
 			{Key: release},

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/hrbrlife/melusina-attest/pda"
@@ -489,6 +490,33 @@ func TestNewRootMirror_RejectsBadConfig(t *testing.T) {
 				t.Fatalf("%s: expected construction error", name)
 			}
 		})
+	}
+}
+
+// A reseller's root Store is configuration, never a compiled origin: a loaded
+// config that enables mirroring without root_store_url is refused by name,
+// and naming one is what makes the same mirror constructible.
+func TestNewRootMirror_LoadedConfigHasNoCompiledRootStore(t *testing.T) {
+	mirror := buildRootMirrorFixture(t).cfg.Mirror
+	config := profileEnrolledStoreConfig(t, filepath.Join(t.TempDir(), "estate-enrollment.json"))
+	config["mirror"] = mirror
+	cfg, err := LoadConfig(writeJSONConfig(t, config))
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.RootStoreURL != "" {
+		t.Fatalf("loaded root_store_url = %q from nowhere", cfg.RootStoreURL)
+	}
+	if _, err := newRootMirror(cfg, newMockChainReader(), &mockRootFetcher{}, nil); err == nil || err.Error() != "mirror: root_store_url is required when mirror.enabled" {
+		t.Fatalf("mirror without root_store_url = %v, want the named refusal", err)
+	}
+	config["root_store_url"] = mirrorRootURL
+	cfg, err = LoadConfig(writeJSONConfig(t, config))
+	if err != nil {
+		t.Fatalf("LoadConfig with root_store_url: %v", err)
+	}
+	if _, err := newRootMirror(cfg, newMockChainReader(), &mockRootFetcher{}, nil); err != nil {
+		t.Fatalf("positive control: mirror with root_store_url refused: %v", err)
 	}
 }
 

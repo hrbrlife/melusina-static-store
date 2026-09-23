@@ -97,7 +97,7 @@ func deriveVerifiedBootIdentity(ctx context.Context, cfg Config, cr chainReader)
 	if err != nil {
 		return nil, fmt.Errorf("boot_identity: bad license_nft_mint: %w", err)
 	}
-	sidecarPDA, _, err := pda.SidecarIdentity(licenseMint, sidecarID, keyVersion, programID)
+	sidecarPDA, _, err := pda.SidecarIdentity(licenseMint, sidecarID, keyVersion, licenseRegistryProgramID())
 	if err != nil {
 		return nil, fmt.Errorf("boot_identity: derive SidecarIdentityEntry PDA: %w", err)
 	}
@@ -157,7 +157,7 @@ func sidecarIdentityRef(cfg Config, sidecarID string, keyVersion uint32, sidecar
 	return identity.Ref{
 		Kind:        identity.KindSidecar,
 		ChainID:     strings.TrimSpace(cfg.BootIdentity.ChainID),
-		ProgramID:   programID.Base58(),
+		ProgramID:   licenseRegistryProgramID().Base58(),
 		LicenseMint: cfg.LicenseNFTMint,
 		Domain:      cfg.Domain,
 		PDA:         sidecarPDAB58,
@@ -178,7 +178,7 @@ func operatorIdentityRef(cfg Config, licenseMint primitives.Pubkey, sidecarID st
 	if operatorDomain == "" {
 		operatorDomain = cfg.Domain
 	}
-	operatorPDA, _, err := pda.SidecarIdentity(licenseMint, sidecarID, operatorVersion, programID)
+	operatorPDA, _, err := pda.SidecarIdentity(licenseMint, sidecarID, operatorVersion, licenseRegistryProgramID())
 	if err != nil {
 		return identity.Ref{}, err
 	}

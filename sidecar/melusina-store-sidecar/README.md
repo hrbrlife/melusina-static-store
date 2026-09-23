@@ -171,7 +171,9 @@ per-install material):
 
 The helper command below generates or reuses the three shard files and prints
 the public `register_sidecar_identity` inputs without broadcasting any
-transaction or printing secret shard values:
+transaction or printing secret shard values. `-program-id` is required: the
+derived operator key is salted by the estate's license-registry program, and
+the helper compiles none of its own to fall back to:
 
 ```sh
 go run ./cmd/boot-identity-prep \
@@ -201,6 +203,13 @@ absolute `estate_enrollment_state_path` to its `store.config.json`; its parent
 directory must already exist, be owned by the Store service account, and be
 mode `0700`. The final state file must not exist. An enrolled config also
 requires an explicit `rpc_url` and may name explicit `rpc_fallback_urls`.
+
+Every Store configuration, enrolled or not, names its license-registry
+`program_id`. The Store compiles no registry program: startup refuses with
+`config: program_id is required` when it is absent, and the profile-bound
+renderer below writes the profile's `programs.license-registry` value. A
+mirroring reseller likewise names its `root_store_url`; there is no compiled
+root origin.
 
 The enrolled configuration must also spell out every
 `release_squads_authority` field: `multisig`, `vault`, `program_id`,

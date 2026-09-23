@@ -98,12 +98,17 @@ type Config struct {
 	// preserves the established ReleaseEntry-only serve policy while the
 	// separately governed listing bootstrap has not yet created every exact
 	// StoreReleaseListing record.
-	StoreAuthority  string `json:"store_authority"`
+	StoreAuthority string `json:"store_authority"`
+	// ProgramID is the license-registry program every chain read and PDA is
+	// bound to. Required, with no compiled default: the registry belongs to
+	// the estate, never to the Store build.
 	ProgramID       string `json:"program_id"`
 	Domain          string `json:"domain"` // bare host; store_domain_hash = sha256(ascii_lower(strip_trailing_dot(domain)))
 	StoreID         string `json:"store_id"`
 	ResellerNFTMint string `json:"reseller_nft_mint,omitempty"`
-	RootStoreURL    string `json:"root_store_url"`
+	// RootStoreURL is the root Store a reseller mirrors. It has no compiled
+	// default; the mirror refuses to start without it.
+	RootStoreURL string `json:"root_store_url"`
 	// PublicBaseURL is THIS store's own public origin — the absolute
 	// Explicit public Store URL the external host update controller fetches
 	// /update/generation.json from and downloads component bundles from. The
@@ -288,11 +293,9 @@ type MirrorConfig struct {
 func defaultConfig() Config {
 	return Config{
 		StoreID:         "melusina-store",
-		RootStoreURL:    "https://melusina-os.org",
 		ListenAddr:      ":8443",
 		DistDir:         "dist-publish",
 		CatalogRepoRoot: ".",
-		ProgramID:       defaultLicenseProgramID,
 		RPCAttempts:     defaultRPCAttempts,
 	}
 }
@@ -335,12 +338,12 @@ func LoadConfig(path string) (Config, error) {
 			return cfg, fmt.Errorf("config: store_authority is invalid: %w", err)
 		}
 	}
+	// The license-registry program is an estate fact with no compiled value.
+	// An enrolled Store's rendered config carries its profile's registry; any
+	// other config must name one explicitly.
 	cfg.ProgramID = strings.TrimSpace(cfg.ProgramID)
-	if cfg.ProgramID == "" {
-		cfg.ProgramID = defaultLicenseProgramID
-	}
-	if _, err := primitives.PubkeyFromBase58(cfg.ProgramID); err != nil {
-		return cfg, fmt.Errorf("config: program_id is invalid: %w", err)
+	if _, err := parseLicenseRegistryProgramID(cfg.ProgramID); err != nil {
+		return cfg, err
 	}
 	if err := cfg.normalizeReleaseSquadsAuthority(); err != nil {
 		return cfg, err

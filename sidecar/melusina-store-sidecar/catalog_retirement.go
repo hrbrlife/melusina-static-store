@@ -286,7 +286,9 @@ func runCatalogRetireSubcommand(args []string) {
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		log.Fatalf("catalog-retire config: %v", err)
 	}
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		log.Fatalf("catalog-retire config: %v", err)
+	}
 	cr := newConfiguredStoreRPCReader(cfg)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	operator, err := deriveOperatorIdentity(ctx, cfg, cr)

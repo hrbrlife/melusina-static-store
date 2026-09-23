@@ -99,10 +99,10 @@ func primeCatalogAccounts(ctx context.Context, cfg Config, inner chainReader, ba
 		if err != nil {
 			continue
 		}
-		if relPDA, _, err := pda.Release(masterMint, appHash, programID); err == nil {
+		if relPDA, _, err := pda.Release(masterMint, appHash, licenseRegistryProgramID()); err == nil {
 			add(relPDA.Base58())
 		}
-		if listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, programID); err == nil {
+		if listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, licenseRegistryProgramID()); err == nil {
 			add(listingPDA.Base58())
 		}
 	}

@@ -257,7 +257,9 @@ func runCatalogReconcileUnservedSubcommand(args []string) {
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		log.Fatalf("catalog-reconcile-unserved config: %v", err)
 	}
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		log.Fatalf("catalog-reconcile-unserved config: %v", err)
+	}
 	cr := newConfiguredStoreRPCReader(cfg)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	operator, err := deriveOperatorIdentity(ctx, cfg, cr)

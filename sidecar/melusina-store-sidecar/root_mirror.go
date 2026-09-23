@@ -264,7 +264,7 @@ func (m *rootMirror) isRootOperator(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("bad cfg.license_nft_mint: %w", err)
 	}
-	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, primitives.StoreDomainHash(m.cfg.Domain), programID)
+	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, primitives.StoreDomainHash(m.cfg.Domain), licenseRegistryProgramID())
 	if err != nil {
 		return false, fmt.Errorf("derive store_operator PDA: %w", err)
 	}
@@ -374,7 +374,7 @@ func (m *rootMirror) verifyTrustBundleSignature(wireBody []byte) error {
 // verifyBaseInstaller re-derives InstallerReleaseEntry[rootMasterMint,
 // baseInstaller] and asserts it exists, pins this installer_hash, and is Active.
 func (m *rootMirror) verifyBaseInstaller(ctx context.Context) error {
-	relPDA, _, err := pda.InstallerRelease(m.rootMasterMint, m.baseInstaller, programID)
+	relPDA, _, err := pda.InstallerRelease(m.rootMasterMint, m.baseInstaller, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("check=installer_release: derive PDA: %w", err)
 	}
@@ -407,7 +407,7 @@ func (m *rootMirror) verifyBasicApps(ctx context.Context, idx rootIndex) ([]veri
 		if err != nil {
 			return nil, fmt.Errorf("check=foundation_app[%s]: bad foundationAppId hex: %w", app.Name, err)
 		}
-		appPDA, _, err := pda.FoundationApp(appID, programID)
+		appPDA, _, err := pda.FoundationApp(appID, licenseRegistryProgramID())
 		if err != nil {
 			return nil, fmt.Errorf("check=foundation_app[%s]: derive PDA: %w", app.Name, err)
 		}

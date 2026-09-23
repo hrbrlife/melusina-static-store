@@ -108,6 +108,24 @@ func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.
 	if !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 {
 		t.Fatalf("output mode = %v, want regular 0600", info.Mode())
 	}
+	// The rendered bytes themselves carry the profile's registry and root
+	// origin: the loader has no compiled value that could stand in for either.
+	var rendered struct {
+		ProgramID    *string `json:"program_id"`
+		RootStoreURL *string `json:"root_store_url"`
+	}
+	if err := json.Unmarshal(raw, &rendered); err != nil {
+		t.Fatal(err)
+	}
+	if rendered.ProgramID == nil || *rendered.ProgramID != profileProgramID(t, profile, estateprofile.ProgramRoleLicenseRegistry) {
+		t.Fatalf("rendered program_id = %v, want the profile's license-registry program", rendered.ProgramID)
+	}
+	if *rendered.ProgramID == testLicenseProgramID {
+		t.Fatal("fixture profile shares the test registry pin, so this check could not see a fallback")
+	}
+	if rendered.RootStoreURL == nil || *rendered.RootStoreURL != "https://"+profile.Store.RootDomain {
+		t.Fatalf("rendered root_store_url = %v, want the profile root Store origin", rendered.RootStoreURL)
+	}
 
 	cfg, err := LoadConfig(outputPath)
 	if err != nil {

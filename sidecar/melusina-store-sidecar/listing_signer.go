@@ -175,7 +175,9 @@ func runListingSignerSubcommand(args []string) {
 	if strings.TrimSpace(cfg.ListingSignerSocket) == "" {
 		panic("listing-signer requires config.listing_signer_socket")
 	}
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		panic("listing-signer config: " + err.Error())
+	}
 	if cfg.RPCURL == "" {
 		panic("listing-signer requires rpc_url")
 	}

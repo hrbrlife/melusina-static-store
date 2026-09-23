@@ -72,7 +72,9 @@ func TestIsolatedControllerCombinedReal(t *testing.T) {
 	cfg.Policy = live.Policy
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ServeVerifyTTLSeconds = -1
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		t.Fatal(err)
+	}
 	opts.nonce.Now = time.Now
 
 	seedSlot(t, cfg.CatalogRepoRoot, "welcome", "exact-current", "app", metadata)

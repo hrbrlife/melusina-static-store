@@ -276,7 +276,9 @@ func runCatalogReconcileRetirementSubcommand(args []string) {
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		log.Fatal(err)
 	}
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		log.Fatal(err)
+	}
 	cr := newConfiguredStoreRPCReader(cfg)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()

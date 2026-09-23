@@ -95,7 +95,9 @@ func TestIsolatedControllerPreflight(t *testing.T) {
 	if cfg.Domain == "" {
 		cfg.Domain = "store.example.org"
 	}
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		t.Fatal(err)
+	}
 	opts.nonce.Now = time.Now
 
 	// One shared sign key for operator + publisher; distinct identities.

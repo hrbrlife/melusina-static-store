@@ -222,8 +222,8 @@ func requireDiscAndOwner(name string, data []byte, owner string) error {
 	if !bytes.Equal(data[:8], accountDiscriminator(name)) {
 		return fmt.Errorf("%s: wrong account discriminator", name)
 	}
-	if owner != programID.Base58() {
-		return fmt.Errorf("%s: account owner %s != pinned program %s", name, owner, programID.Base58())
+	if pinned := licenseRegistryProgramID().Base58(); owner != pinned {
+		return fmt.Errorf("%s: account owner %s != pinned program %s", name, owner, pinned)
 	}
 	return nil
 }
@@ -312,7 +312,7 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	licenseMint := c.licenseMint
 
 	// 1. LicenseEntry Active — and extract reseller + master mints from it.
-	licPDA, _, err := primitives.DeriveLicense(licenseMint, programID)
+	licPDA, _, err := primitives.DeriveLicense(licenseMint, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("derive LicenseEntry PDA: %w", err)
 	}
@@ -355,7 +355,7 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	}
 
 	// 2. GlobalSidecarApproval Active + binary_hash == artifact.
-	globalPDA, _, err := primitives.DeriveGlobalSidecar(master, sidecarID, programID)
+	globalPDA, _, err := primitives.DeriveGlobalSidecar(master, sidecarID, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("derive GlobalSidecarApproval PDA: %w", err)
 	}
@@ -398,7 +398,7 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	}
 
 	// 3. LocalSidecarApproval Active (+ optional hash == artifact).
-	localPDA, _, err := primitives.DeriveLocalSidecar(licenseMint, sidecarID, programID)
+	localPDA, _, err := primitives.DeriveLocalSidecar(licenseMint, sidecarID, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("derive LocalSidecarApproval PDA: %w", err)
 	}
@@ -433,7 +433,7 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	}
 
 	// 4. ResellerSidecarApproval Active.
-	resApprovalPDA, _, err := primitives.DeriveResellerSidecar(reseller, sidecarID, programID)
+	resApprovalPDA, _, err := primitives.DeriveResellerSidecar(reseller, sidecarID, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("derive ResellerSidecarApproval PDA: %w", err)
 	}
@@ -460,7 +460,7 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	}
 
 	// 5. ResellerEntry Active (PDA seeds ["reseller", reseller_mint]).
-	parentPDA, _, err := primitives.FindProgramAddress([][]byte{[]byte("reseller"), reseller[:]}, programID, nil)
+	parentPDA, _, err := primitives.FindProgramAddress([][]byte{[]byte("reseller"), reseller[:]}, licenseRegistryProgramID(), nil)
 	if err != nil {
 		return fmt.Errorf("derive ResellerEntry PDA: %w", err)
 	}

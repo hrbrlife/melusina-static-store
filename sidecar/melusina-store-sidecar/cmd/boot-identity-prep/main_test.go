@@ -36,6 +36,7 @@ func TestRunGeneratesShardsAndOmitsSecretValues(t *testing.T) {
 		"-license-mint", licenseMint,
 		"-domain", "melusina-os.org",
 		"-sidecar-id", "store",
+		"-program-id", testProgramID,
 		"-binary", binaryPath,
 		"-tls-cert", certPath,
 	}, &out)
@@ -65,6 +66,9 @@ func TestRunGeneratesShardsAndOmitsSecretValues(t *testing.T) {
 	if report.RegisterSidecarInput.LicenseNFTMint != licenseMint {
 		t.Fatalf("license mint = %s, want %s", report.RegisterSidecarInput.LicenseNFTMint, licenseMint)
 	}
+	if report.RegisterSidecarInput.ProgramID != testProgramID || report.IdentityRef.ProgramID != testProgramID || report.OperatorIdentityRef.ProgramID != testProgramID {
+		t.Fatalf("program id = register %s, ref %s, operator ref %s; want %s", report.RegisterSidecarInput.ProgramID, report.IdentityRef.ProgramID, report.OperatorIdentityRef.ProgramID, testProgramID)
+	}
 	if report.RegisterSidecarInput.DomainHashHex != "0595e1c47c3033976959c872a52b4ad9a1470faf1e7c31426e0d669f9fa4d4d7" {
 		t.Fatalf("domain hash = %s", report.RegisterSidecarInput.DomainHashHex)
 	}
@@ -77,6 +81,51 @@ func TestRunGeneratesShardsAndOmitsSecretValues(t *testing.T) {
 	}
 	if report.ConfigBootIdentity.TLSCertPath != certPath {
 		t.Fatalf("config tls cert path = %q, want %q", report.ConfigBootIdentity.TLSCertPath, certPath)
+	}
+}
+
+// testProgramID is a fictitious registry: sha256("boot-identity-prep test
+// registry"), base58. The preparer has no program of its own to fall back to.
+const testProgramID = "G4Ps7fo3cud6NxSWoJS78fozqCWtCmAT9ZdoM3t4vHWb"
+
+// The operator key is salted by the registry program, so the preparer refuses
+// to derive one without an explicit -program-id, before it creates a shard.
+func TestRunRequiresExplicitProgramID(t *testing.T) {
+	dir := t.TempDir()
+	shardsDir := filepath.Join(dir, "shards")
+	binaryPath := filepath.Join(dir, "bin")
+	if err := os.WriteFile(binaryPath, []byte("bin"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	certPath, _ := writeTestCert(t, dir, "store.example.org")
+	base := []string{
+		"-shards-dir", shardsDir,
+		"-license-mint", randPubkeyB58(t),
+		"-domain", "store.example.org",
+		"-sidecar-id", "store",
+		"-binary", binaryPath,
+		"-tls-cert", certPath,
+	}
+	for name, extra := range map[string][]string{
+		"absent": nil,
+		"empty":  {"-program-id", ""},
+		"blank":  {"-program-id", "  "},
+	} {
+		var out bytes.Buffer
+		err := run(append(append([]string{}, base...), extra...), &out)
+		if err == nil || err.Error() != "missing required flags: -program-id" {
+			t.Fatalf("%s: run error = %v, want the named -program-id refusal", name, err)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("%s: refused run printed a report: %s", name, out.String())
+		}
+		if _, err := os.Stat(shardsDir); !os.IsNotExist(err) {
+			t.Fatalf("%s: refused run touched the shard directory: %v", name, err)
+		}
+	}
+	var out bytes.Buffer
+	if err := run(append(append([]string{}, base...), "-program-id", testProgramID), &out); err != nil {
+		t.Fatalf("positive control: explicit -program-id refused: %v", err)
 	}
 }
 
@@ -93,6 +142,7 @@ func TestRunReusesCompleteShardSet(t *testing.T) {
 		"-license-mint", randPubkeyB58(t),
 		"-domain", "store.example.org",
 		"-sidecar-id", "store",
+		"-program-id", testProgramID,
 		"-binary", binaryPath,
 		"-tls-cert", certPath,
 	}
@@ -138,6 +188,7 @@ func TestRunSeparatesStableOperatorFromRotatedBinding(t *testing.T) {
 		"-shards-dir", shardsDir,
 		"-license-mint", licenseMint,
 		"-sidecar-id", "store",
+		"-program-id", testProgramID,
 		"-binary", binaryPath,
 		"-tls-cert", certPath,
 	}
@@ -201,6 +252,7 @@ func TestRunRejectsPartialShardSet(t *testing.T) {
 		"-license-mint", randPubkeyB58(t),
 		"-domain", "store.example.org",
 		"-sidecar-id", "store",
+		"-program-id", testProgramID,
 		"-binary", binaryPath,
 		"-tls-cert", certPath,
 	}, &out)

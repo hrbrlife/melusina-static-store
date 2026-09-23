@@ -96,7 +96,7 @@ func buildRootTrustBundle(cfg Config, operator *identity.Private) (*bundle.Loade
 	if err != nil {
 		return nil, nil, fmt.Errorf("root trust bundle: license_nft_mint: %w", err)
 	}
-	licenseEntry, _, err := primitives.DeriveLicense(licenseMint, programID)
+	licenseEntry, _, err := primitives.DeriveLicense(licenseMint, licenseRegistryProgramID())
 	if err != nil {
 		return nil, nil, fmt.Errorf("root trust bundle: derive license entry: %w", err)
 	}

@@ -190,7 +190,9 @@ func runCatalogRehydrateSubcommand(args []string) {
 	if strings.TrimSpace(cfg.RPCURL) == "" {
 		log.Fatalf("catalog-rehydrate requires rpc_url")
 	}
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		log.Fatalf("catalog-rehydrate config: %v", err)
+	}
 	chain := newConfiguredStoreRPCReader(cfg)
 	bootCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	operator, err := deriveOperatorIdentity(bootCtx, cfg, chain)

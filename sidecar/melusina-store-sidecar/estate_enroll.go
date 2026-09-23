@@ -142,7 +142,9 @@ func createStoreEnrollmentRequest(opts estateEnrollmentRequestOptions, now time.
 		return estateprofile.StoreEnrollmentV1{}, err
 	}
 
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		return estateprofile.StoreEnrollmentV1{}, err
+	}
 	chain := newConfiguredStoreRPCReader(cfg)
 	genesisReader, ok := chain.(genesisHashReader)
 	if !ok {
@@ -277,7 +279,9 @@ func enrollStoreEstate(opts estateEnrollOptions, now time.Time) (storeEstateEnro
 
 	// The SidecarIdentityEntry PDA is under the configured registry program.
 	// Set it before deriving the snapshot, exactly as normal Store startup does.
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		return report, err
+	}
 	chain := newConfiguredStoreRPCReader(cfg)
 	genesisReader, ok := chain.(genesisHashReader)
 	if !ok {

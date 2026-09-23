@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hrbrlife/melusina-attest/pda"
 )
 
 const testStoreAuthority = "11111111111111111111111111111111"
@@ -17,10 +19,15 @@ func writeTmpConfig(t *testing.T, content string) string {
 	if !strings.HasSuffix(trimmed, "}") {
 		t.Fatalf("test config is not a JSON object")
 	}
-	// Every existing config-focused test gets a valid shared-authority tuple so
-	// it can continue to isolate the validation rule it names. A dedicated test
-	// below covers the new required field.
-	content = strings.TrimSuffix(trimmed, "}") + `,"release_squads_authority":{"multisig":"` + testStoreAuthority + `","vault":"` + testStoreAuthority + `","program_id":"` + testStoreAuthority + `","threshold":3,"member_count":4}}`
+	// Every existing config-focused test gets a valid shared-authority tuple
+	// and, unless it names its own, the fixture registry program, so it can
+	// continue to isolate the validation rule it names. Dedicated tests below
+	// cover both required fields.
+	content = strings.TrimSuffix(trimmed, "}")
+	if !strings.Contains(content, `"program_id"`) {
+		content += `,"program_id":"` + testLicenseProgramID + `"`
+	}
+	content += `,"release_squads_authority":{"multisig":"` + testStoreAuthority + `","vault":"` + testStoreAuthority + `","program_id":"` + testStoreAuthority + `","threshold":3,"member_count":4}}`
 	return writeRawTmpConfig(t, content)
 }
 
@@ -34,14 +41,14 @@ func writeRawTmpConfig(t *testing.T, content string) string {
 }
 
 func TestLoadConfig_RequiresSharedReleaseSquadsAuthority(t *testing.T) {
-	_, err := LoadConfig(writeRawTmpConfig(t, `{"license_nft_mint":"LIC","domain":"store.example.org"}`))
+	_, err := LoadConfig(writeRawTmpConfig(t, `{"license_nft_mint":"LIC","program_id":"`+testLicenseProgramID+`","domain":"store.example.org"}`))
 	if err == nil || !strings.Contains(err.Error(), "release_squads_authority.multisig") {
 		t.Fatalf("missing shared authority error = %v", err)
 	}
 }
 
 func TestLoadConfig_DefaultBazaarPinsOneSquadsAuthority(t *testing.T) {
-	base := `{"license_nft_mint":"LIC","domain":"bazaar.melusina-os.org","release_squads_authority":{"multisig":"` + defaultBazaarSquadsMultisig + `","vault":"` + defaultBazaarSquadsVault + `","program_id":"` + defaultBazaarSquadsProgramID + `","threshold":3,"member_count":4}}`
+	base := `{"license_nft_mint":"LIC","program_id":"` + testLicenseProgramID + `","domain":"bazaar.melusina-os.org","release_squads_authority":{"multisig":"` + defaultBazaarSquadsMultisig + `","vault":"` + defaultBazaarSquadsVault + `","program_id":"` + defaultBazaarSquadsProgramID + `","threshold":3,"member_count":4}}`
 	if _, err := LoadConfig(writeRawTmpConfig(t, base)); err != nil {
 		t.Fatalf("fixed default Bazaar authority rejected: %v", err)
 	}
@@ -59,11 +66,11 @@ func TestLoadConfig_ValidAppliesDefaults(t *testing.T) {
 	if cfg.StoreID != "melusina-store" {
 		t.Errorf("StoreID default = %q, want melusina-store", cfg.StoreID)
 	}
-	if cfg.RootStoreURL != "https://melusina-os.org" {
-		t.Errorf("RootStoreURL default = %q", cfg.RootStoreURL)
+	if cfg.RootStoreURL != "" {
+		t.Errorf("RootStoreURL has a compiled default %q; it must come from config", cfg.RootStoreURL)
 	}
-	if cfg.ProgramID != defaultLicenseProgramID {
-		t.Errorf("ProgramID default = %q", cfg.ProgramID)
+	if cfg.ProgramID != testLicenseProgramID {
+		t.Errorf("ProgramID = %q, want the configured %q", cfg.ProgramID, testLicenseProgramID)
 	}
 	if cfg.ListenAddr != ":8443" {
 		t.Errorf("ListenAddr default = %q", cfg.ListenAddr)
@@ -325,6 +332,78 @@ func TestLoadConfig_OverridesApplied(t *testing.T) {
 func TestLoadConfig_RejectsInvalidProgramID(t *testing.T) {
 	if _, err := LoadConfig(writeTmpConfig(t, `{"license_nft_mint":"LIC","store_authority":"`+testStoreAuthority+`","domain":"store.example.org","program_id":"not a pubkey"}`)); err == nil {
 		t.Fatal("expected error for invalid program_id")
+	}
+}
+
+// The license-registry program is an estate fact. A config that does not name
+// one is refused by name; nothing compiled into the Store stands in for it.
+func TestLoadConfig_RequiresExplicitLicenseRegistryProgramID(t *testing.T) {
+	// The profile-enrolled shape loads in both build flavors, so the same
+	// refusal and the same positive control run in the estate-bootstrap build
+	// that ships in the Store component.
+	for name, test := range map[string]struct {
+		mutate func(map[string]any)
+		want   string
+	}{
+		"absent":         {func(config map[string]any) { delete(config, "program_id") }, "config: program_id is required"},
+		"empty":          {func(config map[string]any) { config["program_id"] = "" }, "config: program_id is required"},
+		"whitespace":     {func(config map[string]any) { config["program_id"] = "  " }, "config: program_id is required"},
+		"system_program": {func(config map[string]any) { config["program_id"] = "11111111111111111111111111111111" }, "config: program_id must not be the System Program"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := profileEnrolledStoreConfig(t, filepath.Join(t.TempDir(), "estate-enrollment.json"))
+			test.mutate(config)
+			_, err := LoadConfig(writeJSONConfig(t, config))
+			if err == nil || err.Error() != test.want {
+				t.Fatalf("LoadConfig error = %v, want %q", err, test.want)
+			}
+		})
+	}
+	config := profileEnrolledStoreConfig(t, filepath.Join(t.TempDir(), "estate-enrollment.json"))
+	configured := config["program_id"].(string)
+	config["program_id"] = " " + configured + " "
+	cfg, err := LoadConfig(writeJSONConfig(t, config))
+	if err != nil {
+		t.Fatalf("explicit program_id refused: %v", err)
+	}
+	if cfg.ProgramID != configured {
+		t.Fatalf("ProgramID = %q, want the configured %q", cfg.ProgramID, configured)
+	}
+}
+
+// Every entry point pins the registry from validated config. Until then the
+// process holds no registry at all, and the accessor refuses rather than
+// derive a PDA under the System Program.
+func TestLicenseRegistryProgramIDIsOnlyEverTheConfiguredPin(t *testing.T) {
+	saved := programID
+	t.Cleanup(func() { programID = saved })
+
+	programID = pda.Pubkey{}
+	func() {
+		defer func() {
+			recovered := recover()
+			if recovered == nil || !strings.Contains(fmt.Sprint(recovered), "program_id read before it was pinned from config") {
+				t.Fatalf("unpinned registry read = %v, want a named refusal", recovered)
+			}
+		}()
+		_ = licenseRegistryProgramID()
+		t.Fatal("unpinned registry was readable")
+	}()
+
+	for _, raw := range []string{"", "  ", "11111111111111111111111111111111", "not a pubkey"} {
+		if err := setProgramIDFromConfig(raw); err == nil {
+			t.Fatalf("setProgramIDFromConfig(%q) pinned a registry", raw)
+		}
+		if programID != (pda.Pubkey{}) {
+			t.Fatalf("refused pin %q still changed the registry to %s", raw, programID.Base58())
+		}
+	}
+	configured := randPubkeyB58(t)
+	if err := setProgramIDFromConfig(" " + configured + " "); err != nil {
+		t.Fatalf("pin configured registry: %v", err)
+	}
+	if got := licenseRegistryProgramID().Base58(); got != configured {
+		t.Fatalf("pinned registry = %s, want %s", got, configured)
 	}
 }
 

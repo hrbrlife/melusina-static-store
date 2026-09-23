@@ -22,10 +22,9 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-const (
-	defaultProgramID = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
-	defaultChainID   = "solana:devnet"
-)
+// The license-registry program has no default: it is a fact of the estate
+// whose Store is being prepared, and the derived operator key is salted by it.
+const defaultChainID = "solana:devnet"
 
 type options struct {
 	shardsDir          string
@@ -113,7 +112,7 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&opts.domain, "domain", "", "store domain used for store_domain_hash")
 	fs.StringVar(&opts.sidecarID, "sidecar-id", "store", "sidecar_id seed for SidecarIdentityEntry")
 	fs.StringVar(&opts.chainID, "chain-id", defaultChainID, "attest identity chain id")
-	fs.StringVar(&opts.programID, "program-id", defaultProgramID, "license registry program id")
+	fs.StringVar(&opts.programID, "program-id", "", "the estate's license-registry program id (required)")
 	fs.UintVar(&opts.keyVersion, "key-version", 1, "SidecarIdentityEntry key_version seed")
 	fs.UintVar(&opts.operatorKeyVersion, "operator-key-version", 0, "stable operator identity key_version; 0 uses -key-version")
 	fs.StringVar(&opts.operatorDomain, "operator-domain", "", "stable operator identity domain; empty uses -domain")

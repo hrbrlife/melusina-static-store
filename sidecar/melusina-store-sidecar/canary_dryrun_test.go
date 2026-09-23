@@ -50,7 +50,9 @@ import (
 // boot operator sign pubkey so a wrong derivation fails loudly.
 func liveOperator(t *testing.T, cfg Config) *identity.Private {
 	t.Helper()
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		t.Fatal(err)
+	}
 	licenseMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(cfg.LicenseNFTMint))
 	if err != nil {
 		t.Fatalf("license mint: %v", err)
@@ -135,7 +137,9 @@ func TestCanaryLiveDryRun(t *testing.T) {
 	cfg.Policy = live.Policy
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ServeVerifyTTLSeconds = -1
-	setProgramIDFromConfig(cfg.ProgramID)
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		t.Fatal(err)
+	}
 	// The durable publish-nonce ledger's high-water is seeded at opts.nonce.Now;
 	// the fixture pins that to a fixed FUTURE instant for determinism, which then
 	// refuses a real-wall-clock publish (check=nonce_clock). Anchor it to real

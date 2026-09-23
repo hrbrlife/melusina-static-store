@@ -226,7 +226,7 @@ func (r *boundedListingRegistrar) expectedState(ctx context.Context, intent list
 		return zero, zeroKey, zeroKey, zeroKey, zeroHash, err
 	}
 	domainHash := primitives.StoreDomainHash(r.cfg.Domain)
-	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, domainHash, programID)
+	authzPDA, _, err := pda.StoreOperatorAuthorization(licenseMint, domainHash, licenseRegistryProgramID())
 	if err != nil {
 		return zero, zeroKey, zeroKey, zeroKey, zeroHash, fmt.Errorf("derive StoreOperatorAuthorization: %w", err)
 	}
@@ -242,7 +242,7 @@ func (r *boundedListingRegistrar) expectedState(ctx context.Context, intent list
 	if err != nil {
 		return zero, zeroKey, zeroKey, zeroKey, zeroHash, fmt.Errorf("master NFT mint: %w", err)
 	}
-	releasePDA, _, err := pda.Release(masterMint, appHash, programID)
+	releasePDA, _, err := pda.Release(masterMint, appHash, licenseRegistryProgramID())
 	if err != nil {
 		return zero, zeroKey, zeroKey, zeroKey, zeroHash, fmt.Errorf("derive ReleaseEntry: %w", err)
 	}
@@ -250,7 +250,7 @@ func (r *boundedListingRegistrar) expectedState(ctx context.Context, intent list
 	if err != nil {
 		return zero, zeroKey, zeroKey, zeroKey, zeroHash, fmt.Errorf("fetch ReleaseEntry app id: %w", err)
 	}
-	foundationPDA, _, err := pda.FoundationApp(chainAppID, programID)
+	foundationPDA, _, err := pda.FoundationApp(chainAppID, licenseRegistryProgramID())
 	if err != nil {
 		return zero, zeroKey, zeroKey, zeroKey, zeroHash, fmt.Errorf("derive FoundationAppEntry: %w", err)
 	}
@@ -259,7 +259,7 @@ func (r *boundedListingRegistrar) expectedState(ctx context.Context, intent list
 	} else if tier != 0 && (allowedTierMask&tier) != tier {
 		return zero, zeroKey, zeroKey, zeroKey, zeroHash, fmt.Errorf("Store operator tier mask 0x%02x does not cover %s tier 0x%02x", allowedTierMask, intent.AppID, tier)
 	}
-	listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, programID)
+	listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, licenseRegistryProgramID())
 	if err != nil {
 		return zero, zeroKey, zeroKey, zeroKey, zeroHash, fmt.Errorf("derive StoreReleaseListing: %w", err)
 	}

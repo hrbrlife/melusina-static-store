@@ -23,7 +23,7 @@ func writeRPCAccountResponse(t *testing.T, w http.ResponseWriter, data []byte) {
 		"result": map[string]any{
 			"value": map[string]any{
 				"data":  []string{base64.StdEncoding.EncodeToString(data), "base64"},
-				"owner": defaultLicenseProgramID,
+				"owner": testLicenseProgramID,
 			},
 		},
 	}); err != nil {
@@ -57,8 +57,8 @@ func TestConfiguredRPCReader_RetriesRawCascadeReadThenUsesFallback(t *testing.T)
 	if err != nil {
 		t.Fatalf("fetchRawAccount: %v", err)
 	}
-	if !bytes.Equal(data, want) || owner != defaultLicenseProgramID {
-		t.Fatalf("raw fallback = (%q, %q), want (%q, %q)", data, owner, want, defaultLicenseProgramID)
+	if !bytes.Equal(data, want) || owner != testLicenseProgramID {
+		t.Fatalf("raw fallback = (%q, %q), want (%q, %q)", data, owner, want, testLicenseProgramID)
 	}
 	if calls := primaryCalls.Load(); calls != 2 {
 		t.Fatalf("primary raw calls = %d, want bounded 2", calls)

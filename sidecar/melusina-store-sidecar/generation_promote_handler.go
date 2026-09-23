@@ -328,7 +328,7 @@ func (s *publishService) verifySidecarComponentOnChain(ctx context.Context, c co
 	if keyVersion == 0 {
 		keyVersion = 1
 	}
-	sidPDA, _, err := pda.SidecarIdentity(licenseMint, sidecarID, keyVersion, programID)
+	sidPDA, _, err := pda.SidecarIdentity(licenseMint, sidecarID, keyVersion, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("component %s: derive SidecarIdentityEntry PDA: %w", c.ComponentID, err)
 	}

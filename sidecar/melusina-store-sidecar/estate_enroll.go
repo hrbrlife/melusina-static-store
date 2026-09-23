@@ -392,11 +392,12 @@ func verifyConfiguredStoreEnrollment(ctx context.Context, cfg Config, configPath
 	return &state, nil
 }
 
-// verifyStoreEnrollmentRuntime is common to initial enrollment and every
-// enrolled Store startup. State authorization is historical: its one-time
-// issuance window is checked before the first write, while startup proves the
-// already-authorized pin, local identity, strict raw config projection, and
-// current chain genesis again.
+// verifyStoreEnrollmentRuntime is common to initial enrollment, successor
+// enrollment and every enrolled Store startup. State authorization is
+// historical: each document's one-time issuance window is checked before the
+// write that persists it, while startup proves the already-authorized pin, the
+// local identity against the binding the Store runs under now, the strict raw
+// config projection, and current chain genesis again.
 func verifyStoreEnrollmentRuntime(ctx context.Context, cfg Config, declaration storeEstateDeclaration, state storeEnrollmentState, identity *verifiedBootIdentity, genesisReader genesisHashReader) (string, error) {
 	if err := validateStoreEnrollmentState(state); err != nil {
 		return "", err
@@ -411,7 +412,7 @@ func verifyStoreEnrollmentRuntime(ctx context.Context, cfg Config, declaration s
 	if err != nil {
 		return "", err
 	}
-	if err := estateprofile.RequireStoreEnrollmentFacts(state.Enrollment, facts); err != nil {
+	if err := state.requireFacts(facts); err != nil {
 		return "", err
 	}
 	if genesisReader == nil {

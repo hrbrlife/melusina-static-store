@@ -186,6 +186,11 @@ func TestEveryStoreEntryPointPinsItsConfiguredLicenseRegistry(t *testing.T) {
 	enrollment := newStoreEnrollmentRuntimeFixture(t)
 	enrollProfile := writeDocument("enroll-profile.json", enrollment.profile)
 	enrollDocument := writeDocument("enrollment.json", enrollment.state.Enrollment)
+	// A decodable, owner-signed successor for the enrollment above. The shared
+	// config holds no enrollment state and names no writer lock, so both
+	// successor entry points reach a refusal only after pinning.
+	_, successor := requestStoreEnrollmentSuccessorFromState(t, enrollment, enrollment.state, runtimeIdentityWith(enrollment, "entry-point-rebuilt-binary", "", 0, ""), storeEnrollmentSuccessorNow, "owner-a", "owner-b")
+	successorDocument := writeDocument("enrollment-successor.json", successor)
 	cohortDir := filepath.Join(dir, "cohort")
 	indexSHA256 := strings.Repeat("ab", 32)
 
@@ -198,6 +203,8 @@ func TestEveryStoreEntryPointPinsItsConfiguredLicenseRegistry(t *testing.T) {
 		{name: "genesis-bootstrap", args: []string{"-config", configPath}, after: "genesis-bootstrap requires a write-capable operator"},
 		{name: "estate-enrollment-request", args: []string{"-config", configPath, "-estate-profile", requestProfile}, after: "boot_identity.shards_dir is required"},
 		{name: "estate-enroll", args: []string{"-config", configPath, "-estate-profile", enrollProfile, "-enrollment", enrollDocument}, after: "boot_identity.shards_dir is required"},
+		{name: "estate-enrollment-successor-request", args: []string{"-config", configPath}, after: "store-estate-profile-not-enrolled: enrollment state is absent"},
+		{name: "estate-enroll-successor", args: []string{"-config", configPath, "-enrollment", successorDocument}, after: "store estate enrollment successor requires an absolute catalog_migration_state_dir"},
 		{name: "listing-bootstrap", args: []string{"-config", configPath, "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "listing-bootstrap requires a write-capable boot identity"},
 		{name: "listing-signer", args: []string{"-config", signerConfigPath}, after: "listing-signer boot identity:"},
 		{name: "catalog-retire", args: []string{"-config", configPath, "-app-id", "pin-probe", "-reason", "entry-point pin probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-retire requires the active boot operator matching store_authority"},

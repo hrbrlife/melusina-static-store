@@ -351,8 +351,78 @@ checks every configured RPC endpoint against the signed genesis. While serving,
 it repeats the endpoint-genesis check every five minutes and terminates on a
 mismatch.
 
+#### Day two: a rebuilt executable, a renewed certificate, a rotated binding
+
+The enrollment binds the executable hash, the TLS leaf fingerprint and the
+`SidecarIdentityEntry` binding (key version and PDA). Every start compares them
+again, so after any of them changes the Store refuses to start with
+`store-enrollment-facts-mismatch:<field>` until its owners sign a
+`StoreEnrollmentSuccessorV1`. Nothing accepts a changed value because it was
+observed. A successor:
+
+- is signed by a threshold of the enrolled profile's current owners through
+  the same review, owner-sign and assemble ceremony as the initial enrollment,
+  under its own digest domain (`MELUSINA_ESTATE_STORE_ENROLLMENT_SUCCESSOR_V1`);
+- carries `enrollmentSequence`, which must be strictly greater than the
+  sequence the Store holds (the initial enrollment is sequence 1), so a replayed
+  older or equal document refuses with `store-enrollment-successor-not-forward`;
+- names the enrollment it supersedes in `predecessorEnrollmentSha256` and
+  recalls it explicitly in `recalls`. The Store keeps every recalled digest and
+  refuses a recalled enrollment with `store-enrollment-recalled`. The
+  predecessor is not compared with what the Store holds: a missing intermediate
+  record is not a defect;
+- is anchored to this Store by `initialEnrollmentSha256`, and may change only
+  `binarySha256`, `tlsCertFingerprint` and the binding (`bindingKeyVersion`,
+  never backwards, and the `sidecarIdentityPda` it selects). Any change to the
+  estate, profile, network, domain, Store ID, operator or box key, licence,
+  registry, sidecar id, operator key version or operator domain refuses with
+  `store-enrollment-successor-identity-changed:<field>`; that is a new profile
+  or estate, not a successor.
+
+The sequence, with the chain step first because boot identity refuses a
+binary or certificate the `SidecarIdentityEntry` does not pin:
+
+1. Run the governed chain change (`update_sidecar_identity` for a rebuilt
+   executable; a new key-version `SidecarIdentityEntry` for a new certificate).
+2. With the **new** executable, emit the request. It writes nothing:
+
+   ```sh
+   (
+     set -C
+     ./bin/melusina-store-sidecar estate-enrollment-successor-request \
+       -config /etc/melusina/store/store.config.json \
+       > /secure/operator/store-enrollment-successor-request.json
+   )
+   ```
+
+3. The owners review, sign and assemble it out of process into
+   `store-enrollment-successor.json`. **NOT POSSIBLE YET:** the deployer's
+   `store-enrollment-review`, `store-enrollment-owner-sign` and
+   `assemble-store-enrollment` accept only `StoreEnrollmentV1` today. Do not
+   hand-author or hand-sign a successor.
+4. Stop the Store, then apply it with the new executable. It takes the Store's
+   `writer.lock` (so it refuses while a Store is serving), verifies owner
+   authority, sequence and recall before any chain read, then the local facts
+   and every RPC endpoint's genesis, and atomically replaces the state:
+
+   ```sh
+   ./bin/melusina-store-sidecar estate-enroll-successor \
+     -config /etc/melusina/store/store.config.json \
+     -enrollment /secure/operator/store-enrollment-successor.json
+   ```
+
+5. Start the Store on the new executable. Startup verifies the successor the
+   same way it verifies an initial enrollment.
+
+The state file is `melusina.store-estate-enrollment-state.v2`: the initial
+enrollment stays as the anchor beside the current successor and the recalled
+set. No v1 state is read. A certificate rotation also needs the rendered
+configuration's `boot_identity.key_version` to name the new binding, which the
+config renderer does not yet take as an input.
+
 This repository implements the Store-side candidate producer and consumer of
-`StoreEnrollmentV1`; it intentionally does not sign one. The matching
+`StoreEnrollmentV1` and `StoreEnrollmentSuccessorV1`; it intentionally signs
+neither. The matching
 owner-side review, signing, and assembly commands are source-level preparation
 until a bootstrap release set packages and pins them. This ceremony does not
 choose a real domain or root Store hostname, create a chain foundation or

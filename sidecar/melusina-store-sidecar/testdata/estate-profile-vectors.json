@@ -17,6 +17,7 @@
     "projection.go": "af50ada982483f436c2828f00833a56430e0a79a23fb23e8e943fd96bd27b24a",
     "refusal.go": "dff22a93ab28d56ac1e4b76daef15e48fd9e28ea85917afc1503b2c0942025a6",
     "store_enrollment.go": "5a73b7f373e8b9cb0843245969f3693bdad44e98967cf8068965e2fad2e6bebc",
+    "store_enrollment_successor.go": "bec114248b3e8c70d6e4f5901425c7bfaaf489f5b03dcb21626913f33c9f32df",
     "strictjson.go": "3df852f7041484eb154319fc8918e56e89f88dc0c257180abfb213a74740289d",
     "validate.go": "da6e02ba6b83446c400598cbeea3149d10d720c3b7c57f499a6e3da314555876",
     "verify.go": "825e007b2ebadb4cd9b5b60ac1fe31c51b0b4dff8e20c4fc9bf3ad952bf8f03c"

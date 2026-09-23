@@ -73,6 +73,18 @@ func main() {
 		runEstateEnrollmentRequestSubcommand(os.Args[2:])
 		return
 	}
+	// Day two: an enrolled Store's binary, TLS leaf or SidecarIdentityEntry
+	// binding changes only through an owner-signed successor. The request is a
+	// no-write preflight run by the new executable; the enroll step replaces
+	// the state under the writer lock of the stopped Store and exits.
+	if len(os.Args) > 1 && os.Args[1] == "estate-enrollment-successor-request" {
+		runEstateEnrollmentSuccessorRequestSubcommand(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "estate-enroll-successor" {
+		runEstateEnrollSuccessorSubcommand(os.Args[2:])
+		return
+	}
 	// Explicit genesis trust-root entrypoint (RRS_STORE_FRESH_BOOTSTRAP). It seals the
 	// honest first generation on a virgin target and EXITS — it never opens a listener.
 	// Selection is explicit (a subcommand), never a silent server-startup fallback.
@@ -244,7 +256,7 @@ func main() {
 			log.Fatalf("estate enrollment: configured chain reader no longer supports getGenesisHash")
 		}
 		enrollmentRuntimeErrors = watchStoreEnrollmentGenesis(ctxRoot, enrolledState.Enrollment, genesisReader, storeEnrollmentGenesisCheckInterval)
-		log.Printf("estate enrollment: %s revision %d pinned; checking every configured RPC endpoint every %s", enrolledState.ProfilePin.EstateID, enrolledState.ProfilePin.Revision, storeEnrollmentGenesisCheckInterval)
+		log.Printf("estate enrollment: %s revision %d pinned at enrollment sequence %d (%s); checking every configured RPC endpoint every %s", enrolledState.ProfilePin.EstateID, enrolledState.ProfilePin.Revision, enrolledState.sequence(), enrolledState.currentSHA256(), storeEnrollmentGenesisCheckInterval)
 	}
 	if mirror != nil {
 		go mirror.Run(ctxRoot)

@@ -2,7 +2,7 @@
 # Run this module's Go test suite in both build flavors: the standard build and
 # the estatebootstrap build the Store bootstrap component ships.
 #
-#   scripts/run-tests.sh [--release] [--contracts-git-dir DIR] [--plan] [-- GO_TEST_ARGS...]
+#   scripts/run-tests.sh [--release] [--contracts-git-dir DIR] [-- GO_TEST_ARGS...]
 #
 # Contracts checkout. testdata/contracts/ holds a copy of the contracts
 # repository's sidecar PDA vector. Every run checks, offline, that the commit
@@ -19,7 +19,9 @@
 # clone, and exports MELUSINA_STORE_TEST_MODE=release so that the Go test also
 # fails, rather than skips, if it is run without one.
 #
-# --plan prints the resolved mode, environment and commands, and runs nothing.
+# run_tests_entrypoint_test.go runs this script with a stand-in go first on
+# PATH and asserts the arguments, directory and environment each go test call
+# actually receives.
 set -euo pipefail
 
 MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -30,7 +32,6 @@ refuse() {
 }
 
 release=0
-plan=0
 contracts=""
 contracts_source=""
 go_args=(-count=1)
@@ -39,10 +40,6 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --release)
       release=1
-      shift
-      ;;
-    --plan)
-      plan=1
       shift
       ;;
     --contracts-git-dir)
@@ -109,20 +106,6 @@ else
 fi
 
 flavors=("" "estatebootstrap")
-
-if [[ "$plan" == 1 ]]; then
-  echo "mode=$mode"
-  echo "MELUSINA_CONTRACTS_GIT_DIR=${MELUSINA_CONTRACTS_GIT_DIR:-}"
-  echo "MELUSINA_STORE_TEST_MODE=${MELUSINA_STORE_TEST_MODE:-}"
-  for tags in "${flavors[@]}"; do
-    if [[ -n "$tags" ]]; then
-      echo "run: go test -tags $tags ${go_args[*]} ./..."
-    else
-      echo "run: go test ${go_args[*]} ./..."
-    fi
-  done
-  exit 0
-fi
 
 cd "$MODULE_DIR"
 status=0

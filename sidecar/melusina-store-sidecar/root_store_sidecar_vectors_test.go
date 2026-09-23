@@ -597,6 +597,120 @@ func runContractsCloneTestInChild(t *testing.T, env ...string) (int, string) {
 	return 0, string(out)
 }
 
+// runThrowawayGit runs git for a throwaway repository with a hermetic
+// configuration and a fixed identity, and returns its trimmed stdout.
+func runThrowawayGit(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	if dir != "" {
+		args = append([]string{"-C", dir}, args...)
+	}
+	cmd := exec.Command("git", args...)
+	for _, kv := range os.Environ() {
+		if name, _, _ := strings.Cut(kv, "="); !strings.HasPrefix(name, "GIT_") {
+			cmd.Env = append(cmd.Env, kv)
+		}
+	}
+	cmd.Env = append(cmd.Env,
+		"GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1",
+		"GIT_AUTHOR_NAME=store-test", "GIT_AUTHOR_EMAIL=store-test@invalid", "GIT_AUTHOR_DATE=2026-01-01T00:00:00Z",
+		"GIT_COMMITTER_NAME=store-test", "GIT_COMMITTER_EMAIL=store-test@invalid", "GIT_COMMITTER_DATE=2026-01-01T00:00:00Z",
+	)
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, stderr.String())
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// initThrowawayGitRepo creates an empty repository under t.TempDir(), with
+// origin set to originURL when that is not empty. Nothing is cloned or fetched.
+func initThrowawayGitRepo(t *testing.T, originURL string) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "repo")
+	runThrowawayGit(t, "", "init", "-q", dir)
+	if originURL != "" {
+		runThrowawayGit(t, dir, "remote", "add", "origin", originURL)
+	}
+	resolved, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resolved
+}
+
+type contractsStandInMain int
+
+const (
+	// contractsStandInNoMain leaves refs/remotes/origin/main absent.
+	contractsStandInNoMain contractsStandInMain = iota
+	// contractsStandInMainAtCommit points origin/main at the named commit.
+	contractsStandInMainAtCommit
+	// contractsStandInMainAfterCommit points origin/main at a new commit whose
+	// parent is the named commit.
+	contractsStandInMainAfterCommit
+	// contractsStandInMainUnrelated points origin/main at a root commit with
+	// the named commit's tree: the same vector bytes, but not descended from
+	// the named commit.
+	contractsStandInMainUnrelated
+)
+
+// newContractsStandInRepo builds, under t.TempDir(), a repository that answers
+// for a contracts clone without cloning one. Its origin is the provenance's
+// repository URL; its object store holds the vendored commit and trees and the
+// copy's blob, each checked to land at its own id; and .git/shallow marks the
+// named commit as a history boundary, as a shallow clone would, so git does
+// not look for the parent it does not have. originMain says where
+// refs/remotes/origin/main points.
+func newContractsStandInRepo(t *testing.T, originMain contractsStandInMain) string {
+	t.Helper()
+	provenance := loadContractsSidecarProvenance(t)
+	repo := initThrowawayGitRepo(t, provenance.SourceRepository)
+	files, err := os.ReadDir(contractsSidecarGitObjectsDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range files {
+		id, kind, _ := strings.Cut(file.Name(), ".")
+		path, err := filepath.Abs(filepath.Join(contractsSidecarGitObjectsDir, file.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := runThrowawayGit(t, repo, "hash-object", "-w", "-t", kind, path); got != id {
+			t.Fatalf("vendored %s wrote object %s", file.Name(), got)
+		}
+	}
+	copyPath, err := filepath.Abs(contractsSidecarVectorPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := runThrowawayGit(t, repo, "hash-object", "-w", copyPath); got != provenance.GitBlobSHA1 {
+		t.Fatalf("the copy wrote blob %s, provenance records %s", got, provenance.GitBlobSHA1)
+	}
+	gitDir := runThrowawayGit(t, repo, "rev-parse", "--absolute-git-dir")
+	if err := os.WriteFile(filepath.Join(gitDir, "shallow"), []byte(provenance.SourceCommit+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tree := runThrowawayGit(t, repo, "rev-parse", provenance.SourceCommit+"^{tree}")
+	mainline := ""
+	switch originMain {
+	case contractsStandInNoMain:
+	case contractsStandInMainAtCommit:
+		mainline = provenance.SourceCommit
+	case contractsStandInMainAfterCommit:
+		mainline = runThrowawayGit(t, repo, "commit-tree", "--no-gpg-sign", "-p", provenance.SourceCommit, "-m", "after the named commit", tree)
+	case contractsStandInMainUnrelated:
+		mainline = runThrowawayGit(t, repo, "commit-tree", "--no-gpg-sign", "-m", "same tree, other history", tree)
+	default:
+		t.Fatalf("unknown stand-in origin/main %d", originMain)
+	}
+	if mainline != "" {
+		runThrowawayGit(t, repo, "update-ref", "refs/remotes/origin/main", mainline)
+	}
+	return repo
+}
+
 // A declared release or CI run fails, by name, where a dev run skips. The dev
 // run is the positive control: the same child, with no mode, must skip.
 func TestContractsCloneTestFailsADeclaredRunWithoutTheContractsClone(t *testing.T) {
@@ -605,7 +719,8 @@ func TestContractsCloneTestFailsADeclaredRunWithoutTheContractsClone(t *testing.
 	if exit != 0 || !strings.Contains(out, "--- SKIP: "+cloneTest) {
 		t.Fatalf("a dev run without a clone must skip, got exit %d:\n%s", exit, out)
 	}
-	top := storeCheckoutTopLevel(t)
+	otherRepository := initThrowawayGitRepo(t, "https://github.com/hrbrlife/melusina-static-store.git")
+	noOrigin := initThrowawayGitRepo(t, "")
 	for _, tc := range []struct {
 		env  []string
 		name string
@@ -614,13 +729,55 @@ func TestContractsCloneTestFailsADeclaredRunWithoutTheContractsClone(t *testing.
 		{[]string{"CI=true"}, "contracts-clone-required"},
 		{[]string{"CI=1"}, "contracts-clone-required"},
 		{[]string{"MELUSINA_STORE_TEST_MODE=relase"}, "store-test-mode-unknown"},
-		// The Store's own checkout is a git repository that is not the
-		// contracts repository.
-		{[]string{"MELUSINA_STORE_TEST_MODE=release", "MELUSINA_CONTRACTS_GIT_DIR=" + top}, "contracts-clone-not-the-named-repository"},
+		{[]string{"MELUSINA_STORE_TEST_MODE=release", "MELUSINA_CONTRACTS_GIT_DIR=" + otherRepository}, "contracts-clone-not-the-named-repository"},
+		{[]string{"MELUSINA_STORE_TEST_MODE=release", "MELUSINA_CONTRACTS_GIT_DIR=" + noOrigin}, "contracts-clone-not-the-named-repository"},
 	} {
 		exit, out := runContractsCloneTestInChild(t, tc.env...)
 		if exit == 0 || !strings.Contains(out, "--- FAIL: "+cloneTest) || !strings.Contains(out, tc.name+":") {
 			t.Fatalf("%v: want %s to fail with %s, got exit %d:\n%s", tc.env, cloneTest, tc.name, exit, out)
+		}
+	}
+}
+
+// TestContractsCloneTestChecksTheCommitIsOnContractsMain controls the checks
+// only a clone can make, against stand-in repositories built from the vendored
+// objects: the clone must hold the named commit, the commit must be an ancestor
+// of origin/main, and a declared run must have an origin/main at all. The
+// passing cases are the positive controls: the same stand-in, with origin/main
+// at or after the named commit, must pass. The unrelated origin/main holds the
+// very same vector bytes, so what fails there is the ancestry, not the content.
+func TestContractsCloneTestChecksTheCommitIsOnContractsMain(t *testing.T) {
+	const cloneTest = "TestContractsSidecarVectorCopyIsByteIdenticalToTheNamedCommit"
+	provenance := loadContractsSidecarProvenance(t)
+	release := "MELUSINA_STORE_TEST_MODE=release"
+	for _, tc := range []struct {
+		label   string
+		repo    func() string
+		release bool
+		want    string // empty: the clone test must pass
+	}{
+		{"release, origin/main is the named commit", func() string { return newContractsStandInRepo(t, contractsStandInMainAtCommit) }, true, ""},
+		{"release, origin/main is after the named commit", func() string { return newContractsStandInRepo(t, contractsStandInMainAfterCommit) }, true, ""},
+		{"dev, origin/main is after the named commit", func() string { return newContractsStandInRepo(t, contractsStandInMainAfterCommit) }, false, ""},
+		{"dev, no origin/main", func() string { return newContractsStandInRepo(t, contractsStandInNoMain) }, false, ""},
+		{"release, origin/main does not descend from the named commit", func() string { return newContractsStandInRepo(t, contractsStandInMainUnrelated) }, true, "contracts-sidecar-vector-commit-not-on-main"},
+		{"dev, origin/main does not descend from the named commit", func() string { return newContractsStandInRepo(t, contractsStandInMainUnrelated) }, false, "contracts-sidecar-vector-commit-not-on-main"},
+		{"release, no origin/main", func() string { return newContractsStandInRepo(t, contractsStandInNoMain) }, true, "contracts-clone-has-no-origin-main"},
+		{"release, the named commit is absent", func() string { return initThrowawayGitRepo(t, provenance.SourceRepository) }, true, "contracts-sidecar-vector-commit-unknown"},
+	} {
+		env := []string{"MELUSINA_CONTRACTS_GIT_DIR=" + tc.repo()}
+		if tc.release {
+			env = append(env, release)
+		}
+		exit, out := runContractsCloneTestInChild(t, env...)
+		if tc.want == "" {
+			if exit != 0 || !strings.Contains(out, "--- PASS: "+cloneTest) {
+				t.Fatalf("%s: want %s to pass, got exit %d:\n%s", tc.label, cloneTest, exit, out)
+			}
+			continue
+		}
+		if exit == 0 || !strings.Contains(out, "--- FAIL: "+cloneTest) || !strings.Contains(out, tc.want+":") {
+			t.Fatalf("%s: want %s to fail with %s, got exit %d:\n%s", tc.label, cloneTest, tc.want, exit, out)
 		}
 	}
 }

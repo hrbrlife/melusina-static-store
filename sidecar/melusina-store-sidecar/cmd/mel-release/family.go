@@ -18,17 +18,27 @@ import (
 // App is one release-family app entry. AppID is the sole identity; Slug/CatalogName
 // /SourcePath are descriptive and may all differ from each other and from AppID.
 type App struct {
-	Family           string
-	Name             string
-	AppID            string
-	SourcePath       string
-	PublishSlug      string
-	CatalogName      string
-	CatalogDeveloper string
-	CatalogRepo      string
-	CatalogSlug      string
-	PackProfile      string
-	Role             string
+	Family              string
+	Name                string
+	AppID               string
+	SourcePath          string
+	SourceCommit        string
+	SourceRemote        string
+	SourceBranch        string
+	MetadataPath        string
+	RuntimeContractPath string
+	PublishSlug         string
+	CatalogName         string
+	CatalogDeveloper    string
+	CatalogRepo         string
+	CatalogSlug         string
+	PackProfile         string
+	PackTarget          string
+	ReleaseChannel      string
+	ReleaseBlocked      string
+	BaseInstall         bool
+	BaseInstallSet      bool
+	Role                string
 }
 
 // Family is the closed set of apps explicitly declared by one manifest.
@@ -146,9 +156,11 @@ func LoadFamily(path string) (*Family, error) {
 		case indent == appIndent && !hasVal:
 			// New app header inside apps:.
 			flush()
-			curApp = &App{Family: curFamily, Name: key}
+			curApp = &App{Family: curFamily, Name: key, BaseInstall: true}
 		case indent == fieldIndent && curApp != nil && hasVal:
-			assignAppField(curApp, key, unquote(val))
+			if err := assignAppField(curApp, key, unquote(val)); err != nil {
+				return nil, fmt.Errorf("release-family manifest %s line %d: %w", path, lineNo, err)
+			}
 		default:
 			// Inside an apps: block but matching no expected production: a
 			// mis-indented or reshaped line that would otherwise silently drop an
@@ -164,7 +176,10 @@ func LoadFamily(path string) (*Family, error) {
 	if len(fam.Apps) == 0 {
 		return nil, fmt.Errorf("release-family manifest %s named no apps", path)
 	}
-	// Fail closed on a malformed identity.
+	if fam.Schema != "melusina-release-family/v1" {
+		return nil, fmt.Errorf("release-family manifest %s has unsupported schema %q", path, fam.Schema)
+	}
+	// Fail closed on malformed identity, source, and channel policies.
 	seen := map[string]bool{}
 	for _, a := range fam.Apps {
 		if strings.TrimSpace(a.AppID) == "" {
@@ -175,6 +190,23 @@ func LoadFamily(path string) (*Family, error) {
 		}
 		if a.PackProfile != "" && (a.AppID != namedCoinAppID || a.PackProfile != namedCoinMSBDevnetProfile) {
 			return nil, fmt.Errorf("app %q has unsupported pack_profile %q; only NamedCoin may declare %q", a.AppID, a.PackProfile, namedCoinMSBDevnetProfile)
+		}
+		if a.SourceCommit != "" && !isLowerHexCommit(a.SourceCommit) {
+			return nil, fmt.Errorf("app %q has invalid source_commit %q; want a lowercase 40-hex commit", a.AppID, a.SourceCommit)
+		}
+		if (a.SourceRemote == "") != (a.SourceBranch == "") {
+			return nil, fmt.Errorf("app %q must declare source_remote and source_branch together", a.AppID)
+		}
+		if a.SourceBranch != "" {
+			if a.SourceBranch != "main" && a.SourceBranch != "master" {
+				return nil, fmt.Errorf("app %q source_branch must be main or master", a.AppID)
+			}
+			if a.SourceCommit == "" && a.ReleaseBlocked == "" {
+				return nil, fmt.Errorf("app %q canonical source branch lacks source_commit", a.AppID)
+			}
+		}
+		if a.ReleaseChannel != "" && a.ReleaseChannel != "stable" && a.ReleaseChannel != "dev" {
+			return nil, fmt.Errorf("app %q has unsupported release_channel %q", a.AppID, a.ReleaseChannel)
 		}
 		seen[a.AppID] = true
 	}
@@ -210,12 +242,32 @@ func (f *Family) Select(selector string) (App, error) {
 	}
 }
 
-func assignAppField(a *App, key, val string) {
+func requireAppReleasePolicy(c Config, app App) error {
+	if strings.TrimSpace(app.ReleaseBlocked) != "" {
+		return fmt.Errorf("app %s is release-blocked: %s", app.AppID, app.ReleaseBlocked)
+	}
+	if app.ReleaseChannel != "" && c.Channel != app.ReleaseChannel {
+		return fmt.Errorf("app %s requires release channel %q, got %q", app.AppID, app.ReleaseChannel, c.Channel)
+	}
+	return nil
+}
+
+func assignAppField(a *App, key, val string) error {
 	switch key {
 	case "appId":
 		a.AppID = val
 	case "source_path":
 		a.SourcePath = val
+	case "source_commit":
+		a.SourceCommit = val
+	case "source_remote":
+		a.SourceRemote = val
+	case "source_branch":
+		a.SourceBranch = val
+	case "metadata_path":
+		a.MetadataPath = val
+	case "runtime_contract_path":
+		a.RuntimeContractPath = val
 	case "publish_slug":
 		a.PublishSlug = val
 	case "catalog_name":
@@ -228,9 +280,40 @@ func assignAppField(a *App, key, val string) {
 		a.CatalogSlug = val
 	case "pack_profile":
 		a.PackProfile = val
+	case "pack_target":
+		a.PackTarget = val
+	case "release_channel":
+		a.ReleaseChannel = val
+	case "release_blocked":
+		a.ReleaseBlocked = val
+	case "base_install":
+		a.BaseInstallSet = true
+		switch val {
+		case "true":
+			a.BaseInstall = true
+		case "false":
+			a.BaseInstall = false
+		default:
+			return fmt.Errorf("app field base_install must be true or false")
+		}
 	case "role":
 		a.Role = val
+	default:
+		return fmt.Errorf("unknown app field %q", key)
 	}
+	return nil
+}
+
+func isLowerHexCommit(value string) bool {
+	if len(value) != 40 {
+		return false
+	}
+	for _, r := range value {
+		if !(r >= '0' && r <= '9' || r >= 'a' && r <= 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func leadingSpaces(s string) int {

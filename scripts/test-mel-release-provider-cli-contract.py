@@ -142,6 +142,7 @@ def test_propose_uses_only_supported_flags():
         }
         captured = []
         old_run, old_ctx, old_rewrite, old_index = provider.run, provider.require_context, provider.rewrite_release, provider.next_index
+        old_policy = provider.require_release_policy
         old = with_env({
             "MEL_RELEASE_SQUADS_MULTISIG": "multisig",
             "MEL_RELEASE_SQUADS_VAULT": "vault",
@@ -159,6 +160,7 @@ def test_propose_uses_only_supported_flags():
         })
         try:
             provider.require_context = lambda _: context
+            provider.require_release_policy = lambda _: {}
             provider.rewrite_release = lambda *_: release
             provider.next_index = lambda *_: 1167
             def fake_run(args, **_):
@@ -179,6 +181,7 @@ def test_propose_uses_only_supported_flags():
             provider.propose("app", app_hash, "1.2.3", nonce, "multisig", "vault", ix_out, receipt_out)
         finally:
             provider.run, provider.require_context, provider.rewrite_release, provider.next_index = old_run, old_ctx, old_rewrite, old_index
+            provider.require_release_policy = old_policy
             restore_env(old)
         proposal = captured[0]
         assert proposal[1] == "propose-release"
@@ -193,6 +196,7 @@ def test_propose_uses_only_supported_flags():
         assert receipt["recovery"] == {
             "recoveredVaultTransaction": True,
             "alreadyProposed": False,
+            "repreparedForeignTransactionIndices": [],
         }, receipt
 
 
@@ -238,6 +242,28 @@ def test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state():
                 multisig="multisig", vault="vault", release_path=release,
             )
             assert got == state_path
+            state.pop("masterNftMint")
+            state["MasterNftMint"] = "master"
+            state_path.write_text(json.dumps(state) + "\n")
+            got = provider.prepare_or_reuse_ceremony_state(
+                {"statePath": str(state_path)}, app_id=app_id, app_hash=app_hash,
+                release_hash=release_hash, version="1.2.3", nonce="nonce",
+                multisig="multisig", vault="vault", release_path=release,
+            )
+            assert got == state_path
+            state["masterNftMint"] = "foreign-master"
+            state_path.write_text(json.dumps(state) + "\n")
+            try:
+                provider.prepare_or_reuse_ceremony_state(
+                    {"statePath": str(state_path)}, app_id=app_id, app_hash=app_hash,
+                    release_hash=release_hash, version="1.2.3", nonce="nonce",
+                    multisig="multisig", vault="vault", release_path=release,
+                )
+            except provider.ProviderError as exc:
+                assert "conflicting masterNftMint aliases" in str(exc), exc
+            else:
+                raise AssertionError("conflicting ceremony aliases were reused")
+            state["masterNftMint"] = "master"
             state["appHash"] = "foreign"
             state_path.write_text(json.dumps(state) + "\n")
             try:
@@ -285,6 +311,7 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
         }
         captured = []
         old_run, old_ctx, old_rewrite, old_index = provider.run, provider.require_context, provider.rewrite_release, provider.next_index
+        old_policy = provider.require_release_policy
         old = with_env({
             "MEL_RELEASE_SQUADS_MULTISIG": "multisig", "MEL_RELEASE_SQUADS_VAULT": "vault",
             "MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_PROGRAM_ID": "program",
@@ -294,6 +321,7 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
         })
         try:
             provider.require_context = lambda _: context
+            provider.require_release_policy = lambda _: {}
             provider.rewrite_release = lambda *_: release
             provider.next_index = lambda *_: (_ for _ in ()).throw(AssertionError("resume advanced the Squads index"))
             provider.run = lambda args, **_: captured.append(args) or json.dumps({
@@ -305,9 +333,108 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
             provider.propose(app_id, app_hash, "1.2.3", nonce, "multisig", "vault", out_release, out_receipt)
         finally:
             provider.run, provider.require_context, provider.rewrite_release, provider.next_index = old_run, old_ctx, old_rewrite, old_index
+            provider.require_release_policy = old_policy
             restore_env(old)
         assert captured == [["node", str(executor), "propose", str(state_path)]], captured
         assert json.loads(out_receipt.read_text())["recovery"]["recoveredVaultTransaction"] is True
+
+
+def test_propose_reprepares_after_a_foreign_transaction_index():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        app_id, app_hash, nonce = "app", "a" * 64, "nonce"
+        version = "1.2.3"
+        release_hash = provider.hashlib.sha256((app_hash + version + nonce).encode()).hexdigest()
+        state_path = root / "ceremony-state.json"
+
+        def state(index, transaction, proposal):
+            return {
+                "$schema": "melusina-release-ceremony-v1", "appId": app_id,
+                "appHash": app_hash, "releaseHash": release_hash, "version": version,
+                "releaseNonce": nonce, "multisigPda": "multisig", "licenseSquadsVault": "vault",
+                "masterNftMint": "master", "programId": "program", "transactionIndex": index,
+                "transactionPda": transaction, "proposalPda": proposal, "releaseEntryPda": "release",
+                "registerReleaseEntryInstruction": {}, "ed25519Instruction": {},
+                "quorumPolicy": {"multisigPda": "multisig", "threshold": 3, "memberCount": 4},
+            }
+
+        old_state = state(1759, "old-transaction", "old-proposal")
+        new_state = state(1760, "new-transaction", "new-proposal")
+        state_path.write_text(json.dumps(old_state) + "\n")
+        release = root / "RELEASE.json"
+        release.write_text("{}\n")
+        for name, content in (
+                ("app.spk", b"spk"), ("metadata.json", b"{}\n"),
+                ("RUNTIME-CONTRACT.json", b"{}\n")):
+            (root / name).write_bytes(content)
+        executor = root / "executor.mjs"
+        executor.write_text("// test executor\n")
+        members = []
+        for index in range(3):
+            member = root / f"member-{index}.json"
+            member.write_text("[]\n")
+            members.append(str(member))
+        context = {
+            "catalogDir": str(root), "ceremonyDir": str(root), "spkPath": str(root / "app.spk"),
+            "metadataPath": str(root / "metadata.json"),
+            "runtimeContractPath": str(root / "RUNTIME-CONTRACT.json"),
+            "statePath": str(state_path), "releasePath": str(release),
+        }
+        captured = []
+        old_run = provider.run
+        old_context = provider.require_context
+        old_rewrite = provider.rewrite_release
+        old_index = provider.next_index
+        old_policy = provider.require_release_policy
+        old = with_env({
+            "MEL_RELEASE_SQUADS_MULTISIG": "multisig", "MEL_RELEASE_SQUADS_VAULT": "vault",
+            "MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_PROGRAM_ID": "program",
+            "MEL_RELEASE_SQUADS_THRESHOLD": "3", "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
+            "MEL_RELEASE_PEARL_TOOL": "/tmp/melusina-pearl-tool", "MEL_RELEASE_LICENSE_MINT": "license",
+            "MEL_RELEASE_AUTHOR_KEYPAIR": "/tmp/author.json", "MEL_RELEASE_REGISTER_EXECUTOR": str(executor),
+            "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members), "MEL_RELEASE_SQUADS_NODE_MODULES": str(root),
+            "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+        })
+        try:
+            provider.require_context = lambda _: context
+            provider.require_release_policy = lambda _: {}
+            provider.rewrite_release = lambda *_: release
+            provider.next_index = lambda *_: 1760
+
+            def fake_run(args, **_):
+                captured.append(args)
+                if args[0] == "/tmp/melusina-pearl-tool":
+                    state_path.write_text(json.dumps(new_state) + "\n")
+                    return ""
+                node_calls = [item for item in captured if item[0] == "node"]
+                if len(node_calls) == 1:
+                    return json.dumps({
+                        "status": "ForeignTransactionIndex", "transactionPda": "old-transaction",
+                        "proposalPda": "old-proposal", "transactionIndex": 1759,
+                    })
+                return json.dumps({
+                    "transactionPda": "new-transaction", "proposalPda": "new-proposal",
+                    "transactionIndex": 1760, "vaultTransactionCreateSignature": "create",
+                    "proposalCreateSignature": "proposal", "recoveredVaultTransaction": False,
+                    "alreadyProposed": False,
+                })
+
+            provider.run = fake_run
+            out_release, out_receipt = root / "out-release.json", root / "out-receipt.json"
+            provider.propose(app_id, app_hash, version, nonce, "multisig", "vault", out_release, out_receipt)
+        finally:
+            provider.run = old_run
+            provider.require_context = old_context
+            provider.rewrite_release = old_rewrite
+            provider.next_index = old_index
+            provider.require_release_policy = old_policy
+            restore_env(old)
+        archived = root / "ceremony-state.foreign-index-1759.json"
+        assert json.loads(archived.read_text()) == old_state
+        assert json.loads(state_path.read_text()) == new_state
+        receipt = json.loads(out_receipt.read_text())
+        assert receipt["recovery"]["repreparedForeignTransactionIndices"] == [1759], receipt
+        assert [item[0] for item in captured].count("node") == 2, captured
 
 
 def test_submit_binds_the_immutable_catalog_slot():
@@ -354,6 +481,30 @@ def test_submit_refuses_missing_catalog_slot():
         restore_env(old)
 
 
+def test_submit_refuses_stale_public_bazaar_license_mint():
+    old = with_env({
+        "MEL_RELEASE_STORE_URL": provider.PUBLIC_BAZAAR_ORIGIN,
+        "MEL_RELEASE_STORE_LICENSE_MINT": "stale-public-mint",
+        "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+        "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
+        "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
+    })
+    try:
+        try:
+            provider.submit_args({
+                "spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json",
+                "releasePath": "/tmp/RELEASE.json",
+                "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json",
+                "catalogSlot": {"developer": "dev", "repo": "repo", "slug": "app"},
+            }, Path("/tmp/receipt.json"), stage_only=True)
+        except provider.ProviderError as exc:
+            assert "canonical public Bazaar mint" in str(exc), exc
+        else:
+            raise AssertionError("stale public Bazaar license mint was accepted")
+    finally:
+        restore_env(old)
+
+
 def test_release_helper_owns_index_and_atomic_approval_commands():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -386,10 +537,14 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
 
         state = root / "state.json"
         state.write_text(json.dumps({
+            "appId": "app",
+            "appHash": "b" * 64,
             "transactionPda": "transaction-pda",
             "transactionIndex": 1724,
             "releaseEntryPda": "release-pda",
             "releaseHash": "a" * 64,
+            "version": "1.2.3",
+            "releaseNonce": "nonce",
             "ed25519Instruction": {"programId": "ed25519", "accounts": [], "data": ""},
         }))
         app_hash = "b" * 64
@@ -426,9 +581,11 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
         old_context = provider.require_context
         old_exists = provider.release_entry_exists
         old_finalize = provider.finalize_release
+        old_policy = provider.require_release_policy
         old = with_env(common)
         try:
             provider.require_context = lambda _: context
+            provider.require_release_policy = lambda _: {}
             provider.release_entry_exists = lambda _: False
             provider.finalize_release = provider.bind_runtime_contract_to_release
             provider.run = lambda args, **_: captured.append(args) or json.dumps({
@@ -436,12 +593,16 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
                 "transactionSignatures": ["approve-1", "approve-2", "approve-3", "execute"],
                 "executeSignature": "execute",
             })
-            provider.approve("app", "transaction-pda", receipt, final_release)
+            provider.approve(
+                "app", app_hash, "a" * 64, version, "nonce",
+                "transaction-pda", receipt, final_release,
+            )
         finally:
             provider.run = old_run
             provider.require_context = old_context
             provider.release_entry_exists = old_exists
             provider.finalize_release = old_finalize
+            provider.require_release_policy = old_policy
             restore_env(old)
         assert captured == [["node", str(executor), "approve-execute", str(state)]], captured
         result = json.loads(receipt.read_text())
@@ -454,6 +615,7 @@ def test_promote_repairs_registered_resume_runtime_binding():
         root = Path(tmp)
         app_hash = "a" * 64
         release_hash = "b" * 64
+        stage_id = "c" * 64
         version = "1.2.3"
         spk = root / "app.spk"
         spk.write_bytes(b"spk")
@@ -464,6 +626,7 @@ def test_promote_repairs_registered_resume_runtime_binding():
             "appHash": app_hash,
             "releaseHash": release_hash,
             "version": version,
+            "releaseEntryPda": "release-pda",
         }) + "\n")
         runtime_contract = root / "RUNTIME-CONTRACT.json"
         runtime_contract.write_text(json.dumps({
@@ -476,12 +639,35 @@ def test_promote_repairs_registered_resume_runtime_binding():
             },
         }) + "\n")
         receipt = root / "promote.json"
+        stage_receipt = root / "stage.json"
+        stage_receipt.write_text(json.dumps({
+            "schema": "melusina-app-stage-receipt-v1",
+            "stageId": stage_id,
+            "appId": "app",
+            "appHash": app_hash,
+            "releaseHash": release_hash,
+        }) + "\n")
+        state = root / "state.json"
+        state.write_text(json.dumps({
+            "appId": "app", "appHash": app_hash, "releaseHash": release_hash,
+            "version": version, "releaseEntryPda": "release-pda",
+        }) + "\n")
         context = {
             "appId": "app",
             "spkPath": str(spk),
             "metadataPath": str(metadata),
             "releasePath": str(release),
             "runtimeContractPath": str(runtime_contract),
+            "statePath": str(state),
+            "stageReceipt": {
+                "path": str(stage_receipt),
+                "sha256": provider.hex_sha(stage_receipt),
+                "size": stage_receipt.stat().st_size,
+                "stageId": stage_id,
+                "appId": "app",
+                "appHash": app_hash,
+                "releaseHash": release_hash,
+            },
             "catalogSlot": {"developer": "dev", "repo": "repo", "slug": "app"},
         }
         submit = root / "submit"
@@ -491,6 +677,8 @@ def test_promote_repairs_registered_resume_runtime_binding():
         old_context = provider.require_context
         old_ensure_bin = provider.ensure_bin
         old_run = provider.run
+        old_fetch = provider.fetch_release_entry
+        old_policy = provider.require_release_policy
         old = with_env({
             "MEL_RELEASE_STORE_URL": "https://store.example.test",
             "MEL_RELEASE_STORE_LICENSE_MINT": "license",
@@ -500,13 +688,34 @@ def test_promote_repairs_registered_resume_runtime_binding():
         })
         try:
             provider.require_context = lambda _: context
+            provider.require_release_policy = lambda _: {}
             provider.ensure_bin = lambda *_: submit
             provider.run = lambda args, **_: captured.append(args) or ""
-            provider.promote("app", app_hash, release_hash, version, "stage-id", receipt)
+            active_entry = {
+                "pda": "release-pda", "appHash": app_hash,
+                "appIdHash": provider.hashlib.sha256(b"app").hexdigest(),
+                "releaseHash": release_hash, "version": version, "status": "Active",
+            }
+            provider.fetch_release_entry = lambda _: active_entry
+            provider.promote("app", app_hash, release_hash, version, stage_id, receipt)
+            for field, value in (
+                    ("status", "Revoked"), ("appIdHash", "0" * 64),
+                    ("appHash", "1" * 64), ("releaseHash", "2" * 64),
+                    ("version", "9.9.9")):
+                stale_entry = {**active_entry, field: value}
+                provider.fetch_release_entry = lambda _, entry=stale_entry: entry
+                try:
+                    provider.promote("app", app_hash, release_hash, version, stage_id, receipt)
+                except provider.ProviderError as exc:
+                    assert "not Active" in str(exc), exc
+                else:
+                    raise AssertionError(f"promotion accepted stale ReleaseEntry field {field}")
         finally:
             provider.require_context = old_context
             provider.ensure_bin = old_ensure_bin
             provider.run = old_run
+            provider.fetch_release_entry = old_fetch
+            provider.require_release_policy = old_policy
             restore_env(old)
         repaired = json.loads(release.read_text())
         assert repaired["runtimeContractSha256"] == provider.hex_sha(runtime_contract), repaired
@@ -541,6 +750,8 @@ def test_release_entry_status_uses_zero_based_borsh_ordinals():
         assert decoded == {
             "pda": "release-pda",
             "appHash": (b"A" * 32).hex(),
+            "appIdHash": (b"I" * 32).hex(),
+            "releaseHash": (b"R" * 32).hex(),
             "version": "1.2.3",
             "status": name,
         }, decoded
@@ -799,6 +1010,8 @@ def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
             "name": "sheets-bureau",
             "source_path": "sheets-bureau",
             "source_commit": "965766d662771323f770eb9e956f1e8b03bea7a0",
+            "source_remote": "",
+            "source_branch": "",
             "metadata_path": "metadata.json",
             "runtime_contract_path": "RUNTIME-CONTRACT.json",
             "publish_slug": "sheets-bureau",
@@ -807,6 +1020,8 @@ def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
             "catalog_slug": "sheets-bureau",
             "pack_profile": "",
             "pack_target": "",
+            "release_channel": "",
+            "release_blocked": "",
         }
         assert provider.catalog_slot(app_id) == {
             "developer": "hrbrlife",
@@ -815,6 +1030,106 @@ def test_checked_in_rich_sheets_family_selects_only_the_pinned_slot():
         }
     finally:
         restore_env(old)
+
+
+def test_checked_in_productivity_policies_are_identity_branch_and_channel_bound():
+    config = HERE.parent / "fleet" / "release-family.yaml"
+    cases = {
+        "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh": {
+            "family": "productivity-apps", "name": "ai-lagoon",
+            "commit": "2a521107cfe9ab038502a4e00a1fa53651535791",
+            "branch": "main", "channel": "stable", "metadata": "metadata.json",
+            "contract": "RUNTIME-CONTRACT.json", "target": "",
+        },
+        "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh": {
+            "family": "productivity-apps", "name": "goldkey",
+            "commit": "10acf09c3d5377d763760b11b912b1053e0cbcce",
+            "branch": "master", "channel": "stable", "metadata": "metadata.json",
+            "contract": "RUNTIME-CONTRACT.json", "target": "",
+        },
+        "130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0": {
+            "family": "productivity-development", "name": "goldkey-dev",
+            "commit": "10acf09c3d5377d763760b11b912b1053e0cbcce",
+            "branch": "master", "channel": "dev", "metadata": "metadata.dev.json",
+            "contract": "RUNTIME-CONTRACT.dev.json", "target": "dev-pack-local",
+        },
+        "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h": {
+            "family": "productivity-apps", "name": "mermail",
+            "commit": "6a0bbfc14bc3a18b8128e31fc45e60ebc8eff4d4",
+            "branch": "main", "channel": "stable", "metadata": "metadata.json",
+            "contract": "RUNTIME-CONTRACT.json", "target": "",
+        },
+    }
+    old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+    try:
+        for app_id, expected in cases.items():
+            spec = provider.app_spec(app_id)
+            assert spec["family"] == expected["family"]
+            assert spec["name"] == expected["name"]
+            assert spec["source_commit"] == expected["commit"]
+            assert spec["source_remote"] == "origin"
+            assert spec["source_branch"] == expected["branch"]
+            assert spec["release_channel"] == expected["channel"]
+            assert spec["metadata_path"] == expected["metadata"]
+            assert spec["runtime_contract_path"] == expected["contract"]
+            assert spec["pack_target"] == expected["target"]
+            assert provider.source_policy_env(app_id) == {
+                "MEL_RELEASE_SOURCE_REMOTE": "origin",
+                "MEL_RELEASE_SOURCE_BRANCH": expected["branch"],
+                "MEL_RELEASE_SOURCE_COMMIT": expected["commit"],
+            }
+
+        goldkey = "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh"
+        assert provider.catalog_package(goldkey) is None
+
+        instadao = "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"
+        spec = provider.app_spec(instadao)
+        assert spec["source_path"] == "MLSNA Token"
+        assert spec["source_branch"] == "main"
+        assert not spec["source_commit"]
+        assert spec["release_blocked"]
+        try:
+            provider.require_release_policy(instadao)
+        except provider.ProviderError as exc:
+            assert "is blocked" in str(exc), exc
+        else:
+            raise AssertionError("InstaDAO was releasable without a full canonical source commit")
+    finally:
+        restore_env(old)
+
+
+def test_release_config_and_json_inputs_reject_duplicate_keys():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = root / "release-family.yaml"
+        config.write_text("""schema: melusina-release-family/v1
+families:
+  one:
+    apps:
+      app:
+        appId: a
+        appId: b
+        source_path: app
+""")
+        old = with_env({"MEL_RELEASE_CONFIG": str(config)})
+        try:
+            try:
+                provider.app_spec("a")
+            except provider.ProviderError as exc:
+                assert "duplicate key" in str(exc), exc
+            else:
+                raise AssertionError("duplicate YAML appId was accepted")
+
+            duplicate_json = root / "metadata.json"
+            duplicate_json.write_text('{"appId":"a","appId":"b"}\n')
+            try:
+                provider.read_json(duplicate_json)
+            except provider.ProviderError as exc:
+                assert "duplicate JSON key" in str(exc), exc
+            else:
+                raise AssertionError("duplicate JSON appId was accepted")
+        finally:
+            restore_env(old)
 
 
 def test_source_commit_pin_refuses_any_other_clean_checkout():
@@ -843,13 +1158,81 @@ def test_source_commit_pin_refuses_any_other_clean_checkout():
         old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_SOURCE_ROOT": str(root)})
         try:
             assert provider.source_path(app_id) == app
-            config.write_text(config.read_text().replace(actual, "f" * 40))
+            write_family_config(config, {
+                "sheets-bureau": {
+                    "appId": app_id, "source_path": "sheets-bureau",
+                    "source_commit": actual.upper(),
+                },
+            })
+            try:
+                provider.source_path(app_id)
+            except provider.ProviderError as exc:
+                assert "invalid source_commit" in str(exc), exc
+            else:
+                raise AssertionError("an uppercase source commit was accepted")
+            write_family_config(config, {
+                "sheets-bureau": {
+                    "appId": app_id, "source_path": "sheets-bureau",
+                    "source_commit": "f" * 40,
+                },
+            })
             try:
                 provider.source_path(app_id)
             except provider.ProviderError as exc:
                 assert "not at pinned source_commit" in str(exc), exc
             else:
                 raise AssertionError("a clean but wrong source commit was accepted")
+        finally:
+            restore_env(old)
+
+
+def test_source_metadata_version_and_runtime_contract_fail_before_build():
+    app_id = "m" * 52
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = root / "source" / "mail"
+        source.mkdir(parents=True)
+        metadata = source / "metadata.json"
+        metadata.write_text(json.dumps({
+            "appId": app_id, "version": "1.2.3", "marketingVersion": "1.2.3",
+        }) + "\n")
+        contract = source / "RUNTIME-CONTRACT.json"
+        contract.write_text(json.dumps({
+            "$schema": provider.RUNTIME_CONTRACT_SCHEMA_URL,
+            "schema": provider.RUNTIME_CONTRACT_SCHEMA,
+            "app": {"appId": app_id, "version": "PENDING_BUILD", "spkSha256": "PENDING_BUILD", "appHash": "PENDING_BUILD"},
+            "sidecars": [],
+            "launchProbe": {"kind": "visible-ui", "steps": [{"action": "open app", "expectedResult": "app opens"}], "expectedResult": "app opens"},
+            "fixtures": [],
+            "cleanup": {"steps": ["remove fixture"]},
+        }) + "\n")
+        for args in (
+            ["git", "init", "-q", str(source)],
+            ["git", "-C", str(source), "config", "user.email", "release-test@example.invalid"],
+            ["git", "-C", str(source), "config", "user.name", "release-test"],
+            ["git", "-C", str(source), "add", "metadata.json", "RUNTIME-CONTRACT.json"],
+            ["git", "-C", str(source), "commit", "-qm", "release inputs"],
+        ):
+            subprocess.run(args, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        config = root / "release-family.yaml"
+        write_family_config(config, {"mail": {"appId": app_id, "source_path": "mail"}})
+        old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_SOURCE_ROOT": str(root / "source")})
+        try:
+            assert provider.validate_source_release_inputs(app_id, source, "1.2.3") == (metadata, contract)
+            try:
+                provider.validate_source_release_inputs(app_id, source, "1.2.4")
+            except provider.ProviderError as exc:
+                assert "does not match requested release version" in str(exc), exc
+            else:
+                raise AssertionError("stale metadata version was accepted")
+
+            contract.unlink()
+            try:
+                provider.validate_source_release_inputs(app_id, source, "1.2.3")
+            except provider.ProviderError as exc:
+                assert "runtime_contract_path" in str(exc) or "runtime contract" in str(exc), exc
+            else:
+                raise AssertionError("missing runtime contract was accepted")
         finally:
             restore_env(old)
 
@@ -1029,8 +1412,13 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
         source_metadata = {"appId": app_id, "name": "source-authoritative", "version": "0.1.35"}
         (product / "metadata.json").write_text(json.dumps(source_metadata) + "\n")
         (product / "RUNTIME-CONTRACT.json").write_text(json.dumps({
-            "schema": "melusina-app-runtime-contract-v1",
+            "$schema": provider.RUNTIME_CONTRACT_SCHEMA_URL,
+            "schema": provider.RUNTIME_CONTRACT_SCHEMA,
             "app": {"appId": app_id, "version": "PENDING_BUILD", "spkSha256": "PENDING_BUILD", "appHash": "PENDING_BUILD"},
+            "sidecars": [],
+            "launchProbe": {"kind": "visible-ui", "steps": [{"action": "open app", "expectedResult": "app opens"}], "expectedResult": "app opens"},
+            "fixtures": [],
+            "cleanup": {"steps": ["remove test grain"]},
         }) + "\n")
         # A legacy match proves that build cannot select a slot by scanning the
         # appId: only the exact configured hrbrlife/.../namedcoin slot is valid.
@@ -1077,10 +1465,19 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
                     assert kwargs["extra_env"] == {
                         "MEL_RELEASE_GREENFIELD_PACK": "1",
                         "MEL_RELEASE_PACK_PROFILE": provider.NAMEDCOIN_MSB_DEVNET_PROFILE,
+                        "MEL_RELEASE_SOURCE_REMOTE": "",
+                        "MEL_RELEASE_SOURCE_BRANCH": "",
+                        "MEL_RELEASE_SOURCE_COMMIT": "",
                     }
                     assert args[args.index("--metadata") + 1] == str(product / "metadata.json")
                     source.joinpath("app.spk").write_bytes(expected_spk)
                     Path(args[args.index("--metadata-out") + 1]).write_text(json.dumps(staged_metadata) + "\n")
+                    Path(args[args.index("--receipt-out") + 1]).write_text(json.dumps({
+                        "schema": "melusina-app-candidate-receipt-v1",
+                        "source": {"revision": "c" * 40, "pushedRemoteRef": "refs/remotes/origin/main", "dirty": False},
+                        "app": {"appId": app_id, "packageId": expected_sha[:32], "version": "0.1.35"},
+                        "artifact": {"sha256": expected_sha, "size": len(expected_spk)},
+                    }) + "\n")
                     return ""
                 if args[0].endswith("stage-into-catalog.sh"):
                     catalog = Path(args[2])
@@ -1094,7 +1491,7 @@ def test_build_records_private_bootstrap_without_writing_catalog_tree():
                     Path(args[2], "RELEASE.json").write_text("{}\n")
                     return ""
                 if args[0] == "git":
-                    return ""
+                    return "c" * 40 + "\n" if "rev-parse" in args else ""
                 if args[0] == str(root / "apphash"):
                     return "a" * 64
                 raise AssertionError(f"unexpected provider command: {args}")
@@ -1197,7 +1594,10 @@ if __name__ == "__main__":
     test_source_root_resolves_only_clean_relative_manifest_paths()
     test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit()
     test_checked_in_rich_sheets_family_selects_only_the_pinned_slot()
+    test_checked_in_productivity_policies_are_identity_branch_and_channel_bound()
+    test_release_config_and_json_inputs_reject_duplicate_keys()
     test_source_commit_pin_refuses_any_other_clean_checkout()
+    test_source_metadata_version_and_runtime_contract_fail_before_build()
     test_actual_cyberteller_config_family_binding_resolves_historical_slot()
     test_catalog_package_binds_declared_slot_despite_preserved_duplicate()
     test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()

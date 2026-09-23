@@ -48,6 +48,9 @@ func runRepairCatalog(c Config, fam *Family, selector string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err := requireAppReleasePolicy(c, app); err != nil {
+		return "", err
+	}
 	lock, err := acquireAppLock(appLockPath(c.lockDir(), app.AppID))
 	if err != nil {
 		return "", err

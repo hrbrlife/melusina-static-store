@@ -10,6 +10,10 @@ schema: melusina-release-family/v1
 # for a unified application whose project Makefile lives above its product
 # metadata. pack_target is an optional reviewed Make target for a separately
 # signed variant emitted by the same source tree.
+# source_remote + source_branch close a release to the exact fetched tip of a
+# canonical main/master branch; such entries also require a full source_commit.
+# release_channel must match MEL_RELEASE_CHANNEL. base_install: false keeps a
+# governed development identity out of production clean-install manifests.
 families:
   money-path:
     apps:
@@ -135,7 +139,13 @@ families:
         role: series-llc-formation-and-corporate-registry
       instadao:
         appId: gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0
-        source_path: instadao
+        source_path: MLSNA Token
+        source_remote: origin
+        source_branch: main
+        release_channel: stable
+        # No abbreviated or pre-fix SHA is safe here. Remove this block only in
+        # the same reviewed change that pins the full clean origin/main commit.
+        release_blocked: canonical-main-source-commit-required-after-app-fixes
         publish_slug: instadao
         catalog_name: InstaDAO
         # The historical Store package is a submodule with a legacy product
@@ -198,6 +208,9 @@ families:
         appId: v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh
         source_path: ai-lagoon-main
         source_commit: 2a521107cfe9ab038502a4e00a1fa53651535791
+        source_remote: origin
+        source_branch: main
+        release_channel: stable
         publish_slug: ai-lagoon
         catalog_name: AiLagoon
         catalog_developer: hrbrlife
@@ -208,32 +221,49 @@ families:
         appId: quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh
         source_path: GoldKey
         source_commit: 10acf09c3d5377d763760b11b912b1053e0cbcce
+        source_remote: origin
+        source_branch: master
+        release_channel: stable
         publish_slug: goldkey
         catalog_name: GoldKey
+        # GoldKey has no tracked Store package yet. This is the sole reviewed
+        # first-publish coordinate; the provider bootstraps it only from this
+        # pinned source's authoritative metadata, never from a legacy scan.
         catalog_developer: hrbrlife
         catalog_repo: GoldKey
         catalog_slug: goldkey
         role: encrypted-team-vault
-      goldkey-dev:
-        appId: 130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0
-        source_path: GoldKey
-        source_commit: 10acf09c3d5377d763760b11b912b1053e0cbcce
-        metadata_path: metadata.dev.json
-        runtime_contract_path: RUNTIME-CONTRACT.dev.json
-        pack_target: dev-pack-local
-        publish_slug: goldkey-dev
-        catalog_name: GoldKey DEV
-        catalog_developer: hrbrlife
-        catalog_repo: GoldKey
-        catalog_slug: goldkey-dev
-        role: disposable-development-vault
       mermail:
         appId: wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h
         source_path: INSTASYS_MAIL-main
         source_commit: 6a0bbfc14bc3a18b8128e31fc45e60ebc8eff4d4
+        source_remote: origin
+        source_branch: main
+        release_channel: stable
         publish_slug: mermail
         catalog_name: MerMail
         catalog_developer: hrbrlife
         catalog_repo: INSTASYS_MAIL
         catalog_slug: mermail
         role: unified-mail-station-and-mailbox
+  productivity-development:
+    # Development identities remain chain-backed and separately signed, but
+    # are not members of the production base-install set.
+    apps:
+      goldkey-dev:
+        appId: 130r4sg4gxc3788fj4yr3dt089fkx274qaf0pqj5z1qyx5n9e5y0
+        source_path: GoldKey
+        source_commit: 10acf09c3d5377d763760b11b912b1053e0cbcce
+        source_remote: origin
+        source_branch: master
+        metadata_path: metadata.dev.json
+        runtime_contract_path: RUNTIME-CONTRACT.dev.json
+        pack_target: dev-pack-local
+        release_channel: dev
+        base_install: false
+        publish_slug: goldkey-dev
+        catalog_name: GoldKey DEV
+        catalog_developer: hrbrlife
+        catalog_repo: GoldKey
+        catalog_slug: goldkey-dev
+        role: disposable-development-vault

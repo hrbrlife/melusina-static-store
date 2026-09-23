@@ -62,6 +62,37 @@ func TestRunManifestRefusesUnacceptedTerminal(t *testing.T) {
 	}
 }
 
+func TestRunManifestExcludesGovernedDevelopmentIdentity(t *testing.T) {
+	root := t.TempDir()
+	cfg := Config{StateDir: filepath.Join(root, "state")}
+	stable := App{AppID: "stable", BaseInstall: true, BaseInstallSet: true}
+	dev := App{AppID: "dev", BaseInstall: false, BaseInstallSet: true}
+	writeAcceptedTerminal(t, cfg, stable, []byte("stable-spk"))
+	// A terminal DEV receipt may exist, but it must never enter the production
+	// clean-install manifest.
+	writeAcceptedTerminal(t, cfg, dev, []byte("dev-spk"))
+	out := filepath.Join(root, "base-apps.json")
+	if err := runManifest(cfg, &Family{Apps: []App{dev, stable}}, out); err != nil {
+		t.Fatal(err)
+	}
+	var got baseAppsManifest
+	if err := json.Unmarshal(mustReadFile(t, out), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Apps) != 1 || got.Apps[0].AppID != stable.AppID {
+		t.Fatalf("development identity leaked into base manifest: %+v", got.Apps)
+	}
+}
+
+func mustReadFile(t *testing.T, path string) []byte {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
 func writeAcceptedTerminal(t *testing.T, cfg Config, app App, spk []byte) {
 	t.Helper()
 	dir := cfg.appStateDir(app.AppID)

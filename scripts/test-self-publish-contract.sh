@@ -17,31 +17,19 @@ for retired in \
 done
 ! grep -qE 'publish-app-full\.sh|publish-apps\.sh|publish-sealed' "$ROOT/Makefile"
 ! grep -qE 'git (add|commit|pull|push|update-ref|tag)([[:space:]]|$$)' "$ROOT/Makefile"
-! grep -qE 'parallel-safe|no-central-tzar|sync-catalog\.sh|revoke-release|SKIP_STEPS|new-release-authorized|AUTHORIZED CHAIN CEREMONY|pearl-app-ceremony' "$DRIVER"
+grep -q 'DIRECT_APP_PUBLICATION_RETIRED' "$DRIVER"
+grep -q 'direct app publication is retired' "$DRIVER"
+grep -q 'mel-release publish' "$DRIVER"
+grep -q 'mel-release approve' "$DRIVER"
+! grep -qE 'submit|pack-app-candidate|stage-into-catalog|promote-existing|curl|publisher\.key|store-pubkey' "$DRIVER"
 
-grep -q 'flock -n 9' "$DRIVER"
-grep -q 'STOP PRE-CHAIN' "$DRIVER"
-grep -q -- '--promote-existing-active' "$DRIVER"
-grep -q 'PRESERVE_EXISTING_RELEASE=1' "$DRIVER"
-grep -q 'no app-chain writer' "$DRIVER"
-grep -q 'Active ReleaseEntry set changed' "$DRIVER"
-grep -q 'assert_exact_release_active' "$DRIVER"
-grep -q 'is not uniquely Active' "$DRIVER"
-grep -q 'exact-current Active ReleaseEntry.*mismatch' "$DRIVER"
-! grep -q 'requires exactly one Active ReleaseEntry before promotion' "$DRIVER"
-grep -q 'RUNTIME_CONTRACT_ARGS=()' "$DRIVER"
-grep -q -- '--runtime-contract "$CAT_PATH/RUNTIME-CONTRACT.json"' "$DRIVER"
-grep -q 'RUNTIME_CONTRACT_ARGS\[@\]' "$DRIVER"
-grep -q 'SOURCE_METADATA_PATH="$CATALOG_PATH_OVERRIDE/metadata.json"' "$DRIVER"
-grep -q -- '--metadata "$SOURCE_METADATA_PATH" --metadata-out "$CANDIDATE_METADATA_OUT"' "$DRIVER"
-grep -q 'SOURCE_METADATA_PATH="$STAGE_METADATA_PATH" PRESERVE_EXISTING_RELEASE=1' "$DRIVER"
-grep -q -- '--promote-existing-active requires --catalog-path' "$DRIVER"
-grep -q 'CANDIDATE_SPK="$CAT_PATH/app.spk"' "$DRIVER"
-grep -q 'not rebuild it:' "$DRIVER"
-grep -q 'rebuilt from this checked-out source for every publication' "$DRIVER"
-grep -q 'go build -o bin/submit ./cmd/submit' "$DRIVER"
-grep -q 'go build -o bin/list-active-releases ./cmd/list-active-releases' "$DRIVER"
-! grep -q 'if \[\[ ! -x "$SUBMIT_BIN" \]\]' "$DRIVER"
+direct_output="$(mktemp)"
+if "$DRIVER" /tmp/arbitrary-branch --keys /tmp/arbitrary-keys >"$direct_output" 2>&1; then
+  echo "retired direct publisher unexpectedly succeeded" >&2
+  exit 1
+fi
+grep -q 'direct app publication is retired' "$direct_output"
+rm -f "$direct_output"
 
 for target in apply apply-locked deploy publish; do
   if make -C "$ROOT" "$target" >/tmp/melusina-retired-$target.out 2>&1; then
@@ -51,27 +39,19 @@ for target in apply apply-locked deploy publish; do
   grep -q 'retired' /tmp/melusina-retired-$target.out
   rm -f /tmp/melusina-retired-$target.out
 done
+if make -C "$ROOT" publish-app SRC=/tmp/arbitrary-branch KEYS=/tmp/arbitrary-keys \
+  >/tmp/melusina-retired-publish-app.out 2>&1; then
+  echo "legacy make publish-app unexpectedly succeeded" >&2
+  exit 1
+fi
+grep -q 'direct publish-app is retired' /tmp/melusina-retired-publish-app.out
+rm -f /tmp/melusina-retired-publish-app.out
 if "$ROOT/scripts/sync-catalog.sh" --deploy >/tmp/melusina-retired-sync.out 2>&1; then
   echo "sync-catalog --deploy unexpectedly succeeded" >&2
   exit 1
 fi
 grep -q 'retired' /tmp/melusina-retired-sync.out
 rm -f /tmp/melusina-retired-sync.out
-
-python3 - "$DRIVER" <<'PY'
-import pathlib, sys
-s = pathlib.Path(sys.argv[1]).read_text()
-stage = s.index('"$SUBMIT_BIN" "${submit_common[@]}" --stage')
-stop = s.index('STOP PRE-CHAIN')
-readonly = s.index('EXACT-CURRENT: no app chain write')
-active_before = s.index('>"$ACTIVE_BEFORE"')
-promote = s.index('"$SUBMIT_BIN" "${submit_common[@]}" --receipt-out "$PROMOTE_RECEIPT"')
-active_after = s.index('>"$ACTIVE_AFTER"')
-compare = s.index('cmp -s "$ACTIVE_BEFORE" "$ACTIVE_AFTER"')
-assert stage < stop < readonly < active_before < promote < active_after < compare
-assert s.count('"$SUBMIT_BIN" "${submit_common[@]}" --stage') == 1
-assert s.count('"$SUBMIT_BIN" "${submit_common[@]}" --receipt-out "$PROMOTE_RECEIPT"') == 1
-PY
 
 python3 - "$RELEASE_BUILDER" <<'PY'
 import pathlib, sys

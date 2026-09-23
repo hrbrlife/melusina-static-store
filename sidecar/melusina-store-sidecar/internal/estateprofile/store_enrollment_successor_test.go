@@ -389,3 +389,120 @@ func TestStoreEnrollmentSuccessorRefusalNamesAreDistinct(t *testing.T) {
 		seen[name] = true
 	}
 }
+
+// A successor obeys every field rule of the initial enrollment: its signing
+// window is bounded, its times parse, and its bound digests are well formed.
+// Each case is refused by the structural check itself, by decoding, and by
+// the live ceremony check, so no caller can reach a malformed successor.
+func TestStoreEnrollmentSuccessorAppliesTheInitialEnrollmentFieldRules(t *testing.T) {
+	profile := newEstateProfile(t)
+	initial := newStoreEnrollment(t, profile)
+	valid := newStoreEnrollmentSuccessor(t, profile, StoreEnrollmentHeld{Initial: initial}, nil)
+	if err := ValidateStoreEnrollmentSuccessor(valid); err != nil {
+		t.Fatalf("positive control: %v", err)
+	}
+	for _, item := range []struct {
+		label   string
+		refusal string
+		change  func(*StoreEnrollmentSuccessorV1)
+	}{
+		{"signing window beyond the maximum lifetime", RefusalStoreEnrollmentTimeInvalid, func(value *StoreEnrollmentSuccessorV1) {
+			value.ExpiresAt = "2026-09-21T01:00:01Z"
+		}},
+		{"expiry not after issuance", RefusalStoreEnrollmentTimeInvalid, func(value *StoreEnrollmentSuccessorV1) {
+			value.ExpiresAt = value.IssuedAt
+		}},
+		{"unparseable issuance", RefusalStoreEnrollmentTimeInvalid, func(value *StoreEnrollmentSuccessorV1) {
+			value.IssuedAt = "yesterday"
+		}},
+		{"malformed binary digest", RefusalStoreEnrollmentFieldMalformed + ":binarySha256", func(value *StoreEnrollmentSuccessorV1) {
+			value.BinarySHA256 = strings.ToUpper(value.BinarySHA256)
+		}},
+		{"malformed certificate fingerprint", RefusalStoreEnrollmentFieldMalformed + ":tlsCertFingerprint", func(value *StoreEnrollmentSuccessorV1) {
+			value.TLSCertFingerprint = "not-a-fingerprint"
+		}},
+	} {
+		t.Run(item.label, func(t *testing.T) {
+			value := valid
+			item.change(&value)
+			requireRefusal(t, ValidateStoreEnrollmentSuccessor(value), item.refusal)
+			raw, err := json.Marshal(value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = DecodeStoreEnrollmentSuccessor(raw)
+			requireRefusal(t, err, item.refusal)
+			_, err = VerifyStoreEnrollmentSuccessor(profile, value, storeEnrollmentNow)
+			requireRefusal(t, err, item.refusal)
+		})
+	}
+}
+
+// The held successor is re-proved to belong to this Store before a candidate
+// is decided against it. The deployer's unsigned-successor review establishes
+// only the held successor's owner authority, so this is the check that keeps a
+// validly signed but foreign or identity-changing successor from becoming the
+// baseline a candidate advances from.
+func TestStoreEnrollmentSuccessorAdvanceReprovesTheHeldSuccessor(t *testing.T) {
+	profile := newEstateProfile(t)
+	initial := newStoreEnrollment(t, profile)
+	held := StoreEnrollmentHeld{Initial: initial}
+	good := newStoreEnrollmentSuccessor(t, profile, held, nil)
+	atGood := StoreEnrollmentHeld{Initial: initial, Current: &good, Recalled: []string{good.PredecessorEnrollmentSHA256}}
+	next := newStoreEnrollmentSuccessor(t, profile, atGood, nil)
+	if err := RequireStoreEnrollmentSuccessorAdvance(atGood, next); err != nil {
+		t.Fatalf("positive control: %v", err)
+	}
+	for _, item := range []struct {
+		refusal string
+		change  func(*StoreEnrollmentSuccessorV1)
+	}{
+		{RefusalStoreEnrollmentSuccessorAnchorMismatch, func(value *StoreEnrollmentSuccessorV1) {
+			value.InitialEnrollmentSHA256 = vectorDigest("rehearsal/store/another-stores-initial-enrollment")
+		}},
+		{RefusalStoreEnrollmentSuccessorIdentityChanged + ":storeBoxKey", func(value *StoreEnrollmentSuccessorV1) {
+			value.StoreBoxKey = vectorAddress("rehearsal/store/other-box-key")
+		}},
+	} {
+		t.Run(item.refusal, func(t *testing.T) {
+			foreign := newStoreEnrollmentSuccessor(t, profile, held, item.change)
+			if _, err := VerifyStoreEnrollmentSuccessorAuthorization(profile, foreign); err != nil {
+				t.Fatalf("the held successor must be owner-authorized so only the identity rule refuses it: %v", err)
+			}
+			atForeign := StoreEnrollmentHeld{Initial: initial, Current: &foreign, Recalled: []string{foreign.PredecessorEnrollmentSHA256}}
+			// The candidate itself is this Store's: it carries the initial
+			// enrollment's identity and anchor, and moves forward.
+			candidate := newStoreEnrollmentSuccessor(t, profile, atForeign, func(value *StoreEnrollmentSuccessorV1) {
+				value.InitialEnrollmentSHA256 = next.InitialEnrollmentSHA256
+				value.StoreBoxKey = initial.StoreBoxKey
+			})
+			if err := RequireStoreEnrollmentSuccessorIdentity(initial, candidate); err != nil {
+				t.Fatalf("the candidate must be this Store's so only the held successor refuses: %v", err)
+			}
+			requireRefusal(t, RequireStoreEnrollmentSuccessorAdvance(atForeign, candidate), item.refusal)
+		})
+	}
+}
+
+// The successor digest domain is pinned to its literal and differs from every
+// other document domain in the package, so a signature over one document type
+// can never be presented as a signature over another.
+func TestStoreEnrollmentSuccessorDigestDomainIsPinned(t *testing.T) {
+	const want = "MELUSINA_ESTATE_STORE_ENROLLMENT_SUCCESSOR_V1\n"
+	if storeEnrollmentSuccessorDigestDomain != want {
+		t.Fatalf("successor digest domain = %q, want %q", storeEnrollmentSuccessorDigestDomain, want)
+	}
+	for _, other := range []string{
+		storeEnrollmentDigestDomain,
+		foundationAuthorizationDigestDomain,
+		profileDigestDomain,
+		ownerPolicyDigestDomain,
+		policySuccessionDigestDomain,
+		networkAccessDigestDomain,
+		draftDigestDomain,
+	} {
+		if other == want {
+			t.Fatalf("successor digest domain %q is shared with another document", want)
+		}
+	}
+}

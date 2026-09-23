@@ -461,6 +461,22 @@ func TestStoreEnrollmentStateRefusesTamperedSuccessorEvidence(t *testing.T) {
 			s.Successor = &successor
 		}, estateprofile.RefusalStoreEnrollmentSignaturesInsufficient},
 		{"schema v1", func(s *storeEnrollmentState) { s.Schema = "melusina.store-estate-enrollment-state.v1" }, "schema mismatch"},
+		// Owner-signed, profile-consistent successors that are not this
+		// Store's: only the persisted-successor identity check refuses them.
+		{"owner-signed successor anchored to another Store", func(s *storeEnrollmentState) {
+			foreign := *s.Successor
+			foreign.InitialEnrollmentSHA256 = strings.Repeat("c", 64)
+			foreign = signRuntimeStoreEnrollmentSuccessor(t, f.profile.OwnerPolicy.PolicyID, foreign, "owner-a", "owner-b")
+			s.Successor = &foreign
+			s.SuccessorSHA256 = mustStoreEnrollmentSuccessorDigest(t, foreign)
+		}, estateprofile.RefusalStoreEnrollmentSuccessorAnchorMismatch},
+		{"owner-signed successor with another box key", func(s *storeEnrollmentState) {
+			foreign := *s.Successor
+			foreign.StoreBoxKey = randPubkeyB58(t)
+			foreign = signRuntimeStoreEnrollmentSuccessor(t, f.profile.OwnerPolicy.PolicyID, foreign, "owner-a", "owner-b")
+			s.Successor = &foreign
+			s.SuccessorSHA256 = mustStoreEnrollmentSuccessorDigest(t, foreign)
+		}, estateprofile.RefusalStoreEnrollmentSuccessorIdentityChanged + ":storeBoxKey"},
 	} {
 		tampered := next
 		tampered.Recalled = append([]string(nil), next.Recalled...)

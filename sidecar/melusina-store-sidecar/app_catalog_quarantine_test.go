@@ -33,6 +33,7 @@ func TestCatalogRecoveryQuarantinesOnlyMissingClaimedRuntimeContract(t *testing.
 		t.Fatal(err)
 	}
 	cfg := Config{PrivateStageDir: filepath.Join(root, "stages"), ReleaseSquadsAuthority: ReleaseSquadsAuthority{Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority}}
+	configureReleaseAuthorityFixtureForBuild(&cfg, root)
 	if err := os.MkdirAll(rolloutStateDir(cfg), 0o700); err != nil {
 		t.Fatal(err)
 	}

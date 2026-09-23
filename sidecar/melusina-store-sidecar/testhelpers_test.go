@@ -411,7 +411,7 @@ type publishFixture struct {
 func testConfig(t *testing.T) (Config, string) {
 	t.Helper()
 	licenseMint := randPubkeyB58(t)
-	return Config{
+	cfg := Config{
 		LicenseNFTMint: licenseMint,
 		StoreAuthority: randPubkeyB58(t),
 		ReleaseSquadsAuthority: ReleaseSquadsAuthority{
@@ -425,7 +425,9 @@ func testConfig(t *testing.T) (Config, string) {
 		StoreID:         "test-store",
 		CatalogRepoRoot: ".",
 		DistDir:         t.TempDir(),
-	}, licenseMint
+	}
+	configureReleaseAuthorityFixtureForBuild(&cfg, t.TempDir())
+	return cfg, licenseMint
 }
 
 // buildValidFixture constructs a publish whose SPK hashes to the release
@@ -445,6 +447,7 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 			Threshold:   defaultBazaarSquadsThreshold,
 			MemberCount: defaultBazaarSquadsMemberCount,
 		}
+		configureReleaseAuthorityFixtureForBuild(&cfg, t.TempDir())
 	}
 
 	spk := []byte("sandstorm package bytes — deterministic test SPK content v1")

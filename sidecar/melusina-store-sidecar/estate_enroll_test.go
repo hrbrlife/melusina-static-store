@@ -324,6 +324,79 @@ func TestVerifyConfiguredStoreEnrollmentRefusesAValidButForeignReleaseQuorum(t *
 	}
 }
 
+// An enrolled Store's release authority is the one its owner-signed profile
+// names. This is what binds a fresh estate's publisher tuple in both build
+// flavors, and the only binding the estate-bootstrap build has: it compiles no
+// fixed authority for any domain. A config that substitutes the vault, the
+// multisig or the Squads program loads, and is then refused by name at the
+// enrolled startup gate; the exact profile tuple is the positive control.
+func TestVerifyConfiguredStoreEnrollmentRefusesASubstitutedReleaseAuthority(t *testing.T) {
+	f := newStoreEnrollmentRuntimeFixture(t)
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	statePath := filepath.Join(dir, "enrollment.json")
+	if err := writeStoreEnrollmentStateNew(statePath, f.state, uint32(os.Geteuid())); err != nil {
+		t.Fatalf("write enrollment state: %v", err)
+	}
+	verify := func(t *testing.T, mutate func(map[string]any)) error {
+		t.Helper()
+		config := map[string]any{
+			"license_nft_mint":             f.declaration.LicenseNFTMint,
+			"store_authority":              f.declaration.StoreAuthority,
+			"program_id":                   f.declaration.ProgramID,
+			"domain":                       f.declaration.Domain,
+			"store_id":                     f.declaration.StoreID,
+			"reseller_nft_mint":            f.declaration.ResellerNFTMint,
+			"release_master_nft_mint":      f.declaration.ReleaseMasterNFTMint,
+			"estate_enrollment_state_path": statePath,
+			"rpc_url":                      "https://primary.example/rpc",
+			"boot_identity":                map[string]any{"sidecar_id": "store"},
+			"release_squads_authority": map[string]any{
+				"multisig":     f.declaration.ReleaseSquadsAuthority.Multisig,
+				"vault":        f.declaration.ReleaseSquadsAuthority.Vault,
+				"program_id":   f.declaration.ReleaseSquadsAuthority.ProgramID,
+				"threshold":    f.declaration.ReleaseSquadsAuthority.Threshold,
+				"member_count": f.declaration.ReleaseSquadsAuthority.MemberCount,
+			},
+		}
+		mutate(config)
+		configPath := filepath.Join(t.TempDir(), "store.config.json")
+		raw, err := json.Marshal(config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(configPath, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		loaded, err := LoadConfig(configPath)
+		if err != nil {
+			t.Fatalf("LoadConfig refused a well-formed enrolled config before the enrollment gate: %v", err)
+		}
+		_, err = verifyConfiguredStoreEnrollment(context.Background(), loaded, configPath, f.identity, newFixedStoreGenesisChainReader(f.genesis))
+		return err
+	}
+	if err := verify(t, func(map[string]any) {}); err != nil {
+		t.Fatalf("enrolled Store refused its exact profile release authority: %v", err)
+	}
+	for field, want := range map[string]string{
+		"vault":      "store-estate-profile-config-mismatch: estate-profile-anchor-mismatch:roles.store-release.vault",
+		"multisig":   "store-estate-profile-config-mismatch: estate-profile-anchor-mismatch:roles.store-release.multisig",
+		"program_id": "store-estate-profile-config-mismatch: estate-profile-anchor-mismatch:externalPrograms.squads-v4.programId",
+	} {
+		t.Run(field, func(t *testing.T) {
+			substitute := randPubkeyB58(t)
+			err := verify(t, func(config map[string]any) {
+				config["release_squads_authority"].(map[string]any)[field] = substitute
+			})
+			if err == nil || !strings.Contains(err.Error(), want) {
+				t.Fatalf("enrolled Store accepted a substituted release %s: %v", field, err)
+			}
+		})
+	}
+}
+
 func TestStoreEnrollmentRuntimeFactsUseTheVerifiedSnapshot(t *testing.T) {
 	f := newStoreEnrollmentRuntimeFixture(t)
 	facts, err := storeEnrollmentRuntimeFacts(f.declaration, f.identity)

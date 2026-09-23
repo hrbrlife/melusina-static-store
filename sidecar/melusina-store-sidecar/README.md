@@ -583,3 +583,20 @@ submit-client (C3).
 go build -o bin/melusina-store-sidecar .
 ./bin/melusina-store-sidecar -config store.config.json -dist ../../dist-publish
 ```
+
+## Test
+
+Run the suite in both build flavors. The bootstrap component ships the
+`estatebootstrap` flavor, which accepts a release authority only in the
+enrolled form, so a green standard run says nothing about it:
+
+```sh
+go test ./...
+go test -tags estatebootstrap ./...
+```
+
+Fixtures that model a running Store take their release-authority form from
+`configureReleaseAuthorityFixtureForBuild` (and, for config documents,
+`releaseAuthorityFixtureConfigJSON`): unenrolled in the standard flavor, the
+enrolled form in the bootstrap flavor. Rules that exist in only one flavor live
+in `squads_authority_legacy_test.go` and `squads_authority_estatebootstrap_test.go`.

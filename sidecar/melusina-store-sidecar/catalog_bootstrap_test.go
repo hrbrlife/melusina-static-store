@@ -215,6 +215,7 @@ func newCatalogBootstrapFixture(t *testing.T, migrationState string) (Config, ca
 		CatalogMigrationStateDir: filepath.Join(root, "migrations"),
 		ReleaseSquadsAuthority:   ReleaseSquadsAuthority{Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority},
 	}
+	configureReleaseAuthorityFixtureForBuild(&cfg, root)
 	cleanupImmutableCatalog(t, cfg.CatalogGenerationRoot)
 	for _, dir := range []string{cfg.DistDir, cfg.PrivateStageDir, cfg.CatalogMigrationStateDir} {
 		if err := os.Mkdir(dir, 0o700); err != nil {

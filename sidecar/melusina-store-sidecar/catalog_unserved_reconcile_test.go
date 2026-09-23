@@ -28,6 +28,7 @@ func TestCatalogReconcileUnservedRecordsOnlyAnAlreadyUnservedExactRollout(t *tes
 			Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority,
 		},
 	}
+	configureReleaseAuthorityFixtureForBuild(&cfg, root)
 	for _, dir := range []string{cfg.PrivateStageDir, cfg.CatalogMigrationStateDir, rolloutStateDir(cfg)} {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			t.Fatal(err)
@@ -165,6 +166,7 @@ func TestCatalogReconcileUnservedRefusesAVisibleOrDriftedTarget(t *testing.T) {
 			Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority,
 		},
 	}
+	configureReleaseAuthorityFixtureForBuild(&cfg, root)
 	for _, dir := range []string{cfg.PrivateStageDir, cfg.CatalogMigrationStateDir, rolloutStateDir(cfg)} {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			t.Fatal(err)

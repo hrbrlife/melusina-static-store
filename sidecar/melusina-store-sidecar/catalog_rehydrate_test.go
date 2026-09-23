@@ -58,6 +58,7 @@ func TestCatalogRehydrateBuildsFreshStagesAndRetiresOnlyExplicitLegacyRows(t *te
 			ProgramID: defaultBazaarSquadsProgramID, Threshold: defaultBazaarSquadsThreshold, MemberCount: defaultBazaarSquadsMemberCount,
 		},
 	}
+	configureReleaseAuthorityFixtureForBuild(&cfg, root)
 	for _, dir := range []string{cfg.PrivateStageDir, cfg.CatalogMigrationStateDir, rolloutStateDir(cfg)} {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			t.Fatal(err)
@@ -242,6 +243,7 @@ func rehydrationCorruptStageID(value any) string {
 
 func mustRehydrationAuthority(t *testing.T, cfg Config) configuredSquadsAuthority {
 	t.Helper()
+	configureReleaseAuthorityFixtureForBuild(&cfg, t.TempDir())
 	authority, err := cfg.sharedSquadsAuthority()
 	if err != nil {
 		t.Fatal(err)

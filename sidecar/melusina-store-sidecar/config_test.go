@@ -22,11 +22,14 @@ func writeTmpConfig(t *testing.T, content string) string {
 	// Every existing config-focused test gets a valid shared-authority tuple
 	// and, unless it names its own, the fixture registry program, so it can
 	// continue to isolate the validation rule it names. Dedicated tests below
-	// cover both required fields.
+	// cover both required fields. The estate-bootstrap build accepts that
+	// tuple only in the enrolled form, which releaseAuthorityFixtureConfigJSON
+	// supplies there.
 	content = strings.TrimSuffix(trimmed, "}")
 	if !strings.Contains(content, `"program_id"`) {
 		content += `,"program_id":"` + testLicenseProgramID + `"`
 	}
+	content += releaseAuthorityFixtureConfigJSON(t.TempDir(), content)
 	content += `,"release_squads_authority":{"multisig":"` + testStoreAuthority + `","vault":"` + testStoreAuthority + `","program_id":"` + testStoreAuthority + `","threshold":3,"member_count":4}}`
 	return writeRawTmpConfig(t, content)
 }
@@ -44,17 +47,6 @@ func TestLoadConfig_RequiresSharedReleaseSquadsAuthority(t *testing.T) {
 	_, err := LoadConfig(writeRawTmpConfig(t, `{"license_nft_mint":"LIC","program_id":"`+testLicenseProgramID+`","domain":"store.example.org"}`))
 	if err == nil || !strings.Contains(err.Error(), "release_squads_authority.multisig") {
 		t.Fatalf("missing shared authority error = %v", err)
-	}
-}
-
-func TestLoadConfig_DefaultBazaarPinsOneSquadsAuthority(t *testing.T) {
-	base := `{"license_nft_mint":"LIC","program_id":"` + testLicenseProgramID + `","domain":"bazaar.melusina-os.org","release_squads_authority":{"multisig":"` + defaultBazaarSquadsMultisig + `","vault":"` + defaultBazaarSquadsVault + `","program_id":"` + defaultBazaarSquadsProgramID + `","threshold":3,"member_count":4}}`
-	if _, err := LoadConfig(writeRawTmpConfig(t, base)); err != nil {
-		t.Fatalf("fixed default Bazaar authority rejected: %v", err)
-	}
-	wrongVault := strings.Replace(base, defaultBazaarSquadsVault, testStoreAuthority, 1)
-	if _, err := LoadConfig(writeRawTmpConfig(t, wrongVault)); err == nil || !strings.Contains(err.Error(), "one fixed Bazaar Squads authority") {
-		t.Fatalf("default Bazaar accepted a different shared authority: %v", err)
 	}
 }
 
@@ -224,16 +216,6 @@ func TestLoadConfig_ProfileEnrolledStoreAcceptsItsExplicitProfileQuorum(t *testi
 	}
 	if authority.Threshold != 2 || authority.MemberCount != 3 {
 		t.Fatalf("serve-time profile quorum = %d/%d, want 2/3", authority.Threshold, authority.MemberCount)
-	}
-}
-
-func TestLoadConfig_LegacyStoreRetainsFixedReleaseQuorum(t *testing.T) {
-	config := profileEnrolledStoreConfig(t, "")
-	delete(config, "estate_enrollment_state_path")
-	delete(config, "rpc_url")
-	_, err := LoadConfig(writeJSONConfig(t, config))
-	if err == nil || !strings.Contains(err.Error(), "release_squads_authority quorum must be 3/4") {
-		t.Fatalf("unenrolled Store accepted profile-specific 2/3 quorum: %v", err)
 	}
 }
 

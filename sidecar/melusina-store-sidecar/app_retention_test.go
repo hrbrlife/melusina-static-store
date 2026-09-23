@@ -385,6 +385,7 @@ func TestStartupRetentionSelectsNewestFullyVerifiedPredecessor(t *testing.T) {
 func newRetentionFixture(t *testing.T) (Config, AppCatalogGenerationStore, string) {
 	t.Helper()
 	cfg := Config{PrivateStageDir: t.TempDir(), CatalogGenerationRoot: t.TempDir(), ReleaseSquadsAuthority: ReleaseSquadsAuthority{Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority}}
+	configureReleaseAuthorityFixtureForBuild(&cfg, t.TempDir())
 	if err := os.Chmod(cfg.PrivateStageDir, 0o700); err != nil {
 		t.Fatal(err)
 	}

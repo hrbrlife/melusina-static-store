@@ -1,5 +1,6 @@
 # Makefile — Build and deploy the Melusina App Bazaar
 #
+#   make test      Run the Store's Go suites; the sidecar in BOTH build flavors
 #   make publish   Refresh + build + commit + deploy  (all-in-one, ~2 min)
 #   make build     Build only (no submodule refresh, no deploy)
 #   make refresh   Fetch latest submodule publish branches + stage pointers
@@ -18,7 +19,7 @@ OUTPUT_DIR     := dist-publish
 MAX_FILE_SIZE  := $$((100 * 1024 * 1024 - 4096))
 CHUNK_SIZE     := 90M
 
-.PHONY: publish build clean dev refresh deploy preflight doctor publish-check \
+.PHONY: test publish build clean dev refresh deploy preflight doctor publish-check \
         plan apply build-from-source publish-app sync bump-version icon-qc submit-build store-release
 
 store-release:
@@ -33,6 +34,29 @@ store-release:
 # that receipt against the on-chain store_authority before declaring success.
 SIDECAR_DIR  := sidecar/melusina-store-sidecar
 SUBMIT_BIN   := $(SIDECAR_DIR)/bin/submit
+
+# --- test: the Store's test entry point --------------------------------------
+# Runs the Go suite of each Store module and fails if any of them fails. The
+# store sidecar suite runs through its own entry point, scripts/run-tests.sh,
+# in BOTH build flavors: the standard build and the estatebootstrap build the
+# Store bootstrap component ships. A plain `go test ./...` in the sidecar
+# compiles only the standard flavor, so it says nothing about the build that
+# ships. Every suite runs even when an earlier one fails.
+#
+# The sidecar script reads its release declaration and contracts clone from
+# the environment:
+#   make test
+#   CI=true MELUSINA_CONTRACTS_GIT_DIR=/abs/melusina-os-smartcontract make test
+#
+# run_tests_entrypoint_test.go runs this target with a stand-in go and fails
+# by name (test-entrypoint-bootstrap-flavor-missing) if the estatebootstrap
+# flavor stops reaching go test.
+STORE_LINK_DIR := sidecar/bazaar-store-link
+test:
+	status=0
+	bash "$(CURDIR)/$(SIDECAR_DIR)/scripts/run-tests.sh" || status=1
+	(cd "$(CURDIR)/$(STORE_LINK_DIR)" && go test -count=1 ./...) || status=1
+	exit "$$status"
 
 # --- doctor: environment + readiness check ---------------------------------
 # Single-pass health report: tools on PATH, submodule init state, deployer

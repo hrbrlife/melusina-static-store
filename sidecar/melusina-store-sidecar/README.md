@@ -598,13 +598,24 @@ go build -o bin/melusina-store-sidecar .
 
 Run the suite in both build flavors. The bootstrap component ships the
 `estatebootstrap` flavor, which accepts a release authority only in the
-enrolled form, so a green standard run says nothing about it.
-`scripts/run-tests.sh` runs both:
+enrolled form, so a green standard run says nothing about it, and a plain
+`go test ./...` runs only the standard flavor. `scripts/run-tests.sh` runs
+both, and `make test` at the repository root runs the script and then the
+`sidecar/bazaar-store-link` suite:
 
 ```sh
+make test                                 # from the repository root
 scripts/run-tests.sh                      # go test ./... and go test -tags estatebootstrap ./...
 scripts/run-tests.sh --release --contracts-git-dir /path/to/melusina-os-smartcontract
 ```
+
+Both run every flavor and suite even when one fails, and exit non-zero if any
+failed. `run_tests_entrypoint_test.go` runs `make test` and the script with a
+stand-in `go` first on `PATH` and fails as
+`test-entrypoint-bootstrap-flavor-missing` if either stops reaching go test
+with `-tags estatebootstrap`. `make test` passes its environment through, so a
+release run from the root is
+`CI=true MELUSINA_CONTRACTS_GIT_DIR=/abs/path make test`.
 
 `testdata/contracts/sidecar-pda-vectors.json` is a copy of the contracts
 repository's sidecar PDA vector. Every run checks, without a contracts clone,

@@ -1,11 +1,18 @@
 package main
 
-// scripts/run-tests.sh is the module's documented test entry point. These
-// tests run it for real, with a stand-in go first on PATH. The stand-in records
-// the arguments, the working directory and the whole environment of every call,
-// so the tests assert what go test is actually handed rather than what the
-// script says about itself: a variable the script assigns but does not export
-// never reaches go test, and only the recorded environment shows that.
+// scripts/run-tests.sh is the module's documented test entry point, and the
+// repository's `make test` runs it. These tests run both for real, with a
+// stand-in go first on PATH. The stand-in records the arguments, the working
+// directory and the whole environment of every call, so the tests assert what
+// go test is actually handed rather than what the script or the Makefile says
+// about itself: a variable the script assigns but does not export never
+// reaches go test, and only the recorded environment shows that.
+//
+// A plain `go test ./...` compiles only the standard flavor. The estatebootstrap
+// flavor is the build the Store bootstrap component ships, and 116 of its
+// failures once went unnoticed because nothing ran it. Every entry point is
+// therefore required to reach go test with -tags estatebootstrap, and fails as
+// test-entrypoint-bootstrap-flavor-missing when it does not.
 
 import (
 	"bytes"
@@ -75,11 +82,35 @@ func runTestsModuleDir(t *testing.T) string {
 	return dir
 }
 
-// runTestsScript runs the entry point for real with a hermetic environment: the
-// caller's CI, mode and contracts variables are removed, the git config key is
-// pinned through GIT_CONFIG_* (which outranks any checkout's own config), and
-// go resolves to runTestsFakeGo.
+// runTestsScript runs scripts/run-tests.sh for real; see runWithStandInGo.
 func runTestsScript(t *testing.T, opts runTestsOptions, args ...string) runTestsRun {
+	t.Helper()
+	script := filepath.Join(runTestsModuleDir(t), "scripts", "run-tests.sh")
+	return runWithStandInGo(t, opts, append([]string{"bash", script}, args...))
+}
+
+// runMakeTest runs the repository's `make test` for real; see runWithStandInGo.
+func runMakeTest(t *testing.T, opts runTestsOptions) runTestsRun {
+	t.Helper()
+	return runWithStandInGo(t, opts, []string{"make", "--no-print-directory", "-C", runTestsRepoRoot(t), "test"})
+}
+
+// runTestsRepoRoot is the repository root with symlinks resolved, as the
+// stand-in records its working directory.
+func runTestsRepoRoot(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.EvalSymlinks(repoRoot(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// runWithStandInGo runs command for real with a hermetic environment: the
+// caller's CI, mode, contracts and make variables are removed, the git config
+// key is pinned through GIT_CONFIG_* (which outranks any checkout's own
+// config), and go resolves to runTestsFakeGo.
+func runWithStandInGo(t *testing.T, opts runTestsOptions, command []string) runTestsRun {
 	t.Helper()
 	moduleDir := runTestsModuleDir(t)
 	bin := t.TempDir()
@@ -92,6 +123,7 @@ func runTestsScript(t *testing.T, opts runTestsOptions, args ...string) runTests
 		name, _, _ := strings.Cut(kv, "=")
 		switch {
 		case name == "CI", name == "MELUSINA_STORE_TEST_MODE", name == "MELUSINA_CONTRACTS_GIT_DIR", name == "PATH",
+			name == "MAKEFLAGS", name == "MFLAGS", name == "MAKELEVEL",
 			strings.HasPrefix(name, "GIT_CONFIG_"), strings.HasPrefix(name, "RUN_TESTS_FAKE_GO_"):
 			continue
 		}
@@ -104,7 +136,7 @@ func runTestsScript(t *testing.T, opts runTestsOptions, args ...string) runTests
 		"GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=melusina.contractsGitDir", "GIT_CONFIG_VALUE_0="+opts.gitConfig,
 	)
 	env = append(env, opts.env...)
-	cmd := exec.Command("bash", append([]string{filepath.Join(moduleDir, "scripts", "run-tests.sh")}, args...)...)
+	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Env = env
 	cmd.Dir = moduleDir
 	if opts.dir != "" {
@@ -121,7 +153,7 @@ func runTestsScript(t *testing.T, opts runTestsOptions, args ...string) runTests
 	case errors.As(err, &exitErr):
 		run.exit = exitErr.ExitCode()
 	default:
-		t.Fatalf("run scripts/run-tests.sh: %v", err)
+		t.Fatalf("run %s: %v", strings.Join(command, " "), err)
 	}
 	entries, err := os.ReadDir(record)
 	if err != nil {
@@ -157,6 +189,66 @@ var runTestsFlavorArgs = [][]string{
 	{"test", "-tags", "estatebootstrap", "-count=1", "./..."},
 }
 
+// requireBootstrapFlavorReached requires that entry called go test in this
+// module's directory with the estatebootstrap build tag at least once. It is
+// checked before the exact call list so that dropping the flavor fails under
+// its own name whatever else the entry point does instead.
+func requireBootstrapFlavorReached(t *testing.T, entry string, run runTestsRun) {
+	t.Helper()
+	moduleDir := runTestsModuleDir(t)
+	var moduleCalls [][]string
+	for _, call := range run.calls {
+		if call.dir != moduleDir || len(call.args) == 0 || call.args[0] != "test" {
+			continue
+		}
+		moduleCalls = append(moduleCalls, call.args)
+		for i, arg := range call.args {
+			tags, isFlag := strings.CutPrefix(arg, "-tags=")
+			if !isFlag && arg == "-tags" && i+1 < len(call.args) {
+				tags, isFlag = call.args[i+1], true
+			}
+			if isFlag && slices.Contains(strings.FieldsFunc(tags, func(r rune) bool { return r == ',' || r == ' ' }), "estatebootstrap") {
+				return
+			}
+		}
+	}
+	t.Fatalf("test-entrypoint-bootstrap-flavor-missing: %s ran go test in %s %d times, none with -tags estatebootstrap: %q\nstderr:\n%s", entry, moduleDir, len(moduleCalls), moduleCalls, run.stderr)
+}
+
+// requireFlavorCalls requires that calls are exactly one go test per flavor,
+// in order, from the module directory, each receiving contracts as
+// MELUSINA_CONTRACTS_GIT_DIR and mode as MELUSINA_STORE_TEST_MODE. An empty
+// want requires the variable to be absent from the call's environment.
+func requireFlavorCalls(t *testing.T, name string, calls []goTestCall, contracts, mode string) {
+	t.Helper()
+	if len(calls) != len(runTestsFlavorArgs) {
+		t.Fatalf("%s-flavors-wrong: go was called %d times, want %d (one per flavor)", name, len(calls), len(runTestsFlavorArgs))
+	}
+	moduleDir := runTestsModuleDir(t)
+	for n, call := range calls {
+		if !slices.Equal(call.args, runTestsFlavorArgs[n]) {
+			t.Fatalf("%s-flavors-wrong: go call %d received %q, want %q", name, n, call.args, runTestsFlavorArgs[n])
+		}
+		if call.dir != moduleDir {
+			t.Fatalf("%s-go-dir-wrong: go call %d ran in %s, want the module directory %s", name, n, call.dir, moduleDir)
+		}
+		for _, v := range []struct{ name, want string }{
+			{"MELUSINA_CONTRACTS_GIT_DIR", contracts},
+			{"MELUSINA_STORE_TEST_MODE", mode},
+		} {
+			got, ok := call.env[v.name]
+			if v.want == "" && !ok || v.want != "" && ok && got == v.want {
+				continue
+			}
+			want := "unset"
+			if v.want != "" {
+				want = strconv.Quote(v.want)
+			}
+			t.Fatalf("%s-go-env-wrong: go call %d (%s) received %s %s, want %s", name, n, strings.Join(call.args, " "), v.name, describeGoTestEnv(call.env, v.name), want)
+		}
+	}
+}
+
 func describeGoTestEnv(env map[string]string, name string) string {
 	value, ok := env[name]
 	if !ok {
@@ -174,32 +266,8 @@ func requireGoTestReceived(t *testing.T, run runTestsRun, contracts, mode string
 	if run.exit != 0 {
 		t.Fatalf("run-tests-exit: want exit 0, got %d\nstderr:\n%s", run.exit, run.stderr)
 	}
-	if len(run.calls) != len(runTestsFlavorArgs) {
-		t.Fatalf("run-tests-flavors-wrong: go was called %d times, want %d (one per flavor)\nstderr:\n%s", len(run.calls), len(runTestsFlavorArgs), run.stderr)
-	}
-	moduleDir := runTestsModuleDir(t)
-	for n, call := range run.calls {
-		if !slices.Equal(call.args, runTestsFlavorArgs[n]) {
-			t.Fatalf("run-tests-flavors-wrong: go call %d received %q, want %q", n, call.args, runTestsFlavorArgs[n])
-		}
-		if call.dir != moduleDir {
-			t.Fatalf("run-tests-go-dir-wrong: go call %d ran in %s, want the module directory %s", n, call.dir, moduleDir)
-		}
-		for _, v := range []struct{ name, want string }{
-			{"MELUSINA_CONTRACTS_GIT_DIR", contracts},
-			{"MELUSINA_STORE_TEST_MODE", mode},
-		} {
-			got, ok := call.env[v.name]
-			if v.want == "" && !ok || v.want != "" && ok && got == v.want {
-				continue
-			}
-			want := "unset"
-			if v.want != "" {
-				want = strconv.Quote(v.want)
-			}
-			t.Fatalf("run-tests-go-env-wrong: go call %d (%s) received %s %s, want %s", n, strings.Join(call.args, " "), v.name, describeGoTestEnv(call.env, v.name), want)
-		}
-	}
+	requireBootstrapFlavorReached(t, "scripts/run-tests.sh", run)
+	requireFlavorCalls(t, "run-tests", run.calls, contracts, mode)
 }
 
 func requireRunTestsRefusal(t *testing.T, run runTestsRun, name string) {
@@ -289,6 +357,83 @@ func TestRunTestsFailsTheRunWhenEitherFlavorFails(t *testing.T) {
 		}
 		if len(run.calls) != len(runTestsFlavorArgs) {
 			t.Fatalf("run-tests-flavors-wrong: go call %s failed and go was called %d times, want %d", failCall, len(run.calls), len(runTestsFlavorArgs))
+		}
+	}
+}
+
+// storeLinkTestArgs is the one go call `make test` makes for the Store's other
+// Go module, sidecar/bazaar-store-link, which has a single build flavor.
+var storeLinkTestArgs = []string{"test", "-count=1", "./..."}
+
+// requireMakeTestReceived requires a successful `make test` whose go calls are
+// exactly this module's two flavor calls, as requireFlavorCalls describes, and
+// one call for the store-link module from its own directory.
+func requireMakeTestReceived(t *testing.T, run runTestsRun, contracts, mode string) {
+	t.Helper()
+	if run.exit != 0 {
+		t.Fatalf("make-test-exit: want exit 0, got %d\nstdout:\n%s\nstderr:\n%s", run.exit, run.stdout, run.stderr)
+	}
+	requireBootstrapFlavorReached(t, "make test", run)
+	moduleDir := runTestsModuleDir(t)
+	storeLinkDir := filepath.Join(runTestsRepoRoot(t), "sidecar", "bazaar-store-link")
+	var sidecar, storeLink []goTestCall
+	for n, call := range run.calls {
+		switch call.dir {
+		case moduleDir:
+			sidecar = append(sidecar, call)
+		case storeLinkDir:
+			storeLink = append(storeLink, call)
+		default:
+			t.Fatalf("make-test-calls-wrong: go call %d (%s) ran in %s, which is neither Store module", n, strings.Join(call.args, " "), call.dir)
+		}
+	}
+	requireFlavorCalls(t, "make-test", sidecar, contracts, mode)
+	if len(storeLink) != 1 || !slices.Equal(storeLink[0].args, storeLinkTestArgs) {
+		var got [][]string
+		for _, call := range storeLink {
+			got = append(got, call.args)
+		}
+		t.Fatalf("make-test-store-link-wrong: go ran in %s with %q, want exactly one call %q", storeLinkDir, got, storeLinkTestArgs)
+	}
+}
+
+// `make test` is the repository's test command. It runs this module's suite in
+// both flavors, through scripts/run-tests.sh, and the store-link suite.
+func TestMakeTestRunsTheSidecarSuiteInBothFlavors(t *testing.T) {
+	requireMakeTestReceived(t, runMakeTest(t, runTestsOptions{}), "", "")
+}
+
+// The release declaration and the contracts clone reach the sidecar suite
+// through `make test` from the caller's environment, and a release run without
+// a clone is refused before any sidecar go test runs.
+func TestMakeTestHandsTheReleaseDeclarationToTheSidecarSuite(t *testing.T) {
+	repo := initThrowawayGitRepo(t, "")
+	requireMakeTestReceived(t, runMakeTest(t, runTestsOptions{env: []string{"CI=true", "MELUSINA_CONTRACTS_GIT_DIR=" + repo}}), repo, "release")
+
+	run := runMakeTest(t, runTestsOptions{env: []string{"CI=true"}})
+	if run.exit == 0 || !strings.Contains(run.stderr, "run-tests: contracts-clone-required:") {
+		t.Fatalf("make-test-release-refusal-lost: want a failing run carrying contracts-clone-required, got exit %d\nstderr:\n%s", run.exit, run.stderr)
+	}
+	moduleDir := runTestsModuleDir(t)
+	for _, call := range run.calls {
+		if call.dir == moduleDir {
+			t.Fatalf("make-test-refusal-ran-go: the refused release run still ran %q in %s", call.args, moduleDir)
+		}
+	}
+}
+
+// A failing suite fails `make test`, and every other suite still runs. The run
+// where no call fails is the positive control.
+func TestMakeTestFailsWhenAnySuiteFails(t *testing.T) {
+	requireMakeTestReceived(t, runMakeTest(t, runTestsOptions{}), "", "")
+	want := len(runTestsFlavorArgs) + 1
+	for failCall := range want {
+		run := runMakeTest(t, runTestsOptions{failCall: strconv.Itoa(failCall)})
+		if run.exit == 0 {
+			t.Fatalf("make-test-failure-hidden: go call %d failed and make test exited 0\nstderr:\n%s", failCall, run.stderr)
+		}
+		if len(run.calls) != want {
+			t.Fatalf("make-test-suite-skipped: go call %d failed and go was called %d times, want %d", failCall, len(run.calls), want)
 		}
 	}
 }

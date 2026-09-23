@@ -1,10 +1,10 @@
 {
   "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
   "name": "cyberteller",
-  "version": "0.1.87",
-  "versionNumber": 164,
-  "packageId": "06c52ff1b344facfa9f45d399ff623a0",
-  "sha256": "06c52ff1b344facfa9f45d399ff623a00ae98a5b389c862937ac1fc292f7df63",
+  "version": "0.1.88",
+  "versionNumber": 165,
+  "packageId": "9988cea6bfbd18fc3a3e9907c979b0e6",
+  "sha256": "9988cea6bfbd18fc3a3e9907c979b0e6f6a684f410934a127fb5be3573c22ded",
   "shortDescription": "Multi-chain crypto payment processor \u2014 invoicing + address generation + settlement.",
   "categories": [
     "Productivity"
@@ -25,6 +25,6 @@
   },
   "description": "",
   "screenshots": [],
-  "license": "Proprietary - AiTX.pro Limited",
-  "marketingVersion": "0.1.87"
+  "license": "Melusina Public License v3.0 (MPL-MEL-3.0) - source-available, not open source; SPDX LicenseRef-MPL-MEL-3.0; canonical Melusina_OS_Legal/Licenses/M06.",
+  "marketingVersion": "0.1.88"
 }

@@ -2,15 +2,19 @@ package main
 
 import (
 	"crypto/ed25519"
+	"errors"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 )
 
 func genesisWriterLockPath(cfg Config) string {
@@ -128,10 +132,55 @@ func TestGenesisResumesAnExistingEmptyLockAndRefusesWhileItIsHeld(t *testing.T) 
 	}
 }
 
+// storeRootsSnapshot records every path, type, mode and size under the three
+// roots the virgin check inspects, so a refusal can be shown to have created,
+// removed or replaced nothing in them.
+func storeRootsSnapshot(t *testing.T, cfg Config) string {
+	t.Helper()
+	var lines []string
+	for _, root := range []string{cfg.CatalogMigrationStateDir, cfg.PrivateStageDir, cfg.CatalogGenerationRoot} {
+		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+			if errors.Is(err, fs.ErrNotExist) && path == root {
+				lines = append(lines, root+" absent")
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			info, err := entry.Info()
+			if err != nil {
+				return err
+			}
+			size := info.Size()
+			if info.IsDir() {
+				size = 0
+			}
+			lines = append(lines, fmt.Sprintf("%s %s %d", path, info.Mode(), size))
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("snapshot %s: %v", root, err)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func plantStoreStateEntry(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // A missing lock beside existing Store write state is ambiguous: that state
 // was written under a lock that no longer exists. Genesis refuses it by name
-// and creates nothing.
+// and creates, removes or replaces nothing, whichever of the three Store
+// write roots holds the state.
 func TestGenesisRefusesToCreateWriterLockBesideExistingState(t *testing.T) {
+	generationID := fmt.Sprintf("%s%032x", appCatalogGenerationPrefix, 1)
 	for _, tc := range []struct {
 		name  string
 		setup func(t *testing.T, cfg Config, opts catalogBootstrapOptions)
@@ -147,7 +196,30 @@ func TestGenesisRefusesToCreateWriterLockBesideExistingState(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			want: "catalog_migration_state_dir already holds Store state (" + catalogGenesisStateName + ")",
+			want: "writer.lock is missing but catalog_migration_state_dir already holds Store state (" + catalogGenesisStateName + ")",
+		},
+		{
+			// A previous install whose lock, genesis record and current were
+			// all removed still leaves its ledger, rollouts, sentinel and
+			// generation behind. Before the private-stage and generation roots
+			// were checked, this created a new lock and then failed the seal
+			// with a nonce sentinel identity mismatch, leaving that lock behind.
+			name: "previous install whose lock, genesis record and current were removed",
+			setup: func(t *testing.T, cfg Config, opts catalogBootstrapOptions) {
+				if _, err := runCatalogGenesisBootstrapUnderWriterLock(cfg, opts); err != nil {
+					t.Fatal(err)
+				}
+				for _, path := range []string{
+					genesisWriterLockPath(cfg),
+					filepath.Join(cfg.CatalogMigrationStateDir, catalogGenesisStateName),
+					filepath.Join(cfg.CatalogGenerationRoot, appCatalogCurrentLink),
+				} {
+					if err := os.Remove(path); err != nil {
+						t.Fatal(err)
+					}
+				}
+			},
+			want: "writer.lock is missing but private_stage_dir already holds Store state (" + publishNonceLedgerDirName + ", rollouts)",
 		},
 		{
 			name: "migration record without a lock",
@@ -156,7 +228,28 @@ func TestGenesisRefusesToCreateWriterLockBesideExistingState(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			want: "catalog_migration_state_dir already holds Store state (" + catalogMigrationStateName + ")",
+			want: "writer.lock is missing but catalog_migration_state_dir already holds Store state (" + catalogMigrationStateName + ")",
+		},
+		{
+			name: "nonce ledger without a lock",
+			setup: func(t *testing.T, cfg Config, _ catalogBootstrapOptions) {
+				plantStoreStateEntry(t, filepath.Join(cfg.PrivateStageDir, publishNonceLedgerDirName))
+			},
+			want: "writer.lock is missing but private_stage_dir already holds Store state (" + publishNonceLedgerDirName + ")",
+		},
+		{
+			name: "rollout directory without a lock",
+			setup: func(t *testing.T, cfg Config, _ catalogBootstrapOptions) {
+				plantStoreStateEntry(t, rolloutStateDir(cfg))
+			},
+			want: "writer.lock is missing but private_stage_dir already holds Store state (rollouts)",
+		},
+		{
+			name: "control receipt ledger without a lock",
+			setup: func(t *testing.T, cfg Config, _ catalogBootstrapOptions) {
+				plantStoreStateEntry(t, filepath.Join(cfg.PrivateStageDir, controlReceiptDirName))
+			},
+			want: "writer.lock is missing but private_stage_dir already holds Store state (" + controlReceiptDirName + ")",
 		},
 		{
 			name: "current generation without a lock",
@@ -164,11 +257,61 @@ func TestGenesisRefusesToCreateWriterLockBesideExistingState(t *testing.T) {
 				if err := os.Mkdir(cfg.CatalogGenerationRoot, 0o700); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.Symlink("generation-1", filepath.Join(cfg.CatalogGenerationRoot, appCatalogCurrentLink)); err != nil {
+				if err := os.Symlink(generationID, filepath.Join(cfg.CatalogGenerationRoot, appCatalogCurrentLink)); err != nil {
 					t.Fatal(err)
 				}
 			},
-			want: "catalog_generation_root already has a current generation",
+			want: "writer.lock is missing but catalog_generation_root already holds Store state (" + appCatalogCurrentLink + ")",
+		},
+		{
+			name: "non-current generation without a lock",
+			setup: func(t *testing.T, cfg Config, _ catalogBootstrapOptions) {
+				plantStoreStateEntry(t, filepath.Join(cfg.CatalogGenerationRoot, generationID))
+			},
+			want: "writer.lock is missing but catalog_generation_root already holds Store state (" + generationID + ")",
+		},
+		{
+			name: "nonce sentinel without a lock",
+			setup: func(t *testing.T, cfg Config, _ catalogBootstrapOptions) {
+				if err := os.Mkdir(cfg.CatalogGenerationRoot, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(cfg.CatalogGenerationRoot, catalogNonceSentinelName), []byte("{}"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "writer.lock is missing but catalog_generation_root already holds Store state (" + catalogNonceSentinelName + ")",
+		},
+		{
+			name: "generation root reached through a symlink",
+			setup: func(t *testing.T, cfg Config, _ catalogBootstrapOptions) {
+				target := cfg.CatalogGenerationRoot + "-real"
+				if err := os.Mkdir(target, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, cfg.CatalogGenerationRoot); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "inspect catalog_generation_root as a real directory",
+		},
+		{
+			name: "private-stage root the seal would refuse",
+			setup: func(t *testing.T, cfg Config, _ catalogBootstrapOptions) {
+				if err := os.Chmod(cfg.PrivateStageDir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "private_stage_dir: unsafe directory mode",
+		},
+		{
+			name: "a large root is named in bounded form",
+			setup: func(t *testing.T, cfg Config, _ catalogBootstrapOptions) {
+				for i := 0; i < maxListedStoreStateEntries+3; i++ {
+					plantStoreStateEntry(t, filepath.Join(cfg.PrivateStageDir, fmt.Sprintf("member-%02d", i)))
+				}
+			},
+			want: "private_stage_dir already holds Store state (member-",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -176,6 +319,7 @@ func TestGenesisRefusesToCreateWriterLockBesideExistingState(t *testing.T) {
 			tc.setup(t, cfg, opts)
 			path := genesisWriterLockPath(cfg)
 			requireWriterLockAbsent(t, path)
+			before := storeRootsSnapshot(t, cfg)
 			created, err := runCatalogGenesisBootstrapUnderWriterLock(cfg, opts)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("genesis did not refuse the ambiguous target with %q: %v", tc.want, err)
@@ -184,6 +328,112 @@ func TestGenesisRefusesToCreateWriterLockBesideExistingState(t *testing.T) {
 				t.Fatal("genesis reported creating a lock over ambiguous state")
 			}
 			requireWriterLockAbsent(t, path)
+			if after := storeRootsSnapshot(t, cfg); after != before {
+				t.Fatalf("refused genesis changed the Store roots:\nbefore:\n%s\nafter:\n%s", before, after)
+			}
+			if tc.name == "a large root is named in bounded form" {
+				if !strings.Contains(err.Error(), ", ...)") || strings.Count(err.Error(), "member-") != maxListedStoreStateEntries {
+					t.Fatalf("refusal is not bounded to %d named members: %v", maxListedStoreStateEntries, err)
+				}
+			}
+		})
+	}
+}
+
+// The deployer creates the private-stage and catalog roots as empty mode-0700
+// directories before the first install (DEPLOYMENT-CONTRACT item 5). An empty
+// pre-created generation root is the virgin shape, not Store state, so genesis
+// creates the lock and commits on it exactly as when the root is absent.
+func TestGenesisCreatesWriterLockBesideEmptyDeployerRoots(t *testing.T) {
+	cfg, opts := newGenesisFixture(t)
+	if err := os.Mkdir(cfg.CatalogGenerationRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	created, err := runCatalogGenesisBootstrapUnderWriterLock(cfg, opts)
+	if err != nil {
+		t.Fatalf("genesis over empty deployer-created roots: %v", err)
+	}
+	if !created {
+		t.Fatal("genesis over empty deployer-created roots did not create writer.lock")
+	}
+	requireCreatedWriterLock(t, genesisWriterLockPath(cfg), opts.expectedUID, opts.expectedGID)
+	state, err := readCatalogGenesisState(filepath.Join(cfg.CatalogMigrationStateDir, catalogGenesisStateName), opts.expectedUID)
+	if err != nil || state.State != "committed" {
+		t.Fatalf("genesis did not commit over empty deployer-created roots: %+v %v", state, err)
+	}
+}
+
+// The seal runs while genesis holds writer.lock, whether genesis created the
+// lock or resumed an existing one. The seal's own nonce-ledger sync and clock
+// are probed: at each call an independent open of the lock must be refused
+// with EWOULDBLOCK while the genesis record still reads "initializing", and
+// once genesis returns the lock is free again.
+func TestGenesisSealRunsWhileHoldingWriterLock(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		existing    bool
+		wantCreated bool
+	}{
+		{name: "created lock", wantCreated: true},
+		{name: "resumed lock", existing: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, opts := newGenesisFixture(t)
+			path := genesisWriterLockPath(cfg)
+			if tc.existing {
+				if err := os.WriteFile(path, nil, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			statePath := filepath.Join(cfg.CatalogMigrationStateDir, catalogGenesisStateName)
+			probed := map[string]int{}
+			probe := func(point string) {
+				if lock, err := acquireTestWriterLock(path); err == nil {
+					_ = lock.Close()
+					t.Errorf("%s: writer.lock was free while genesis was sealing", point)
+					return
+				} else if !errors.Is(err, syscall.EWOULDBLOCK) {
+					t.Errorf("%s: the probe was refused for a reason other than a held lock: %v", point, err)
+					return
+				}
+				state, err := readCatalogGenesisState(statePath, opts.expectedUID)
+				if err != nil || state.State != "initializing" {
+					t.Errorf("%s: probe did not run inside the seal: %+v %v", point, state, err)
+					return
+				}
+				probed[point]++
+			}
+			syncDir, now := opts.nonce.SyncDir, opts.nonce.Now
+			opts.nonce.SyncDir = func(dir string) error {
+				probe("nonce ledger sync")
+				return syncDir(dir)
+			}
+			opts.nonce.Now = func() time.Time {
+				probe("seal clock")
+				return now()
+			}
+
+			created, err := runCatalogGenesisBootstrapUnderWriterLock(cfg, opts)
+			if err != nil {
+				t.Fatalf("genesis: %v", err)
+			}
+			if created != tc.wantCreated {
+				t.Fatalf("genesis reported created=%v, want %v", created, tc.wantCreated)
+			}
+			for _, point := range []string{"nonce ledger sync", "seal clock"} {
+				if probed[point] == 0 {
+					t.Fatalf("the seal never reached the %q probe; it proves nothing about the lock: %v", point, probed)
+				}
+			}
+			state, err := readCatalogGenesisState(statePath, opts.expectedUID)
+			if err != nil || state.State != "committed" {
+				t.Fatalf("genesis did not commit: %+v %v", state, err)
+			}
+			released, err := acquireTestWriterLock(path)
+			if err != nil {
+				t.Fatalf("genesis did not release writer.lock on return: %v", err)
+			}
+			_ = released.Close()
 		})
 	}
 }

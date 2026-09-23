@@ -38,6 +38,7 @@ func newGenesisFixture(t *testing.T) (Config, catalogBootstrapOptions) {
 		CatalogMigrationStateDir: filepath.Join(root, "migrations"),
 		ReleaseSquadsAuthority:   ReleaseSquadsAuthority{Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority},
 	}
+	configureGenesisFixtureForBuild(&cfg, root)
 	cleanupImmutableCatalog(t, cfg.CatalogGenerationRoot)
 	for _, dir := range []string{cfg.DistDir, cfg.PrivateStageDir, cfg.CatalogMigrationStateDir} {
 		if err := os.Mkdir(dir, 0o700); err != nil {

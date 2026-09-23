@@ -89,17 +89,18 @@ paths. Before enabling the unit it must install or create:
    running ELF hash must match an Active `SidecarIdentityEntry` before startup.
 4. TLS files, including the certificate whose DER hash is pinned by the active
    sidecar identity.
-5. Four disjoint roots named in the config. The migration root is root-owned
-   mode `0700` and, on a virgin target, empty. The explicit
-   `genesis-bootstrap` is the one first-install creator of its root-owned
-   mode-`0600` `writer.lock`: it creates the lock with an exclusive create
-   only while the migration root is empty and no current catalog generation
-   exists, acquires an existing valid lock on a resumed run, and seals the
-   governed catalog bootstrap record under it. It refuses, and never replaces,
-   an invalid lock, a lock another writer holds, or a missing lock beside
-   existing Store state. The deployer never hand-creates, copies or deletes
-   the lock, and server startup never creates it. The private and catalog
-   roots are mode `0700`, root-owned.
+5. Four disjoint roots named in the config. `catalog_migration_state_dir`
+   and `private_stage_dir` are root-owned mode `0700` and, on a virgin
+   target, empty; `catalog_generation_root` is root-owned mode `0700` and
+   empty, or absent. The explicit `genesis-bootstrap` is the one
+   first-install creator of the migration root's root-owned mode-`0600`
+   `writer.lock`: it creates the lock with an exclusive create only while
+   those three roots hold no Store state, acquires an existing valid lock on
+   a resumed run, and seals the governed catalog bootstrap record while
+   holding it. It refuses, and never replaces, an invalid lock, a lock another
+   writer holds, or a missing lock beside any existing entry in those roots.
+   The deployer never hand-creates, copies or deletes the lock, and server
+   startup never creates it.
 6. An independent root-owned writable `catalog_repo_root` and a
    genesis-compatible `dist-publish` snapshot before startup. The workspace is
    not the immutable Store source checkout and may be empty on a virgin target:

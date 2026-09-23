@@ -45,6 +45,11 @@ var enrollmentExemptStoreSubcommands = map[string]string{
 	"estate-enroll":                       "the one writer of the initial enrollment state the gate verifies",
 	"estate-enrollment-successor-request": "verifies the held enrollment itself and emits its successor candidate",
 	"estate-enroll-successor":             "verifies the held enrollment itself and replaces it with its successor",
+	"store-state-verify":                  "offline check of a store-state stream against an explicit operator key; derives no operator",
+	"store-state-import":                  "restores a stream signed by an explicit operator key onto empty roots; derives no operator, and the restored Store passes this gate at startup",
+	"store-recovery-keygen":               "generates a holder or restore session key; reads no Store state",
+	"store-identity-escrow-reseal":        "a holder's offline step on its own escrowed shard; reads no Store state",
+	"store-identity-restore":              "rebuilds the shards on a replacement host and proves them against an explicit operator key; acts with no release authority, and the restored Store passes this gate at startup",
 }
 
 // enrollmentGatedEntryPoint is one process entry point that acts with this
@@ -67,6 +72,8 @@ func enrollmentGatedEntryPoints(indexSHA256, cohortDir string) []enrollmentGated
 		{name: "catalog-reconcile-retirement", args: []string{"-dry-run"}, after: "open existing writer.lock"},
 		{name: "catalog-reconcile-unserved", args: []string{"-app-id", "gate-probe", "-reason", "enrollment gate probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-reconcile-unserved writer exclusion: open existing writer.lock"},
 		{name: "catalog-rehydrate", args: []string{"-cohort-dir", cohortDir, "-expected-app-count", "1", "-expected-rollout-count", "1", "-dry-run"}, after: "catalog-rehydrate writer exclusion: open existing writer.lock"},
+		{name: "store-state-export", args: []string{"-out", filepath.Join(filepath.Dir(cohortDir), "store-state.tar")}, after: "store-state-export: " + refusalStoreStateWriterExclusion + ":open existing writer.lock"},
+		{name: "store-identity-escrow-seal", args: []string{"-recipients", filepath.Join(filepath.Dir(cohortDir), "absent-recipients.json"), "-out-dir", filepath.Join(filepath.Dir(cohortDir), "escrow")}, after: "store-identity-escrow-seal: read recipients"},
 	}
 }
 

@@ -588,6 +588,82 @@ yet validate against a new estate's Store.
 Pending (post-C2.3): reseller root-mirror worker hardening, sealed-v3
 submit-client (C3).
 
+### Backup subjects: Store state and Store identity
+
+A root Store has two backup subjects (item M25 of the recovery kit spec).
+Both are Store-side primitives in `internal/storerecovery`; the deployer
+carries their output and decides where it goes. None of these commands names a
+backup store, an escrow holder or a custody location: those are explicit
+inputs, and the owners have not chosen them yet (decision D-2).
+
+**Store state** is one `store-state-tar-v1` stream of the six roots the
+configuration names: `dist_dir`, `private_stage_dir`,
+`catalog_generation_root`, `catalog_migration_state_dir`, `catalog_repo_root`
+and `estate_enrollment_state_path`. Every other path in the configuration is
+classified as secret or host-bound (shards, TLS and control-listener keys and
+certificates, the listing signer socket), must lie outside those roots, and is
+never exported; `TestStoreStateClassifiesEveryConfigPath` fails by field name
+when a new path field has no class.
+
+- The stream is a PAX tar whose first member, `MANIFEST.json`, lists every
+  member (path, type, permission bits, size, modification time, SHA-256, link
+  target) and is signed by the Store operator key. It names roots, never host
+  paths, and carries no time of its own, so one state gives the same bytes
+  wherever it lives (`TestStoreStateTarDeterministicTwoPaths`).
+- `store-state-export -config … -out <new file>` passes the enrollment gate,
+  then takes the Store's `writer.lock`, so it refuses while the Store serves:
+  stop the Store, export, start it. Before it writes a byte it checks the state
+  the way a restore will: a committed genesis trust root (a migration record
+  is refused), the nonce sentinel, every durable rollout against the current
+  generation's signed pointers and staged bytes, and an owner-signed
+  enrollment naming this operator. It reports the stream's length and SHA-256.
+- `store-state-verify -in … -operator-key … -store-id …` checks a stream
+  offline and writes nothing.
+- `store-state-import -config … -in … -operator-key …` restores onto roots
+  that are absent (or empty directories). The manifest must be signed by the
+  operator key the caller already trusts, which is the recovery kit's
+  `rootStore.operatorKey`. Each header and file must match the manifest in
+  order. The state is extracted into sibling staging paths and checked there
+  as the export checks it, and only then moved onto the roots. The nonce
+  sentinel binds the ledger to its absolute `private_stage_dir`, so a restore
+  onto another path refuses with `store-state-ledger-path-mismatch`; the
+  profile-bound renderer always writes the same paths. The import derives no
+  operator. The restored Store passes the ordinary startup gate, and the nonce
+  ledger comes back with it, so envelopes the lost Store accepted still refuse
+  as replays (`TestStoreRestoreServesIdenticalGeneration`).
+
+**Store identity** is the three attest shards. An escrow envelope opens for
+any one of its recipients, so each shard is escrowed on its own, and no holder
+may be named for two shards (`store-identity-escrow-holder-overlap`).
+
+- `store-recovery-keygen -out <new file>` makes a holder key or a restore
+  session key (X25519, mode `0600`) and prints its `x25519:` recipient. That is
+  the recipient form the deployer's escrow uses too.
+- `store-identity-escrow-seal -config … -recipients … -out-dir <new dir>`
+  passes the enrollment gate and requires the shards on disk to derive the
+  enrolled operator. It seals each shard to that shard's recipients and writes
+  three escrow documents and a manifest. The manifest is signed by the
+  operator and carries the identity Ref, the operator and box keys, and each
+  shard's commitment, recipients and escrow digest. The recipients file is a
+  `melusina.store-identity-escrow-recipients.v1` document with `author`,
+  `hostObservation` and `release` lists.
+- `store-identity-escrow-reseal` is each holder's offline step. It opens the
+  holder's own shard, checks it against the manifest's commitment, and seals
+  it again to the replacement host's session recipient. The session recipient
+  must reach the holder over a channel the owners authenticate.
+- `store-identity-restore -config … -manifest … -session-key … -operator-key …
+  -handoff …` (once per shard) runs on the replacement host. It refuses a
+  configuration that would derive the operator under another identity Ref
+  (`store-identity-restore-config-mismatch`). A binding rotation that keeps
+  `operator_key_version` and `operator_domain` is accepted. The command
+  requires every commitment, derives the operator and box keys and compares
+  them with the manifest, writes `boot_identity.shards_dir`, then destroys the
+  session key.
+
+A replacement host still needs a new `SidecarIdentityEntry` binding and an
+owner-signed enrollment successor for its own certificate and executable (see
+day two above); the restored operator key is unchanged.
+
 ## Build & run
 ```sh
 go build -o bin/melusina-store-sidecar .

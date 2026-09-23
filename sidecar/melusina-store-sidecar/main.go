@@ -134,6 +134,37 @@ func main() {
 		runCatalogRehydrateSubcommand(os.Args[2:])
 		return
 	}
+	// Store state and identity as backup subjects (store_state_backup.go,
+	// store_identity_escrow.go). The export and the escrow seal act with the
+	// operator key and pass the enrollment gate; the others derive no operator.
+	if len(os.Args) > 1 && os.Args[1] == "store-state-export" {
+		runStoreStateExportSubcommand(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "store-state-verify" {
+		runStoreStateVerifySubcommand(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "store-state-import" {
+		runStoreStateImportSubcommand(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "store-identity-escrow-seal" {
+		runStoreIdentityEscrowSealSubcommand(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "store-recovery-keygen" {
+		runStoreRecoveryKeygenSubcommand(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "store-identity-escrow-reseal" {
+		runStoreIdentityEscrowResealSubcommand(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "store-identity-restore" {
+		runStoreIdentityRestoreSubcommand(os.Args[2:])
+		return
+	}
 
 	configPath := flag.String("config", "store.config.json", "path to operator config (JSON; store.yaml support pending dep wiring)")
 	listenOverride := flag.String("listen", "", "override listen_addr from config")

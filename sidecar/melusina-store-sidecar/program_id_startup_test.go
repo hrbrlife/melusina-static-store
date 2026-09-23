@@ -95,9 +95,12 @@ func TestStoreStartupRefusesConfigWithoutLicenseRegistryProgramID(t *testing.T) 
 // chain state and therefore pin no registry. Each is an offline document
 // check or renderer; a registry read from one would panic by name.
 var registryFreeStoreSubcommands = map[string]string{
-	"estate-profile-check":       "offline profile/config comparison",
-	"estate-store-config-render": "offline profile-bound config renderer",
-	"estate-profile-review":      "offline signed-profile review",
+	"estate-profile-check":         "offline profile/config comparison",
+	"estate-store-config-render":   "offline profile-bound config renderer",
+	"estate-profile-review":        "offline signed-profile review",
+	"store-state-verify":           "offline store-state stream verification",
+	"store-recovery-keygen":        "offline recovery key generation",
+	"store-identity-escrow-reseal": "a holder's offline reseal of one escrowed shard",
 }
 
 // storeMainSubcommands derives the dispatched subcommands from main() itself,
@@ -211,6 +214,10 @@ func TestEveryStoreEntryPointPinsItsConfiguredLicenseRegistry(t *testing.T) {
 		{name: "catalog-reconcile-retirement", args: []string{"-config", configPath, "-dry-run"}, after: "catalog-reconcile-retirement: estate enrollment: store-estate-profile-not-enrolled"},
 		{name: "catalog-reconcile-unserved", args: []string{"-config", configPath, "-app-id", "pin-probe", "-reason", "entry-point pin probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-reconcile-unserved: estate enrollment: store-estate-profile-not-enrolled"},
 		{name: "catalog-rehydrate", args: []string{"-config", configPath, "-cohort-dir", cohortDir, "-expected-app-count", "1", "-expected-rollout-count", "1", "-dry-run"}, after: "catalog-rehydrate: estate enrollment: store-estate-profile-not-enrolled"},
+		{name: "store-state-export", args: []string{"-config", configPath, "-out", filepath.Join(dir, "store-state.tar")}, after: "store-state-export: estate enrollment: store-estate-profile-not-enrolled"},
+		{name: "store-state-import", args: []string{"-config", configPath, "-in", filepath.Join(dir, "absent-store-state.tar"), "-operator-key", configured}, after: "store-state-import: open " + filepath.Join(dir, "absent-store-state.tar")},
+		{name: "store-identity-escrow-seal", args: []string{"-config", configPath, "-recipients", filepath.Join(dir, "absent-recipients.json"), "-out-dir", filepath.Join(dir, "escrow")}, after: "store-identity-escrow-seal: estate enrollment: store-estate-profile-not-enrolled"},
+		{name: "store-identity-restore", args: []string{"-config", configPath, "-manifest", filepath.Join(dir, "absent-manifest.json"), "-session-key", filepath.Join(dir, "absent-session.key"), "-operator-key", configured, "-handoff", filepath.Join(dir, "absent-handoff.json")}, after: "store-identity-restore: read manifest"},
 	}
 
 	// Coverage: the table and the registry-free list together are exactly the

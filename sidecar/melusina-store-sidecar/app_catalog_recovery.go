@@ -35,37 +35,8 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 	if err := s.validateRoot(); err != nil {
 		return AppCatalogSnapshot{}, err
 	}
-	rolloutAppIDs := make([]string, 0, len(rollouts))
-	for appID := range rollouts {
-		rolloutAppIDs = append(rolloutAppIDs, appID)
-	}
-	sort.Strings(rolloutAppIDs)
 	validate := func(snapshot AppCatalogSnapshot) error {
-		if err := validateSealedCatalogTree(snapshot.Root, expectedUID, expectedGID); err != nil {
-			return err
-		}
-		if err := ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
-			if err := verifyAppCatalogPointer(operatorKey, pointer); err != nil {
-				return err
-			}
-			rollout, ok := rollouts[pointer.AppID]
-			if !ok {
-				return errors.New("catalog pointer has no durable rollout")
-			}
-			if pointer.StageID != rollout.CurrentStageID ||
-				pointer.AppHash != rollout.CurrentAppHash ||
-				pointer.Version != rollout.CurrentVersion ||
-				pointer.ServingDomainHash != servingDomainHash {
-				return errors.New("catalog pointer does not match durable rollout selection")
-			}
-			return nil
-		}); err != nil {
-			return err
-		}
-		if strings.TrimSpace(stagedRoot) == "" {
-			return errors.New("app catalog recovery requires the durable private-stage root")
-		}
-		return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot, authority)
+		return verifyAppCatalogGeneration(snapshot, rollouts, operatorKey, servingDomainHash, stagedRoot, authority, expectedUID, expectedGID)
 	}
 
 	current, currentErr := s.ResolveCurrent()
@@ -105,6 +76,45 @@ func (s AppCatalogGenerationStore) RecoverCurrent(rollouts map[string]appRollout
 		currentErr = errors.New("current app catalog generation is unavailable")
 	}
 	return AppCatalogSnapshot{}, fmt.Errorf("no fully verified app catalog generation (current: %v; rejected: %s)", currentErr, strings.Join(rejected, ","))
+}
+
+// verifyAppCatalogGeneration is the complete check a generation must pass to
+// be served: a sealed tree owned as expected, every pointer signed by the
+// operator and selecting exactly its durable rollout on this serving domain,
+// and the served bytes equal to the exact staged candidates. RecoverCurrent
+// applies it to current and to every fallback; a store-state import applies
+// it to the staged state before anything reaches a root.
+func verifyAppCatalogGeneration(snapshot AppCatalogSnapshot, rollouts map[string]appRolloutState, operatorKey ed25519.PublicKey, servingDomainHash, stagedRoot string, authority configuredSquadsAuthority, expectedUID, expectedGID uint32) error {
+	rolloutAppIDs := make([]string, 0, len(rollouts))
+	for appID := range rollouts {
+		rolloutAppIDs = append(rolloutAppIDs, appID)
+	}
+	sort.Strings(rolloutAppIDs)
+	if err := validateSealedCatalogTree(snapshot.Root, expectedUID, expectedGID); err != nil {
+		return err
+	}
+	if err := ValidateAppCatalogSnapshot(snapshot, rolloutAppIDs, func(pointer AppCatalogPointer) error {
+		if err := verifyAppCatalogPointer(operatorKey, pointer); err != nil {
+			return err
+		}
+		rollout, ok := rollouts[pointer.AppID]
+		if !ok {
+			return errors.New("catalog pointer has no durable rollout")
+		}
+		if pointer.StageID != rollout.CurrentStageID ||
+			pointer.AppHash != rollout.CurrentAppHash ||
+			pointer.Version != rollout.CurrentVersion ||
+			pointer.ServingDomainHash != servingDomainHash {
+			return errors.New("catalog pointer does not match durable rollout selection")
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	if strings.TrimSpace(stagedRoot) == "" {
+		return errors.New("app catalog recovery requires the durable private-stage root")
+	}
+	return validateSnapshotBytesAgainstStaged(snapshot, rollouts, stagedRoot, authority)
 }
 
 // RebuildCurrentExcludingQuarantined creates one new immutable catalog

@@ -292,6 +292,19 @@ func main() {
 	}
 	catalogState.ui = ui
 	catalogState.listingRegistrationRequired = strings.TrimSpace(cfg.StoreAuthority) != ""
+	// An enrolled Store's /release-info reports the identity the enrollment
+	// gate above has just verified; the controller never writes its marker.
+	catalogState.enrolledReleaseInfo, err = enrolledRuntimeReleaseInfoFor(enrolledState, bootIdentity, os.Getpid())
+	if err != nil {
+		log.Fatalf("release-info: %v", err)
+	}
+	if catalogState.enrolledReleaseInfo != nil {
+		report := catalogState.enrolledReleaseInfo.report
+		log.Printf("release-info: enrollment self-report for %s at enrollment sequence %d (%s), binary %s", report.StoreID, report.EnrollmentSequence, report.EnrollmentSHA256, report.BinarySHA256)
+		if keys := runtimeMarkerKeys(os.Environ()); len(keys) != 0 {
+			log.Printf("release-info: %s: %s; /release-info refuses until the marker is removed", refusalReleaseInfoMarkerOnEnrolledStore, strings.Join(keys, ","))
+		}
+	}
 
 	// RESELLER ROOT-MIRROR worker (FEDERATED-STORE-MVP §C2.6). Active only when
 	// mirror.enabled is set in config AND a chain reader is wired (the worker

@@ -1,0 +1,29 @@
+{
+  "schema": "melusina.store-enrollment-runtime-vectors.v1",
+  "note": "The exact GET /release-info body of an enrolled Store (runtime_release_info.go storeEnrollmentRuntimeReport). Each vector's body is what the Store writes for its report. The update controller's release-info decoder refuses every body with controllerRefusal, so an enrolled Store's self-report can never be read as a controller apply. The deployer's storehost verify (gate 2) may copy this file as its shared vector; the digests are labels, not real enrollments.",
+  "controllerRefusal": "release-info has unknown field \"source\"",
+  "vectors": [
+    {
+      "name": "initial-enrollment",
+      "report": {
+        "storeId": "rehearsal-root-store",
+        "enrollmentSequence": 1,
+        "enrollmentSha256": "53e7e19bc1a1d62aacd9d8cd44c545d00c6bcb9a62d452d2f81b6799059bdaa9",
+        "binarySha256": "612ada2f266a26820b917c1e04150f328e960a2852fb67286ebbae2d92976e9e",
+        "pid": 1187
+      },
+      "body": "{\"schema\":\"melusina-store-enrollment-runtime-v1\",\"source\":\"enrollment\",\"storeId\":\"rehearsal-root-store\",\"enrollmentSequence\":1,\"enrollmentSha256\":\"53e7e19bc1a1d62aacd9d8cd44c545d00c6bcb9a62d452d2f81b6799059bdaa9\",\"binarySha256\":\"612ada2f266a26820b917c1e04150f328e960a2852fb67286ebbae2d92976e9e\",\"pid\":1187}\n"
+    },
+    {
+      "name": "successor-sequence-2",
+      "report": {
+        "storeId": "rehearsal-root-store",
+        "enrollmentSequence": 2,
+        "enrollmentSha256": "63330d1ef854e7f59a372d4423bfa713b43215b136b35fbc41a0b57a95d345ac",
+        "binarySha256": "b75c853a8c4a0dd2a6eebce20063cae947d49a66df75c47108451d5971dfac70",
+        "pid": 4242
+      },
+      "body": "{\"schema\":\"melusina-store-enrollment-runtime-v1\",\"source\":\"enrollment\",\"storeId\":\"rehearsal-root-store\",\"enrollmentSequence\":2,\"enrollmentSha256\":\"63330d1ef854e7f59a372d4423bfa713b43215b136b35fbc41a0b57a95d345ac\",\"binarySha256\":\"b75c853a8c4a0dd2a6eebce20063cae947d49a66df75c47108451d5971dfac70\",\"pid\":4242}\n"
+    }
+  ]
+}

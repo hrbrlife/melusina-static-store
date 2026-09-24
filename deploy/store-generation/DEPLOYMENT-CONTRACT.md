@@ -146,11 +146,14 @@ paths. Before enabling the unit it must install or create:
    refuses by name any recipe that is the Store by its id, unit, paths or
    commands, including the retiring template's `melusina-store-sidecar`
    entry. The bundled unit still reads
-   `EnvironmentFile=-/var/lib/melusina-store/runtime/melusina-store-sidecar.env`;
-   the controller WAL alone may write that marker, and the deployer must
-   never hand-compose a release tuple. Open: because the controller never
-   applies the Store, nothing writes that marker on a new-estate Store, so
-   the `GET /release-info` clause of gate 2 has no producer yet.
+   `EnvironmentFile=-/var/lib/melusina-store/runtime/melusina-store-sidecar.env`
+   for the retiring estate's unenrolled Store, where the controller WAL alone
+   may write that marker. On an enrolled Store nothing writes it: the
+   deployer never creates that file or hand-composes a release tuple, and
+   any `RRS_*` marker key that reaches an enrolled Store makes
+   `GET /release-info` refuse with `release-info-marker-on-enrolled-store`.
+   An enrolled Store reports its runtime identity from its enrollment
+   instead (gate 2 below).
 8. The root-owned controller binary at
    `/usr/local/lib/melusina/melusina-update-controller`, plus `config.json`
    and `component-registry.json` under `/etc/melusina/update-controller/`,
@@ -273,8 +276,12 @@ listener:
   the release-bound sidecar ELF, not the mutable snapshot;
 - `GET /update/generation.json` is the expected fail-closed `503` with the
   generation check diagnostic, because no signed DesiredGeneration exists yet;
-- `GET /release-info` is the expected fail-closed `503`, because the controller
-  has not written a runtime tuple yet.
+- `GET /release-info` is `200` with the enrollment self-report described in
+  gate 2, because the Store passed its enrollment gate before it listened,
+  and its `binarySha256` equals the install-bootstrap journal's installed
+  binary hash. The report names no generation, so it is not a release. A
+  Store that is not enrolled answers the fail-closed `503` here; the
+  estate-bootstrap build refuses to start unenrolled.
 
 This proves a virgin Store is correctly staged and serving its governed empty
 surface. It is not a launch-ready Store runtime and must never be reported as
@@ -287,9 +294,27 @@ the first signed DesiredGeneration may the following stronger gate pass:
 
 - `GET /update/generation.json` is `200`, strict JSON, and verifies under the
   locally pinned operator public key and exact `store_id`;
-- after a signed `melusina-store-sidecar` component apply, `GET /release-info`
-  is `200` and its controller-written component ID, generation ID, version,
-  and artifact hash exactly match the applied release;
+- the runtime identity clause. An enrolled Store is never a controller
+  component (item 7), so no component apply precedes this gate. Its
+  `GET /release-info` is `200` with the enrollment self-report
+  `{"schema": "melusina-store-enrollment-runtime-v1", "source": "enrollment",
+  "storeId", "enrollmentSequence", "enrollmentSha256", "binarySha256",
+  "pid"}`. The Store builds it at startup, only after its enrollment gate has
+  passed: `binarySha256` is the hash of the running executable, already
+  proven equal to the binding of the owner-signed enrollment or successor
+  whose digest is `enrollmentSha256` (the digest `estate-enroll` or
+  `estate-enroll-successor` printed), and `pid` is the answering process.
+  The clause passes only when three values agree: that `binarySha256`, the
+  install-bootstrap journal's installed tuple (version, artifact sha256 and
+  the binary hash from the provenance), and the `binarySha256` of the
+  enrollment named by `enrollmentSha256`. The report has a different schema
+  and none of the controller tuple's component, generation, version or
+  artifact fields, so the update controller's decoder refuses it;
+  `sidecar/melusina-store-sidecar/testdata/store-enrollment-runtime-v1-vectors.json`
+  holds its exact bytes. On the retiring estate's unenrolled Store, after a
+  signed `melusina-store-sidecar` component apply, `GET /release-info` is
+  `200` and its controller-written component ID, generation ID, version, and
+  artifact hash exactly match the applied release;
 - every component `bundleUrl` has the same origin as `public_base_url`, and
   is exactly `<public_base_url>/releases/<componentClass>/<artifactName>`
   (`artifactName` is the escaped `bundleUrl` basename). The release gate's
@@ -299,9 +324,13 @@ the first signed DesiredGeneration may the following stronger gate pass:
 - every referenced artifact returns `200` through the store release gate and
   hashes to the signed `sha256` with the signed byte count.
 
-The controller WAL alone writes and restores the runtime marker. A first boot
-with no marker must fail closed at `/release-info`; neither the deployer nor a
-manual restart may substitute one.
+The controller WAL alone writes and restores the runtime marker, and only on
+an unenrolled Store. A first boot of an unenrolled Store with no marker must
+fail closed at `/release-info`; neither the deployer nor a manual restart may
+substitute one. An enrolled Store never reports a marker: a marker key present
+refuses `/release-info` as `release-info-marker-on-enrolled-store` until it is
+removed. So gate 2's runtime clause cannot pass on a Store that shows neither
+an enrollment self-report nor, unenrolled, a controller-written tuple.
 
 ## Rollback
 

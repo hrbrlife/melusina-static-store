@@ -366,12 +366,15 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 		})
 	})
 	// Runtime identity is intentionally a separate exact route, ahead of the
-	// static read surface.  The external update controller only accepts a
-	// post-restart release after this handler names the tuple supplied by the
-	// install-local systemd EnvironmentFile and the controller independently
-	// binds its PID to systemd+/proc.  A store without that local marker returns
-	// 503 instead of fabricating a version from its binary or catalog.
-	mux.HandleFunc("/release-info", handleRuntimeReleaseInfo)
+	// static read surface.  On an unenrolled Store the external update
+	// controller only accepts a post-restart release after this handler names
+	// the tuple supplied by the install-local systemd EnvironmentFile and the
+	// controller independently binds its PID to systemd+/proc.  Such a store
+	// without that local marker returns 503 instead of fabricating a version
+	// from its binary or catalog.  An enrolled Store is never a controller
+	// component: it reports the enrollment-bound identity startup verified,
+	// and refuses a marker by name (runtime_release_info.go).
+	mux.HandleFunc("/release-info", newRuntimeReleaseInfoHandler(runtime.enrolledReleaseInfo, os.Environ))
 	// Root trust discovery is an exact dynamic route, never a static fallback.
 	// Consumer tenants verify this bundle before they accept root artifacts.
 	rootTrust, err := newRootTrustBundleHandler(cfg, operator, cr)

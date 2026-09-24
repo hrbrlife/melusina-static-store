@@ -95,6 +95,10 @@ type catalogRuntime struct {
 	// making the production listener fail closed before a selector switch.
 	listingRegistrationRequired bool
 	ui                          http.Handler
+	// enrolledReleaseInfo is the enrolled Store's /release-info self-report,
+	// built by main only after deriveEnrolledBootIdentity verified the
+	// enrollment. Nil keeps the unenrolled controller-marker handler.
+	enrolledReleaseInfo *enrolledRuntimeReleaseInfo
 }
 
 type catalogBootstrapOptions struct {

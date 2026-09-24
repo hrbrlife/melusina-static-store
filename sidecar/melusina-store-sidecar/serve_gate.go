@@ -82,6 +82,10 @@ type serveGate struct {
 
 	// Test-only barrier after catalog lookup and before opening package bytes.
 	beforePackageOpen func()
+	// Test-only barrier after a package or release verdict and before its
+	// bytes are written: the point at which the published file used to be
+	// read a second time.
+	afterServeVerdict func()
 }
 
 const (
@@ -198,7 +202,9 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			missing = errors.Is(err, os.ErrNotExist)
 		}
 		if missing {
-			g.fileServer.ServeHTTP(w, r)
+			// Never hand a gated path to the static server: it applies no
+			// gate, so bytes created after this check would be served.
+			http.NotFound(w, r)
 			return
 		}
 		http.Error(w, "store serve-gate refused: check=release_provenance: no on-chain-anchored app for packageId="+base, http.StatusForbidden)
@@ -211,6 +217,12 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if g.beforePackageOpen != nil {
 		g.beforePackageOpen()
 	}
+	// Both opens refuse a final symlink and anything but a regular file: the
+	// snapshot opener walks the generation without following links, and the
+	// flat or private-candidate path uses the same no-follow opener as the
+	// promote-time served-bytes check. A retained private candidate is never
+	// allowed to fall through to a similarly named public file, and no open
+	// failure is handed to the ungated static server.
 	fp := app.spkPath
 	var f *os.File
 	var err error
@@ -220,18 +232,10 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if fp == "" {
 			fp = defaultPath
 		}
-		f, err = os.Open(fp)
+		f, _, err = openDistRegularNoFollow(fp)
 	}
 	if err != nil {
-		// A retained private candidate is never allowed to fall through to a
-		// similarly named public file. Missing private bytes fail closed.
-		if app.spkPath != "" {
-			http.NotFound(w, r)
-			return
-		}
-		// Missing/unreadable public SPK: let the request-scoped FileServer render
-		// the canonical 404 from this same immutable snapshot.
-		g.fileServer.ServeHTTP(w, r)
+		refuseGatedArtifactOpen(w, r, "store serve-gate", err)
 		return
 	}
 	defer f.Close()
@@ -240,20 +244,17 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "store serve-gate: stat error", http.StatusInternalServerError)
 		return
 	}
-	if st.IsDir() {
-		if app.spkPath != "" {
-			http.NotFound(w, r)
-			return
-		}
-		// A public directory under /packages/ is not an SPK — preserve static behavior.
-		g.fileServer.ServeHTTP(w, r)
+
+	// Recompute the on-chain AppHash (tree-hash over the SPK + the app's
+	// metadata.json) over a private snapshot of the SPK, gate on that AppHash,
+	// and serve exactly that snapshot. The published file is not read again.
+	served, err := privateServedSnapshot(f, st.Size())
+	if err != nil {
+		http.Error(w, "store serve-gate: snapshot error", http.StatusInternalServerError)
 		return
 	}
-
-	// Recompute the on-chain AppHash (tree-hash over the EXACT bytes we are about
-	// to serve + the app's metadata.json) from the same open fd (no TOCTOU), then
-	// gate on that AppHash.
-	appHash, err := apphash.Canonical(f, app.metadata)
+	defer served.Close()
+	appHash, err := apphash.Canonical(served, app.metadata)
 	if err != nil {
 		http.Error(w, "store serve-gate: hash error", http.StatusInternalServerError)
 		return
@@ -262,8 +263,11 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "store serve-gate refused: "+err.Error(), http.StatusForbidden)
 		return
 	}
+	if g.afterServeVerdict != nil {
+		g.afterServeVerdict()
+	}
 
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
+	if _, err := served.Seek(0, io.SeekStart); err != nil {
 		http.Error(w, "store serve-gate: seek error", http.StatusInternalServerError)
 		return
 	}
@@ -275,7 +279,7 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Store-AppHash", appHash)
 	w.Header().Set("X-Melusina-Runtime-Contract", app.runtimeContractStatus)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	http.ServeContent(w, r, base, st.ModTime(), f)
+	http.ServeContent(w, r, base, st.ModTime(), served)
 }
 
 // storeCatalogProjection holds both the exact stored source and its verified serving
@@ -652,11 +656,13 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 		return
 	}
 
+	// The same no-follow, regular-file-only open the promote-time served-bytes
+	// check uses. A missing artifact is the canonical 404; nothing on this path
+	// is handed to the ungated static server.
 	fp := filepath.Join(g.distDir, "releases", class, name)
-	f, err := os.Open(fp)
+	f, _, err := openDistRegularNoFollow(fp)
 	if err != nil {
-		// Missing/unreadable artifact: let the FileServer render the canonical 404.
-		g.fileServer.ServeHTTP(w, r)
+		refuseGatedArtifactOpen(w, r, "store release-gate", err)
 		return
 	}
 	defer f.Close()
@@ -665,18 +671,23 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 		http.Error(w, "store release-gate: stat error", http.StatusInternalServerError)
 		return
 	}
-	if st.IsDir() {
-		g.fileServer.ServeHTTP(w, r)
-		return
-	}
 
 	if g.cr == nil {
 		http.Error(w, "store release-gate refused: "+errServeNoChainReader.Error(), http.StatusServiceUnavailable)
 		return
 	}
 
+	// Hash a private snapshot, gate on that hash and size, and serve exactly
+	// that snapshot. The published file is not read again.
+	served, err := privateServedSnapshot(f, st.Size())
+	if err != nil {
+		http.Error(w, "store release-gate: snapshot error", http.StatusInternalServerError)
+		return
+	}
+	defer served.Close()
 	hasher := sha256.New()
-	if _, err := io.Copy(hasher, f); err != nil {
+	servedSize, err := io.Copy(hasher, served)
+	if err != nil {
 		http.Error(w, "store release-gate: hash error", http.StatusInternalServerError)
 		return
 	}
@@ -691,7 +702,7 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 		// cascade re-verifies against these bytes. Do not route sidecars through
 		// the installer gate: that makes a valid sidecar generation impossible to
 		// fetch while weakening neither authority model.
-		hashHex, err = g.gateSignedSidecarGeneration(r.Context(), class, name, fileHash, st.Size())
+		hashHex, err = g.gateSignedSidecarGeneration(r.Context(), class, name, fileHash, servedSize)
 	} else {
 		hashHex, err = g.gateInstallerRelease(r.Context(), fileHash)
 	}
@@ -703,8 +714,11 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 		http.Error(w, "store release-gate refused: "+err.Error(), code)
 		return
 	}
+	if g.afterServeVerdict != nil {
+		g.afterServeVerdict()
+	}
 
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
+	if _, err := served.Seek(0, io.SeekStart); err != nil {
 		http.Error(w, "store release-gate: seek error", http.StatusInternalServerError)
 		return
 	}
@@ -717,7 +731,7 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 		w.Header().Set("X-Store-InstallerHash", hashHex)
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
-	http.ServeContent(w, r, name, st.ModTime(), f)
+	http.ServeContent(w, r, name, st.ModTime(), served)
 }
 
 // gateSignedSidecarGeneration verifies the only sidecar download authority:

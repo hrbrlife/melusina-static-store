@@ -1339,7 +1339,13 @@ func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class stri
 	return sig, class, name, artifact, nil
 }
 
+// limitPublishBody caps a route's request body at limit. A limit above
+// maxPublicRequestBody is refused: the public listener's read limit is derived
+// from that size, so a larger upload could never arrive at the floor rate.
 func limitPublishBody(r *http.Request, limit int64) error {
+	if limit > maxPublicRequestBody {
+		return fmt.Errorf("public-body-limit-above-read-bound: route body limit %d exceeds %d, the largest body the public listener's read limit is derived from", limit, int64(maxPublicRequestBody))
+	}
 	if r.ContentLength > limit {
 		return fmt.Errorf("request body is %d bytes; limit is %d", r.ContentLength, limit)
 	}

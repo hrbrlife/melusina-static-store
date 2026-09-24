@@ -351,7 +351,7 @@ func main() {
 
 	publicHandler, controlHandler := newGovernedRouterSurfaces(cfg, operator, cr, mirror, catalogState, cfg.StoreLinkControlMTLS.configured())
 	srv := newPublicServer(cfg.ListenAddr, publicHandler)
-	log.Printf("public listener limits: write %s (the largest artifact at %d bytes/s, plus %s), idle %s, read-header %s", srv.WriteTimeout, publicTransferFloorBytesPerSecond, publicTransferSlack, srv.IdleTimeout, srv.ReadHeaderTimeout)
+	log.Printf("public listener limits: read %s (the largest request body at %d bytes/s, plus %s), write %s (the largest artifact at the same rate, plus %s), idle %s, read-header %s", srv.ReadTimeout, publicTransferFloorBytesPerSecond, publicTransferSlack/2, srv.WriteTimeout, publicTransferSlack, srv.IdleTimeout, srv.ReadHeaderTimeout)
 	// The served certificate is re-read while the Store runs; a renewed pair
 	// replaces it only after the checks in served_tls.go pass. It is loaded
 	// with the same checks here, so a bad pair stops start-up by name.

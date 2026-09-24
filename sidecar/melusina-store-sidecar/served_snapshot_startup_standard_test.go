@@ -235,7 +235,8 @@ func TestStoreStartupCreatesThePrivateSnapshotDir(t *testing.T) {
 	}
 	for _, want := range []string{
 		"served snapshots: " + snapshots + " (created=true, mode 0700, disk-backed)",
-		"public listener limits: write 18m4s",
+		"public listener limits: read 17m34s",
+		"write 18m4s",
 		"idle 2m0s",
 	} {
 		if !strings.Contains(output.String(), want) {

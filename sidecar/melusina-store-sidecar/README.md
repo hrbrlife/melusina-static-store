@@ -55,7 +55,9 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   ceiling is copied: either refusal is a `503` naming
   `check=served_snapshot`. The public listener's write limit (18 min 4 s: 512
   MiB at 512 KiB/s, plus 60 s) and each download's own size-proportional
-  deadline release the copy held for a client that stops reading
+  deadline release the copy held for a client that stops reading. Its read
+  limit (17 min 34 s: 512 MiB at 512 KiB/s, plus 30 s) cuts off a client that
+  trickles a request body; the write limit bounds only the response
   (`served_snapshot.go`, `public_listener.go`; `deploy/store-generation/DEPLOYMENT-CONTRACT.md`
   "Served snapshots and public listener limits").
 - **WRITE** (gated; the sidecar is the SINGLE WRITER): while

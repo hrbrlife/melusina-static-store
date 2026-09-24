@@ -320,18 +320,39 @@ many hosts.
   limit; nothing larger is ever published) is refused
   `served-snapshot-artifact-too-large`, and a full disk
   `served-snapshot-disk-full`.
-- The public listener's limits come from the same 512 MiB and a floor rate
-  of 512 KiB/s (4 Mbit/s):
-  - a write timeout of 18 min 4 s, the largest artifact at the floor rate
-    plus 60 s. Go counts it from the end of a request's headers, so it also
-    bounds a publication's upload and handling;
+- The public listener's limits come from the same 512 MiB, which is also
+  the largest request body any route accepts, and a floor rate of 512 KiB/s
+  (4 Mbit/s):
+  - a read timeout of 17 min 34 s: the largest body at the floor rate plus
+    30 s. Go counts it from when it starts reading a request, and it bounds
+    reading the headers and the body. A client that trickles an upload, to
+    `/publish/installer` or any other route, is cut off when it passes: the
+    route's next read of the body fails and the upload is refused (a JSON
+    upload to `/publish/installer` gets `400 check=request: read body: ...
+    i/o timeout`). Once a body has been read in full, the read timeout no
+    longer applies to that request (Go clears the read deadline; tested over
+    HTTP/1.1), so it never cuts short a request's handling or a download.
+    The limit is listener-wide, not per route: a trickled body to a route
+    with a small body limit is held until the same 17 min 34 s;
+  - a write timeout of 18 min 4 s: the largest artifact at the floor rate
+    plus 60 s. Go counts it from the end of a request's headers, and it
+    bounds writing the response, not reading the body. It passes at least
+    30 s after the read timeout, so an upload cut off at the read timeout is
+    still answered, and one whose body arrived in time still has that long
+    to be handled;
   - an idle limit of 2 minutes on a keep-alive connection;
   - the existing 10-second limit on reading request headers.
+  A publication's upload must therefore arrive within 17 min 34 s of the
+  request starting, and its answer must be written within 18 min 4 s of its
+  headers ending. No route accepts a body limit above 512 MiB
+  (`public-body-limit-above-read-bound`), so the largest accepted upload can
+  always arrive at the floor rate.
   Each gated download narrows its own write deadline to its artifact's size
   at the floor rate plus 60 s. A client that stops reading releases its copy
   about a minute after the response began for a small artifact, and at most
   18 min 4 s after for the largest. A client slower than the floor rate
-  cannot complete a download. The Store Link control listener is unchanged.
+  cannot complete a download or an upload of the largest size. The Store
+  Link control listener is unchanged.
 - The bundled unit is unchanged: `ReadWritePaths=/var/lib/melusina-store`
   already covers the directory, and
   `TestBundledStoreUnitNamespacePathsExistAtFirstStart` checks the unit

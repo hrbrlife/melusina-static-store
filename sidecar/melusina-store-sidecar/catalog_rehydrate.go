@@ -220,7 +220,7 @@ func runCatalogRehydrateSubcommand(args []string) {
 		now:         time.Now,
 		policies:    policies,
 		verify: func(ctx context.Context, artifact governedCohortArtifact) error {
-			return VerifyServeHash(ctx, chain, cfg, artifact.manifest.AppHash, mustReleaseJSON(artifact.release))
+			return VerifyServeHash(ctx, chain, cfg, artifact.manifest.AppHash, artifact.manifest.AppID, mustReleaseJSON(artifact.release))
 		},
 	})
 	if err != nil {

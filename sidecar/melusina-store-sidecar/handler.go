@@ -572,16 +572,18 @@ func (s *publishService) handleAppStage(w http.ResponseWriter, r *http.Request, 
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
-	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(preflight.release.MasterNftMint))
-	if err != nil {
+	if _, err := primitives.PubkeyFromBase58(strings.TrimSpace(preflight.release.MasterNftMint)); err != nil {
 		http.Error(w, "check=release_entry: bad release.masterNftMint: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := verifyNotBlacklisted(r.Context(), s.cr, masterMint, "app"); err != nil {
+	// No ReleaseEntry exists yet for a private stage, so the app clearance is
+	// the candidate's own appId (metadata.json, inside the staged app hash);
+	// publish and serve bind that appId to the ReleaseEntry's app_id.
+	if err := verifyAppClear(r.Context(), s.cr, metadataAppID(preflight.metadata), nil); err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
-	if err := verifyNotBlacklisted(r.Context(), s.cr, licenseMint, "license"); err != nil {
+	if err := verifyLicenseClear(r.Context(), s.cr, licenseMint); err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}

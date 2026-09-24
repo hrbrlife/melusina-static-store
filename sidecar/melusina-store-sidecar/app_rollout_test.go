@@ -82,7 +82,7 @@ func makeRolloutFixture(t *testing.T, masterMint, appID, version, label string, 
 		release:   release,
 		rel:       rel,
 		packageID: packageID,
-		appIDRaw:  sha256.Sum256([]byte("rollout-app-id::" + appID)),
+		appIDRaw:  sha256.Sum256([]byte(appID)), // ReleaseEntry.app_id: SHA-256 of the appId text
 		relPDA:    releasePDA.Base58(),
 	}
 }
@@ -438,8 +438,10 @@ func TestServeGate_PreviousReleaseRequiresWindowAndActiveChainEntry(t *testing.T
 	cfg.AppRollbackWindowSeconds = 300
 	cfg.ServeVerifyTTLSeconds = -1
 	master := randPubkeyB58(t)
-	old := makeRolloutFixture(t, master, "rollout-serve-app", "1.0.0", "old", now.Add(-time.Hour))
-	current := makeRolloutFixture(t, master, "rollout-serve-app", "2.0.0", "current", now)
+	// The gate reads the app's clearance, keyed by its decoded Sandstorm appId.
+	rolloutAppID := testAppIDText("rollout-serve-app")
+	old := makeRolloutFixture(t, master, rolloutAppID, "1.0.0", "old", now.Add(-time.Hour))
+	current := makeRolloutFixture(t, master, rolloutAppID, "2.0.0", "current", now)
 	writeRolloutDist(t, cfg, old)
 	if err := persistStagedApp(cfg.PrivateStageDir, current.manifest, current.spk, current.metadata, current.release); err != nil {
 		t.Fatal(err)
@@ -468,6 +470,11 @@ func TestServeGate_PreviousReleaseRequiresWindowAndActiveChainEntry(t *testing.T
 		registeredAt: old.rel.SignedAtUnix,
 	}
 	pinRolloutListingActive(t, m, cfg, old)
+	rolloutAppKey, err := decodeSandstormAppIDKey(rolloutAppID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pinBlacklistStatus(m, blacklistTargetApp, rolloutAppKey, blacklistStatusClear)
 	gate := newServeGate(cfg, m, http.FileServer(http.Dir(cfg.DistDir)))
 	clock := now.Add(time.Minute)
 	gate.now = func() time.Time { return clock }

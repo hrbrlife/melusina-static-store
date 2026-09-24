@@ -1,0 +1,4 @@
+# Every file here is compared byte for byte with a git object id. Line-ending
+# conversion on checkout would change those bytes.
+blacklist-clearance-vectors.json -text
+git-objects/* -text -diff

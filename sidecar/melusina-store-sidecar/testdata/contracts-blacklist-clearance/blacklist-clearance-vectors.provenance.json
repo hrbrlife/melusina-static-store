@@ -1,0 +1,24 @@
+{
+  "schema": "melusina.store.vendored-vector-provenance.v1",
+  "comment": [
+    "blacklist-clearance-vectors.json in this directory is a byte-for-byte copy of the contracts repository's",
+    "cross-language vector for the explicit blacklist Clear records (scripts/estate/testdata/",
+    "gen_blacklist_clearance_vectors.mjs). Do not edit the copy. To take a newer contracts vector, copy the file from",
+    "a newer contracts commit on main, update every field below from that commit, and replace git-objects/ with that",
+    "commit's objects:",
+    "  git -C <contracts> cat-file commit <commit> > git-objects/<commit>.commit",
+    "  git -C <contracts> cat-file tree <id> > git-objects/<id>.tree, for <commit>^{tree}, <commit>:scripts,",
+    "  <commit>:scripts/estate and <commit>:scripts/estate/testdata.",
+    "blacklist_status_test.go checks on every run, without a contracts clone, that the copy's sha256 and git blob id",
+    "are the ones recorded here and that the recorded commit holds that blob at sourcePath, then derives every",
+    "target's clearance address with the Store's own code. With MELUSINA_CONTRACTS_GIT_DIR (scripts/run-tests.sh) it",
+    "also checks that sourceCommit is on the contracts main line; a release or CI run fails without one."
+  ],
+  "file": "blacklist-clearance-vectors.json",
+  "sourceRepository": "https://github.com/melusina-os/melusina-os-smartcontract",
+  "sourceCommit": "b7414103afe3bd4ab9e1af82b06ac213df3bb2b0",
+  "sourcePath": "scripts/estate/testdata/blacklist-clearance-vectors.json",
+  "gitBlobSha1": "0ac81ca79c8444f2027c9f5111a4c4dbc031549d",
+  "sha256": "dc742dc82046e13dc7088617fac458dcf00eab3141341870fd1be64eaf520a01",
+  "bytes": 1946
+}

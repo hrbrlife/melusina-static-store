@@ -161,12 +161,12 @@ func (c *rpcFailoverChainReader) FetchStoreOperatorAuthz(ctx context.Context, ad
 	return status, authority, tierMask, isRoot, domainHash, err
 }
 
-func (c *rpcFailoverChainReader) FetchBlacklistEntry(ctx context.Context, addr string) (present bool, entryType verify.BlacklistType, err error) {
+func (c *rpcFailoverChainReader) FetchBlacklistStatus(ctx context.Context, addr string) (entry blacklistStatusEntry, err error) {
 	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
-		present, entryType, err = reader.FetchBlacklistEntry(ctx, addr)
+		entry, err = reader.FetchBlacklistStatus(ctx, addr)
 		return err
 	})
-	return present, entryType, err
+	return entry, err
 }
 
 func (c *rpcFailoverChainReader) FetchInstallerReleaseEntryMeta(ctx context.Context, addr string) (meta installerReleaseMeta, err error) {

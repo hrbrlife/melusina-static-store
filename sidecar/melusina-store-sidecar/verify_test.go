@@ -39,12 +39,12 @@ func TestVerifyServeHash_LegacyStoreSkipsListingUntilAuthorityConfigured(t *test
 	delete(m.storeListing, f.listingPDA)
 
 	cfg.StoreAuthority = ""
-	if err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.rel); err != nil {
+	if err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.appIDText, f.rel); err != nil {
 		t.Fatalf("legacy release gate rejected before listing bootstrap: %v", err)
 	}
 
 	cfg.StoreAuthority = configuredAuthority
-	if err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.rel); err == nil || !strings.Contains(err.Error(), "check=store_release_listing") {
+	if err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.appIDText, f.rel); err == nil || !strings.Contains(err.Error(), "check=store_release_listing") {
 		t.Fatalf("explicit listing policy accepted missing listing: %v", err)
 	}
 }
@@ -90,14 +90,14 @@ func TestVerifyServeHash_QuorumClaimRulesInEveryBuild(t *testing.T) {
 	t.Run("partial_claim_is_checked_in_full", func(t *testing.T) {
 		fixture, reader := newQuorumClaimFixture(t, cfg, operatorPub)
 		fixture.rel.QuorumPolicy = QuorumPolicy{Threshold: cfg.ReleaseSquadsAuthority.Threshold}
-		err := VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.rel)
+		err := VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.appIDText, fixture.rel)
 		if err == nil || errors.Is(err, errReleaseQuorumClaimAbsent) || !strings.Contains(err.Error(), "check=publisher_squads_authority: release.quorumPolicy.multisigPda is invalid") {
 			t.Fatalf("partial quorum claim at serve time = %v, want the multisig refusal", err)
 		}
 
 		fixture, reader = newQuorumClaimFixture(t, cfg, operatorPub)
 		fixture.rel.QuorumPolicy.Threshold--
-		err = VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.rel)
+		err = VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.appIDText, fixture.rel)
 		if err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority: release quorumPolicy") {
 			t.Fatalf("explicit quorum threshold override at serve time = %v, want the quorum refusal", err)
 		}
@@ -107,7 +107,7 @@ func TestVerifyServeHash_QuorumClaimRulesInEveryBuild(t *testing.T) {
 		fixture, reader := newQuorumClaimFixture(t, cfg, operatorPub)
 		fixture.rel.QuorumPolicy = QuorumPolicy{}
 		fixture.rel.LicenseSquadsVault = randPubkeyB58(t)
-		err := VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.rel)
+		err := VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.appIDText, fixture.rel)
 		if err == nil || errors.Is(err, errReleaseQuorumClaimAbsent) || !strings.Contains(err.Error(), "check=publisher_squads_authority: release licenseSquadsVault") {
 			t.Fatalf("absent quorum claim with a substituted release vault = %v, want the release vault refusal", err)
 		}
@@ -121,7 +121,9 @@ func TestVerifyServeHash_QuorumClaimRulesInEveryBuild(t *testing.T) {
 			name  string
 			check func() error
 		}{
-			{"serve_gate", func() error { return VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.rel) }},
+			{"serve_gate", func() error {
+				return VerifyServeHash(ctx, reader, cfg, fixture.rel.AppHash, fixture.appIDText, fixture.rel)
+			}},
 			{"cached_serve_recheck", func() error {
 				return verifyCurrentStoreReleaseListing(ctx, reader, cfg, fixture.rel.AppHash, fixture.rel)
 			}},
@@ -203,7 +205,7 @@ func TestVerifyCurrentStoreReleaseListing_RechecksSharedPublisherAuthority(t *te
 	m := newMockChainReader()
 	f.pinAccept(m, operatorSignPub32(t, op))
 	cfg.StoreAuthority = "" // isolate the cache-path publisher check from listing policy.
-	if err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.rel); err != nil {
+	if err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.appIDText, f.rel); err != nil {
 		t.Fatalf("initial serve verification: %v", err)
 	}
 	f.rel.LicenseSquadsVault = randPubkeyB58(t)
@@ -276,18 +278,32 @@ func TestVerifyPublish_Reject(t *testing.T) {
 			wantCheck: "check=store_operator_authz",
 		},
 		{
-			name: "blacklist_app_present",
+			name: "blacklist_app_blocked",
 			mutate: func(m *mockChainReader, f *publishFixture) {
-				m.blacklist[f.blAppPDA] = mockBlacklist{present: true, entryType: verify.BlacklistTypeApp}
+				pinBlacklistStatus(m, blacklistTargetApp, f.appKey, blacklistStatusBlocked)
 			},
-			wantCheck: "check=blacklist[app]",
+			wantCheck: "check=blacklist[app]: blacklisted",
 		},
 		{
-			name: "blacklist_license_present",
+			name: "blacklist_app_absent",
 			mutate: func(m *mockChainReader, f *publishFixture) {
-				m.blacklist[f.blLicPDA] = mockBlacklist{present: true, entryType: verify.BlacklistTypeLicense}
+				delete(m.rawAccounts, f.blAppPDA)
 			},
-			wantCheck: "check=blacklist[license]",
+			wantCheck: "check=blacklist[app]: clearance-absent",
+		},
+		{
+			name: "blacklist_license_blocked",
+			mutate: func(m *mockChainReader, f *publishFixture) {
+				pinBlacklistStatus(m, blacklistTargetLicense, [32]byte(f.licenseMint), blacklistStatusBlocked)
+			},
+			wantCheck: "check=blacklist[license]: blacklisted",
+		},
+		{
+			name: "blacklist_license_absent",
+			mutate: func(m *mockChainReader, f *publishFixture) {
+				delete(m.rawAccounts, f.blLicPDA)
+			},
+			wantCheck: "check=blacklist[license]: clearance-absent",
 		},
 		{
 			name: "rpc_error_release",
@@ -299,7 +315,7 @@ func TestVerifyPublish_Reject(t *testing.T) {
 		{
 			name: "rpc_error_blacklist",
 			mutate: func(m *mockChainReader, f *publishFixture) {
-				m.blacklistErr = errors.New("RPC unreachable")
+				m.clearanceErr = errors.New("RPC unreachable")
 			},
 			wantCheck: "check=blacklist",
 		},

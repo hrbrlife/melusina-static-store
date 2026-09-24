@@ -431,7 +431,7 @@ func buildListingBootstrapItems(ctx context.Context, snapshot AppCatalogSnapshot
 		if !ok {
 			return nil, fmt.Errorf("current release for %s is malformed", appID)
 		}
-		if err := VerifyServeHash(ctx, cr, cfg, rel.AppHash, rel); err != nil {
+		if err := VerifyServeHash(ctx, cr, cfg, rel.AppHash, appID, rel); err != nil {
 			return nil, fmt.Errorf("current release %s does not pass global serve verification: %w", appID, err)
 		}
 		appHash, err := hash32FromHex(rel.AppHash)

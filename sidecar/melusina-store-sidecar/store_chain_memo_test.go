@@ -101,33 +101,32 @@ func TestMemoChainReaderDoesNotMemoizeACancelledRead(t *testing.T) {
 	}
 }
 
-type countingBlacklistReader struct {
+type countingClearanceReader struct {
 	chainReader
 	calls atomic.Int32
 }
 
-func (c *countingBlacklistReader) FetchBlacklistEntry(_ context.Context, _ string) (bool, verify.BlacklistType, error) {
+func (c *countingClearanceReader) FetchBlacklistStatus(_ context.Context, addr string) (blacklistStatusEntry, error) {
 	c.calls.Add(1)
-	return false, 0, nil
+	return blacklistStatusEntry{PDA: addr, Status: blacklistStatusClear}, nil
 }
 
-// The blacklist PDA derives from the app's masterNftMint, and the estate
-// publishes every app under ONE master mint, so all 32 rows request the same
-// address — another 31 identical reads per catalog request.
-func TestMemoChainReaderCollapsesTheSharedBlacklistRead(t *testing.T) {
-	inner := &countingBlacklistReader{}
+// Two rows can share a clearance (the same app listed twice, or a licence);
+// they share one read. Rows with different clearances each read their own.
+func TestMemoChainReaderCollapsesASharedClearanceRead(t *testing.T) {
+	inner := &countingClearanceReader{}
 	memo := newMemoChainReader(inner)
 	const rows = 32
-	const addr = "BlacklistPDAForTheOneMasterMint1111111111111"
+	const addr = "ClearancePDASharedByEveryRow1111111111111111"
 
 	var wg sync.WaitGroup
 	for i := 0; i < rows; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			present, _, err := memo.FetchBlacklistEntry(context.Background(), addr)
-			if err != nil || present {
-				t.Errorf("unexpected blacklist answer: present=%v err=%v", present, err)
+			entry, err := memo.FetchBlacklistStatus(context.Background(), addr)
+			if err != nil || entry.PDA != addr {
+				t.Errorf("unexpected clearance answer: %+v err=%v", entry, err)
 			}
 		}()
 	}
@@ -135,9 +134,9 @@ func TestMemoChainReaderCollapsesTheSharedBlacklistRead(t *testing.T) {
 	if got := inner.calls.Load(); got != 1 {
 		t.Fatalf("chain reads = %d for %d rows, want exactly 1", got, rows)
 	}
-	// A DIFFERENT master mint must still reach the chain: the memo keys on the
-	// address, it never assumes every app shares one mint.
-	if _, _, err := memo.FetchBlacklistEntry(context.Background(), "ADifferentMasterMintBlacklistPDA111111111111"); err != nil {
+	// A DIFFERENT clearance must still reach the chain: the memo keys on the
+	// address, it never assumes rows share one.
+	if _, err := memo.FetchBlacklistStatus(context.Background(), "ADifferentAppClearancePDA1111111111111111111"); err != nil {
 		t.Fatal(err)
 	}
 	if got := inner.calls.Load(); got != 2 {

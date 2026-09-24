@@ -111,8 +111,9 @@ func serveSetup(t *testing.T) (Config, *mockChainReader, publishFixture, *serveG
 // pinReleaseActive pins an Active ReleaseEntry pinning the on-chain tree-hash
 // app_hash — the ACCEPT state for the serve gate.
 func pinReleaseActive(m *mockChainReader, f publishFixture) {
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: verify.AttestationStatusActive}
+	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, status: verify.AttestationStatusActive}
 	f.pinServeListingActive(m)
+	f.pinClearances(m)
 }
 
 // serveWithRelease replaces the RELEASE.json a serveSetup dist holds for its
@@ -416,11 +417,21 @@ func TestServeGate_Refusals(t *testing.T) {
 			name: "blacklisted_app",
 			mutate: func(t *testing.T, cfg Config, m *mockChainReader, f publishFixture) string {
 				pinReleaseActive(m, f)
-				m.blacklist[f.blAppPDA] = mockBlacklist{present: true, entryType: verify.BlacklistTypeApp}
+				pinBlacklistStatus(m, blacklistTargetApp, f.appKey, blacklistStatusBlocked)
 				return "/packages/" + pkgBase(f)
 			},
 			wantCode: http.StatusForbidden,
-			wantBody: "check=blacklist[app]",
+			wantBody: "check=blacklist[app]: blacklisted",
+		},
+		{
+			name: "unclear_app",
+			mutate: func(t *testing.T, cfg Config, m *mockChainReader, f publishFixture) string {
+				pinReleaseActive(m, f)
+				delete(m.rawAccounts, f.blAppPDA)
+				return "/packages/" + pkgBase(f)
+			},
+			wantCode: http.StatusForbidden,
+			wantBody: "check=blacklist[app]: clearance-absent",
 		},
 		{
 			name: "rpc_error_fails_closed",
@@ -513,7 +524,7 @@ func TestServeGate_TamperedMetadataRefused(t *testing.T) {
 
 	appID := "app-" + base[:8]
 	metaPath := filepath.Join(cfg.DistDir, "signatures", appID, "metadata.json")
-	if err := os.WriteFile(metaPath, []byte(`{"appTitle":"TAMPERED","appId":"testapp0000000000000000000000000000000000000000000000"}`), 0o644); err != nil {
+	if err := os.WriteFile(metaPath, []byte(`{"appTitle":"TAMPERED","appId":"`+f.appIDText+`"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// Force an index rebuild so the tampered metadata is picked up.

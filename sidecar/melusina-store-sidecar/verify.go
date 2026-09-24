@@ -88,7 +88,10 @@ type chainReader interface {
 	// RELEASE.json — to enforce the operator tier ceiling (B1-05/B2-05).
 	FetchReleaseEntryAppID(ctx context.Context, addrB58 string) (appID [32]byte, err error)
 	FetchStoreOperatorAuthz(ctx context.Context, addrB58 string) (status verify.AuthorizationStatus, storeAuthority verify.Pubkey, allowedTierMask uint8, isRoot bool, storeDomainHash [32]byte, err error)
-	FetchBlacklistEntry(ctx context.Context, addrB58 string) (present bool, entryType verify.BlacklistType, err error)
+	// FetchBlacklistStatus reads one BlacklistStatusEntry with its owner
+	// (blacklist_status.go). An absent account is verify.ErrPDANotFound, which
+	// every caller refuses: absence is not a clearance statement.
+	FetchBlacklistStatus(ctx context.Context, addrB58 string) (blacklistStatusEntry, error)
 	// FetchInstallerReleaseEntryMeta is the one InstallerReleaseEntry read: the
 	// whole account decoded exactly (internal/installerrelease), for the serve,
 	// publish and generation gates and the reseller ROOT-MIRROR worker, each of
@@ -199,7 +202,7 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 	if err != nil {
 		return fmt.Errorf("check=app_hash: compute app-hash: %w", err)
 	}
-	masterMint, _, relPDA, submittedMeta, err := verifyReleaseEntryHash(ctx, cr, cfg, appHash, rel)
+	_, _, relPDA, submittedMeta, err := verifyReleaseEntryHash(ctx, cr, cfg, appHash, rel)
 	if err != nil {
 		return err
 	}
@@ -229,13 +232,14 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 		return err
 	}
 
-	// (d) Blacklist check. Neither the app master NFT mint nor the operator's own
-	// license may be denied. present==true => REJECT; a genuine RPC/decode error
-	// => REJECT (fail closed); a missing PDA is the common "clear" case.
-	if err := verifyNotBlacklisted(ctx, cr, masterMint, "app"); err != nil {
+	// (d) Clearance. The app (its decoded Sandstorm appId, bound to the
+	// ReleaseEntry's app_id) and the operator's own licence must each have an
+	// explicit Clear BlacklistStatusEntry. Blocked, an absent record, or a
+	// genuine RPC/decode error each REJECT (blacklist_status.go).
+	if err := verifyAppClear(ctx, cr, metadataAppID(metadata), &submittedMeta.AppID); err != nil {
 		return err
 	}
-	if err := verifyNotBlacklisted(ctx, cr, licenseMint, "license"); err != nil {
+	if err := verifyLicenseClear(ctx, cr, licenseMint); err != nil {
 		return err
 	}
 
@@ -334,7 +338,9 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 //
 //	(a) appHashHex (the recomputed tree-hash) == rel.AppHash
 //	(b) an Active on-chain ReleaseEntry (masterNftMint+appHash) pins that appHash
-//	(d) the app's master NFT mint is not blacklisted
+//	(d) the app is explicitly Clear: appID is the served release's Sandstorm
+//	    appId text, SHA-256 of which must be the ReleaseEntry's app_id, and
+//	    its decoded key's BlacklistStatusEntry must read Clear
 //
 // When StoreAuthority is explicitly configured, it also requires an Active
 // exact StoreReleaseListing for this store. ReleaseEntry authenticity is
@@ -343,12 +349,12 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 // stores. Before the separate listing bootstrap is governed and complete, an
 // empty StoreAuthority deliberately retains the established ReleaseEntry-only
 // policy rather than manufacturing a partial listing projection.
-func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) error {
-	masterMint, appHash, releasePDA, _, err := verifyReleaseEntryHashForServe(ctx, cr, cfg, appHashHex, rel)
+func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, appID string, rel ReleaseJSON) error {
+	_, appHash, releasePDA, meta, err := verifyReleaseEntryHashForServe(ctx, cr, cfg, appHashHex, rel)
 	if err != nil {
 		return err
 	}
-	if err := verifyNotBlacklisted(ctx, cr, masterMint, "app"); err != nil {
+	if err := verifyAppClear(ctx, cr, appID, &meta.AppID); err != nil {
 		return err
 	}
 	return verifyStoreReleaseListing(ctx, cr, cfg, appHash, releasePDA)
@@ -379,7 +385,7 @@ func verifyCurrentStoreReleaseListing(ctx context.Context, cr chainReader, cfg C
 	if err != nil {
 		return fmt.Errorf("check=release_entry: derive PDA: %w", err)
 	}
-	// A fresh global verdict is allowed to cache status/blacklist facts for its
+	// A fresh global verdict is allowed to cache status/clearance facts for its
 	// bounded revoke window, but never lets a replacement RELEASE.json bypass
 	// the shared publisher-vault check. The vault is immutable chain state, so
 	// re-read and compare it on every cached serve path.
@@ -521,8 +527,9 @@ func fetchInstallerReleaseMetaForHash(ctx context.Context, cr chainReader, cfg C
 // app-hash hex of the bytes in hand (the tree-hash over {app.spk, metadata.json},
 // per apphash.Canonical): (a) it equals rel.AppHash, and (b) the on-chain
 // ReleaseEntry derived from rel.masterNftMint+appHash exists, pins THIS app_hash,
-// and is Active. Returns the app master NFT mint + the 32-byte app_hash for the
-// caller's downstream (blacklist) checks. FAIL-CLOSED. (The author ed25519 sig was
+// and is Active. Returns the app master NFT mint, the 32-byte app_hash, the
+// ReleaseEntry PDA and its decoded account (whose app_id binds the caller's
+// clearance check). FAIL-CLOSED. (The author ed25519 sig was
 // verified on-chain at register — §1; we confirm the entry, not the sig.)
 func verifyReleaseEntryHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
 	return verifyReleaseEntryHashWithAuthorityPolicy(ctx, cr, cfg, appHashHex, rel, false)
@@ -641,26 +648,6 @@ func checkSharedSquadsAuthority(cfg Config, rel ReleaseJSON, meta releaseEntryMe
 	}
 	if rel.QuorumPolicy.Threshold != want.Threshold || rel.QuorumPolicy.MemberCount != want.MemberCount {
 		return fmt.Errorf("check=publisher_squads_authority: release quorumPolicy %d/%d != configured quorum %d/%d", rel.QuorumPolicy.Threshold, rel.QuorumPolicy.MemberCount, want.Threshold, want.MemberCount)
-	}
-	return nil
-}
-
-// verifyNotBlacklisted rejects when target has a BlacklistEntry PDA — its mere
-// EXISTENCE is the deny signal (the struct carries no status); seeds=["blacklist",
-// target]. A genuine RPC/decode error => REJECT (fail closed); a missing PDA is
-// the common, expected "clear" case. label names the check in the error
-// ("app" / "license").
-func verifyNotBlacklisted(ctx context.Context, cr chainReader, target pda.Pubkey, label string) error {
-	blPDA, _, err := pda.BlacklistEntry(target, licenseRegistryProgramID())
-	if err != nil {
-		return fmt.Errorf("check=blacklist[%s]: derive PDA: %w", label, err)
-	}
-	present, entryType, err := cr.FetchBlacklistEntry(ctx, blPDA.Base58())
-	if err != nil {
-		return fmt.Errorf("check=blacklist[%s]: fetch %s: %w", label, blPDA.Base58(), err)
-	}
-	if present {
-		return fmt.Errorf("check=blacklist[%s]: target %s is blacklisted (type=%s)", label, target.Base58(), entryType)
 	}
 	return nil
 }

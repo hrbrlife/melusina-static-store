@@ -37,7 +37,8 @@ func variantFixture(t *testing.T, cfg Config, masterMintB58, label string) publi
 		t.Fatal(err)
 	}
 	metadata["packageId"] = packageID
-	metadata["appId"] = "goldkey-" + label
+	appIDText := testAppIDText("goldkey-" + label)
+	metadata["appId"] = appIDText
 	metadata["appTitle"] = "GoldKey " + label
 	metadataBytes, err := json.Marshal(metadata)
 	if err != nil {
@@ -65,7 +66,7 @@ func variantFixture(t *testing.T, cfg Config, masterMintB58, label string) publi
 	contractSum := sha256.Sum256(f.runtimeContract)
 	f.rel.RuntimeContractSHA256 = hex.EncodeToString(contractSum[:])
 	f.rel.RuntimeContractSchema = runtimecontract.Schema
-	f.appID = sha256.Sum256([]byte("goldkey-app-id::" + label))
+	f.bindAppIDText(t, appIDText)
 	foundationPDA, _, err := pda.FoundationApp(f.appID, programID)
 	if err != nil {
 		t.Fatal(err)
@@ -345,7 +346,7 @@ func TestStoreListingProjection_RefusesAllTargetBindingFailures(t *testing.T) {
 			m := newMockChainReader()
 			pinReleaseActive(m, fixture)
 			tc.mutate(&cfg, m, fixture)
-			err := VerifyServeHash(context.Background(), m, cfg, fixture.rel.AppHash, fixture.rel)
+			err := VerifyServeHash(context.Background(), m, cfg, fixture.rel.AppHash, fixture.appIDText, fixture.rel)
 			if err == nil || !strings.Contains(err.Error(), "check=store_release_listing") {
 				t.Fatalf("failure accepted or unnamed: %v", err)
 			}
@@ -382,7 +383,7 @@ func TestStoreListingProjection_DelistedStatusIsTheOnlyOmission(t *testing.T) {
 	listing := m.storeListing[f.listingPDA]
 	listing.status = storeListingStatusDelisted
 	m.storeListing[f.listingPDA] = listing
-	err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.rel)
+	err := VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.appIDText, f.rel)
 	if !errors.Is(err, errStoreReleaseListingDelisted) {
 		t.Fatalf("delisted status must retain typed omission signal, got %v", err)
 	}

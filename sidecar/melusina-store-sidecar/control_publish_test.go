@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,8 +15,6 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
-	"github.com/hrbrlife/melusina-attest/pda"
-	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -125,42 +121,13 @@ func stageControlCandidate(t *testing.T, svc *publishService, publisher *identit
 	return appPublishPreflight{sig: controlSig, releaseBytes: release, spk: f.spk, metadata: f.metadata, runtimeContract: f.runtimeContract, release: f.rel}
 }
 
-// buildValidFixture predates the real Sandstorm identity constraint and uses a
-// 53-character test id. The control path intentionally refuses that shape, so
-// this adapter keeps the broad legacy fixture untouched while deriving a fully
-// consistent, production-shaped release for the control-route tests.
-func controlFixture(t *testing.T, f publishFixture) publishFixture {
-	t.Helper()
-	appText := strings.Repeat("a", 52)
-	f.metadata = []byte(strings.Replace(string(f.metadata), metadataAppID(f.metadata), appText, 1))
-	appHashText, err := apphash.Canonical(bytes.NewReader(f.spk), f.metadata)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.appHashBytes, err = hash32FromHex(appHashText)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.rel.AppHash = appHashText
-	relPDA, _, err := pda.Release(f.masterMint, f.appHashBytes, programID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.relPDA, f.rel.ReleaseEntryPda = relPDA.Base58(), relPDA.Base58()
-	f.appID = sha256.Sum256([]byte(appText))
-	f.runtimeContract = runtimeContractForTest(t, f.spk, f.metadata, f.rel)
-	runtimeHash := sha256.Sum256(f.runtimeContract)
-	f.rel.RuntimeContractSHA256 = fmt.Sprintf("%x", runtimeHash[:])
-	return f
-}
-
 func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.T) {
 	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ProgramID = programID.Base58()
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
-	f := controlFixture(t, buildValidFixture(t, cfg, randPubkeyB58(t)))
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
 	m := newMockChainReader()
 	f.pinAccept(m, operatorSignPub32(t, op))
@@ -240,7 +207,7 @@ func TestControlPrepareStagesOnlyWithPearlCommandAndPrepareGrant(t *testing.T) {
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ProgramID = programID.Base58()
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
-	f := controlFixture(t, buildValidFixture(t, cfg, randPubkeyB58(t)))
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
 	m := newMockChainReader()
 	f.pinAccept(m, operatorSignPub32(t, op))

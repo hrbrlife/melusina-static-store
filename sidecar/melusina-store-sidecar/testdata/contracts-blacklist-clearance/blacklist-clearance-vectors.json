@@ -1,0 +1,48 @@
+{
+  "schema": "melusina.blacklist-clearance-vectors.v1",
+  "profile": "scripts/estate/examples/example-estate.profile.json",
+  "programId": "3mRUgjX9UKEYx1pBXJfVidXn3XNv6pnHZMEqc9UmpE7L",
+  "masterNftMint": "BWj4bbKtZKUoWGmvToaY15zKBEJC3KiVzpAcEvo1ZYpv",
+  "seeds": "[b\"blacklist_status\", kind seed (license | app | author), target32]",
+  "targets": [
+    {
+      "name": "root-store-licence",
+      "kind": "License",
+      "value": "BeSunPxiNitjYE6UKbwV7663NGEokx6GsCWYYYKDdiNB",
+      "target": "9e2ca7e155c89f4dd1d306c356f40499108d08703d2df5921f30bc3133a4f370",
+      "pda": "BjoQpzjA7Cnp24YUDN3um3p45sWrYoEEojSMHzJG8Gu4",
+      "bump": 252
+    },
+    {
+      "name": "tenant-licence",
+      "kind": "License",
+      "value": "9hQ1NUWSiSHgvgmirdeotbAN2txRFHrq7TkcRiNwf6dD",
+      "target": "8136bdbd9ef2fa03186a05fa03cccf7069ce78cb8a0ac3263ad4f8d7ae9f2898",
+      "pda": "DjDRFmhLYjxbfdbBPm6S3Dw2EFwLUYMpeNb9rZ14K52N",
+      "bump": 255
+    },
+    {
+      "name": "app",
+      "kind": "App",
+      "value": "v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh",
+      "target": "d93dcc3d7a59b8fb6e376a5324c491c0837ee41054fac2d314a22c5dbf891be3",
+      "pda": "HQYQk22nFEDnAhfsyjxiqbpierHcsthRarkpS13TMCZX",
+      "bump": 253,
+      "releaseEntryAppId": "55f3565031074f9b192e8d628553f20bcd04bf1639293ed9981f71338450cd4e"
+    },
+    {
+      "name": "author",
+      "kind": "Author",
+      "value": "3DCwusDTZsT4rq1SLHShY3QszEqc3K26qaDhsH9M5B3U",
+      "target": "20d7da0f340572a559e361b576486deeecf9fc8adea46575f89dd1a7aed743d7",
+      "pda": "8Ujije4RsMchR7UfGAJUnSb2nxkBqkKcSjQPAhUtBHFF",
+      "bump": 254
+    }
+  ],
+  "firstClearanceInstructionData": {
+    "subject": "root-store-licence",
+    "expectedRevision": "0",
+    "nonce": "1",
+    "hex": "4fe681125d0c5c25009e2ca7e155c89f4dd1d306c356f40499108d08703d2df5921f30bc3133a4f37000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

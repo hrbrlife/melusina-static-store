@@ -58,7 +58,6 @@ type mockChainReader struct {
 	releaseEntry    map[string]mockReleaseEntry
 	storeAuthz      map[string]mockStoreAuthz
 	storeListing    map[string]mockStoreReleaseListing
-	blacklist       map[string]mockBlacklist
 	installerEntry  map[string]mockInstallerEntry
 	foundationApp   map[string]mockFoundationApp
 	sidecarIdentity map[string]mockSidecarIdentity
@@ -68,8 +67,9 @@ type mockChainReader struct {
 	installerMaster [32]byte
 	installerVault  [32]byte
 
-	// rawAccounts backs fetchRawAccount (the cascade raw-read capability): base58
-	// address -> account data. Owner is always programID for seeded accounts.
+	// rawAccounts backs fetchRawAccount (the cascade raw-read capability) and
+	// FetchBlacklistStatus: base58 address -> account data. Owner is programID
+	// unless rawAccountOwners names another for that address.
 	rawAccounts      map[string][]byte
 	rawAccountOwners map[string]string
 
@@ -84,7 +84,7 @@ type mockChainReader struct {
 	releaseErr    error
 	authzErr      error
 	listingErr    error
-	blacklistErr  error
+	clearanceErr  error
 	installerErr  error
 	foundationErr error
 	sidecarErr    error
@@ -124,12 +124,6 @@ type mockStoreReleaseListing struct {
 	err                   error
 }
 
-type mockBlacklist struct {
-	present   bool
-	entryType verify.BlacklistType
-	err       error
-}
-
 // mockInstallerEntry is one InstallerReleaseEntry. Unless entry is set, the
 // mock serves the account the program writes when the bound estate's core
 // vault registers installerHash under publisher (default: a key the estate
@@ -155,7 +149,6 @@ func newMockChainReader() *mockChainReader {
 		releaseEntry:          map[string]mockReleaseEntry{},
 		storeAuthz:            map[string]mockStoreAuthz{},
 		storeListing:          map[string]mockStoreReleaseListing{},
-		blacklist:             map[string]mockBlacklist{},
 		installerEntry:        map[string]mockInstallerEntry{},
 		foundationApp:         map[string]mockFoundationApp{},
 		sidecarIdentity:       map[string]mockSidecarIdentity{},
@@ -289,18 +282,21 @@ func (m *mockChainReader) FetchStoreReleaseListingMeta(_ context.Context, addr s
 	}, nil
 }
 
-func (m *mockChainReader) FetchBlacklistEntry(_ context.Context, addr string) (bool, verify.BlacklistType, error) {
-	if m.blacklistErr != nil {
-		return false, 0, m.blacklistErr
+// FetchBlacklistStatus serves the account seeded in rawAccounts through the
+// production reader (owner check and strict decode). Nothing seeded is absent,
+// exactly as on chain: the mock never answers Clear for an unseeded address.
+func (m *mockChainReader) FetchBlacklistStatus(ctx context.Context, addr string) (blacklistStatusEntry, error) {
+	if m.clearanceErr != nil {
+		return blacklistStatusEntry{}, m.clearanceErr
 	}
-	b, ok := m.blacklist[addr]
-	if !ok {
-		return false, 0, nil // not blacklisted — the expected common case
+	data, owner, err := m.fetchRawAccount(ctx, addr)
+	if err != nil {
+		return blacklistStatusEntry{}, err
 	}
-	if b.err != nil {
-		return false, 0, b.err
+	if data == nil {
+		return blacklistStatusEntry{}, verify.ErrPDANotFound
 	}
-	return b.present, b.entryType, nil
+	return readBlacklistStatusAccount(addr, data, owner)
 }
 
 func (m *mockChainReader) FetchInstallerReleaseEntryMeta(_ context.Context, addr string) (installerReleaseMeta, error) {
@@ -464,8 +460,14 @@ type publishFixture struct {
 	listingPDA      string
 	storeAuthority  pda.Pubkey
 	foundationPDA   string
-	blAppPDA        string
-	blLicPDA        string
+	// appIDText is the fixture's canonical Sandstorm appId (metadata.json
+	// appId); appKey is its decoded key, the App clearance target; appID is
+	// SHA-256 of appIDText, the ReleaseEntry's app_id.
+	appIDText   string
+	appKey      [32]byte
+	blAppPDA    string
+	blLicPDA    string
+	licenseMint pda.Pubkey
 }
 
 // testConfig returns a minimal Config bound to a fresh license mint + domain.
@@ -511,8 +513,9 @@ func testServedSnapshotDir(t *testing.T) string {
 
 // buildValidFixture constructs a publish whose SPK hashes to the release
 // appHash, with the matching ReleaseEntry / StoreOperatorAuthorization /
-// BlacklistEntry PDAs derived from the same inputs the gate uses. masterMintB58
-// is the app's master NFT mint (the ReleaseEntry + app-blacklist target).
+// clearance (BlacklistStatusEntry) PDAs derived from the same inputs the gate
+// uses. masterMintB58 is the app's master NFT mint (the ReleaseEntry seed); the
+// app's clearance is keyed by its decoded Sandstorm appId, never by the mint.
 func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFixture {
 	t.Helper()
 	return buildValidFixtureWithSPK(t, cfg, masterMintB58, []byte("sandstorm package bytes — deterministic test SPK content v1"))
@@ -538,8 +541,11 @@ func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, sp
 	spkSum := sha256.Sum256(spk)
 	packageID := hex.EncodeToString(spkSum[:])[:32]
 	// metadata carries the Sandstorm appId — the served-slot key hygiene check (b)
-	// locates the prior published version under (attest/<appId>/RELEASE.json).
-	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0","version":"1.0.0","packageId":"` + packageID + `","appId":"testapp0000000000000000000000000000000000000000000000"}`)
+	// locates the prior published version under (attest/<appId>/RELEASE.json),
+	// and its decoded key is the App clearance target. It is a canonical
+	// 52-character appId, one per master mint (testAppIDText).
+	appIDText := testAppIDText(masterMintB58)
+	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0","version":"1.0.0","packageId":"` + packageID + `","appId":"` + appIDText + `"}`)
 	// The on-chain app_hash is the TREE-HASH over {app.spk, metadata.json}, not
 	// sha256(spk) — exactly what apphash.Canonical (and the pearl ceremony) compute.
 	appHashHex, err := apphash.Canonical(bytes.NewReader(spk), metadata)
@@ -579,18 +585,23 @@ func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, sp
 	if err != nil {
 		t.Fatal(err)
 	}
-	blApp, _, err := pda.BlacklistEntry(masterMint, programID)
+	appKey, err := decodeSandstormAppIDKey(appIDText)
 	if err != nil {
 		t.Fatal(err)
 	}
-	blLic, _, err := pda.BlacklistEntry(licenseMint, programID)
+	blApp, _, err := deriveBlacklistStatusPDA(blacklistTargetApp, appKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blLic, _, err := deriveBlacklistStatusPDA(blacklistTargetLicense, [32]byte(licenseMint))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// A stable per-application app_id, DISTINCT from the per-release app_hash, is
 	// what the publish gate reads from the on-chain ReleaseEntry to derive the
-	// FoundationAppEntry PDA (B1-05/B2-05).
-	appID := sha256.Sum256([]byte("app-id::" + masterMintB58))
+	// FoundationAppEntry PDA (B1-05/B2-05). It is SHA-256 of the appId text, as
+	// the release ceremony registers it.
+	appID := sha256.Sum256([]byte(appIDText))
 	foundationPDA, _, err := pda.FoundationApp(appID, programID)
 	if err != nil {
 		t.Fatal(err)
@@ -628,8 +639,11 @@ func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, sp
 		listingPDA:      listingPDA.Base58(),
 		storeAuthority:  storeAuthority,
 		foundationPDA:   foundationPDA.Base58(),
+		appIDText:       appIDText,
+		appKey:          appKey,
 		blAppPDA:        blApp.Base58(),
 		blLicPDA:        blLic.Base58(),
+		licenseMint:     licenseMint,
 	}
 }
 
@@ -689,8 +703,8 @@ func runtimeContractForRelease(t *testing.T, release, spk, metadata []byte) []by
 
 // pinAccept wires the mock to ACCEPT the fixture: Active ReleaseEntry pinning the
 // app_hash + app_id, Active StoreOperatorAuthorization whose store_authority ==
-// operator, no FoundationAppEntry (third-party app — no tier ceiling), no
-// blacklist entries.
+// operator, no FoundationAppEntry (third-party app — no tier ceiling), and the
+// Foundation's explicit Clear records for the app and the operator licence.
 func (f publishFixture) pinAccept(m *mockChainReader, operatorPub [32]byte) {
 	publisherVault, err := primitives.PubkeyFromBase58(f.cfg.ReleaseSquadsAuthority.Vault)
 	if err != nil {
@@ -705,7 +719,14 @@ func (f publishFixture) pinAccept(m *mockChainReader, operatorPub [32]byte) {
 		domainHash: primitives.StoreDomainHash(f.cfg.Domain),
 	}
 	// no FoundationAppEntry pinned => resolveFoundationTier returns tier 0 (no ceiling)
-	// no blacklist entries => clear
+	f.pinClearances(m)
+}
+
+// pinClearances seeds the Foundation's first Clear record for the fixture's
+// app and its operator licence, as set_blacklist_status writes them.
+func (f publishFixture) pinClearances(m *mockChainReader) {
+	pinBlacklistStatus(m, blacklistTargetApp, f.appKey, blacklistStatusClear)
+	pinBlacklistStatus(m, blacklistTargetLicense, [32]byte(f.licenseMint), blacklistStatusClear)
 }
 
 // pinServeListingActive adds the exact per-store projection required by the

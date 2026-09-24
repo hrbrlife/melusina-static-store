@@ -292,7 +292,7 @@ func runCatalogReconcileRetirementSubcommand(args []string) {
 	}
 	defer lock.Close()
 	receipt, err := runCatalogReconcileRetirement(ctx, cfg, operator, opts, 0, time.Now().UTC(), func(ctx context.Context, manifest stagedAppManifest, release []byte) error {
-		return VerifyServeHash(ctx, cr, cfg, manifest.AppHash, mustReleaseJSON(release))
+		return VerifyServeHash(ctx, cr, cfg, manifest.AppHash, manifest.AppID, mustReleaseJSON(release))
 	})
 	if err != nil {
 		log.Fatalf("catalog-reconcile-retirement: %v", err)

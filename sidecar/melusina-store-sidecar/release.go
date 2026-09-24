@@ -8,7 +8,7 @@ package main
 // CRITICAL: the sidecar does NOT trust any field of this JSON on its own. It is
 // a set of CLAIMS the publisher makes; VerifyPublish re-derives every trust
 // decision from the chain (re-hash the SPK, derive + fetch ReleaseEntry /
-// StoreOperatorAuthorization / BlacklistEntry PDAs). The release author's
+// StoreOperatorAuthorization / BlacklistStatusEntry PDAs). The release author's
 // ed25519 signature is verified on-chain by the register handler — see
 // FEDERATED-STORE-MVP §1 — so the sidecar does not re-verify AuthorSig itself;
 // it confirms the on-chain ReleaseEntry exists, is Active, and pins this AppHash.

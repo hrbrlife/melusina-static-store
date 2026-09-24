@@ -33,9 +33,9 @@ func (c *countingChainReader) FetchStoreOperatorAuthz(ctx context.Context, addr 
 	return c.mockChainReader.FetchStoreOperatorAuthz(ctx, addr)
 }
 
-func (c *countingChainReader) FetchBlacklistEntry(ctx context.Context, addr string) (bool, verify.BlacklistType, error) {
+func (c *countingChainReader) FetchBlacklistStatus(ctx context.Context, addr string) (blacklistStatusEntry, error) {
 	c.reads.Add(1)
-	return c.mockChainReader.FetchBlacklistEntry(ctx, addr)
+	return c.mockChainReader.FetchBlacklistStatus(ctx, addr)
 }
 
 // An appId that is not a row in this snapshot can never be served, yet the

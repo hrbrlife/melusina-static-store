@@ -1,0 +1,21 @@
+tree 18acfdf580fe0145647b8257b7836f1cc04bc3a7
+parent 83874425844ff9c299738bff1d3e2b740cc7f73a
+author alexeikarp <ak@hrbr.life> 1790255068 +0400
+committer alexeikarp <ak@hrbr.life> 1790255068 +0400
+
+test(estate): the runner funds the owner-signed margin, not just the listing floor (review of 8387442)
+
+8387442 lets the owners sign an operator balance above the seed-listing
+floor (a margin for later promotes) and fund-root-store-operator tops up to
+that signed target. No test ran the runner with a target above the floor, so
+a runner that probed or topped up only to the derived floor (requiredLamports)
+passed every test: the owners' signed margin would be silently dropped.
+
+The new test pre-funds the operator with exactly the floor, signs floor +
+7,000,000, and requires the probe to report not-done, one transfer to the
+signed balance, a readback naming both figures, and convergence.
+
+Mutation controls, each restored: probe `balance < required` and run
+`balance >= required` / `required - balance` each fail this test by name.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>

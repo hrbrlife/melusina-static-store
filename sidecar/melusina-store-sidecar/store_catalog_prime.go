@@ -9,15 +9,17 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-// primedChainReader answers the two PER-ROW reads from a snapshot fetched in one
-// batch, and falls through to the live reader for anything it was not primed
-// with. The authz and blacklist reads are request-INVARIANT and are collapsed by
-// memoChainReader instead; these two genuinely differ per app, so a batch is the
-// only thing that removes them.
+// primedChainReader answers the three PER-ROW reads from a snapshot fetched in
+// one batch, and falls through to the live reader for anything it was not
+// primed with. The authz read is request-INVARIANT and is collapsed by
+// memoChainReader instead; the ReleaseEntry, the listing and the app's
+// clearance genuinely differ per app, so a batch is the only thing that removes
+// them.
 //
 // It decodes with the SAME functions the live single-read path uses
-// (readReleaseEntryMeta, readStoreReleaseListingMeta) and reproduces its exact
-// handling of an absent account (verify.ErrPDANotFound) and of the PDA field.
+// (readReleaseEntryMeta, readStoreReleaseListingMeta, readBlacklistStatusAccount
+// with the batch's owner) and reproduces its exact handling of an absent
+// account (verify.ErrPDANotFound) and of the PDA field.
 // Reusing the decoders rather than reimplementing them is what makes drift
 // impossible: there is no second copy to fall out of step.
 type primedChainReader struct {
@@ -57,6 +59,17 @@ func (p *primedChainReader) FetchStoreReleaseListingMeta(ctx context.Context, ad
 	return meta, nil
 }
 
+func (p *primedChainReader) FetchBlacklistStatus(ctx context.Context, addr string) (blacklistStatusEntry, error) {
+	value, ok := p.snap[addr]
+	if !ok {
+		return p.chainReader.FetchBlacklistStatus(ctx, addr)
+	}
+	if !value.present {
+		return blacklistStatusEntry{}, verify.ErrPDANotFound
+	}
+	return readBlacklistStatusAccount(addr, value.data, value.owner)
+}
+
 // primeCatalogAccounts fetches every per-row account this request will need in
 // one batched call and returns a reader that answers from it.
 //
@@ -80,8 +93,8 @@ func primeCatalogAccounts(ctx context.Context, cfg Config, inner chainReader, ba
 	if err != nil {
 		return inner
 	}
-	addrs := make([]string, 0, 2*len(candidates))
-	seen := make(map[string]struct{}, 2*len(candidates))
+	addrs := make([]string, 0, 3*len(candidates))
+	seen := make(map[string]struct{}, 3*len(candidates))
 	add := func(a string) {
 		if _, dup := seen[a]; dup {
 			return
@@ -104,6 +117,14 @@ func primeCatalogAccounts(ctx context.Context, cfg Config, inner chainReader, ba
 		}
 		if listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, licenseRegistryProgramID()); err == nil {
 			add(listingPDA.Base58())
+		}
+		// The app clearance the gate will read for this row. A row whose
+		// metadata carries no canonical appId primes nothing here; the gate
+		// refuses it by name.
+		if key, err := decodeSandstormAppIDKey(metadataAppID(candidate.app.metadata)); err == nil {
+			if clearancePDA, _, err := deriveBlacklistStatusPDA(blacklistTargetApp, key); err == nil {
+				add(clearancePDA.Base58())
+			}
 		}
 	}
 	if len(addrs) == 0 {

@@ -62,7 +62,7 @@ func TestLegacyServeAdmitsReleaseWithoutQuorumClaim(t *testing.T) {
 	unclaimed := f.rel
 	unclaimed.QuorumPolicy = QuorumPolicy{}
 
-	if err := VerifyServeHash(ctx, m, cfg, unclaimed.AppHash, unclaimed); err != nil {
+	if err := VerifyServeHash(ctx, m, cfg, unclaimed.AppHash, f.appIDText, unclaimed); err != nil {
 		t.Errorf("serve gate refused a historically attested release with no quorum claim: %v", err)
 	}
 	if err := verifyCurrentStoreReleaseListing(ctx, m, cfg, unclaimed.AppHash, unclaimed); err != nil {

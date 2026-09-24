@@ -26,6 +26,10 @@ const getMultipleAccountsLimit = 100
 type accountValue struct {
 	data    []byte
 	present bool
+	// owner is the program that owns the account, as the RPC reported it. A
+	// reader that authorizes from an account's owner (a BlacklistStatusEntry)
+	// checks it; the others decode the bytes alone, as their live reads do.
+	owner string
 }
 
 type multiAccountReader interface {
@@ -38,7 +42,8 @@ var _ multiAccountReader = (*rpcFailoverChainReader)(nil)
 type storeMultipleAccountsResponse struct {
 	Result *struct {
 		Value []*struct {
-			Data []string `json:"data"`
+			Data  []string `json:"data"`
+			Owner string   `json:"owner"`
 		} `json:"value"`
 	} `json:"result"`
 	Error *storeRPCError `json:"error"`
@@ -126,7 +131,7 @@ func (c *storeRPCReader) fetchAccountChunk(ctx context.Context, addrs []string) 
 		if err != nil {
 			return nil, fmt.Errorf("base64 decode %s: %w", addrs[i], err)
 		}
-		out[i] = accountValue{data: decoded, present: true}
+		out[i] = accountValue{data: decoded, present: true, owner: item.Owner}
 	}
 	return out, nil
 }

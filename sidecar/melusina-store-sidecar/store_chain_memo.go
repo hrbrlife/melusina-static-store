@@ -12,12 +12,15 @@ import (
 // request, it is discarded when that request returns, and it never survives to
 // answer a later one.
 //
-// TWO reads are request-invariant yet performed once per app row: the
+// One read is request-invariant yet performed once per app row: the
 // StoreOperatorAuthorization account, whose PDA comes from (licenseNftMint,
-// storeDomainHash), and the blacklist account, whose PDA comes from the app's
-// masterNftMint — one mint estate-wide, so every row asks for the same address. At 32 rows that is 32 identical reads of one address in a
-// single request, and it is a large share of why one /apps/index.json cost ~128
-// getAccountInfo calls and exhausted the store's RPC key (F-235).
+// storeDomainHash), so every row asks for the same address. At 32 rows that is
+// 32 identical reads of one address in a single request, and it is a large
+// share of why one /apps/index.json cost ~128 getAccountInfo calls and
+// exhausted the store's RPC key (F-235). Clearance reads (BlacklistStatusEntry)
+// are memoized by address too: each app's App clearance is its own address, so
+// the memo only collapses a clearance two rows share, and the catalog prime
+// (store_catalog_prime.go) is what batches the per-app ones.
 //
 // Nothing about verification changes. The same address is read, decoded by the
 // same function, and judged by the same predicates in verify.go, which is not
@@ -35,7 +38,7 @@ type memoChainReader struct {
 	chainReader
 	mu        sync.Mutex
 	authz     map[string]*authzEntry
-	blacklist map[string]*blacklistEntry
+	clearance map[string]*clearanceEntry
 }
 
 // authzEntry is one in-flight-or-settled read. done is closed when res is final.
@@ -57,51 +60,48 @@ func newMemoChainReader(inner chainReader) *memoChainReader {
 	return &memoChainReader{
 		chainReader: inner,
 		authz:       make(map[string]*authzEntry, 1),
-		blacklist:   make(map[string]*blacklistEntry, 1),
+		clearance:   make(map[string]*clearanceEntry, 1),
 	}
 }
 
-// blacklistEntry mirrors authzEntry for the second request-invariant read.
-// verifyNotBlacklisted derives its PDA from the app's masterNftMint, and the
-// estate publishes every app under ONE master mint, so all 32 rows ask for the
-// same address. Keying on the address means this collapses when they match and
-// simply does nothing when they do not — it never assumes they are equal.
-type blacklistEntry struct {
-	done    chan struct{}
-	present bool
-	kind    verify.BlacklistType
-	err     error
+// clearanceEntry mirrors authzEntry for a BlacklistStatusEntry read, keyed by
+// its address: rows that share a clearance share one read, and rows that do
+// not simply each read their own.
+type clearanceEntry struct {
+	done  chan struct{}
+	entry blacklistStatusEntry
+	err   error
 }
 
-func (m *memoChainReader) FetchBlacklistEntry(ctx context.Context, addrB58 string) (bool, verify.BlacklistType, error) {
+func (m *memoChainReader) FetchBlacklistStatus(ctx context.Context, addrB58 string) (blacklistStatusEntry, error) {
 	m.mu.Lock()
-	entry, found := m.blacklist[addrB58]
+	entry, found := m.clearance[addrB58]
 	if !found {
-		entry = &blacklistEntry{done: make(chan struct{})}
-		m.blacklist[addrB58] = entry
+		entry = &clearanceEntry{done: make(chan struct{})}
+		m.clearance[addrB58] = entry
 	}
 	m.mu.Unlock()
 
 	if found {
 		select {
 		case <-entry.done:
-			return entry.present, entry.kind, entry.err
+			return entry.entry, entry.err
 		case <-ctx.Done():
-			return false, 0, ctx.Err()
+			return blacklistStatusEntry{}, ctx.Err()
 		}
 	}
 
-	present, kind, err := m.chainReader.FetchBlacklistEntry(ctx, addrB58)
-	entry.present, entry.kind, entry.err = present, kind, err
+	status, err := m.chainReader.FetchBlacklistStatus(ctx, addrB58)
+	entry.entry, entry.err = status, err
 	if ctx.Err() != nil {
 		m.mu.Lock()
-		if m.blacklist[addrB58] == entry {
-			delete(m.blacklist, addrB58)
+		if m.clearance[addrB58] == entry {
+			delete(m.clearance, addrB58)
 		}
 		m.mu.Unlock()
 	}
 	close(entry.done)
-	return present, kind, err
+	return status, err
 }
 
 func (m *memoChainReader) FetchStoreOperatorAuthz(ctx context.Context, addrB58 string) (verify.AuthorizationStatus, verify.Pubkey, uint8, bool, [32]byte, error) {

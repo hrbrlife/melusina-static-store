@@ -1832,13 +1832,13 @@ func TestHandlePublish_Rejects(t *testing.T) {
 		{
 			name: "blacklisted",
 			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
-				m.blacklist[f.blAppPDA] = mockBlacklist{present: true, entryType: 1}
+				pinBlacklistStatus(m, blacklistTargetApp, f.appKey, blacklistStatusBlocked)
 				release := mustJSON(t, f.rel)
 				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)
 			},
 			wantCode: http.StatusForbidden,
-			wantBody: "check=blacklist",
+			wantBody: "check=blacklist[app]: blacklisted",
 		},
 		{
 			name: "bad_envelope_signature",

@@ -267,7 +267,7 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "store serve-gate: hash error", http.StatusInternalServerError)
 		return
 	}
-	if err := g.gate(r.Context(), appHash, app.rel); err != nil {
+	if err := g.gate(r.Context(), appHash, metadataAppID(app.metadata), app.rel); err != nil {
 		http.Error(w, "store serve-gate refused: "+err.Error(), http.StatusForbidden)
 		return
 	}
@@ -465,7 +465,7 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 					if !ok {
 						return
 					}
-					err := g.gateWith(verifyCtx, catalogReader, candidates[index].app.rel.AppHash, candidates[index].app.rel)
+					err := g.gateWith(verifyCtx, catalogReader, candidates[index].app.rel.AppHash, metadataAppID(candidates[index].app.metadata), candidates[index].app.rel)
 					results[index] = err
 					if err != nil && !errors.Is(err, errStoreReleaseListingDelisted) {
 						failureOnce.Do(func() {
@@ -806,23 +806,24 @@ func (g *serveGate) gateSignedSidecarGeneration(ctx context.Context, class, name
 }
 
 // gate returns nil iff an SPK whose served bytes recompute to appHash may be
-// served. A fresh cache avoids re-fetching the global ReleaseEntry and blacklist
-// facts, but it NEVER caches StoreReleaseListing visibility: an explicit exact
-// DELIST must take effect on the next request. The caller guarantees g.cr !=
-// nil.
-func (g *serveGate) gate(ctx context.Context, appHash string, rel ReleaseJSON) error {
-	return g.gateWith(ctx, g.cr, appHash, rel)
+// served. A fresh cache avoids re-fetching the global ReleaseEntry and app
+// clearance facts, but it NEVER caches StoreReleaseListing visibility: an
+// explicit exact DELIST must take effect on the next request. appID is the
+// served release's Sandstorm appId (its metadata.json, inside appHash). The
+// caller guarantees g.cr != nil.
+func (g *serveGate) gate(ctx context.Context, appHash string, appID string, rel ReleaseJSON) error {
+	return g.gateWith(ctx, g.cr, appHash, appID, rel)
 }
 
 // gateWith is gate against an explicit reader. The catalog path passes a
 // request-scoped memo so one request does not read the same request-invariant
 // account once per app row; every other caller keeps g.cr and is unchanged.
-func (g *serveGate) gateWith(ctx context.Context, cr chainReader, appHash string, rel ReleaseJSON) error {
+func (g *serveGate) gateWith(ctx context.Context, cr chainReader, appHash string, appID string, rel ReleaseJSON) error {
 	h := strings.ToLower(strings.TrimSpace(appHash))
 	if g.verdictFresh(h) {
 		return verifyCurrentStoreReleaseListing(ctx, cr, g.cfg, h, rel)
 	}
-	if err := VerifyServeHash(ctx, cr, g.cfg, h, rel); err != nil {
+	if err := VerifyServeHash(ctx, cr, g.cfg, h, appID, rel); err != nil {
 		return err
 	}
 	g.recordVerdict(h)

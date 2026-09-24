@@ -136,7 +136,7 @@ func TestEstateBootstrapServesNoReleaseWithoutQuorumClaim(t *testing.T) {
 		name  string
 		check func(ReleaseJSON) error
 	}{
-		{"serve_gate", func(rel ReleaseJSON) error { return VerifyServeHash(ctx, m, cfg, rel.AppHash, rel) }},
+		{"serve_gate", func(rel ReleaseJSON) error { return VerifyServeHash(ctx, m, cfg, rel.AppHash, f.appIDText, rel) }},
 		{"cached_serve_recheck", func(rel ReleaseJSON) error { return verifyCurrentStoreReleaseListing(ctx, m, cfg, rel.AppHash, rel) }},
 	} {
 		if err := path.check(f.rel); err != nil {

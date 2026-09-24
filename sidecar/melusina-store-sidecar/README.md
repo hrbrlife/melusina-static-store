@@ -40,8 +40,11 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   + `attest/<appId>/RELEASE.json`, recomputes the on-chain **AppHash** — the TREE-HASH over
   the canonical `{app.spk, metadata.json}` pair (`internal/apphash`; this is what the pearl
   ceremony registers, **NOT** `sha256(spk)`) — over the EXACT served bytes, and refuses
-  (`403`) unless an **Active** on-chain `ReleaseEntry` pins that AppHash (and the app is not
-  blacklisted). Content-bound, fail-closed: no chain reader ⇒ SPK fetches `503`; a drifted
+  (`403`) unless an **Active** on-chain `ReleaseEntry` pins that AppHash and the app has an
+  explicit Clear `BlacklistStatusEntry` (`blacklist_status.go`: keyed by its decoded Sandstorm
+  appId, whose text must hash to the ReleaseEntry's `app_id`; an absent record is refused as
+  `clearance-absent`, a Blocked one as `blacklisted`). Content-bound, fail-closed: no chain
+  reader ⇒ SPK fetches `503`; a drifted
   SPK or tampered `metadata.json` (recomputed AppHash ≠ the on-chain-anchored `appHash`) is
   refused. A verified verdict is cached per-appHash for `serve_verify_ttl_seconds` (default
   60s; the revoke-visibility window).
@@ -65,7 +68,8 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   `POST /publish` route accepts a sealed-v3 envelope from an attested publisher
   (+ `metadata.json`), recomputes the AppHash (tree-hash over
   `{app.spk, metadata.json}`), requires the matching Active on-chain
-  `ReleaseEntry`, a clear blacklist, and the version floor, then invokes
+  `ReleaseEntry`, explicit Clear records for the app and the operator licence, and the
+  version floor, then invokes
   `build-store.sh` as an in-process assembler and returns a store-signed
   provenance receipt. After the named Bazaar Control pilot is proven, set the
   flag to `true`: legacy app `POST /publish` and `/publish/stage` return `410`
@@ -118,7 +122,9 @@ Phase-1 spine: READ surface plus the gated legacy app-publish receive path
 publisher's signed artifact envelope, recomputes the AppHash (the tree-hash over
 `{app.spk, metadata.json}`), requires it == the on-chain `ReleaseEntry.app_hash`,
 requires an Active `StoreOperatorAuthorization` whose `store_authority` is this
-sidecar's own operator key, requires a clear `BlacklistEntry`, then (single
+sidecar's own operator key, requires explicit Clear `BlacklistStatusEntry` records
+at `["blacklist_status", kind, target]` for the app (its decoded appId) and the
+operator licence — absent is not Clear — then (single
 writer, under a mutex) runs `build-store.sh` as a convenience assembler and
 returns a store-signed provenance receipt over the raw
 96-byte `appHash||releaseHash||servingDomainHash` (contract C-2). The Go verify

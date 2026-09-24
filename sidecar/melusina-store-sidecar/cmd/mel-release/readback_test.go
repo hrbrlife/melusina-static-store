@@ -182,8 +182,58 @@ func TestApproveRefusesAnEntryRecalledBeforePromote(t *testing.T) {
 	promotes := countOp(h.callOps(), "promote")
 
 	h.putAccount(h.wal().NewReleasePDA, h.chainProgram, releaseentrytest.Recall(entry, releaseentrytest.RegisteredAt+60))
-	requireNamedRefusal(t, h.approveOnly(), releaseentry.ErrRecalled)
+	requirePromoteRefused(t, "approve", h.approveOnly(), releaseentry.ErrRecalled)
 	refusedBeforePromote(t, h, stateRegistered, promotes)
+
+	// Positive control: with the admitted entry back, the same WAL promotes
+	// through the shared admission.
+	h.putAccount(h.wal().NewReleasePDA, h.chainProgram, entry)
+	before := h.callOps()
+	mustNoErr(t, "approve with the admitted entry", h.approveOnly())
+	mustState(h, stateDone)
+	requirePromotesAdmitted(t, "approve", h.callOps()[len(before):])
+}
+
+// A promote the Store committed before approve journaled it is resumed only
+// through the shared promote admission: an entry recalled since is refused by
+// name and the WAL does not record PROMOTED. With the entry back the same WAL
+// completes without promoting again.
+func TestApproveResumesACommittedPromoteOnlyForAnAdmittedEntry(t *testing.T) {
+	h := newHarness(t)
+	mustNoErr(t, "publish", h.publish("1.0.1"))
+	entry := h.runnerRegister(releasetest.TrustedPublisher(), nil)
+	h.setFaultOp("promote")
+	mustErr(t, "approve stopped before promote", h.approveOnly())
+	h.clearFault()
+	mustState(h, stateRegistered)
+
+	// The Store commits the promote; approve never journals it.
+	rec := h.wal()
+	name, err := promotionReceiptName(&rec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := newExecProvider(h.cfg).Promote(h.catalogApp(), rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.StageID, h.cfg.receiptPath(testAppID, name)); err != nil {
+		t.Fatalf("simulate committed promotion: %v", err)
+	}
+	promotes := countOp(h.callOps(), "promote")
+
+	h.putAccount(rec.NewReleasePDA, h.chainProgram, releaseentrytest.Recall(entry, releaseentrytest.RegisteredAt+60))
+	requirePromoteRefused(t, "approve resume", h.approveOnly(), releaseentry.ErrRecalled)
+	mustState(h, stateRegistered)
+	if got := h.wal().PromoteReceipt; got != (artifactRef{}) {
+		t.Fatalf("the WAL recorded the promote of a recalled entry: %+v", got)
+	}
+	if got := countOp(h.callOps(), "promote"); got != promotes {
+		t.Fatalf("resume promoted again: %d -> %d", promotes, got)
+	}
+
+	h.putAccount(rec.NewReleasePDA, h.chainProgram, entry)
+	mustNoErr(t, "resume with the admitted entry", h.approveOnly())
+	mustState(h, stateDone)
+	if got := countOp(h.callOps(), "promote"); got != promotes {
+		t.Fatalf("resume promoted again: %d -> %d", promotes, got)
+	}
 }
 
 // Mutation control: an entry whose account bytes changed after approve

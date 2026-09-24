@@ -19,8 +19,9 @@ package main
 //
 // A missing, foreign, malformed, recalled or differently-attested entry is
 // refused by name and leaves the WAL where it was. The same readback runs
-// again immediately before promote, so an entry recalled after the first run
-// is never promoted.
+// again immediately before every promote (promoteAdmitted: approve's promote
+// and repair-catalog's re-projection), so an entry recalled, changed or no
+// longer trusted after the first run is never promoted.
 
 import (
 	"encoding/base64"
@@ -247,12 +248,47 @@ func registerByReadback(c Config, prov SignerProvider, rec *walReceipt) error {
 	return verifyRegisteredLive(prov, rec)
 }
 
-// reverifyBeforePromote runs at REGISTERED, immediately before promote. The
-// entry must still be admitted (a recall between the two approve runs is
-// refused as release-entry-recalled), its account bytes must be the ones the
-// readback receipt recorded, and the finalized RELEASE.json must be unchanged
-// and still bind it.
-func reverifyBeforePromote(c Config, prov SignerProvider, rec *walReceipt) error {
+// errPromoteNotAdmitted names a promote the shared admission refused. It wraps
+// the admission's own refusal (release-entry-recalled,
+// release-entry-publisher-untrusted, release-entry-changed-since-readback, ...),
+// so a caller sees both which gate stopped it and why.
+var errPromoteNotAdmitted = errors.New("promote-refused-release-entry-not-admitted")
+
+// promoteAdmitted is the one entry point to SignerProvider.Promote. Every
+// promote path goes through it: approve's promote at REGISTERED and
+// repair-catalog's re-projection of a terminal release. It runs
+// admitForPromote immediately before the Store promote and promotes nothing
+// the admission refuses. TestEveryPromoteGoesThroughTheSharedAdmission fails
+// by name if any other function in this package calls Promote.
+func promoteAdmitted(c Config, prov SignerProvider, app App, rec *walReceipt, receiptOut string) error {
+	if err := admitForPromote(c, prov, rec); err != nil {
+		return err
+	}
+	return prov.Promote(app, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.StageID, receiptOut)
+}
+
+// admitForPromote is the Go ReleaseEntry admission every promote path runs
+// immediately before promote, and the check a resumed promote passes before
+// the WAL records it. It reads the account back again rather than trusting an
+// earlier run or the provider's status projection:
+//
+//   - the readback receipt approve recorded still binds the WAL's release;
+//   - the entry is still admitted (owner, layout, Active with no revocation
+//     time, the frozen bindings, the estate's master mint and custodian, a
+//     releaseTrust publisher and a verifying signature): a recall since the
+//     last run is refused as release-entry-recalled;
+//   - its account bytes are the ones the readback receipt recorded; and
+//   - the finalized RELEASE.json is unchanged and still binds it.
+//
+// Every refusal is wrapped in errPromoteNotAdmitted.
+func admitForPromote(c Config, prov SignerProvider, rec *walReceipt) error {
+	if err := admitRecordedReleaseEntry(c, prov, rec); err != nil {
+		return fmt.Errorf("%w: ReleaseEntry %s: %w", errPromoteNotAdmitted, rec.NewReleasePDA, err)
+	}
+	return nil
+}
+
+func admitRecordedReleaseEntry(c Config, prov SignerProvider, rec *walReceipt) error {
 	if err := verifyArtifactRef(rec.RegisterReceipt); err != nil {
 		return fmt.Errorf("ReleaseEntry readback receipt: %w", err)
 	}

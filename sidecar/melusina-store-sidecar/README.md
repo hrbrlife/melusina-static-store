@@ -567,6 +567,20 @@ before promote, so an entry recalled between two runs is never promoted. With
 no entry on chain yet, `approve` refuses with `release-entry-missing`; run it
 again once the runner has registered it.
 
+Every promote goes through one entry point that runs this admission
+immediately before the Store promote: `approve`'s promote, `approve`'s resume
+of a promote the Store committed before the WAL recorded it, and
+`repair-catalog`'s re-projection of a terminal release. A terminal receipt is
+not a standing licence to re-promote: `repair-catalog` reads the account back
+and admits it again (owner, Active, bindings, publisher trust, signature, the
+account bytes `approve` recorded and the final RELEASE.json binding), so an
+entry recalled or changed since `approve`, or signed by a publisher a
+re-signed profile no longer enrolls, is refused as
+`promote-refused-release-entry-not-admitted` wrapping the admission's own
+name, and nothing is re-projected. `TestEveryPromoteGoesThroughTheSharedAdmission`
+fails by name if any other code in `cmd/mel-release` calls the provider's
+promote.
+
 The release tools still sign with Squads member keypair files on the release
 workstation for three operations that are not registration. `publish` creates
 the register proposal and leaves it unexecuted, and `reject-proposed` casts the

@@ -15,7 +15,9 @@ package main
 // There is no approve-side register operation. A ReleaseEntry becomes Active
 // only through the owner-authorized runner (one governed vault transaction per
 // entry, spec R5); approve reads the account back (ReleaseEntryAccount) and
-// admits it itself, in Go, before FinalizeRelease and Promote. No provider
+// admits it itself, in Go, before FinalizeRelease and Promote. Promote is
+// called only by promoteAdmitted (readback.go), which re-admits the entry
+// immediately before it on every path, repair-catalog included. No provider
 // operation registers an entry or approves or executes a register proposal on
 // approve's behalf. The one approve-side operation that still executes on
 // chain is RevokeRelease, run only when the release opted into global revoke:
@@ -104,6 +106,7 @@ type SignerProvider interface {
 
 	// Promote durably promotes the staged bytes into the served catalog + signed
 	// pointer and writes a promotion receipt (schema melusina-app-promotion-receipt-v1).
+	// Only promoteAdmitted calls it, right after the Go ReleaseEntry admission.
 	Promote(app App, appHash, releaseHash, version, stageID, receiptOut string) error
 
 	// RevokeRelease flips the ReleaseEntry at pda Active -> Revoked and writes a

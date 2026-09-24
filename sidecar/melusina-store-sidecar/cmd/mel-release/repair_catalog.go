@@ -7,6 +7,14 @@ package main
 // normal provider Promote operation, which is the store's staged-byte -> signed
 // pointer/index projection boundary, after re-establishing every durable and live
 // proof needed to identify the one candidate it may project.
+//
+// A terminal receipt is not a standing licence to promote. Repair promotes
+// only through promoteAdmitted (readback.go), the entry point approve uses: the
+// Go ReleaseEntry admission (owner, Active, bindings, publisher trust,
+// signature, the recorded account bytes and the final RELEASE.json binding)
+// runs again immediately before the Store promote. An entry recalled, changed
+// or no longer signed by a releaseTrust publisher since approve is refused by
+// name, and nothing is re-projected.
 
 import (
 	"encoding/json"
@@ -113,7 +121,10 @@ func runRepairCatalog(c Config, catalog *Catalog, selector string) (string, erro
 		return "", fmt.Errorf("create catalog repair receipt directory: %w", err)
 	}
 	promotePath := filepath.Join(repairDir, "promote-"+safeSegment(rec.StageID[:16])+"-"+repairID+".json")
-	if err := provider.Promote(app, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.StageID, promotePath); err != nil {
+	// The admission binds the verified final RELEASE.json resolved above (for a
+	// legacy terminal, the candidate's copy), not the WAL's possibly drifted ref.
+	rec.ReleaseJSON = finalReleaseRef
+	if err := promoteAdmitted(c, provider, app, &rec, promotePath); err != nil {
 		return "", fmt.Errorf("re-project staged catalog: %w", err)
 	}
 	promoteRef, err := readPromoteReceipt(promotePath, rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, rec.Version)

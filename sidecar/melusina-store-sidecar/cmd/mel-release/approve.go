@@ -12,9 +12,10 @@ package main
 //	              releaseTrust enrolled. This step registers, approves,
 //	              executes and signs nothing on chain; a missing entry is
 //	              refused by name.
-//	PROMOTED   -> re-admit the entry, then promote the store catalog pointer for
-//	              the NEW bytes (no gap: the prior release is still Active +
-//	              on-chain).
+//	PROMOTED   -> re-admit the entry and promote the store catalog pointer for
+//	              the NEW bytes through promoteAdmitted, the one promote entry
+//	              point repair-catalog shares (no gap: the prior release is
+//	              still Active + on-chain).
 //	REVOKED    -> complete the global-retirement boundary. Normal target-scoped
 //	              approval retains global history; explicit global revocation is
 //	              a separately opted-in operation, and the only one approve
@@ -91,11 +92,10 @@ func runApprove(c Config, catalog *Catalog, selector string) (string, error) {
 			}
 		case stateRegistered:
 			// The entry was admitted when the WAL reached REGISTERED; it may have
-			// been recalled since. Admit it again, against the recorded account
-			// bytes and the recorded final RELEASE.json, before promoting.
-			if err := reverifyBeforePromote(c, prov, &rec); err != nil {
-				return "", fmt.Errorf("promote (ReleaseEntry readback): %w", err)
-			}
+			// been recalled since. ensurePromoted admits it again through the
+			// shared promote admission (readback.go), against the recorded
+			// account bytes and the recorded final RELEASE.json, immediately
+			// before it promotes.
 			if err := ensurePromoted(c, prov, app, &rec); err != nil {
 				return "", fmt.Errorf("promote: %w", err)
 			}
@@ -207,8 +207,21 @@ func verifyRegisteredLive(prov SignerProvider, rec *walReceipt) error {
 	return fmt.Errorf("registered release %s is not Active on-chain", rec.NewReleasePDA)
 }
 
+// ensurePromoted promotes only through promoteAdmitted, the shared entry point
+// that runs the Go ReleaseEntry admission immediately before the Store
+// promote. A promote the Store already committed (its candidate-bound receipt
+// exists, or the WAL already names one) is not repeated, but the WAL still
+// records PROMOTED only for an entry the same admission admits now.
 func ensurePromoted(c Config, prov SignerProvider, app App, rec *walReceipt) error {
-	if rec.PromoteReceipt.SHA256 == "" {
+	switch {
+	case rec.PromoteReceipt.SHA256 != "":
+		if err := admitForPromote(c, prov, rec); err != nil {
+			return err
+		}
+		if err := verifyArtifactRef(rec.PromoteReceipt); err != nil {
+			return err
+		}
+	default:
 		promoteName, err := promotionReceiptName(rec)
 		if err != nil {
 			return err
@@ -219,22 +232,28 @@ func ensurePromoted(c Config, prov SignerProvider, app App, rec *walReceipt) err
 		// overwrites that evidence or makes the provider mistake the old
 		// receipt for the new candidate.
 		promotePath := c.receiptPath(rec.AppID, promoteName)
-		if _, statErr := os.Lstat(promotePath); statErr == nil {
+		_, statErr := os.Lstat(promotePath)
+		switch {
+		case statErr == nil:
 			// A prior promotion may have committed at the Store immediately before
 			// a caller lost its post-promotion served-hash read (for example while
 			// the listing gate was being initialized). The candidate-bound receipt
-			// is sufficient durable evidence to resume: re-verify it and then prove
-			// the live pointer below. Never overwrite it or submit the same release
-			// again merely because the WAL journal was not reached.
+			// is sufficient durable evidence to resume: admit the entry, re-verify
+			// the receipt and then prove the live pointer below. Never overwrite it
+			// or submit the same release again merely because the WAL journal was
+			// not reached.
+			if err := admitForPromote(c, prov, rec); err != nil {
+				return err
+			}
 			ref, err := readPromoteReceipt(promotePath, rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, rec.Version)
 			if err != nil {
 				return fmt.Errorf("existing candidate promotion receipt: %w", err)
 			}
 			rec.PromoteReceipt = ref
-		} else if !os.IsNotExist(statErr) {
+		case !os.IsNotExist(statErr):
 			return fmt.Errorf("stat candidate promotion receipt: %w", statErr)
-		} else {
-			if err := prov.Promote(app, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.StageID, promotePath); err != nil {
+		default:
+			if err := promoteAdmitted(c, prov, app, rec, promotePath); err != nil {
 				return err
 			}
 			ref, err := readPromoteReceipt(promotePath, rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.StageID, rec.Version)
@@ -243,8 +262,6 @@ func ensurePromoted(c Config, prov SignerProvider, app App, rec *walReceipt) err
 			}
 			rec.PromoteReceipt = ref
 		}
-	} else if err := verifyArtifactRef(rec.PromoteReceipt); err != nil {
-		return err
 	}
 	served, err := prov.ServedAppHash(rec.AppID)
 	if err != nil {

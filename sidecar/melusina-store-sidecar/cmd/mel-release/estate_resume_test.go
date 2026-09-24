@@ -207,9 +207,7 @@ func TestResumedCandidateMustBeTheBoundEstates(t *testing.T) {
 
 	// repair-catalog re-projects that terminal candidate: only under its own
 	// estate.
-	state := h.provState()
-	state.Served = ""
-	mustWriteJSON(t, h.statePath, state)
+	h.setServed("")
 	promotes := countOp(h.callOps(), "promote")
 	foreign := h.cfg
 	foreign.MasterNftMint = testEstateMasterMint

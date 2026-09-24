@@ -2,10 +2,19 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry/releaseentrytest"
 )
 
 func TestRepairCatalogReprojectsOnlyVerifiedTerminalCandidate(t *testing.T) {
@@ -24,9 +33,7 @@ func TestRepairCatalogReprojectsOnlyVerifiedTerminalCandidate(t *testing.T) {
 	// Model the precise deployment failure this command repairs: all governed
 	// receipts and the Active ReleaseEntry remain intact, but the public catalog
 	// projection no longer serves the terminal candidate.
-	state := h.provState()
-	state.Served = ""
-	mustWriteJSON(t, h.statePath, state)
+	h.setServed("")
 
 	repairPath, err := runRepairCatalog(h.cfg, h.catalog, testAppID)
 	mustNoErr(t, "repair catalog", err)
@@ -43,6 +50,7 @@ func TestRepairCatalogReprojectsOnlyVerifiedTerminalCandidate(t *testing.T) {
 			t.Fatalf("repair issued forbidden %s operation: got %d, want %d; operations=%v", op, got, want, operationsAfter)
 		}
 	}
+	requirePromotesAdmitted(t, "repair-catalog", operationsAfter[len(operationsBefore):])
 
 	terminalAfter, err := os.ReadFile(terminalPath)
 	if err != nil {
@@ -122,12 +130,11 @@ func TestRepairCatalogReprojectsLegacyTerminalWithVerifiedCandidateFinalRelease(
 		t.Fatalf("tamper legacy release: %v", err)
 	}
 
-	state := h.provState()
-	state.Served = ""
-	mustWriteJSON(t, h.statePath, state)
+	h.setServed("")
 	before := h.callOps()
 	repairPath, err := runRepairCatalog(h.cfg, h.catalog, testAppID)
 	mustNoErr(t, "repair legacy terminal", err)
+	requirePromotesAdmitted(t, "legacy repair-catalog", h.callOps()[len(before):])
 	if got, want := countOp(h.callOps(), "promote"), countOp(before, "promote")+1; got != want {
 		t.Fatalf("legacy repair promote calls = %d, want %d", got, want)
 	}
@@ -246,10 +253,15 @@ func TestRepairCatalogRefusesNonterminalOrUnverifiedInputs(t *testing.T) {
 		v1 := h.fx.Versions["1.0.1"]
 		mustNoErr(t, "publish", h.publish("1.0.1"))
 		mustNoErr(t, "approve", h.approve())
-		state := h.provState()
-		state.Statuses[v1.PdaNew] = "Revoked"
-		state.Active = nil
-		mustWriteJSON(t, h.statePath, state)
+		// The provider's status projection says Revoked; the fake chain's
+		// accounts are kept.
+		st := h.readChainState()
+		statuses := map[string]string{}
+		h.field(st, "Statuses", &statuses)
+		statuses[v1.PdaNew] = "Revoked"
+		h.setField(st, "Statuses", statuses)
+		h.setField(st, "Active", []provRef{})
+		h.writeChainState(st)
 		before := h.callOps()
 		if _, err := runRepairCatalog(h.cfg, h.catalog, testAppID); err == nil {
 			t.Fatal("repair accepted a terminal release that is no longer live Active")
@@ -258,4 +270,154 @@ func TestRepairCatalogRefusesNonterminalOrUnverifiedInputs(t *testing.T) {
 			t.Fatalf("inactive repair issued promote: got %d, want %d", got, want)
 		}
 	})
+}
+
+// requirePromotesAdmitted asserts, over the provider operations one promote
+// path issued, that it promoted and that every promote directly follows the
+// ReleaseEntry account read of the shared admission (promoteAdmitted), with
+// no other provider operation in between.
+func requirePromotesAdmitted(t *testing.T, path string, ops []string) {
+	t.Helper()
+	promotes := 0
+	for i, op := range ops {
+		if op != "promote" {
+			continue
+		}
+		promotes++
+		if i == 0 || ops[i-1] != "release-entry-account" {
+			t.Fatalf("promote-without-shared-admission: %s promoted without the ReleaseEntry readback immediately before it: %v", path, ops)
+		}
+	}
+	if promotes == 0 {
+		t.Fatalf("%s issued no promote: %v", path, ops)
+	}
+}
+
+// requirePromoteRefused asserts err is the shared promote admission's refusal
+// naming want.
+func requirePromoteRefused(t *testing.T, path string, err, want error) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("promote-without-shared-admission: %s succeeded; want refusal %q wrapping %q", path, errPromoteNotAdmitted, want)
+	}
+	if !errors.Is(err, errPromoteNotAdmitted) || !errors.Is(err, want) ||
+		!strings.Contains(err.Error(), errPromoteNotAdmitted.Error()) || !strings.Contains(err.Error(), want.Error()) {
+		t.Fatalf("%s: got %v, want refusal %q wrapping %q", path, err, errPromoteNotAdmitted, want)
+	}
+}
+
+// setAccountOnly changes the ReleaseEntry account the fake chain holds at pda
+// (nil removes it) and nothing else: the provider's status projection
+// (release-status, active-releases) keeps saying what it said. Only the Go
+// admission, which decodes the account itself, sees the change.
+func (h *harness) setAccountOnly(pda, owner string, entry *releaseentry.Entry) {
+	h.t.Helper()
+	st := h.readChainState()
+	accounts := map[string]fakeAccount{}
+	h.field(st, "Accounts", &accounts)
+	if entry == nil {
+		delete(accounts, pda)
+	} else {
+		accounts[pda] = fakeAccount{Owner: owner, Data: base64.StdEncoding.EncodeToString(releaseentrytest.Encode(*entry))}
+	}
+	h.setField(st, "Accounts", accounts)
+	h.writeChainState(st)
+}
+
+// repair-catalog re-promotes a terminal release only through promoteAdmitted,
+// the entry point approve uses. In every case below the terminal receipt, the
+// frozen candidate and the provider's status projection still say the
+// release is Active, so every check repair ran before this change passes;
+// only the Go ReleaseEntry admission sees the change, and it must stop repair
+// by name before promote, with nothing re-projected and no repair receipt.
+// Undoing the change repairs the same terminal release (positive control).
+func TestRepairCatalogRunsTheSharedPromoteAdmission(t *testing.T) {
+	otherPublisher := hex.EncodeToString(releasetest.VectorKey("rehearsal/publisher-2").Public().(ed25519.PublicKey))
+	for _, tc := range []struct {
+		name   string
+		mutate func(h *harness, pda string, entry releaseentry.Entry)
+		want   error
+	}{
+		{"recalled", func(h *harness, pda string, entry releaseentry.Entry) {
+			recalled := releaseentrytest.Recall(entry, entry.RegisteredAt+60)
+			h.setAccountOnly(pda, h.chainProgram, &recalled)
+		}, releaseentry.ErrRecalled},
+		{"missing", func(h *harness, pda string, _ releaseentry.Entry) {
+			h.setAccountOnly(pda, "", nil)
+		}, releaseentry.ErrMissing},
+		{"owner", func(h *harness, pda string, entry releaseentry.Entry) {
+			h.setAccountOnly(pda, "11111111111111111111111111111111", &entry)
+		}, releaseentry.ErrOwnerMismatch},
+		{"publisher-no-longer-trusted", func(h *harness, _ string, _ releaseentry.Entry) {
+			// A re-signed profile for the same estate that drops the publisher.
+			h.cfg.ReleasePublisherKeys = []string{otherPublisher}
+		}, releaseentry.ErrPublisherUntrusted},
+		{"threshold", func(h *harness, _ string, _ releaseentry.Entry) {
+			h.cfg.ReleasePublisherThreshold = 2
+		}, releaseentry.ErrThresholdUnmet},
+		{"signature", func(h *harness, pda string, entry releaseentry.Entry) {
+			entry.Signature[0] ^= 0x01
+			h.setAccountOnly(pda, h.chainProgram, &entry)
+		}, releaseentry.ErrSignatureInvalid},
+		{"app_id", func(h *harness, pda string, entry releaseentry.Entry) {
+			entry.AppID = releaseentry.AppIDHash("another-app")
+			entry = releaseentrytest.Sign(entry, releasetest.TrustedPublisher())
+			h.setAccountOnly(pda, h.chainProgram, &entry)
+		}, releaseentry.ErrAppIDMismatch},
+		{"account-changed-since-readback", func(h *harness, pda string, entry releaseentry.Entry) {
+			entry.Bump--
+			h.setAccountOnly(pda, h.chainProgram, &entry)
+		}, errReleaseEntryChanged},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			mustNoErr(t, "publish", h.publish("1.0.1"))
+			mustNoErr(t, "approve", h.approve())
+			mustState(h, stateDone)
+			rec := h.wal()
+			entry := h.storedEntry(rec.NewReleasePDA)
+			cfg := h.cfg
+			terminalPath := filepath.Join(h.cfg.appStateDir(testAppID), "terminal.json")
+			terminalBefore, err := os.ReadFile(terminalPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			h.setServed("")
+
+			tc.mutate(h, rec.NewReleasePDA, entry)
+			// Precondition: the provider's projection still reports the
+			// release Active, so repair's older checks would let it through.
+			if err := verifyCatalogRepairLiveActive(newExecProvider(h.cfg), rec); err != nil {
+				t.Fatalf("case %s does not leave the provider projection Active, so it does not reach the admission: %v", tc.name, err)
+			}
+			before := h.callOps()
+			_, err = runRepairCatalog(h.cfg, h.catalog, testAppID)
+			requirePromoteRefused(t, "repair-catalog", err, tc.want)
+			if got, want := countOp(h.callOps(), "promote"), countOp(before, "promote"); got != want {
+				t.Fatalf("promote-without-shared-admission: refused repair issued promote: %d -> %d: %v", want, got, h.callOps())
+			}
+			if got := h.provState().Served; got != "" {
+				t.Fatalf("refused repair changed the served appHash to %q", got)
+			}
+			if repairs, _ := filepath.Glob(filepath.Join(h.cfg.appStateDir(testAppID), "catalog-repairs", "repair-*.json")); len(repairs) != 0 {
+				t.Fatalf("refused repair wrote a repair receipt: %v", repairs)
+			}
+			if after, err := os.ReadFile(terminalPath); err != nil || !bytes.Equal(after, terminalBefore) {
+				t.Fatalf("refused repair touched the terminal receipt (err=%v)", err)
+			}
+
+			// Positive control: undo the change and the same terminal release
+			// is re-projected through the same admission.
+			h.cfg = cfg
+			h.setAccountOnly(rec.NewReleasePDA, h.chainProgram, &entry)
+			before = h.callOps()
+			if _, err := runRepairCatalog(h.cfg, h.catalog, testAppID); err != nil {
+				t.Fatalf("control: repair with the admitted entry restored: %v", err)
+			}
+			requirePromotesAdmitted(t, "repair-catalog control", h.callOps()[len(before):])
+			if got := h.provState().Served; got != rec.NewAppHash {
+				t.Fatalf("control: served appHash = %q, want %q", got, rec.NewAppHash)
+			}
+		})
+	}
 }

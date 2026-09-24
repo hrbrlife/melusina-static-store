@@ -27,8 +27,10 @@
 //	mel-release repair-catalog --app <appId|slug|name>
 //	    Re-project ONLY an already terminally accepted candidate through the
 //	    store's normal staged-promotion path. It re-verifies terminal, candidate,
-//	    stage, and the live Active ReleaseEntry first; it never signs, registers,
-//	    revokes, or mutates chain state.
+//	    stage, and the live Active ReleaseEntry first, then promotes through the
+//	    same entry point as approve, which re-admits the ReleaseEntry (owner,
+//	    Active, bindings, releaseTrust publisher, signature) immediately before
+//	    the promote; it never signs, registers, revokes, or mutates chain state.
 //
 //	mel-release recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path>
 //	    Record a missing local release history only after re-hashing selected

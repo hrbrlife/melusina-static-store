@@ -495,13 +495,7 @@ func (h *harness) putAccount(pda, owner string, entry releaseentry.Entry) {
 	h.setField(st, "Finalize", finalize)
 	h.setField(st, "Statuses", statuses)
 	h.setField(st, "Active", kept)
-	raw, err := json.MarshalIndent(st, "", "  ")
-	if err != nil {
-		h.t.Fatal(err)
-	}
-	if err := os.WriteFile(h.statePath, append(raw, '\n'), 0o600); err != nil {
-		h.t.Fatal(err)
-	}
+	h.writeChainState(st)
 	pdas := make([]string, 0, len(kept))
 	for _, r := range kept {
 		pdas = append(pdas, r.PDA)
@@ -518,6 +512,28 @@ func (h *harness) putAccount(pda, owner string, entry releaseentry.Entry) {
 	if _, err := f.WriteString(line + "\n"); err != nil {
 		h.t.Fatal(err)
 	}
+}
+
+// writeChainState writes the fake's state file back with every field it holds.
+func (h *harness) writeChainState(st chainState) {
+	h.t.Helper()
+	raw, err := json.MarshalIndent(st, "", "  ")
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	if err := os.WriteFile(h.statePath, append(raw, '\n'), 0o600); err != nil {
+		h.t.Fatal(err)
+	}
+}
+
+// setServed changes only the Store's served pointer. A provState round trip
+// would drop the fake chain's accounts, and every promote path reads the
+// ReleaseEntry account back immediately before it promotes.
+func (h *harness) setServed(appHash string) {
+	h.t.Helper()
+	st := h.readChainState()
+	h.setField(st, "Served", appHash)
+	h.writeChainState(st)
 }
 
 // storedEntry decodes the account the fake chain holds at pda.

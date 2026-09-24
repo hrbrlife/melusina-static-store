@@ -10,10 +10,15 @@
 #   mel-release publish -> build, private stage, UNEXECUTED Squads proposal
 #   mel-release approve -> ReleaseEntry readback, finalize-release, promote
 #
-# approve approves and executes nothing on chain. The owner-authorized runner
-# registers each ReleaseEntry; `release-entry-account` hands mel-release the
-# raw account to admit, and `finalize-release` only reads the registered entry
-# to bind the candidate RELEASE.json.
+# approve registers no ReleaseEntry and approves or executes no register
+# proposal. The owner-authorized runner registers each ReleaseEntry;
+# `release-entry-account` hands mel-release the raw account to admit, and
+# `finalize-release` only reads the registered entry to bind the candidate
+# RELEASE.json. One approve-side operation still executes on chain: when the
+# release opted into global revoke (MEL_RELEASE_ALLOW_GLOBAL_REVOKE=yes),
+# `revoke` runs revoke_release_entry for a stale entry as a Squads vault
+# transaction that the executor creates, approves and executes with the
+# MEL_RELEASE_MEMBER_KEYPAIR_* files, until that revoke moves to the runner.
 
 set -euo pipefail
 umask 077

@@ -275,8 +275,8 @@ func TestProviderUsesPearlToolsCanonicalSquadsProgramFlag(t *testing.T) {
 	}
 }
 
-// One approval rail: no release tool in this module approves or executes a
-// Squads proposal. The owner-authorized runner registers every ReleaseEntry;
+// One registration rail: no release tool in this module approves or executes a
+// register proposal. The owner-authorized runner registers every ReleaseEntry;
 // approve only reads it back. Each forbidden spelling below is the removed
 // self-executing path; re-adding it fails this test by name.
 func TestReleaseToolsHaveNoSelfExecutingSquadsPath(t *testing.T) {

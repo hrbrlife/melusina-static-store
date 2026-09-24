@@ -16,7 +16,12 @@ package main
 // only through the owner-authorized runner (one governed vault transaction per
 // entry, spec R5); approve reads the account back (ReleaseEntryAccount) and
 // admits it itself, in Go, before FinalizeRelease and Promote. No provider
-// operation approves or executes a Squads proposal on approve's behalf.
+// operation registers an entry or approves or executes a register proposal on
+// approve's behalf. The one approve-side operation that still executes on
+// chain is RevokeRelease, run only when the release opted into global revoke:
+// the provider creates, approves and executes that revoke_release_entry as a
+// Squads vault transaction with the release workstation's member keypair
+// files, until the revoke moves to the owner-authorized runner.
 
 import (
 	"bufio"

@@ -536,8 +536,8 @@ before the Store or the chain sees it:
   act on, whose master mint, license-registry program, Store ID and bundle
   origin must all be the profile's.
 
-`mel-release approve` registers nothing and executes no Squads proposal; no
-release tool in this module approves or executes one. The owner-authorized
+`mel-release approve` registers no ReleaseEntry and approves or executes no
+register proposal; no release tool in this module does. The owner-authorized
 runner registers each ReleaseEntry through the master NFT custodian's vault
 (one governed vault transaction per entry). `approve` then reads the account
 at the ReleaseEntry PDA back through the provider's read-only
@@ -566,6 +566,17 @@ checks the result field by field, and admits the entry again immediately
 before promote, so an entry recalled between two runs is never promoted. With
 no entry on chain yet, `approve` refuses with `release-entry-missing`; run it
 again once the runner has registered it.
+
+The release tools still sign with Squads member keypair files on the release
+workstation for three operations that are not registration. `publish` creates
+the register proposal and leaves it unexecuted, and `reject-proposed` casts the
+members' rejection votes on an invalid one; neither approves or executes it.
+The third does execute: with `MEL_RELEASE_ALLOW_GLOBAL_REVOKE=yes` (off by
+default), `approve` revokes each declared stale ReleaseEntry once the new
+release is Active and served, and the provider's `revoke` operation runs that
+`revoke_release_entry` as a Squads vault transaction it creates, approves and
+executes with the member keypair files. That opted-in revoke remains a
+member-key Squads execution until it moves to the owner-authorized runner.
 
 The state directory (`MEL_RELEASE_STATE_DIR`, default `~/.mel-release`) belongs
 to one estate's Store. Before any subcommand reads or writes it, `mel-release`

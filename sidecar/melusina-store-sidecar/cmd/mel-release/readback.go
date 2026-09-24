@@ -2,11 +2,11 @@ package main
 
 // ReleaseEntry readback: the whole of approve's register step.
 //
-// mel-release approve registers nothing and executes no Squads proposal. The
-// owner-authorized runner registers the release's ReleaseEntry through the
-// master NFT custodian's vault, one governed vault transaction per entry
-// (spec R5); approve then reads that account back and admits it before it lets
-// anything be promoted:
+// mel-release approve registers no entry and approves or executes no
+// register proposal. The owner-authorized runner registers the release's
+// ReleaseEntry through the master NFT custodian's vault, one governed vault
+// transaction per entry (spec R5); approve then reads that account back and
+// admits it before it lets anything be promoted:
 //
 //   - the account at the ReleaseEntry PDA derived from the estate's master
 //     mint and the frozen app_hash, owned by the estate's license registry;
@@ -112,7 +112,7 @@ func readbackReleaseEntry(c Config, prov SignerProvider, rec *walReceipt) (relea
 		return releaseentry.Entry{}, nil, fmt.Errorf("read ReleaseEntry %s: %w", derived, err)
 	}
 	if !account.Present {
-		return releaseentry.Entry{}, nil, fmt.Errorf("%w: no ReleaseEntry at %s for app %s version %s; approve registers nothing and executes no proposal. "+
+		return releaseentry.Entry{}, nil, fmt.Errorf("%w: no ReleaseEntry at %s for app %s version %s; approve does not register it or execute a register proposal. "+
 			"The owner-authorized runner registers it; re-run approve once it is on chain", releaseentry.ErrMissing, derived, rec.AppID, rec.Version)
 	}
 	if account.Owner != c.ProgramID {

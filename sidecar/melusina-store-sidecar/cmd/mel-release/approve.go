@@ -9,14 +9,17 @@ package main
 //	              registered and admit it (readback.go): the frozen app_hash,
 //	              app_id, release_hash and version, the estate's master mint
 //	              and release custodian, and a publisher the profile's
-//	              releaseTrust enrolled. approve approves, executes and signs
-//	              nothing on chain; a missing entry is refused by name.
+//	              releaseTrust enrolled. This step registers, approves,
+//	              executes and signs nothing on chain; a missing entry is
+//	              refused by name.
 //	PROMOTED   -> re-admit the entry, then promote the store catalog pointer for
 //	              the NEW bytes (no gap: the prior release is still Active +
 //	              on-chain).
 //	REVOKED    -> complete the global-retirement boundary. Normal target-scoped
 //	              approval retains global history; explicit global revocation is
-//	              a separately opted-in operation.
+//	              a separately opted-in operation, and the only one approve
+//	              executes on chain: the provider's revoke runs a Squads vault
+//	              transaction with member keypair files (signer.go).
 //	VERIFIED   -> this target serves the new hash and that hash is Active.
 //	DONE       -> immutable terminal receipt.
 //

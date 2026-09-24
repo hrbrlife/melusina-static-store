@@ -2,10 +2,11 @@
 // ReleaseEntry account, the on-chain attestation of one app release (PDA
 // ["release_v2", master_nft_mint, app_hash]), and its one admission rule.
 //
-// `mel-release approve` executes no Squads proposal. The owner-authorized
-// runner registers each ReleaseEntry through the master NFT custodian's vault
-// (spec R5: one governed vault transaction per entry), and approve reads the
-// entry back and admits it here before it promotes anything. Admission holds
+// `mel-release approve` registers no entry and approves or executes no
+// register proposal. The owner-authorized runner registers each ReleaseEntry
+// through the master NFT custodian's vault (spec R5: one governed vault
+// transaction per entry), and approve reads the entry back and admits it here
+// before it promotes anything. Admission holds
 // the entry to the release the approver froze at publish (app_hash, app_id,
 // release_hash, version), to the estate (master mint and release custodian),
 // and to the publisher the estate's owners enrolled in the signed profile's

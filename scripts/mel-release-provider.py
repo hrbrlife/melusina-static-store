@@ -8,6 +8,10 @@ the approve side reads the ReleaseEntry account back (raw, for mel-release to
 admit), binds the candidate RELEASE.json to it, promotes the staged bytes, and
 revokes only declared stale ReleaseEntries.  It never approves or executes a
 register proposal: the owner-authorized runner registers every ReleaseEntry.
+The stale revoke, which mel-release requests only when a release opted into
+global revoke, is the one operation that executes a Squads transaction: it
+creates, approves and executes a vault transaction with the member keypair
+files, until that revoke moves to the owner-authorized runner.
 Signing paths are supplied by environment variables; key material is never
 read from the Bazaar catalog manifest or written to a receipt.
 
@@ -3262,7 +3266,7 @@ def finalize_register(app_id: str, app_hash: str, release_hash: str, version: st
     if not release_entry_exists(pda):
         raise ProviderError(
             f"release-entry-missing: no ReleaseEntry at {pda}; the owner-authorized runner registers it "
-            "and this provider executes no Squads proposal"
+            "and this provider executes no register proposal"
         )
     finalize_release(context)
     final_release = read_json(clean_abs(str(context["releasePath"]), "provider releasePath"))

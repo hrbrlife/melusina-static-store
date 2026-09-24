@@ -18,7 +18,8 @@ import (
 )
 
 // approve reads back the ReleaseEntry the owner-authorized runner registered
-// and admits it; it never registers, approves or executes anything itself.
+// and admits it; it never registers an entry or approves or executes a
+// register proposal itself.
 // Each refusal below is a mutation of the runner's registration (or of the
 // chain after it), and each one must stop approve by name, before promote,
 // with the WAL where it was and the Store's served pointer unchanged.
@@ -183,6 +184,71 @@ func TestApproveRefusesAnEntryRecalledBeforePromote(t *testing.T) {
 	h.putAccount(h.wal().NewReleasePDA, h.chainProgram, releaseentrytest.Recall(entry, releaseentrytest.RegisteredAt+60))
 	requireNamedRefusal(t, h.approveOnly(), releaseentry.ErrRecalled)
 	refusedBeforePromote(t, h, stateRegistered, promotes)
+}
+
+// Mutation control: an entry whose account bytes changed after approve
+// recorded them, although the changed entry is still admitted. The readback
+// receipt pins the account's sha256, and the re-verification before promote
+// refuses any other bytes by name before it consults the finalized
+// RELEASE.json:
+//
+//   - bump: a field no other check reads, so this guard alone keeps promote
+//     from running;
+//   - registered_at: a registration at another time, which the final-release
+//     binding would also refuse, but only after this guard.
+//
+// Putting the recorded account back completes the same WAL (positive control).
+func TestApproveRefusesAnEntryWhoseAccountChangedBeforePromote(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*releaseentry.Entry)
+	}{
+		{"bump", func(e *releaseentry.Entry) { e.Bump-- }},
+		{"registered_at", func(e *releaseentry.Entry) { e.RegisteredAt += 60 }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			mustNoErr(t, "publish", h.publish("1.0.1"))
+			entry := h.runnerRegister(releasetest.TrustedPublisher(), nil)
+			h.setFaultOp("promote")
+			mustErr(t, "approve stopped before promote", h.approveOnly())
+			h.clearFault()
+			mustState(h, stateRegistered)
+			promotes := countOp(h.callOps(), "promote")
+			rec := h.wal()
+			recorded, _, err := readReadbackReceipt(rec.RegisterReceipt.Path, rec.NewReleasePDA, rec.ReleaseHash)
+			if err != nil {
+				t.Fatalf("readback receipt: %v", err)
+			}
+			if recorded.AccountSHA256 != sha256Hex(releaseentrytest.Encode(entry)) {
+				t.Fatalf("approve recorded account sha256 %s, not the registered account's", recorded.AccountSHA256)
+			}
+
+			changed := entry
+			tc.mutate(&changed)
+			h.putAccount(rec.NewReleasePDA, h.chainProgram, changed)
+			// Precondition: the changed account is still admitted on its own,
+			// so only the recorded account bytes tell it apart.
+			admitted, account, err := readbackReleaseEntry(h.cfg, newExecProvider(h.cfg), &rec)
+			if err != nil {
+				t.Fatalf("the changed %s entry is not admitted, so this case does not reach the account-bytes guard: %v", tc.name, err)
+			}
+			if admitted != changed || sha256Hex(account) == recorded.AccountSHA256 {
+				t.Fatalf("readback did not return the changed %s entry under other account bytes (account sha256 %s, recorded %s)", tc.name, sha256Hex(account), recorded.AccountSHA256)
+			}
+
+			err = h.approveOnly()
+			requireNamedRefusal(t, err, errReleaseEntryChanged)
+			if !strings.Contains(err.Error(), recorded.AccountSHA256) {
+				t.Fatalf("refusal does not name the recorded account sha256: %v", err)
+			}
+			refusedBeforePromote(t, h, stateRegistered, promotes)
+
+			h.putAccount(rec.NewReleasePDA, h.chainProgram, entry)
+			mustNoErr(t, "approve with the recorded account", h.approveOnly())
+			mustState(h, stateDone)
+		})
+	}
 }
 
 // An account the estate's registry does not own is not a ReleaseEntry, even

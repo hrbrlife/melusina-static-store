@@ -339,12 +339,19 @@ func main() {
 		log.Printf("reseller root-mirror worker started (interval %s)", mirror.interval())
 	}
 
-	publicHandler, controlHandler := newGovernedRouterSurfaces(cfg, operator, cr, mirror, catalogState, cfg.StoreLinkControlMTLS.configured())
-	srv := &http.Server{
-		Addr:              cfg.ListenAddr,
-		Handler:           publicHandler,
-		ReadHeaderTimeout: 10 * time.Second,
+	// Gated routes snapshot each artifact they serve into this directory
+	// (served_snapshot.go); it is created, or checked, before any listener
+	// opens. A Store that cannot keep those copies private and on disk does
+	// not start.
+	snapshotsCreated, err := prepareServedSnapshotDir(cfg.ServedSnapshotDir)
+	if err != nil {
+		log.Fatalf("served snapshots: %v", err)
 	}
+	log.Printf("served snapshots: %s (created=%t, mode 0700, disk-backed); at most %d bytes held at once, %d per artifact", cfg.ServedSnapshotDir, snapshotsCreated, int64(servedSnapshotBudgetBytes), int64(maxServedArtifactBytes))
+
+	publicHandler, controlHandler := newGovernedRouterSurfaces(cfg, operator, cr, mirror, catalogState, cfg.StoreLinkControlMTLS.configured())
+	srv := newPublicServer(cfg.ListenAddr, publicHandler)
+	log.Printf("public listener limits: write %s (the largest artifact at %d bytes/s, plus %s), idle %s, read-header %s", srv.WriteTimeout, publicTransferFloorBytesPerSecond, publicTransferSlack, srv.IdleTimeout, srv.ReadHeaderTimeout)
 	// The served certificate is re-read while the Store runs; a renewed pair
 	// replaces it only after the checks in served_tls.go pass. It is loaded
 	// with the same checks here, so a bad pair stops start-up by name.

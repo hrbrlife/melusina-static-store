@@ -149,6 +149,9 @@ func renderedStoreUnitLayoutFromConfig(cfg Config) (renderedStoreUnitLayout, err
 			"catalog_migration_state_dir":  cfg.CatalogMigrationStateDir,
 			"catalog_repo_root":            cfg.CatalogRepoRoot,
 			"estate_enrollment_state_path": cfg.EstateEnrollmentStatePath,
+			// Created by the Store itself at start-up, so it is not in
+			// presentAtStart: the unit must not name it without a '-'.
+			"served_snapshot_dir": cfg.ServedSnapshotDir,
 		},
 		// DEPLOYMENT-CONTRACT.md "Deployer-owned inputs": install-bootstrap
 		// creates /etc/melusina/store/{,tls,shards}; items 5 and 6 require
@@ -369,6 +372,12 @@ func TestBundledStoreUnitNamespaceCheckRefusesByName(t *testing.T) {
 		{"dist made read-only under the state root", bundledStoreServerUnit,
 			"ReadOnlyPaths=" + cfg.DistDir + "\n",
 			"store-unit-rendered-path-not-writable:melusina-store-sidecar.service:dist_dir:" + cfg.DistDir},
+		{"served snapshots made read-only under the state root", bundledStoreServerUnit,
+			"ReadOnlyPaths=" + cfg.ServedSnapshotDir + "\n",
+			"store-unit-namespace-path-may-be-missing:melusina-store-sidecar.service:ReadOnlyPaths:" + cfg.ServedSnapshotDir},
+		{"served snapshots made read-only, '-'-prefixed", bundledStoreServerUnit,
+			"ReadOnlyPaths=-" + cfg.ServedSnapshotDir + "\n",
+			"store-unit-rendered-path-not-writable:melusina-store-sidecar.service:served_snapshot_dir:" + cfg.ServedSnapshotDir},
 		{"list reset by an empty assignment", bundledStoreServerUnit,
 			"ReadWritePaths=\n",
 			"store-unit-rendered-path-not-writable:melusina-store-sidecar.service:catalog_migration_state_dir:" + cfg.CatalogMigrationStateDir},
@@ -418,5 +427,12 @@ func TestBundledStoreUnitNamespaceCheckRefusesByName(t *testing.T) {
 	moved.PrivateStageDir = "/var/lib/melusina-store-private"
 	if _, err := renderedStoreUnitLayoutFromConfig(moved); err == nil || err.Error() != "rendered-store-state-outside-state-root:private_stage_dir:/var/lib/melusina-store-private" {
 		t.Fatalf("moved private_stage_dir: got %v", err)
+	}
+	// The served snapshots too: a renderer that put them on /run, a tmpfs
+	// outside the state root, is refused by name.
+	moved = cfg
+	moved.ServedSnapshotDir = "/run/melusina-store/served-snapshots"
+	if _, err := renderedStoreUnitLayoutFromConfig(moved); err == nil || err.Error() != "rendered-store-state-outside-state-root:served_snapshot_dir:/run/melusina-store/served-snapshots" {
+		t.Fatalf("moved served_snapshot_dir: got %v", err)
 	}
 }

@@ -150,6 +150,11 @@ func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.
 	if cfg.ReleaseSquadsAuthority.ProgramID != profileExternalProgramID(t, profile, estateprofile.ExternalRoleSquadsV4) {
 		t.Fatalf("release squads program = %q", cfg.ReleaseSquadsAuthority.ProgramID)
 	}
+	// The gated routes' snapshots are rendered explicitly, as a dedicated
+	// directory under the state root that holds dist_dir.
+	if cfg.ServedSnapshotDir != "/var/lib/melusina-store/served-snapshots" || filepath.Dir(cfg.ServedSnapshotDir) != filepath.Dir(cfg.DistDir) {
+		t.Fatalf("rendered-served-snapshot-dir-not-under-state-root: %q, state root %q", cfg.ServedSnapshotDir, filepath.Dir(cfg.DistDir))
+	}
 	if cfg.EstateEnrollmentStatePath != storeConfigRenderStatePath || cfg.BootIdentity.OperatorDomain != "operator.rehearsal.invalid" || cfg.BootIdentity.ChainID != "solana:rehearsal" {
 		t.Fatalf("unbound config inputs were not preserved: %#v", cfg)
 	}

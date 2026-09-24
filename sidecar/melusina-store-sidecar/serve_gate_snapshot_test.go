@@ -392,7 +392,8 @@ func TestServeGate_GatedPathsNeverDelegateToStaticServer(t *testing.T) {
 
 // TestPrivateServedSnapshot proves the snapshot the gate hashes and serves is
 // a private copy: no name refers to it, it holds exactly size bytes, a later
-// write to the source does not reach it, and a short source is refused.
+// write to the source does not reach it, and a short source is refused
+// without keeping its bytes reserved.
 func TestPrivateServedSnapshot(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "artifact")
 	approved := []byte("approved artifact bytes")
@@ -404,7 +405,8 @@ func TestPrivateServedSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer src.Close()
-	snap, err := privateServedSnapshot(src, int64(len(approved)))
+	store := newServedSnapshotStore(testServedSnapshotDir(t))
+	snap, err := store.take(src, int64(len(approved)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -429,10 +431,13 @@ func TestPrivateServedSnapshot(t *testing.T) {
 	}
 
 	short := bytes.NewReader([]byte("short"))
-	if f, err := privateServedSnapshot(short, 64); err == nil {
+	if f, err := store.take(short, 64); err == nil {
 		_ = f.Close()
 		t.Fatal("served-snapshot-accepted-short-source")
 	} else if !strings.Contains(err.Error(), "copied 5 of 64 bytes") {
 		t.Fatalf("short source refused for the wrong reason: %v", err)
+	}
+	if held := store.heldBytes(); held != int64(len(approved)) {
+		t.Fatalf("served-snapshot-bytes-leaked: a refused snapshot left %d bytes held, want only the open snapshot's %d", held, len(approved))
 	}
 }

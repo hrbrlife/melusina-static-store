@@ -53,6 +53,7 @@ func TestGenerationDeploymentServesSignedPointerAndPinnedArtifact(t *testing.T) 
 		DistDir:              dist,
 		PublicBaseURL:        doc.BundleOrigin,
 		ReleaseMasterNftMint: masterMint,
+		ServedSnapshotDir:    testServedSnapshotDir(t),
 	}
 	chain := newMockChainReader()
 	bindTestInstallerReleaseEstate(t, chain, &cfg)

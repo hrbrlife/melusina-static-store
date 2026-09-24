@@ -57,6 +57,9 @@ func newStoreStateFixture(t *testing.T) storeStateFixture {
 		CatalogGenerationRoot:    filepath.Join(parent, "app-catalog-generations"),
 		CatalogMigrationStateDir: filepath.Join(parent, "migrations"),
 		CatalogRepoRoot:          filepath.Join(parent, "catalog-source"),
+		// The rendered layout: the snapshot directory beside the six state
+		// roots, which the export must neither carry nor refuse.
+		ServedSnapshotDir: filepath.Join(parent, "served-snapshots"),
 		ReleaseSquadsAuthority: ReleaseSquadsAuthority{
 			Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority,
 			Threshold: defaultBazaarSquadsThreshold, MemberCount: defaultBazaarSquadsMemberCount,
@@ -65,7 +68,7 @@ func newStoreStateFixture(t *testing.T) storeStateFixture {
 	}
 	configureReleaseAuthorityFixtureForBuild(&cfg, root)
 	cfg.EstateEnrollmentStatePath = filepath.Join(parent, "estate-enrollment.json")
-	for _, dir := range []string{cfg.PrivateStageDir, cfg.CatalogMigrationStateDir, cfg.CatalogRepoRoot} {
+	for _, dir := range []string{cfg.PrivateStageDir, cfg.CatalogMigrationStateDir, cfg.CatalogRepoRoot, cfg.ServedSnapshotDir} {
 		if err := os.Mkdir(dir, 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -256,6 +259,17 @@ func TestStoreRestoreServesIdenticalGeneration(t *testing.T) {
 	current, err := runtime.catalogGenerations.ResolveCurrent()
 	if err != nil || current.ID != f.current {
 		t.Fatalf("restored current = %q, %v; want %s", current.ID, err, f.current)
+	}
+	// The served-snapshot directory is not state: the import did not bring
+	// it back, and the restored Store's start-up creates it again, empty.
+	// (This host's /tmp may be a tmpfs; the memory-backed refusal has its
+	// own tests.)
+	if _, err := os.Lstat(f.cfg.ServedSnapshotDir); !os.IsNotExist(err) {
+		t.Fatalf("store-state-import-restored-served-snapshots: %v", err)
+	}
+	withServedSnapshotFilesystem(t, testExt4Magic)
+	if created, err := prepareServedSnapshotDir(f.cfg.ServedSnapshotDir); err != nil || !created {
+		t.Fatalf("restored Store start-up did not create its served-snapshot directory: created=%v err=%v", created, err)
 	}
 	restored := newRouterWithCatalogRuntime(f.cfg, f.operator, f.chain, nil, runtime)
 	for path, want := range map[string][]byte{"/apps/index.json": f.indexBytes, f.packagePath: f.packageBytes, f.pointerPath: f.pointerBytes} {

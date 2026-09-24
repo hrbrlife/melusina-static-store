@@ -47,6 +47,9 @@ const (
 	storeConfigRenderTLSCert   = "/etc/melusina/store/tls/cert.pem"
 	storeConfigRenderTLSKey    = "/etc/melusina/store/tls/key.pem"
 	storeConfigRenderShardDir  = "/etc/melusina/store/shards"
+	// The gated routes' private snapshots: a dedicated directory under the
+	// state root, on the same disk, created by the Store at start-up.
+	storeConfigRenderServedSnapshotDir = "/var/lib/melusina-store/served-snapshots"
 )
 
 var errStoreConfigRenderOutputExists = errors.New("store-config-render-output-exists")
@@ -465,6 +468,7 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 		CatalogGenerationRoot:    "/var/lib/melusina-store/app-catalog-generations",
 		CatalogMigrationStateDir: "/var/lib/melusina-store/migrations",
 		CatalogRepoRoot:          "/var/lib/melusina-store/catalog-source",
+		ServedSnapshotDir:        storeConfigRenderServedSnapshotDir,
 		TLS:                      TLSConfig{CertPath: storeConfigRenderTLSCert, KeyPath: storeConfigRenderTLSKey},
 		BootIdentity: BootIdentityConfig{
 			ShardsDir:          storeConfigRenderShardDir,

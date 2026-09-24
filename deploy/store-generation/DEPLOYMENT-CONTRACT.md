@@ -218,7 +218,10 @@ paths. Before enabling the unit it must install or create:
    `/etc/melusina/store` (read-only), each signer's own runtime directory, and,
    for the Store alone, the rendered state root `/var/lib/melusina-store`
    (read-write). Every path the rendered config makes the Store write is
-   under that root, which must exist before `genesis-dist-init` runs. systemd
+   under that root, which must exist before `genesis-dist-init` runs. That
+   includes `served_snapshot_dir`, which the Store creates itself at
+   start-up (see "Served snapshots and public listener limits"), so no unit
+   names it. systemd
    refuses to start a unit, with `226/NAMESPACE`, when a listed path without
    a leading `-` is missing, before the Store runs; a path that may be absent
    at first start, such as `catalog_generation_root`, needs the `-`. The
@@ -277,6 +280,62 @@ paths. Before enabling the unit it must install or create:
    is no governed way to start the signer.
    `TestProviderPairingSignerUnitIsConstrainedAndNotYetBundled` enforces that
    order.
+
+## Served snapshots and public listener limits
+
+The gated routes (`/packages/<id>` and `/releases/<class>/<name>`) hash a
+private copy of the artifact and serve that same copy, never a second read of
+the published file. The copies live in `served_snapshot_dir`, which the
+renderer sets to `/var/lib/melusina-store/served-snapshots`: a dedicated
+directory under the state root, on the same disk. They are never made in the
+service's `/tmp`, which `PrivateTmp=yes` places on a RAM-backed file system on
+many hosts.
+
+- The Store creates the directory, owned by its user with mode `0700`, at
+  start-up, before it opens a listener. The deployer does not create it; the
+  state root must already exist. The Store never repairs an existing
+  directory. It refuses to start, naming the reason:
+  `served-snapshot-dir-unconfigured`, `served-snapshot-dir-parent-missing`,
+  `served-snapshot-dir-not-directory` (a symlink included),
+  `served-snapshot-dir-not-private` (any group or other permission),
+  `served-snapshot-dir-mode-not-0700`, `served-snapshot-dir-foreign-owner`,
+  or `served-snapshot-dir-memory-backed` (tmpfs or ramfs). A Store that
+  passed gate 1 has therefore created it; gate 1 needs no further check.
+- Every copy checks the directory again. When it has gone missing or become
+  accessible to others, the request is refused `503` with
+  `check=served_snapshot: <name>` and no byte of the artifact. The Store
+  does not recreate it while running.
+- A copy has no name. It is created mode `0600` with an exclusive create
+  through the directory's descriptor and unlinked before its first byte is
+  copied, so the directory lists empty. A crash between the create and the
+  unlink can leave at most one empty file.
+- The directory is not Store state. `store-state-export` does not carry it
+  (it is an excluded path, and must lie outside the six state roots), and a
+  restored Store creates it again, empty.
+- At most 2 GiB of copies (four artifacts of the 512 MiB publication ceiling)
+  are held at once, so the state root's disk needs that much free beyond the
+  state. A request that would exceed the bound is refused, not queued:
+  `503 check=served_snapshot: served-snapshot-budget-exhausted` with
+  `Retry-After: 30`. An artifact above the ceiling (the `/publish/installer`
+  limit; nothing larger is ever published) is refused
+  `served-snapshot-artifact-too-large`, and a full disk
+  `served-snapshot-disk-full`.
+- The public listener's limits come from the same 512 MiB and a floor rate
+  of 512 KiB/s (4 Mbit/s):
+  - a write timeout of 18 min 4 s, the largest artifact at the floor rate
+    plus 60 s. Go counts it from the end of a request's headers, so it also
+    bounds a publication's upload and handling;
+  - an idle limit of 2 minutes on a keep-alive connection;
+  - the existing 10-second limit on reading request headers.
+  Each gated download narrows its own write deadline to its artifact's size
+  at the floor rate plus 60 s. A client that stops reading releases its copy
+  about a minute after the response began for a small artifact, and at most
+  18 min 4 s after for the largest. A client slower than the floor rate
+  cannot complete a download. The Store Link control listener is unchanged.
+- The bundled unit is unchanged: `ReadWritePaths=/var/lib/melusina-store`
+  already covers the directory, and
+  `TestBundledStoreUnitNamespacePathsExistAtFirstStart` checks the unit
+  against the renderer's output, `served_snapshot_dir` included.
 
 The current deployer phase that builds during deployment, omits
 `public_base_url`/private roots, starts an empty store, copies the catalog, and

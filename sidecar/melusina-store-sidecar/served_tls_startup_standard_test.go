@@ -69,7 +69,9 @@ func TestStoreStartupServesARotatedCertificateWithoutRestart(t *testing.T) {
 		"listen_addr":       addr,
 		"dist_dir":          filepath.Join(dir, "dist"),
 		"catalog_repo_root": filepath.Join(dir, "catalog"),
-		"tls":               map[string]any{"cert_path": certPath, "key_path": keyPath},
+		// The child sees a disk filesystem here (servedSnapshotDiskChildEnv).
+		"served_snapshot_dir": filepath.Join(dir, "served-snapshots"),
+		"tls":                 map[string]any{"cert_path": certPath, "key_path": keyPath},
 		"release_squads_authority": map[string]any{
 			"multisig": testStoreAuthority, "vault": testStoreAuthority, "program_id": testStoreAuthority,
 			"threshold": 3, "member_count": 4,
@@ -80,7 +82,7 @@ func TestStoreStartupServesARotatedCertificateWithoutRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=^TestStoreStartupChild$", "-test.count=1")
-	cmd.Env = append(os.Environ(), storeStartupChildArgs+"="+string(encoded), servedTLSReloadIntervalChildEnv+"=50ms")
+	cmd.Env = append(os.Environ(), storeStartupChildArgs+"="+string(encoded), servedTLSReloadIntervalChildEnv+"=50ms", servedSnapshotDiskChildEnv+"=1")
 	cmd.Dir = dir
 	output := &servedTLSChildOutput{}
 	cmd.Stdout, cmd.Stderr = output, output

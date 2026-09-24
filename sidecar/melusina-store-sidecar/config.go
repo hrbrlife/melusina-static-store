@@ -179,8 +179,17 @@ type Config struct {
 	// verified bytes and does not run build-store.sh. A fresh workspace may be
 	// empty; a first publish supplies its declared developer/repo/slug slot hint.
 	// Defaults to "." only for legacy/read-only compatibility.
-	CatalogRepoRoot string    `json:"catalog_repo_root"`
-	TLS             TLSConfig `json:"tls"`
+	CatalogRepoRoot string `json:"catalog_repo_root"`
+	// ServedSnapshotDir is the dedicated directory where a gated route
+	// (/packages/, /releases/<class>/) makes the private copy of an artifact
+	// it hashes and serves. It is an absolute path on the disk that holds the
+	// Store state, lexically disjoint from every other root: the rendered
+	// config names /var/lib/melusina-store/served-snapshots. The Store creates
+	// it mode 0700 at start-up and refuses to start without it, or when it is
+	// accessible to others, owned by another user or memory-backed
+	// (served_snapshot.go). Its copies have no name and are not Store state.
+	ServedSnapshotDir string    `json:"served_snapshot_dir,omitempty"`
+	TLS               TLSConfig `json:"tls"`
 	// StoreLinkControlMTLS binds the private Bazaar Control surface to its own
 	// TLS-1.3 listener. It is mandatory when direct app publishing has been
 	// retired, otherwise the Store Link route could accidentally remain public.
@@ -375,6 +384,12 @@ func LoadConfig(path string) (Config, error) {
 	if cfg.PrivateStageDir == "" {
 		cfg.PrivateStageDir = filepath.Join(cfg.CatalogRepoRoot, ".melusina-private-stage")
 	}
+	if cfg.ServedSnapshotDir != "" {
+		cfg.ServedSnapshotDir = strings.TrimSpace(cfg.ServedSnapshotDir)
+		if !filepath.IsAbs(cfg.ServedSnapshotDir) || filepath.Clean(cfg.ServedSnapshotDir) != cfg.ServedSnapshotDir || cfg.ServedSnapshotDir == string(filepath.Separator) {
+			return cfg, fmt.Errorf("config: served_snapshot_dir must be an absolute clean directory path")
+		}
+	}
 	if cfg.ListingSignerSocket != "" {
 		cfg.ListingSignerSocket = filepath.Clean(strings.TrimSpace(cfg.ListingSignerSocket))
 		if !filepath.IsAbs(cfg.ListingSignerSocket) || cfg.ListingSignerSocket == "/" {
@@ -531,6 +546,19 @@ func validateCatalogStorageRoots(cfg Config) error {
 	}
 	if cfg.CatalogMigrationStateDir != "" {
 		roots = append(roots, namedRoot{name: "catalog_migration_state_dir", path: cfg.CatalogMigrationStateDir})
+	}
+	// The snapshot directory must be neither served (under dist_dir) nor
+	// inside any root the Store keeps as state, so it is also kept apart from
+	// catalog_repo_root, which the legacy layout allows to contain dist_dir.
+	if cfg.ServedSnapshotDir != "" {
+		roots = append(roots, namedRoot{name: "served_snapshot_dir", path: cfg.ServedSnapshotDir})
+		repoRoot, err := filepath.Abs(cfg.CatalogRepoRoot)
+		if err != nil {
+			return fmt.Errorf("config: resolve catalog_repo_root: %w", err)
+		}
+		if pathsLexicallyOverlap(filepath.Clean(repoRoot), filepath.Clean(cfg.ServedSnapshotDir)) {
+			return fmt.Errorf("config: served_snapshot_dir and catalog_repo_root must be lexically disjoint")
+		}
 	}
 
 	for i := range roots {

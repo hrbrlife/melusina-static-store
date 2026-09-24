@@ -24,6 +24,12 @@ import (
 // refusal is observed as the process exit it is in production.
 const storeStartupChildArgs = "MELUSINA_STORE_TEST_STARTUP_CHILD_ARGS"
 
+// servedSnapshotDiskChildEnv makes the startup child's snapshot-directory
+// check see a disk filesystem, so a child whose directories are under this
+// host's tmpfs /tmp can start. A child without it runs the real check
+// (TestStoreStartupRefusesAMemoryBackedSnapshotDir).
+const servedSnapshotDiskChildEnv = "MELUSINA_STORE_TEST_SERVED_SNAPSHOT_DISK"
+
 func TestStoreStartupChild(t *testing.T) {
 	raw := os.Getenv(storeStartupChildArgs)
 	if raw == "" {
@@ -46,6 +52,9 @@ func TestStoreStartupChild(t *testing.T) {
 			os.Exit(3)
 		}
 		servedTLSReloadInterval = parsed
+	}
+	if os.Getenv(servedSnapshotDiskChildEnv) == "1" {
+		servedSnapshotFilesystemType = func(int) (int64, error) { return testExt4Magic, nil }
 	}
 	os.Args = append([]string{"melusina-store-sidecar"}, args...)
 	main()

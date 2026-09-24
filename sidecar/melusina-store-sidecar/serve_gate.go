@@ -72,6 +72,12 @@ type serveGate struct {
 	// now is the clock (injectable in tests for deterministic TTL expiry).
 	now func() time.Time
 
+	// snapshots makes the private copy a gated route hashes and serves, in
+	// the configured served_snapshot_dir, and bounds the bytes held at once.
+	// transfer is the write deadline each gated download gets for its size.
+	snapshots *servedSnapshotStore
+	transfer  transferPolicy
+
 	mu             sync.RWMutex
 	apps           map[string]servedApp // packageId(lowerhex) -> anchored app
 	appsLoadedAt   time.Time
@@ -141,6 +147,8 @@ func newServeGate(cfg Config, cr chainReader, fileServer http.Handler, operators
 		catalogVerifyWorkers: catalogGateMaxConcurrent,
 		catalogVerifyTimeout: catalogGateRequestTimeout,
 		now:                  time.Now,
+		snapshots:            newServedSnapshotStore(cfg.ServedSnapshotDir),
+		transfer:             publicTransfer,
 		verdict:              make(map[string]time.Time),
 		releaseVerdict:       make(map[string]time.Time),
 	}
@@ -248,9 +256,9 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Recompute the on-chain AppHash (tree-hash over the SPK + the app's
 	// metadata.json) over a private snapshot of the SPK, gate on that AppHash,
 	// and serve exactly that snapshot. The published file is not read again.
-	served, err := privateServedSnapshot(f, st.Size())
+	served, err := g.snapshots.take(f, st.Size())
 	if err != nil {
-		http.Error(w, "store serve-gate: snapshot error", http.StatusInternalServerError)
+		refuseServedSnapshotError(w, "store serve-gate", err)
 		return
 	}
 	defer served.Close()
@@ -271,6 +279,10 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "store serve-gate: seek error", http.StatusInternalServerError)
 		return
 	}
+	if err := g.limitTransfer(w, st.Size()); err != nil {
+		http.Error(w, "store serve-gate: write deadline", http.StatusInternalServerError)
+		return
+	}
 	// Content-addressed + revocable: forbid downstream caching so a revoke cannot
 	// be masked by an intermediary; the in-process verdict cache (not HTTP cache)
 	// is what spares the chain RPC on the hot path.
@@ -279,7 +291,7 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Store-AppHash", appHash)
 	w.Header().Set("X-Melusina-Runtime-Contract", app.runtimeContractStatus)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	http.ServeContent(w, r, base, st.ModTime(), served)
+	http.ServeContent(w, r, base, st.ModTime(), served.File)
 }
 
 // storeCatalogProjection holds both the exact stored source and its verified serving
@@ -679,9 +691,9 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 
 	// Hash a private snapshot, gate on that hash and size, and serve exactly
 	// that snapshot. The published file is not read again.
-	served, err := privateServedSnapshot(f, st.Size())
+	served, err := g.snapshots.take(f, st.Size())
 	if err != nil {
-		http.Error(w, "store release-gate: snapshot error", http.StatusInternalServerError)
+		refuseServedSnapshotError(w, "store release-gate", err)
 		return
 	}
 	defer served.Close()
@@ -722,6 +734,10 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 		http.Error(w, "store release-gate: seek error", http.StatusInternalServerError)
 		return
 	}
+	if err := g.limitTransfer(w, st.Size()); err != nil {
+		http.Error(w, "store release-gate: write deadline", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Store-Gate", "verified")
 	w.Header().Set("X-Store-Release-Class", class)
@@ -731,7 +747,7 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 		w.Header().Set("X-Store-InstallerHash", hashHex)
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
-	http.ServeContent(w, r, name, st.ModTime(), served)
+	http.ServeContent(w, r, name, st.ModTime(), served.File)
 }
 
 // gateSignedSidecarGeneration verifies the only sidecar download authority:

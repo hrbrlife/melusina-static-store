@@ -45,6 +45,19 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   SPK or tampered `metadata.json` (recomputed AppHash ≠ the on-chain-anchored `appHash`) is
   refused. A verified verdict is cached per-appHash for `serve_verify_ttl_seconds` (default
   60s; the revoke-visibility window).
+  The gated routes (`/packages/` and `/releases/<class>/`) hash one private,
+  unnamed copy of the artifact and serve that same copy. The copies live in
+  `served_snapshot_dir` (rendered `/var/lib/melusina-store/served-snapshots`),
+  never the process `/tmp`. The Store creates that directory mode `0700` at
+  start-up and refuses to start, by name, when it is missing its state root,
+  accessible to others, owned by another user or memory-backed. At most 2 GiB
+  of copies are held at once and no artifact above the 512 MiB publication
+  ceiling is copied: either refusal is a `503` naming
+  `check=served_snapshot`. The public listener's write limit (18 min 4 s: 512
+  MiB at 512 KiB/s, plus 60 s) and each download's own size-proportional
+  deadline release the copy held for a client that stops reading
+  (`served_snapshot.go`, `public_listener.go`; `deploy/store-generation/DEPLOYMENT-CONTRACT.md`
+  "Served snapshots and public listener limits").
 - **WRITE** (gated; the sidecar is the SINGLE WRITER): while
   `policy.require_pearl_control_for_app_publish=false`, the legacy
   `POST /publish` route accepts a sealed-v3 envelope from an attested publisher
@@ -727,9 +740,9 @@ inputs, and the owners have not chosen them yet (decision D-2).
 configuration names: `dist_dir`, `private_stage_dir`,
 `catalog_generation_root`, `catalog_migration_state_dir`, `catalog_repo_root`
 and `estate_enrollment_state_path`. Every other path in the configuration is
-classified as secret or host-bound (shards, TLS and control-listener keys and
-certificates, the listing signer socket), must lie outside those roots, and is
-never exported; `TestStoreStateClassifiesEveryConfigPath` fails by field name
+classified as secret, host-bound or transient (shards, TLS and control-listener
+keys and certificates, the listing signer socket, the served-snapshot
+directory), must lie outside those roots, and is never exported; `TestStoreStateClassifiesEveryConfigPath` fails by field name
 when a new path field has no class.
 
 - The stream is a PAX tar whose first member, `MANIFEST.json`, lists every

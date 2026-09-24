@@ -213,6 +213,7 @@ func newCatalogBootstrapFixture(t *testing.T, migrationState string) (Config, ca
 		PrivateStageDir:          filepath.Join(root, "private"),
 		CatalogGenerationRoot:    filepath.Join(root, "generations"),
 		CatalogMigrationStateDir: filepath.Join(root, "migrations"),
+		ServedSnapshotDir:        testServedSnapshotDir(t),
 		ReleaseSquadsAuthority:   ReleaseSquadsAuthority{Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority},
 	}
 	configureReleaseAuthorityFixtureForBuild(&cfg, root)

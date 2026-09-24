@@ -91,6 +91,7 @@ var storeStateExcludedConfigFields = map[string]string{
 	"store_link_control_mtls.key_path":       "secret: a TLS private key is never backed up",
 	"store_link_control_mtls.client_ca_path": "host-bound trust input, provisioned with the host",
 	"listing_signer_socket":                  "runtime socket, created by the listing signer at start",
+	"served_snapshot_dir":                    "transient: unnamed per-request copies of served artifacts; the Store recreates the empty directory at start",
 }
 
 type storeStateOptions struct {
@@ -165,6 +166,8 @@ func storeStateExcludedPath(cfg Config, field string) (string, bool) {
 		return cfg.StoreLinkControlMTLS.ClientCAPath, true
 	case "listing_signer_socket":
 		return cfg.ListingSignerSocket, true
+	case "served_snapshot_dir":
+		return cfg.ServedSnapshotDir, true
 	}
 	return "", false
 }

@@ -8,6 +8,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -480,13 +482,31 @@ func testConfig(t *testing.T) (Config, string) {
 			Threshold:   defaultBazaarSquadsThreshold,
 			MemberCount: defaultBazaarSquadsMemberCount,
 		},
-		Domain:          "store.example.org",
-		StoreID:         "test-store",
-		CatalogRepoRoot: ".",
-		DistDir:         t.TempDir(),
+		Domain:            "store.example.org",
+		StoreID:           "test-store",
+		CatalogRepoRoot:   ".",
+		DistDir:           t.TempDir(),
+		ServedSnapshotDir: testServedSnapshotDir(t),
 	}
 	configureReleaseAuthorityFixtureForBuild(&cfg, t.TempDir())
 	return cfg, licenseMint
+}
+
+// testServedSnapshotDir is a fresh private snapshot directory, as the Store
+// prepares at start-up, for a gate built directly from a test Config. The
+// start-up memory-backed check is proven separately
+// (TestServedSnapshotDirPreparedAtStartUp): this host's temporary directory
+// may be tmpfs.
+func testServedSnapshotDir(t *testing.T) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "served-snapshots")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return dir
 }
 
 // buildValidFixture constructs a publish whose SPK hashes to the release
@@ -494,6 +514,12 @@ func testConfig(t *testing.T) (Config, string) {
 // BlacklistEntry PDAs derived from the same inputs the gate uses. masterMintB58
 // is the app's master NFT mint (the ReleaseEntry + app-blacklist target).
 func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFixture {
+	t.Helper()
+	return buildValidFixtureWithSPK(t, cfg, masterMintB58, []byte("sandstorm package bytes — deterministic test SPK content v1"))
+}
+
+// buildValidFixtureWithSPK is buildValidFixture for the given SPK bytes.
+func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, spk []byte) publishFixture {
 	t.Helper()
 	// Individual tests often construct only the fields they exercise. Give
 	// fixture-backed release tests a complete shared-authority tuple while
@@ -509,7 +535,6 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 		configureReleaseAuthorityFixtureForBuild(&cfg, t.TempDir())
 	}
 
-	spk := []byte("sandstorm package bytes — deterministic test SPK content v1")
 	spkSum := sha256.Sum256(spk)
 	packageID := hex.EncodeToString(spkSum[:])[:32]
 	// metadata carries the Sandstorm appId — the served-slot key hygiene check (b)

@@ -138,6 +138,58 @@ func (s storeListingStatus) String() string {
 // hiding data or serving it unverified.
 var errStoreReleaseListingDelisted = errors.New("store release listing is Delisted")
 
+// errReleaseEntryRecalled is the second, and last, permitted catalog
+// omission: the estate's owners explicitly recalled this exact release on
+// chain (revoke_release_entry, a global recall the master-NFT custodian
+// signs). It is typed for the same reason as errStoreReleaseListingDelisted:
+// the catalog projection omits only this row and keeps serving the rest,
+// while the package route, publish and promote still refuse it. Only
+// releaseEntryExplicitRecall produces it.
+var errReleaseEntryRecalled = errors.New("release-entry-recalled")
+
+// releaseEntryExplicitRecall reports whether a non-Active ReleaseEntry is an
+// explicit recall of this estate's release, the one non-Active state the
+// catalog may omit instead of refusing. Every fact must hold:
+//   - status Revoked with revoked_at set, the pair revoke_release_entry
+//     writes together. Superseded, an unknown status, or Revoked without a
+//     revocation time is not a recall;
+//   - the estate master mint is configured (release_master_nft_mint, the
+//     enrolled profile's anchors.masterMint) and the account's own
+//     master_nft_mint field is it;
+//   - readAt, the address the entry was read from (the caller derives it from
+//     the row's RELEASE.json master mint), is the PDA derived from the estate
+//     master mint and the row's app hash under the configured license-registry
+//     program. So the row names the estate master mint too;
+//   - the account's app_hash is the row's.
+//
+// A ReleaseEntry that cannot be read (RPC error, absent, malformed) never
+// reaches this function: those stay fail-closed.
+func releaseEntryExplicitRecall(cfg Config, appHash [32]byte, readAt pda.Pubkey, meta releaseEntryMeta) bool {
+	if meta.Status != verify.AttestationStatusRevoked || meta.RevokedAt == nil {
+		return false
+	}
+	estateMaster, err := rootStoreBootMasterMint(cfg)
+	if err != nil {
+		return false
+	}
+	if meta.MasterNFTMint != [32]byte(estateMaster) {
+		return false
+	}
+	derived, _, err := pda.Release(estateMaster, appHash, licenseRegistryProgramID())
+	if err != nil || derived != readAt {
+		return false
+	}
+	return meta.AppHash == appHash
+}
+
+// revokedAtText renders ReleaseEntry.revoked_at for a refusal message.
+func revokedAtText(at *int64) string {
+	if at == nil {
+		return "None"
+	}
+	return fmt.Sprintf("%d", *at)
+}
+
 func (s storeListingStatus) requireActive() error {
 	switch s {
 	case storeListingStatusActive:
@@ -578,7 +630,18 @@ func verifyReleaseEntryHashWithAuthorityPolicy(ctx context.Context, cr chainRead
 		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: on-chain app_hash %x != %x", meta.AppHash[:], appHashBytes[:])
 	}
 	if err := meta.Status.RequireActive(); err != nil {
-		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("check=release_entry: status %s not Active: %w", meta.Status, err)
+		statusErr := fmt.Errorf("check=release_entry: status %s not Active: %w", meta.Status, err)
+		if !releaseEntryExplicitRecall(cfg, appHashBytes, relPDA, meta) {
+			return zeroMint, zeroHash, zeroPDA, zeroMeta, statusErr
+		}
+		// An explicit recall of this estate's release is still held to the
+		// same publisher custody as the release was: a row whose served claim
+		// or on-chain vault is not this Store's refuses by that name, not as a
+		// recall.
+		if err := checkSharedSquadsAuthority(cfg, rel, meta, serving); err != nil {
+			return zeroMint, zeroHash, zeroPDA, zeroMeta, err
+		}
+		return zeroMint, zeroHash, zeroPDA, zeroMeta, fmt.Errorf("%w: %w: ReleaseEntry %s under the estate master mint %s, revoked_at %v", statusErr, errReleaseEntryRecalled, relPDA.Base58(), masterMint.Base58(), revokedAtText(meta.RevokedAt))
 	}
 	if err := checkSharedSquadsAuthority(cfg, rel, meta, serving); err != nil {
 		return zeroMint, zeroHash, zeroPDA, zeroMeta, err

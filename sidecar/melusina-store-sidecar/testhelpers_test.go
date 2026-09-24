@@ -98,6 +98,11 @@ type mockReleaseEntry struct {
 	status               verify.AttestationStatus
 	registeredAt         int64 // on-chain witnessed attestation time (ReleaseEntry.registered_at)
 	err                  error
+	// account, when set, is the ReleaseEntry account's exact program bytes.
+	// FetchReleaseEntryMeta then returns what the production decoder
+	// (readReleaseEntryMeta) reads from them and ignores the fields above.
+	// Only the serve-time read honours it.
+	account []byte
 }
 
 type mockSidecarIdentity struct {
@@ -183,6 +188,14 @@ func (m *mockChainReader) FetchReleaseEntryMeta(_ context.Context, addr string) 
 	}
 	if e.err != nil {
 		return releaseEntryMeta{}, e.err
+	}
+	if e.account != nil {
+		meta, err := readReleaseEntryMeta(e.account)
+		if err != nil {
+			return releaseEntryMeta{}, err
+		}
+		meta.PDA = addr
+		return meta, nil
 	}
 	return releaseEntryMeta{
 		PDA:                  addr,

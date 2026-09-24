@@ -63,6 +63,22 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   trickles a request body; the write limit bounds only the response
   (`served_snapshot.go`, `public_listener.go`; `deploy/store-generation/DEPLOYMENT-CONTRACT.md`
   "Served snapshots and public listener limits").
+  With `store_authority` set, `/apps/index.json` and `/apps/pointers/<appId>.json`
+  are a request-time projection of the catalog through the same per-row gate
+  (`serve_gate.go` `projectCatalog`). Two explicit on-chain transitions omit
+  exactly one row and keep the rest served, with each surviving pointer
+  re-signed over the projected catalog: this Store's `StoreReleaseListing` is
+  `Delisted` (target-scoped, `../../docs/TARGET_SCOPED_DELIST.md`), or the
+  owners **recalled** the release (`revoke_release_entry`: the `ReleaseEntry`
+  read at the PDA derived from the configured `program_id`,
+  `release_master_nft_mint` and the row's app hash is `Revoked` with
+  `revoked_at` set, the row's RELEASE.json names that master mint, and its
+  publisher vault is this Store's). After a recall the catalog stays `200`
+  without the row, that app's pointer answers `404` and its package `403`
+  (`release-entry-recalled`) once the verdict cache window above has passed.
+  Every other state (an unreadable or absent entry, `Superseded`, an unknown
+  status, `Revoked` without `revoked_at`, another master mint, or no
+  `release_master_nft_mint` configured) refuses the whole catalog with `503`.
 - **WRITE** (gated; the sidecar is the SINGLE WRITER): while
   `policy.require_pearl_control_for_app_publish=false`, the legacy
   `POST /publish` route accepts a sealed-v3 envelope from an attested publisher

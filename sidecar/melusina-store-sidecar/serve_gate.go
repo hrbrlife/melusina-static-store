@@ -297,8 +297,10 @@ func (g *serveGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // storeCatalogProjection holds both the exact stored source and its verified serving
 // view. Keeping the unchanged source bytes is load-bearing: existing signed app
 // pointers bind their `catalogSha256` to those exact bytes. We only serialize a
-// new document after a custody-authorized listing has explicitly delisted one
-// target, and the paired pointer route then re-signs matching pointer bytes.
+// new document after an explicit on-chain transition removed a row (a
+// custody-authorized listing delisted one target, or the owners recalled one
+// release: catalogOmission), and the paired pointer route then re-signs
+// matching pointer bytes.
 type storeCatalogProjection struct {
 	source     []byte
 	encoded    []byte
@@ -324,10 +326,12 @@ func (g *serveGate) listingProjectionEnabled() bool {
 
 // serveCatalogIndex projects the immutable catalog through exact active
 // StoreReleaseListing records. It never writes or repairs the catalog on disk:
-// it returns a request-time view where an explicit target-scoped Delisted record
-// removes only that row. Every other problem (missing/malformed listing, wrong
-// PDA/domain/app hash/release, RPC failure) is a 503, not an omission, so a
-// broken verifier cannot silently turn a partial catalog into truth.
+// it returns a request-time view where an explicit target-scoped Delisted record,
+// or an explicit recall of the estate's ReleaseEntry, removes only that row.
+// Every other problem (missing/malformed listing or ReleaseEntry, wrong
+// PDA/domain/app hash/release, a Superseded or unknown status, RPC failure) is a
+// 503, not an omission, so a broken verifier cannot silently turn a partial
+// catalog into truth.
 func (g *serveGate) serveCatalogIndex(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -363,10 +367,12 @@ func (g *serveGate) serveCatalogIndex(w http.ResponseWriter, r *http.Request) {
 
 // projectCatalog makes the single fail-closed visibility decision shared by
 // index and pointer requests. If every row remains Active, it returns the raw
-// bytes byte-for-byte so existing pointer hashes stay valid. If and only if an
-// exact listing is Delisted, it produces a filtered document and requires an
-// operator identity whose public key equals cfg.store_authority; otherwise it
-// refuses rather than expose an index that no signed pointer can attest.
+// bytes byte-for-byte so existing pointer hashes stay valid. If and only if a
+// row is a permitted omission (catalogOmission: an exact listing is Delisted, or
+// the estate's ReleaseEntry was explicitly recalled), it produces a filtered
+// document and requires an operator identity whose public key equals
+// cfg.store_authority; otherwise it refuses rather than expose an index that no
+// signed pointer can attest.
 func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeCatalogProjection, error) {
 	var zero storeCatalogProjection
 	if g.cr == nil {
@@ -467,7 +473,7 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 					}
 					err := g.gateWith(verifyCtx, catalogReader, candidates[index].app.rel.AppHash, metadataAppID(candidates[index].app.metadata), candidates[index].app.rel)
 					results[index] = err
-					if err != nil && !errors.Is(err, errStoreReleaseListingDelisted) {
+					if err != nil && !catalogOmission(err) {
 						failureOnce.Do(func() {
 							firstFailure = err
 							cancel()
@@ -501,9 +507,9 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 	projected := make([]json.RawMessage, 0, len(candidates))
 	for index, candidate := range candidates {
 		if err := results[index]; err != nil {
-			if errors.Is(err, errStoreReleaseListingDelisted) {
+			if catalogOmission(err) {
 				projection.changed = true
-				continue // The only permitted omission: an explicit exact transition.
+				continue // A permitted omission: an explicit exact transition.
 			}
 			return zero, err
 		}
@@ -526,6 +532,20 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 		return zero, fmt.Errorf("check=catalog: encode document: %w", err)
 	}
 	return projection, nil
+}
+
+// catalogOmission reports whether a row's gate verdict is one of the two
+// explicit, exact on-chain transitions that remove that row from the served
+// catalog instead of refusing the whole catalog:
+//   - errStoreReleaseListingDelisted: this Store's listing of the release was
+//     delisted (target-scoped);
+//   - errReleaseEntryRecalled: the estate's owners recalled the release itself
+//     (global; releaseEntryExplicitRecall).
+//
+// Every other verdict, including an unreadable, absent, Superseded or
+// unknown-status ReleaseEntry, refuses the whole projection.
+func catalogOmission(err error) bool {
+	return errors.Is(err, errStoreReleaseListingDelisted) || errors.Is(err, errReleaseEntryRecalled)
 }
 
 // catalogProjectionOperator returns an operator allowed to re-sign a dynamic
@@ -563,10 +583,10 @@ func catalogPointerAppID(urlPath string) (string, bool) {
 }
 
 // serveCatalogPointer preserves a signed pointer verbatim while the source
-// catalog is unchanged. After an exact delist changes the catalog projection,
-// it hides the delisted app's pointer and re-signs each surviving pointer over
-// the projected catalog hash. This keeps catalogSha256 meaningful instead of
-// creating a UI-only view that every verifier rejects.
+// catalog is unchanged. After an exact delist or an explicit recall changes the
+// catalog projection, it hides that app's pointer and re-signs each surviving
+// pointer over the projected catalog hash. This keeps catalogSha256 meaningful
+// instead of creating a UI-only view that every verifier rejects.
 func (g *serveGate) serveCatalogPointer(w http.ResponseWriter, r *http.Request, appID string) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

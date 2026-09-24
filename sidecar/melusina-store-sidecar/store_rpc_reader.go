@@ -389,7 +389,7 @@ func readReleaseEntryMeta(data []byte) (releaseEntryMeta, error) {
 	var meta releaseEntryMeta
 	offset := verify.AccountDiscriminatorLen
 	var err error
-	if offset, err = skipFixed(data, offset, 32, "release_v2", "master_nft_mint"); err != nil {
+	if offset, err = copyFixed(data, offset, meta.MasterNFTMint[:], "release_v2", "master_nft_mint"); err != nil {
 		return meta, err
 	}
 	if offset, err = copyFixed(data, offset, meta.AppHash[:], "release_v2", "app_hash"); err != nil {
@@ -438,6 +438,25 @@ func readReleaseEntryMeta(data []byte) (releaseEntryMeta, error) {
 		return meta, err
 	}
 	meta.Status = status
+	offset++
+	// revoked_at (Option<i64>) is what makes a Revoked entry an explicit recall
+	// (revoke_release_entry writes Revoked and Some(clock) together), so its
+	// tag is decoded exactly: a missing or unknown tag is refused, never read
+	// as None.
+	if offset >= len(data) {
+		return meta, errors.New("release_v2: revoked_at option: buffer too short")
+	}
+	switch data[offset] {
+	case 0:
+	case 1:
+		revokedAt, _, err := readInt64LE(data, offset+1, "release_v2", "revoked_at")
+		if err != nil {
+			return meta, err
+		}
+		meta.RevokedAt = &revokedAt
+	default:
+		return meta, fmt.Errorf("release_v2: revoked_at option tag %d is invalid", data[offset])
+	}
 	return meta, nil
 }
 

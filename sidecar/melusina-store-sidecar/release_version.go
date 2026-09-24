@@ -20,9 +20,14 @@ var (
 )
 
 type releaseEntryMeta struct {
-	PDA     string
-	AppHash [32]byte
-	AppID   [32]byte
+	PDA string
+	// MasterNFTMint is the account's own master_nft_mint field, the first
+	// ReleaseEntry seed. Only an explicit recall reads it
+	// (releaseEntryExplicitRecall): a recall omits a catalog row only when the
+	// entry is the estate master's.
+	MasterNFTMint [32]byte
+	AppHash       [32]byte
+	AppID         [32]byte
 	// PublisherSquadsVault is retained from the on-chain ReleaseEntry instead
 	// of skipped by the RPC decoder. It is the chain-authenticated publisher
 	// authority fact used to reject releases from any other vault.
@@ -34,6 +39,10 @@ type releaseEntryMeta struct {
 	// hygiene proximity check (a) — the publisher-supplied RELEASE.json signedAtUnix
 	// must sit within tolerance of it.
 	RegisteredAt int64
+	// RevokedAt is ReleaseEntry.revoked_at, nil for None. revoke_release_entry
+	// sets it together with status Revoked; a Revoked entry without it is not
+	// an explicit recall.
+	RevokedAt *int64
 }
 
 // installerReleaseMeta is one decoded InstallerReleaseEntry and the address

@@ -20,12 +20,44 @@ unchanged and may stay Active for other stores.
 
 After the governed listing bootstrap is complete, operators explicitly set
 `store_authority` and the sidecar verifies that same exact listing for every
-served package and each catalog row. A `Delisted` listing is then the only
-condition that omits a row. Missing records, RPC errors, an unknown status, a
-wrong PDA, domain, app hash, release entry, authorization, or store authority
-all fail closed. Before that explicit configuration, the established global
-`ReleaseEntry` gate remains in force; a partial listing deployment must never
-silently become the active serve policy.
+served package and each catalog row. Exactly two conditions then omit a row,
+and each omits only that row:
+
+- this Store's listing is `Delisted` (this document); or
+- the owners explicitly recalled the release itself (see "Global recall"
+  below).
+
+Missing records, RPC errors, an unknown status, a wrong PDA, domain, app hash,
+release entry, authorization, or store authority all fail closed. Before that
+explicit configuration, the established global `ReleaseEntry` gate remains in
+force; a partial listing deployment must never silently become the active
+serve policy.
+
+## Global recall
+
+`revoke_release_entry` is the estate owners' global recall of one release. It
+requires the master NFT and sets the `ReleaseEntry` to `Revoked` with
+`revoked_at` set, for every Store at once. The sidecar reads the entry before
+the listing, so a delist is neither needed nor able to change the outcome after
+a recall. The row is omitted, and the rest of the catalog keeps serving, only
+when all of these hold:
+
+- the entry is read at the PDA derived from the configured `program_id`, the
+  configured `release_master_nft_mint` (the enrolled profile's
+  `anchors.masterMint`) and the row's app hash;
+- the row's RELEASE.json names that master mint, and so does the account's own
+  `master_nft_mint`;
+- the account's `app_hash` is the row's;
+- its status is `Revoked` and `revoked_at` is set;
+- its publisher vault and the row's served quorum claim are this Store's, as
+  for any served release.
+
+The surviving pointers are re-signed over the projected catalog exactly as for
+a delist. The recalled app's pointer answers 404, and its package is refused
+(403, `release-entry-recalled`). A `Superseded` entry, an unknown status,
+`Revoked` without `revoked_at`, another master mint, no configured
+`release_master_nft_mint`, or an entry that cannot be read (absent, malformed,
+RPC failure) still takes the whole catalog to 503.
 
 ## Required ceremony order
 
@@ -60,7 +92,8 @@ the sidecar first and do not run the delist instruction early.
   request. A changed catalog is an in-memory projection only.
 - While no listing is Delisted, the source `apps/index.json` and pointers are
   served byte-for-byte, preserving existing catalog signatures.
-- Once one listing is Delisted, every surviving pointer is verified against the
-  source catalog then re-signed in memory against the projected catalog hash.
+- Once one listing is Delisted or one release is recalled, every surviving
+  pointer is verified against the source catalog then re-signed in memory
+  against the projected catalog hash.
 - `Delisted` is terminal in this transition. Re-listing is intentionally not an
   implicit rollback path; it needs a separately governed, audited transition.

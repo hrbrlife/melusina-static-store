@@ -161,12 +161,31 @@ func runCatalogGenesisBootstrapWithOptions(cfg Config, opts catalogBootstrapOpti
 			}
 			return nil
 		}
-		// "initializing" — resume the seal below.
+		// "initializing" — resume the seal below. Until the first generation
+		// is current, the resumed seal builds it from dist_dir again, so
+		// dist_dir must still be the exact snapshot whose index this record
+		// already binds.
+		if !currentExists {
+			archiveSHA, err := genesisFirstCatalogSHA256(cfg.DistDir, opts.expectedUID)
+			if err != nil {
+				return fmt.Errorf("catalog genesis dist snapshot: %w", err)
+			}
+			if archiveSHA != state.ArchiveSHA256 {
+				return fmt.Errorf("catalog genesis dist snapshot: %s:archive-sha256: the interrupted genesis recorded first catalog %s, not the exact empty index %s", refusalGenesisDistSkeletonMismatch, state.ArchiveSHA256, archiveSHA)
+			}
+		}
 	} else {
 		// Fresh genesis. An existing current with no genesis/migration record is a
 		// foreign or corrupted install, not a virgin target.
 		if currentExists {
 			return errors.New("catalog genesis refused: an existing current generation with no genesis or migration record — not a virgin target")
+		}
+		// The first catalog is exactly the empty skeleton genesis-dist-init
+		// produces (genesis_dist_init.go), checked before anything is
+		// recorded: a copied or edited snapshot is refused by name, not sealed.
+		archiveSHA, err := genesisFirstCatalogSHA256(cfg.DistDir, opts.expectedUID)
+		if err != nil {
+			return fmt.Errorf("catalog genesis dist snapshot: %w", err)
 		}
 		ledgerID, err := newPublishNonceLedgerID()
 		if err != nil {
@@ -175,10 +194,6 @@ func runCatalogGenesisBootstrapWithOptions(cfg Config, opts catalogBootstrapOpti
 		elfSHA, err := runningELFSHA256()
 		if err != nil {
 			return fmt.Errorf("catalog genesis self ELF hash: %w", err)
-		}
-		archiveSHA, err := hashRegularFileSHA256(filepath.Join(cfg.DistDir, catalogGenesisIndexRelPath))
-		if err != nil {
-			return fmt.Errorf("catalog genesis catalog-index hash: %w", err)
 		}
 		state = catalogGenesisState{
 			Schema: catalogGenesisStateSchema, State: "initializing",
@@ -328,28 +343,6 @@ func runningELFSHA256() (string, error) {
 		return "", err
 	}
 	defer f.Close()
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
-}
-
-// hashRegularFileSHA256 binds the genesis record to the exact first catalog by the
-// digest of its canonical apps/index.json.
-func hashRegularFileSHA256(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	info, err := f.Stat()
-	if err != nil {
-		return "", err
-	}
-	if !info.Mode().IsRegular() {
-		return "", fmt.Errorf("%s is not a regular file", path)
-	}
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err

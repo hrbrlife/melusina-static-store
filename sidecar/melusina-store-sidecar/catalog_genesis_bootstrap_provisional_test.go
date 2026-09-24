@@ -29,7 +29,7 @@ import (
 
 func newGenesisFixture(t *testing.T) (Config, catalogBootstrapOptions) {
 	t.Helper()
-	root := t.TempDir()
+	root := genesisDistParent(t)
 	cfg := Config{
 		Domain:                   "genesis.test",
 		DistDir:                  filepath.Join(root, "dist"),
@@ -40,19 +40,14 @@ func newGenesisFixture(t *testing.T) (Config, catalogBootstrapOptions) {
 	}
 	configureReleaseAuthorityFixtureForBuild(&cfg, root)
 	cleanupImmutableCatalog(t, cfg.CatalogGenerationRoot)
-	for _, dir := range []string{cfg.DistDir, cfg.PrivateStageDir, cfg.CatalogMigrationStateDir} {
+	for _, dir := range []string{cfg.PrivateStageDir, cfg.CatalogMigrationStateDir} {
 		if err := os.Mkdir(dir, 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, namespace := range appCatalogNamespaces {
-		if err := os.Mkdir(filepath.Join(cfg.DistDir, namespace), 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := os.WriteFile(filepath.Join(cfg.DistDir, "apps", "index.json"), []byte("{\"apps\":[]}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	// The first-install snapshot comes only from genesis-dist-init, as the
+	// deployer's executor produces it.
+	initTestGenesisDist(t, cfg.DistDir)
 	now := time.Unix(1_800_000_000, 0).UTC()
 	opts := catalogBootstrapOptions{
 		expectedUID:       uint32(os.Getuid()),
@@ -162,9 +157,11 @@ func TestProvisionalGenesisVirginEstablishesHonestTrustRoot(t *testing.T) {
 // A copied public catalog cannot become a writable virgin trust root merely by
 // carrying its old pointer files. Every pointer is meaningful only together
 // with the exact durable rollout/staged-release selection that produced it;
-// genesis starts with no such selections. A future governed import may create
-// those records explicitly, but the normal first-install path must reject an
-// orphan pointer rather than silently treating it as initial state.
+// genesis starts with no such selections. The first-install snapshot is the
+// exact genesis-dist-init skeleton, so genesis refuses the copied pointer by
+// name before it creates writer.lock or records anything. The seal's own
+// orphan-pointer refusal stays in place beneath that check and is exercised
+// directly on the same tree.
 func TestProvisionalGenesisRefusesPointerWithoutDurableRollout(t *testing.T) {
 	cfg, opts := newGenesisFixture(t)
 	pointerDir := filepath.Join(cfg.DistDir, "apps", "pointers")
@@ -176,16 +173,14 @@ func TestProvisionalGenesisRefusesPointerWithoutDurableRollout(t *testing.T) {
 	}
 
 	err := runCatalogGenesisBootstrapWithOptions(cfg, opts)
-	if err == nil || !strings.Contains(err.Error(), "pointer has no rollout state") {
-		t.Fatalf("genesis accepted a copied pointer without durable rollout state: %v", err)
+	if err == nil || !strings.Contains(err.Error(), refusalGenesisDistSkeletonMismatch+":entries") {
+		t.Fatalf("genesis accepted a copied pointer in the first-install snapshot: %v", err)
 	}
+	requireWriterLockAbsent(t, genesisWriterLockPath(cfg))
+	requireGenesisStateAbsent(t, cfg)
 
-	state, stateErr := readCatalogGenesisState(filepath.Join(cfg.CatalogMigrationStateDir, catalogGenesisStateName), opts.expectedUID)
-	if stateErr != nil {
-		t.Fatalf("read interrupted genesis state: %v", stateErr)
-	}
-	if state.State != "initializing" {
-		t.Fatalf("pointer refusal committed genesis state: %+v", state)
+	if err := ValidateAppCatalogSnapshot(AppCatalogSnapshot{Root: cfg.DistDir}, nil, nil); err == nil || !strings.Contains(err.Error(), "pointer has no rollout state") {
+		t.Fatalf("the seal's catalog validator accepted a pointer without durable rollout state: %v", err)
 	}
 }
 

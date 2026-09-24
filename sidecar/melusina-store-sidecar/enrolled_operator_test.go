@@ -50,6 +50,7 @@ var enrollmentExemptStoreSubcommands = map[string]string{
 	"store-recovery-keygen":               "generates a holder or restore session key; reads no Store state",
 	"store-identity-escrow-reseal":        "a holder's offline step on its own escrowed shard; reads no Store state",
 	"store-identity-restore":              "rebuilds the shards on a replacement host and proves them against an explicit operator key; acts with no release authority, and the restored Store passes this gate at startup",
+	"genesis-dist-init":                   "creates the empty first-install dist snapshot before enrollment exists; derives no operator and reads no chain state",
 }
 
 // enrollmentGatedEntryPoint is one process entry point that acts with this

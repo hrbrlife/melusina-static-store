@@ -85,6 +85,13 @@ func main() {
 		runEstateEnrollSuccessorSubcommand(os.Args[2:])
 		return
 	}
+	// The one producer of the first-install dist snapshot genesis seals from
+	// (genesis_dist_init.go). It is offline, derives no operator, and refuses
+	// by name when anything already exists at dist_dir.
+	if len(os.Args) > 1 && os.Args[1] == "genesis-dist-init" {
+		runGenesisDistInitSubcommand(os.Args[2:])
+		return
+	}
 	// Explicit genesis trust-root entrypoint (RRS_STORE_FRESH_BOOTSTRAP). It seals the
 	// honest first generation on a virgin target and EXITS — it never opens a listener.
 	// Selection is explicit (a subcommand), never a silent server-startup fallback.

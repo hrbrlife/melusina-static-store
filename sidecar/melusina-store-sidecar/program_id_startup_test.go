@@ -101,6 +101,7 @@ var registryFreeStoreSubcommands = map[string]string{
 	"store-state-verify":           "offline store-state stream verification",
 	"store-recovery-keygen":        "offline recovery key generation",
 	"store-identity-escrow-reseal": "a holder's offline reseal of one escrowed shard",
+	"genesis-dist-init":            "offline producer of the empty first-install dist snapshot",
 }
 
 // storeMainSubcommands derives the dispatched subcommands from main() itself,

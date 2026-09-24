@@ -52,10 +52,14 @@ const maxListedStoreStateEntries = 8
 // seal would refuse, and requiring emptiness refuses no genuine first install:
 // a genesis that stopped after creating the lock resumes through the
 // existing-lock path, never through this check. The deployer-provided inputs
-// are deliberately not inspected: dist_dir is the snapshot genesis seals from,
-// and catalog_repo_root is a workspace that may be seeded before the first
-// install (DEPLOYMENT-CONTRACT item 6); a Store publish writes that workspace
-// only as part of a promotion that also writes the roots checked here.
+// are not Store write state. dist_dir is the snapshot genesis seals from: it
+// must be the exact genesis-dist-init skeleton (genesis_dist_init.go), which
+// is checked here before the lock is created and again by the seal before it
+// records anything, because a resumed run reaches the seal through the
+// existing-lock path. catalog_repo_root is a workspace that may be seeded
+// before the first install (DEPLOYMENT-CONTRACT item 6) and is not inspected;
+// a Store publish writes that workspace only as part of a promotion that also
+// writes the roots checked here.
 //
 // A lock created here is never removed after a later failure. An empty lock
 // with no other migration state is exactly the resumable state above, whereas
@@ -69,6 +73,7 @@ func acquireGenesisWriterLock(cfg Config, expectedUID, expectedGID uint32) (*os.
 		"catalog_migration_state_dir": cfg.CatalogMigrationStateDir,
 		"private_stage_dir":           cfg.PrivateStageDir,
 		"catalog_generation_root":     cfg.CatalogGenerationRoot,
+		"dist_dir":                    cfg.DistDir,
 	} {
 		if !filepath.IsAbs(path) || filepath.Clean(path) != path {
 			return nil, false, fmt.Errorf("%s must be an absolute clean path", name)
@@ -106,9 +111,10 @@ func acquireGenesisWriterLock(cfg Config, expectedUID, expectedGID uint32) (*os.
 // already carries Store write state: catalog_migration_state_dir and the
 // private-stage root must be empty, and catalog_generation_root absent or an
 // empty real directory. The private-stage root must also already be the
-// root-owned mode-0700 directory the seal requires, so no lock is created for
-// a target the seal would refuse. Its caller has already checked the
-// migration root the same way.
+// root-owned mode-0700 directory the seal requires, and dist_dir the exact
+// genesis-dist-init skeleton the seal requires (genesis_dist_init.go), so no
+// lock is created for a target the seal would refuse. Its caller has already
+// checked the migration root the same way.
 func requireVirginWriterLockTarget(cfg Config, expectedUID uint32) error {
 	if err := requireEmptyStoreRoot("catalog_migration_state_dir", cfg.CatalogMigrationStateDir, false); err != nil {
 		return err
@@ -119,7 +125,13 @@ func requireVirginWriterLockTarget(cfg Config, expectedUID uint32) error {
 	if err := requireEmptyStoreRoot("private_stage_dir", cfg.PrivateStageDir, false); err != nil {
 		return err
 	}
-	return requireEmptyStoreRoot("catalog_generation_root", cfg.CatalogGenerationRoot, true)
+	if err := requireEmptyStoreRoot("catalog_generation_root", cfg.CatalogGenerationRoot, true); err != nil {
+		return err
+	}
+	if err := requireGenesisDistSkeleton(cfg.DistDir, expectedUID); err != nil {
+		return fmt.Errorf("dist_dir: %w", err)
+	}
+	return nil
 }
 
 // requireEmptyStoreRoot opens path as a real directory without following a

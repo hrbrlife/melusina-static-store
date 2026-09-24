@@ -101,18 +101,31 @@ paths. Before enabling the unit it must install or create:
    writer holds, or a missing lock beside any existing entry in those roots.
    The deployer never hand-creates, copies or deletes the lock, and server
    startup never creates it.
-6. An independent root-owned writable `catalog_repo_root` and a
-   genesis-compatible `dist-publish` snapshot before startup. The workspace is
-   not the immutable Store source checkout and may be empty on a virgin target:
+6. An independent root-owned writable `catalog_repo_root` and the
+   first-install `dist-publish` snapshot before genesis. The workspace is not
+   the immutable Store source checkout and may be empty on a virgin target:
    the first governed app promotion supplies its declared
-   `developer/repo/slug` slot and atomically creates it. The initial served
-   snapshot contains the required namespaces and an empty `apps/index.json`,
-   with no pointer files. The versioned runtime-contract schema is served from
-   the governed sidecar ELF, not copied from this mutable snapshot. A copied
-   public catalog with pointers is **not** a writable first-install input unless
-   a separately governed import has created the exact matching durable
-   rollout/staged-release records: virgin genesis deliberately rejects pointers
-   with no rollout state.
+   `developer/repo/slug` slot and atomically creates it. The snapshot has one
+   producer, the bundled Store binary:
+   `genesis-dist-init -config /etc/melusina/store/store.config.json`, run after
+   the config is rendered and while `dist_dir` does not exist. Its parent must
+   be a root-owned directory that neither group nor others can write. It
+   creates `dist_dir` and its four namespaces (`apps`, `packages`,
+   `signatures`, `attest`) as root-owned mode-`0700` directories, and
+   `apps/index.json` as a root-owned mode-`0600` file holding the Store's
+   exact empty index, with exclusive creates and fsync. It then prints a
+   receipt whose `indexSha256` is that index's digest. It reads no chain state
+   and derives no operator. It refuses by name (`genesis-dist-target-exists`,
+   `genesis-dist-target-not-empty`) when anything is already at `dist_dir`,
+   and never removes anything: a run that stops part-way leaves a partial
+   tree that the deployer removes before running it again. The deployer never
+   writes, copies or edits this snapshot itself. Genesis seals only this exact
+   snapshot and refuses any other by name
+   (`genesis-dist-skeleton-mismatch:<fact>`): on a virgin target before it
+   creates `writer.lock`, and on a resumed run before it records anything.
+   That includes a copied public catalog, with or without pointer files. The
+   versioned runtime-contract schema is served from the governed sidecar ELF,
+   not copied from this mutable snapshot.
 7. A root-owned component-registry entry for `melusina-store-sidecar`. Its
    `runtimeEnvFile` must be exactly
    `/var/lib/melusina-store/runtime/melusina-store-sidecar.env`, matching the
@@ -162,7 +175,8 @@ enable/start, the deployer proves all of the following through the service
 listener:
 
 - `GET /healthz` is `200` and binds the configured `store_id` and domain;
-- `GET /apps/index.json` is `200` and is the exact empty canonical index;
+- `GET /apps/index.json` is `200` and is the exact empty canonical index,
+  whose SHA-256 is the `indexSha256` that `genesis-dist-init` printed;
 - `GET /schemas/melusina-app-runtime-contract-v1.schema.json` is `200` from
   the release-bound sidecar ELF, not the mutable snapshot;
 - `GET /update/generation.json` is the expected fail-closed `503` with the

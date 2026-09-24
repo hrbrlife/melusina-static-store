@@ -65,19 +65,12 @@ func newStoreStateFixture(t *testing.T) storeStateFixture {
 	}
 	configureReleaseAuthorityFixtureForBuild(&cfg, root)
 	cfg.EstateEnrollmentStatePath = filepath.Join(parent, "estate-enrollment.json")
-	for _, dir := range []string{cfg.DistDir, cfg.PrivateStageDir, cfg.CatalogMigrationStateDir, cfg.CatalogRepoRoot} {
+	for _, dir := range []string{cfg.PrivateStageDir, cfg.CatalogMigrationStateDir, cfg.CatalogRepoRoot} {
 		if err := os.Mkdir(dir, 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, namespace := range appCatalogNamespaces {
-		if err := os.Mkdir(filepath.Join(cfg.DistDir, namespace), 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := os.WriteFile(filepath.Join(cfg.DistDir, "apps", "index.json"), []byte("{\"apps\":[]}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	initTestGenesisDist(t, cfg.DistDir)
 	t.Cleanup(func() { makeTreeWritable(root) })
 
 	operator := newTestIdentity(t, "state-backup-operator", cfg.LicenseNFTMint, cfg.Domain)

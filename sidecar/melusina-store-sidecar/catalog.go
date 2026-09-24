@@ -306,15 +306,33 @@ func projectCatalogIndexWithFirstPublishPolicy(snapshot AppCatalogSnapshot, spk,
 			index.Apps[i] = m
 		}
 	}
-	body, err := json.MarshalIndent(index, "", "  ")
+	body, err := encodeCatalogIndex(index.Apps)
 	if err != nil {
 		return zero, fmt.Errorf("encode app index: %w", err)
 	}
-	body = append(body, '\n')
 	if len(body) > maxAppCatalogJSONBytes {
 		return zero, fmt.Errorf("%w: got %d bytes, cap %d", errCatalogIndexCapacity, len(body), maxAppCatalogJSONBytes)
 	}
 	return catalogProjection{appID: appID, packageID: packageID, indexBytes: body}, nil
+}
+
+// encodeCatalogIndex is the Store's encoder for apps/index.json: the
+// {"apps": [...]} document indented by two spaces, with a trailing newline.
+// The publish projection and genesis-dist-init (genesis_dist_init.go) both
+// emit it, so the empty first-install index is this encoder's output for an
+// empty list, never a hand-written literal. A nil list encodes as an empty
+// array, never as null.
+func encodeCatalogIndex(apps []map[string]any) ([]byte, error) {
+	if apps == nil {
+		apps = []map[string]any{}
+	}
+	body, err := json.MarshalIndent(struct {
+		Apps []map[string]any `json:"apps"`
+	}{Apps: apps}, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(body, '\n'), nil
 }
 
 // stripMongoUnsafeKeys removes every map key that Minimongo rejects on upsert —

@@ -51,7 +51,7 @@ func TestPromoteGenerationRefusesMisplacedBundleByName(t *testing.T) {
 	if _, err := svc.promoteGeneration(promoteReq(0, renamed), now); !errors.Is(err, componentrelease.ErrArtifactNameNotBundleBasename) {
 		t.Fatalf("artifactName not the bundleUrl basename: want %v, got %v", componentrelease.ErrArtifactNameNotBundleBasename, err)
 	}
-	if cur, err := svc.loadCurrentGenerationOrNil(); err != nil || cur != nil {
+	if cur, _, err := svc.loadCurrentGenerationOrNil(); err != nil || cur != nil {
 		t.Fatalf("a refused promote persisted a generation: %v %v", cur, err)
 	}
 
@@ -167,7 +167,7 @@ func TestHandleGeneratePromoteRefusesMisplacedBundleByName(t *testing.T) {
 	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "check=store_operator") {
 		t.Fatalf("positive control: correctly placed shell should reach check=store_operator (403), got %d: %s", rec.Code, rec.Body.String())
 	}
-	if cur, err := svc.loadCurrentGenerationOrNil(); err != nil || cur != nil {
+	if cur, _, err := svc.loadCurrentGenerationOrNil(); err != nil || cur != nil {
 		t.Fatalf("no request here may persist a generation: %v %v", cur, err)
 	}
 }

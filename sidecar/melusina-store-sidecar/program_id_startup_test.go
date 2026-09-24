@@ -230,6 +230,7 @@ func TestEveryStoreEntryPointPinsItsConfiguredLicenseRegistry(t *testing.T) {
 		{name: "store-state-import", args: []string{"-config", configPath, "-in", filepath.Join(dir, "absent-store-state.tar"), "-operator-key", configured}, after: "store-state-import: open " + filepath.Join(dir, "absent-store-state.tar")},
 		{name: "store-identity-escrow-seal", args: []string{"-config", configPath, "-recipients", filepath.Join(dir, "absent-recipients.json"), "-out-dir", filepath.Join(dir, "escrow")}, after: "store-identity-escrow-seal: estate enrollment: store-estate-profile-not-enrolled"},
 		{name: "store-identity-restore", args: []string{"-config", configPath, "-manifest", filepath.Join(dir, "absent-manifest.json"), "-session-key", filepath.Join(dir, "absent-session.key"), "-operator-key", configured, "-handoff", filepath.Join(dir, "absent-handoff.json")}, after: "store-identity-restore: read manifest"},
+		{name: "store-generation-floor", args: []string{"-config", configPath, "-floor", "9", "-expected-current-generation", "5", "-reason", "entry-point pin probe", "-evidence-sha256", indexSHA256, "-dry-run"}, after: "store-generation-floor: estate enrollment: store-estate-profile-not-enrolled"},
 	}
 
 	// Coverage: the table and the registry-free list together are exactly the

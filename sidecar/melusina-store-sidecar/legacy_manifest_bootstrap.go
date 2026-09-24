@@ -200,7 +200,7 @@ func (s *publishService) handleLegacyManifestBootstrap(w http.ResponseWriter, r 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	doc, err := s.loadCurrentGenerationOrNil()
+	doc, _, err := s.loadCurrentGenerationOrNil()
 	if err != nil || doc == nil {
 		http.Error(w, "check=generation: no current generation", http.StatusConflict)
 		return

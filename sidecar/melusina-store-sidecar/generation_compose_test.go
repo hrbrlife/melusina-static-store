@@ -76,7 +76,7 @@ func TestComposeGenesisSignsAndVerifies(t *testing.T) {
 	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
 	// Version empty -> the composer must mint one.
 	updates := []componentrelease.ComponentRelease{shellComp("sandstorm-shell", strings.Repeat("a", 64), "")}
-	next, err := composeNextGeneration(nil, composePolicy(), 1784281821, updates)
+	next, err := composeNextGeneration(nil, 0, composePolicy(), 1784281821, updates)
 	if err != nil {
 		t.Fatalf("compose genesis: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestComposeUpdateCarryForwardAndRollbackFloor(t *testing.T) {
 	newShellSHA := strings.Repeat("1", 64)
 	updates := []componentrelease.ComponentRelease{shellComp("sandstorm-shell", newShellSHA, "build-64")}
 
-	next, err := composeNextGeneration(&current, composePolicy(), 1784281900, updates)
+	next, err := composeNextGeneration(&current, 0, composePolicy(), 1784281900, updates)
 	if err != nil {
 		t.Fatalf("compose update: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestComposeUpdateCarryForwardAndRollbackFloor(t *testing.T) {
 }
 
 func TestComposeRejectsEmptyUpdateSet(t *testing.T) {
-	if _, err := composeNextGeneration(nil, composePolicy(), 1, nil); err == nil {
+	if _, err := composeNextGeneration(nil, 0, composePolicy(), 1, nil); err == nil {
 		t.Fatal("compose accepted an empty update set")
 	}
 }
@@ -171,7 +171,7 @@ func TestComposeRenamesOneSidecarIdentityWithoutCarryingAnAlias(t *testing.T) {
 	replacement.PreviousSHA256 = strings.Repeat("c", 64)
 	replacement.PreviousVersion = "legacy-105ae22b"
 
-	next, err := composeNextGeneration(&current, composePolicy(), 1788066000, []componentrelease.ComponentRelease{replacement})
+	next, err := composeNextGeneration(&current, 0, composePolicy(), 1788066000, []componentrelease.ComponentRelease{replacement})
 	if err != nil {
 		t.Fatalf("compose sidecar identity rename: %v", err)
 	}
@@ -198,7 +198,7 @@ func TestComposeRejectsTwoComponentNamesForOneSidecarIdentity(t *testing.T) {
 	second.ArtifactName = "fineract-sidecar-" + second.SHA256[:8] + ".bin"
 	second.BundleURL = "https://bazaar.melusina-os.org/releases/sidecar/" + second.ArtifactName
 
-	if _, err := composeNextGeneration(nil, composePolicy(), 1788066000, []componentrelease.ComponentRelease{first, second}); err == nil || !strings.Contains(err.Error(), "same sidecar authority identity") {
+	if _, err := composeNextGeneration(nil, 0, composePolicy(), 1788066000, []componentrelease.ComponentRelease{first, second}); err == nil || !strings.Contains(err.Error(), "same sidecar authority identity") {
 		t.Fatalf("duplicate sidecar authority updates were not refused: %v", err)
 	}
 }
@@ -212,7 +212,7 @@ func TestComposeRejectsAmbiguousCurrentAliasesDuringRename(t *testing.T) {
 	replacement := first
 	replacement.ComponentID = "fineract-sidecar"
 
-	if _, err := composeNextGeneration(&current, composePolicy(), 1788066000, []componentrelease.ComponentRelease{replacement}); err == nil || !strings.Contains(err.Error(), "ambiguously matches current aliases") {
+	if _, err := composeNextGeneration(&current, 0, composePolicy(), 1788066000, []componentrelease.ComponentRelease{replacement}); err == nil || !strings.Contains(err.Error(), "ambiguously matches current aliases") {
 		t.Fatalf("ambiguous current aliases were not refused: %v", err)
 	}
 }
@@ -220,23 +220,23 @@ func TestComposeRejectsAmbiguousCurrentAliasesDuringRename(t *testing.T) {
 func TestGenerationCAS(t *testing.T) {
 	current := &componentrelease.DesiredGeneration{GenerationID: 63}
 	next := componentrelease.DesiredGeneration{GenerationID: 64, PreviousGeneration: 63}
-	if v := generationCAS(current, next, 63); v != "" {
+	if v := generationCAS(current, 0, next, 63); v != "" {
 		t.Fatalf("valid single-step advance rejected: %s", v)
 	}
 	// Stale: publisher believed current was 62.
-	if generationCAS(current, next, 62) == "" {
+	if generationCAS(current, 0, next, 62) == "" {
 		t.Fatal("stale expected-current accepted")
 	}
 	// Non-monotonic: skips a generation.
-	if generationCAS(current, componentrelease.DesiredGeneration{GenerationID: 65, PreviousGeneration: 63}, 63) == "" {
+	if generationCAS(current, 0, componentrelease.DesiredGeneration{GenerationID: 65, PreviousGeneration: 63}, 63) == "" {
 		t.Fatal("non-monotonic advance accepted")
 	}
 	// Wrong previousGeneration.
-	if generationCAS(current, componentrelease.DesiredGeneration{GenerationID: 64, PreviousGeneration: 62}, 63) == "" {
+	if generationCAS(current, 0, componentrelease.DesiredGeneration{GenerationID: 64, PreviousGeneration: 62}, 63) == "" {
 		t.Fatal("mismatched previousGeneration accepted")
 	}
 	// Genesis: no current, expected 0, next gen 1.
-	if v := generationCAS(nil, componentrelease.DesiredGeneration{GenerationID: 1, PreviousGeneration: 0}, 0); v != "" {
+	if v := generationCAS(nil, 0, componentrelease.DesiredGeneration{GenerationID: 1, PreviousGeneration: 0}, 0); v != "" {
 		t.Fatalf("valid genesis promote rejected: %s", v)
 	}
 }

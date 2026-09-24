@@ -758,6 +758,33 @@ when a new path field has no class.
   checks the staged state for that owner, so an import run as any other user
   refuses before anything reaches a root
   (`TestStoreStateImportAsAnotherUserRefuses`).
+- `store-generation-floor -config … -floor F -expected-current-generation N
+  -reason … -evidence-sha256 … (-dry-run | -apply)` lets a restored Store pass
+  the tenants. The restore brings `update/generation.json` back at generation
+  N, the generation it had at the backup. A tenant controller that already
+  holds a later generation, committed or Pending, refuses anything at or below
+  it as a downgrade or as equivocation. It accepts any forward gap. The
+  command passes the enrollment gate and takes `writer.lock`, so it runs only
+  while the Store is stopped. It records one operator-signed floor F, bound to
+  generation N's id, `generationHash` and served bytes, in
+  `catalog_migration_state_dir/desired-generation-floors-v1/`. The next promote
+  then chains from the floor: `previousGeneration` F and `generationId` F + 1.
+  It never chains from N, because a tenant ahead of the backup refuses that as
+  a fork (`TestFloorJumpChainedFromRestoredCurrentIsRefusedAsFork`). The
+  publisher still sends `expectedCurrentGeneration` N. That one promotion may
+  name no component and carry N's components forward
+  (`submit-generation -carry-forward`). After it the floor is spent, and
+  promotion is current + 1 again. Choose F at least as high as the recovery
+  kit's last promoted generation and every committed and Pending generation
+  the tenants report. A margin is fine, because a gap is legal. The command
+  refuses a floor at or below N (`generation-floor-not-above-current`), a
+  floor at or below one already recorded (`generation-floor-not-above-journal`,
+  since a recorded floor F may have produced a served F + 1), and a current
+  generation other than N (`generation-floor-current-mismatch`). A journal
+  record that does not verify under the operator key refuses every promote
+  (`generation-floor-journal-invalid`).
+  `TestRestoredStoreFloorJumpAcceptedByTenantAheadOfBackup` runs the whole
+  path against the tenant controller's own fetch, cursor and Pending checks.
 
 **Store identity** is the three attest shards. An escrow envelope opens for
 any one of its recipients, so each shard is escrowed on its own, and no holder

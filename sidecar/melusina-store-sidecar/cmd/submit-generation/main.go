@@ -78,6 +78,7 @@ type options struct {
 	timeout       time.Duration
 	generationOut string
 	envelopeOut   string
+	carryForward  bool
 }
 
 func main() {
@@ -100,6 +101,7 @@ func parseFlags(args []string) (options, error) {
 	fs.DurationVar(&o.timeout, "timeout", 60*time.Second, "promote plus read-back timeout")
 	fs.StringVar(&o.generationOut, "generation-out", "", "write verified raw served generation JSON atomically to this path")
 	fs.StringVar(&o.envelopeOut, "envelope-out", "", "write the signed POST body for /publish/generation atomically; do not contact the store")
+	fs.BoolVar(&o.carryForward, "carry-forward", false, "the request names no component: it carries the current components forward in the one generation that chains from a floor recorded by store-generation-floor (the store refuses it otherwise)")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -143,7 +145,7 @@ func run(args []string, stdout io.Writer) error {
 	if len(requestBytes) == 0 || len(requestBytes) > maxRequestBytes {
 		return fmt.Errorf("request must be between 1 and %d bytes", maxRequestBytes)
 	}
-	if _, err := decodeRequest(requestBytes); err != nil {
+	if _, err := decodeRequest(requestBytes, o.carryForward); err != nil {
 		return fmt.Errorf("request preflight: %w", err)
 	}
 	publisher, err := loadPublisherKey(o.publisherKey)
@@ -316,7 +318,11 @@ func fetchAndVerifyGeneration(ctx context.Context, client *http.Client, store, s
 	return raw, zero, nil
 }
 
-func decodeRequest(raw []byte) (GenerationPromoteRequest, error) {
+// decodeRequest preflights the exact request bytes. A request names at least
+// one component unless carryForward is set, and then it must name none: the
+// store accepts an empty update set only for the one generation that chains
+// from a recorded generation floor, and refuses it otherwise.
+func decodeRequest(raw []byte, carryForward bool) (GenerationPromoteRequest, error) {
 	var request GenerationPromoteRequest
 	if err := assertNoDuplicateJSONKeys(raw); err != nil {
 		return request, err
@@ -332,8 +338,14 @@ func decodeRequest(raw []byte) (GenerationPromoteRequest, error) {
 	if request.Schema != generationPromoteSchema {
 		return request, fmt.Errorf("schema must be %q", generationPromoteSchema)
 	}
-	if strings.TrimSpace(request.Channel) == "" || len(request.Components) == 0 {
-		return request, errors.New("channel and at least one component are required")
+	if strings.TrimSpace(request.Channel) == "" {
+		return request, errors.New("channel is required")
+	}
+	if carryForward && len(request.Components) != 0 {
+		return request, errors.New("-carry-forward requires a request that names no component")
+	}
+	if !carryForward && len(request.Components) == 0 {
+		return request, errors.New("at least one component is required (-carry-forward only for the generation after store-generation-floor)")
 	}
 	return request, nil
 }

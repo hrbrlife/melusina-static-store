@@ -186,6 +186,13 @@ func main() {
 		runStoreIdentityRestoreSubcommand(os.Args[2:])
 		return
 	}
+	// A restored Store's generation floor (generation_floor.go): one
+	// operator-signed record, made while the Store is stopped, from which the
+	// next promote chains so it can pass the generations tenants already hold.
+	if len(os.Args) > 1 && os.Args[1] == "store-generation-floor" {
+		runStoreGenerationFloorSubcommand(os.Args[2:])
+		return
+	}
 
 	configPath := flag.String("config", "store.config.json", "path to operator config (JSON; store.yaml support pending dep wiring)")
 	listenOverride := flag.String("listen", "", "override listen_addr from config")

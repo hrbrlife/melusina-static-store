@@ -66,9 +66,18 @@ func mintComponentVersion(generationID uint64, sha256hex string) string {
 
 // composeNextGeneration deterministically assembles the UNSIGNED next desired
 // generation from the current one (nil => genesis) and the component updates the
-// publisher has already built + on-chain-sealed + staged. It:
+// publisher has already built + on-chain-sealed + staged. floor is the
+// generation floor a restored Store recorded (store-generation-floor, 0 = none);
+// only a floor above the current generation changes anything. It:
 //   - refuses any app-class update outright (apps are not generation members);
-//   - mints generationId = current+1 (1 at genesis) and previousGeneration=current;
+//   - mints generationId = base+1 and previousGeneration = base, where base is
+//     the current generation (0 at genesis) or, when it is higher, the floor.
+//     The successor names the FLOOR as its predecessor, never the restored
+//     current: a tenant whose cursor is past the backup refuses a successor
+//     that chains from behind that cursor as a fork;
+//   - requires at least one component update, except for the one generation
+//     that chains from a floor, which may carry the current components forward
+//     unchanged;
 //   - takes the id set = union(current, updates), each id appearing once, MINUS
 //     any app component the current generation still carries;
 //   - treats an exact sidecar-authority match under a corrected ComponentID as
@@ -86,7 +95,7 @@ func mintComponentVersion(generationID uint64, sha256hex string) string {
 //
 // The result is NOT signed and NOT promoted — the store operator signs it and the
 // promote step swaps it under generationCAS.
-func composeNextGeneration(current *componentrelease.DesiredGeneration, policy GenerationPolicy, signedAtUnix int64, updates []componentrelease.ComponentRelease) (componentrelease.DesiredGeneration, error) {
+func composeNextGeneration(current *componentrelease.DesiredGeneration, floor uint64, policy GenerationPolicy, signedAtUnix int64, updates []componentrelease.ComponentRelease) (componentrelease.DesiredGeneration, error) {
 	// A generation is host-only. An app offered as an update is refused here, at
 	// the deterministic engine, so no signing path can be reached with one.
 	if err := componentrelease.RejectAppComponents(updates); err != nil {
@@ -97,9 +106,17 @@ func composeNextGeneration(current *componentrelease.DesiredGeneration, policy G
 	curByID := make(map[string]componentrelease.ComponentRelease)
 	var curOrder []string
 	droppedApps := make(map[string]struct{})
+	floorJump := false
+	if current == nil && floor != 0 {
+		return componentrelease.DesiredGeneration{}, fmt.Errorf("generation floor %d has no current generation to chain from", floor)
+	}
 	if current != nil {
-		genID = current.GenerationID + 1
 		prevGen = current.GenerationID
+		if floor > prevGen {
+			prevGen = floor
+			floorJump = true
+		}
+		genID = prevGen + 1
 		for _, c := range current.Components {
 			// Carry-forward is where a generation signed before apps were retired
 			// would otherwise preserve its app entries verbatim and keep minting
@@ -127,7 +144,7 @@ func composeNextGeneration(current *componentrelease.DesiredGeneration, policy G
 		updByID[u.ComponentID] = u
 		updOrder = append(updOrder, u.ComponentID)
 	}
-	if len(updByID) == 0 {
+	if len(updByID) == 0 && !floorJump {
 		return componentrelease.DesiredGeneration{}, fmt.Errorf("a generation must publish at least one component update")
 	}
 
@@ -252,13 +269,32 @@ func composeNextGeneration(current *componentrelease.DesiredGeneration, policy G
 // publisher believed it was superseding. This is the compare-and-swap predicate
 // the promote step MUST evaluate while holding the single-writer lock so two
 // concurrent publishes cannot both promote onto the same base (lost-update).
-func generationCAS(current *componentrelease.DesiredGeneration, next componentrelease.DesiredGeneration, expectedCurrentGen uint64) string {
+//
+// floor is the generation floor recorded for this exact current generation
+// (0 = none). The step is taken from max(current, floor): with no floor above
+// the current generation this is exactly current + 1, and with one it is
+// floor + 1 chained from the floor. The stale-promote check stays on the
+// current generation either way, so a publisher still names the generation it
+// saw, never the floor.
+func generationCAS(current *componentrelease.DesiredGeneration, floor uint64, next componentrelease.DesiredGeneration, expectedCurrentGen uint64) string {
 	var curGen uint64
 	if current != nil {
 		curGen = current.GenerationID
 	}
 	if expectedCurrentGen != curGen {
 		return fmt.Sprintf("stale promote: publisher expected current generation %d but the store is at %d", expectedCurrentGen, curGen)
+	}
+	if floor > curGen {
+		if current == nil {
+			return fmt.Sprintf("non-monotonic: generation floor %d has no current generation", floor)
+		}
+		if next.GenerationID != floor+1 {
+			return fmt.Sprintf("non-monotonic: next generation %d must be generation floor %d + 1 (current %d)", next.GenerationID, floor, curGen)
+		}
+		if next.PreviousGeneration != floor {
+			return fmt.Sprintf("rollback-floor mismatch: next.previousGeneration %d must equal generation floor %d, not current %d", next.PreviousGeneration, floor, curGen)
+		}
+		return ""
 	}
 	if next.GenerationID != curGen+1 {
 		return fmt.Sprintf("non-monotonic: next generation %d must be current %d + 1", next.GenerationID, curGen)

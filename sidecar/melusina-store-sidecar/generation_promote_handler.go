@@ -436,8 +436,9 @@ func componentChainStatus(err error) int {
 }
 
 // promoteErrorStatus maps a promote failure to an HTTP status: a CAS/lost-update
-// conflict is 409, an internal (sign/persist/load) failure is 500, and a bad
-// request (validation/schema) is 400.
+// conflict is 409, an internal (sign/persist/load, or an unverifiable
+// generation floor journal) failure is 500, and a bad request
+// (validation/schema) is 400.
 func promoteErrorStatus(err error) int {
 	msg := err.Error()
 	switch {
@@ -448,7 +449,8 @@ func promoteErrorStatus(err error) int {
 	case strings.Contains(msg, "sign generation"),
 		strings.Contains(msg, "persist generation"),
 		strings.Contains(msg, "marshal generation"),
-		strings.Contains(msg, "load current generation"):
+		strings.Contains(msg, "load current generation"),
+		strings.Contains(msg, refusalGenerationFloorJournalInvalid):
 		return http.StatusInternalServerError
 	default:
 		return http.StatusBadRequest

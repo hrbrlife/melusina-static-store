@@ -21,7 +21,7 @@ import (
 
 func TestDecodeRequestRejectsAmbiguousOrIncompleteInput(t *testing.T) {
 	valid := []byte(`{"schema":"melusina-generation-promote-v1","channel":"stable","expectedCurrentGeneration":0,"components":[{}]}`)
-	if _, err := decodeRequest(valid); err != nil {
+	if _, err := decodeRequest(valid, false); err != nil {
 		t.Fatalf("valid request preflight rejected: %v", err)
 	}
 	for name, raw := range map[string][]byte{
@@ -31,10 +31,30 @@ func TestDecodeRequestRejectsAmbiguousOrIncompleteInput(t *testing.T) {
 		"empty":     []byte(`{"schema":"melusina-generation-promote-v1","channel":"","components":[]}`),
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := decodeRequest(raw); err == nil {
+			if _, err := decodeRequest(raw, false); err == nil {
 				t.Fatalf("accepted %s request", name)
 			}
 		})
+	}
+}
+
+// A carry-forward request is an explicit opt-in. Without the flag an empty
+// component list is refused, and with it a request that names a component is
+// refused too: the flag cannot be left on by habit.
+func TestDecodeRequestCarryForwardIsExplicitAndExclusive(t *testing.T) {
+	empty := []byte(`{"schema":"melusina-generation-promote-v1","channel":"stable","expectedCurrentGeneration":5,"components":[]}`)
+	named := []byte(`{"schema":"melusina-generation-promote-v1","channel":"stable","expectedCurrentGeneration":5,"components":[{}]}`)
+	if _, err := decodeRequest(empty, true); err != nil {
+		t.Fatalf("carry-forward request refused with -carry-forward: %v", err)
+	}
+	if _, err := decodeRequest(empty, false); err == nil || !strings.Contains(err.Error(), "at least one component is required") {
+		t.Fatalf("empty request accepted without -carry-forward: %v", err)
+	}
+	if _, err := decodeRequest(named, true); err == nil || !strings.Contains(err.Error(), "-carry-forward requires a request that names no component") {
+		t.Fatalf("-carry-forward accepted a request that names a component: %v", err)
+	}
+	if _, err := decodeRequest([]byte(`{"schema":"melusina-generation-promote-v1","channel":"","expectedCurrentGeneration":5,"components":[]}`), true); err == nil {
+		t.Fatal("carry-forward request without a channel accepted")
 	}
 }
 

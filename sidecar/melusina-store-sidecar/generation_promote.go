@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -42,32 +43,34 @@ type GenerationPromoteRequest struct {
 
 // planGenerationPromote validates the request against the store's current
 // generation: it composes the next generation and enforces the compare-and-swap
-// predicate. It is pure — the caller performs the envelope verify, the
-// per-component on-chain re-verify, the operator signature, and the atomic
-// persist. Returns the UNSIGNED next generation.
-func planGenerationPromote(current *componentrelease.DesiredGeneration, req GenerationPromoteRequest, policy GenerationPolicy, signedAtUnix int64) (componentrelease.DesiredGeneration, error) {
-	next, err := composeNextGeneration(current, policy, signedAtUnix, req.Components)
+// predicate. floor is the generation floor recorded for this exact current
+// generation (0 = none; see generation_floor.go). It is pure — the caller
+// performs the envelope verify, the per-component on-chain re-verify, the
+// operator signature, and the atomic persist. Returns the UNSIGNED next
+// generation.
+func planGenerationPromote(current *componentrelease.DesiredGeneration, floor uint64, req GenerationPromoteRequest, policy GenerationPolicy, signedAtUnix int64) (componentrelease.DesiredGeneration, error) {
+	next, err := composeNextGeneration(current, floor, policy, signedAtUnix, req.Components)
 	if err != nil {
 		return componentrelease.DesiredGeneration{}, err
 	}
-	if v := generationCAS(current, next, req.ExpectedCurrentGeneration); v != "" {
+	if v := generationCAS(current, floor, next, req.ExpectedCurrentGeneration); v != "" {
 		return componentrelease.DesiredGeneration{}, errors.New(v)
 	}
 	return next, nil
 }
 
-// loadCurrentGenerationOrNil returns the persisted current generation, or nil if
-// none has been published yet (genesis). A malformed/absent-but-present file is a
-// real error, not treated as genesis.
-func (s *publishService) loadCurrentGenerationOrNil() (*componentrelease.DesiredGeneration, error) {
-	doc, _, err := loadCurrentGeneration(s.cfg.DistDir)
+// loadCurrentGenerationOrNil returns the persisted current generation and its
+// exact on-disk bytes, or nil if none has been published yet (genesis). A
+// malformed/absent-but-present file is a real error, not treated as genesis.
+func (s *publishService) loadCurrentGenerationOrNil() (*componentrelease.DesiredGeneration, []byte, error) {
+	doc, raw, err := loadCurrentGeneration(s.cfg.DistDir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, err
+		return nil, nil, err
 	}
-	return &doc, nil
+	return &doc, raw, nil
 }
 
 // promoteGeneration composes the next generation from req, enforces CAS against
@@ -97,12 +100,19 @@ func (s *publishService) promoteGenerationLocked(req GenerationPromoteRequest, n
 	if origin == "" {
 		return nil, errors.New("no public_base_url to pin the bundle origin")
 	}
-	current, err := s.loadCurrentGenerationOrNil()
+	current, currentRaw, err := s.loadCurrentGenerationOrNil()
 	if err != nil {
 		return nil, fmt.Errorf("load current generation: %w", err)
 	}
+	// A floor applies only while the current generation is byte-for-byte the
+	// one it was recorded against, so promoting spends it without deleting the
+	// record. An unreadable or unverifiable journal refuses the promote.
+	floor, err := s.desiredGenerationFloorFor(current, currentRaw)
+	if err != nil {
+		return nil, err
+	}
 	policy := GenerationPolicy{StoreID: s.cfg.StoreID, BundleOrigin: origin, Channel: req.Channel}
-	next, err := planGenerationPromote(current, req, policy, now.UTC().Unix())
+	next, err := planGenerationPromote(current, floor, req, policy, now.UTC().Unix())
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +126,9 @@ func (s *publishService) promoteGenerationLocked(req GenerationPromoteRequest, n
 	}
 	if err := persistDesiredGeneration(s.cfg.DistDir, raw); err != nil {
 		return nil, fmt.Errorf("persist generation: %w", err)
+	}
+	if current != nil && next.PreviousGeneration != current.GenerationID {
+		log.Printf("generation floor %d spent: promoted generation %d chained from the floor over restored current %d", next.PreviousGeneration, next.GenerationID, current.GenerationID)
 	}
 	return raw, nil
 }

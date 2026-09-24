@@ -64,7 +64,7 @@ func TestGenerationRefusesAppComponentAtSubmission(t *testing.T) {
 	app := appComponentFixture("minigit", "0.2.11", origin)
 
 	// compose (the deterministic engine)
-	if _, err := composeNextGeneration(nil, policy, 1784281900, []componentrelease.ComponentRelease{app}); err == nil {
+	if _, err := composeNextGeneration(nil, 0, policy, 1784281900, []componentrelease.ComponentRelease{app}); err == nil {
 		t.Fatal("composeNextGeneration accepted an app-class component: apps must never enter a generation")
 	} else if !strings.Contains(err.Error(), "minigit") {
 		t.Fatalf("compose refusal does not name the offending component: %v", err)
@@ -115,7 +115,7 @@ func TestComposeDropsLegacyAppComponentsOnCarryForward(t *testing.T) {
 	update.Version = "build-64"
 	update.Build = 64
 
-	next, err := composeNextGeneration(&current, policy, 1784281900, []componentrelease.ComponentRelease{update})
+	next, err := composeNextGeneration(&current, 0, policy, 1784281900, []componentrelease.ComponentRelease{update})
 	if err != nil {
 		t.Fatalf("compose over a legacy app-bearing generation failed: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestComposeRefusesHostDependencyOnDroppedApp(t *testing.T) {
 		LocalApprovalPDA:  "FMRFyGPzrefaYiETSLTDw8fHqix8GVcGuri31qTZVtgY",
 	}
 
-	_, err := composeNextGeneration(&current, policy, 1784281900, []componentrelease.ComponentRelease{update})
+	_, err := composeNextGeneration(&current, 0, policy, 1784281900, []componentrelease.ComponentRelease{update})
 	if err == nil {
 		t.Fatal("compose silently rewrote the dependency graph instead of refusing a retained requires[] edge to a dropped app")
 	}

@@ -283,18 +283,7 @@ func serveListingSignerConnection(conn *net.UnixConn, cfg Config, cr chainReader
 }
 
 func requireListingSignerPeer(conn *net.UnixConn) error {
-	raw, err := conn.SyscallConn()
-	if err != nil {
-		return err
-	}
-	var peer *syscall.Ucred
-	var controlErr error
-	if err := raw.Control(func(fd uintptr) {
-		peer, controlErr = syscall.GetsockoptUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
-	}); err != nil {
-		return err
-	}
-	if controlErr != nil || peer == nil || int(peer.Uid) != os.Getuid() {
+	if err := requireSameUserUnixPeer(conn); err != nil {
 		return errors.New("listing signer peer is not the local store user")
 	}
 	return nil

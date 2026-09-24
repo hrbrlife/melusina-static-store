@@ -114,6 +114,20 @@ func main() {
 		runListingSignerSubcommand(os.Args[2:])
 		return
 	}
+	// The provider pairing signer co-signs exactly one message kind, the V2
+	// operator attestation a shared Edge or DNS provider needs to pair
+	// (provider_pairing_signer.go). It is local-only, passes the enrollment
+	// gate at startup and before every signature, and never signs a
+	// work-order control, binding or receipt. provider-pairing-attest is its
+	// client: it derives no operator and verifies what the signer returns.
+	if len(os.Args) > 1 && os.Args[1] == "provider-pairing-signer" {
+		runProviderPairingSignerSubcommand(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "provider-pairing-attest" {
+		runProviderPairingAttestSubcommand(os.Args[2:])
+		return
+	}
 	// A catalog retirement is a Store-governed visibility transition, not an
 	// app republish. It creates a fresh sealed generation and leaves the
 	// retired release's immutable chain history intact.

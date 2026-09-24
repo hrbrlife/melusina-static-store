@@ -182,6 +182,46 @@ paths. Before enabling the unit it must install or create:
    `store_authority` are configured, `LoadConfig` already refuses startup
    without this socket path; enable and prove the signer before the first
    Pearl-control pilot.
+10. The provider pairing signer:
+   `melusina-store-sidecar provider-pairing-signer -config
+   /etc/melusina/store/store.config.json -socket
+   /run/melusina-store-provider-pairing/signer.sock`, run by
+   `melusina-store-provider-pairing-signer.service`. It signs exactly one
+   kind of message: the V2 operator attestation
+   (`MELUSINA_PROVIDER_OPERATOR_ATTESTATION_V2`) that a shared Edge, DNS or
+   mail provider needs for an `operator-attested` pairing. It builds those
+   bytes itself from the provider spec the owners signed. It passes the
+   enrollment gate at start and again before every signature, and refuses a
+   Store that has no owner enrollment in either build flavor. It refuses,
+   each by name:
+   - the V1 domain, or a request with a `delegatedReceiptSigner`
+     (`provider-pairing-signer-v1-refused`);
+   - anything shaped like a provider work-order control, target binding,
+     work order or receipt, and any request that carries a signing domain
+     (`provider-pairing-signer-no-control-surface`,
+     `provider-pairing-signer-request-carries-signing-domain`);
+   - a receipt signer that is the delegated inventory signer, the target
+     agent, the target identity or this Store's own operator key
+     (`provider-pairing-signer-receipt-signer-is-*`).
+   It never signs a provider work-order control. The deployer binds each
+   control to the provider's receipt signer, which is a dedicated key held
+   on the provider host, and the Store key never goes to that host. The
+   operator's client is `melusina-store-sidecar provider-pairing-attest
+   -socket <path> -request <file> -expect-keyid <enrolled operator ed25519
+   key ID>`. It verifies the returned signature over the message it rebuilds
+   itself, then prints the `operatorAttestation` for the target's pairing
+   request. The unit has no `[Install]` section: start it for a pairing
+   ceremony and stop it afterwards. Its runtime directory is its own, because
+   systemd removes a unit's `RuntimeDirectory` when that unit stops.
+   **The unit is not in this bundle yet.** The deployer's Store bootstrap
+   assembler checks a closed member list (`storeBootstrapFiles` in
+   `deploy-ui/cmd/assemble-release-set/store_bootstrap.go`) and refuses an
+   archive that holds any other file. So `build-store-generation-release.sh`
+   packages this unit only after the deployer admits
+   `systemd/melusina-store-provider-pairing-signer.service`. Until then there
+   is no governed way to start the signer.
+   `TestProviderPairingSignerUnitIsConstrainedAndNotYetBundled` enforces that
+   order.
 
 The current deployer phase that builds during deployment, omits
 `public_base_url`/private roots, starts an empty store, copies the catalog, and

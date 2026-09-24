@@ -51,6 +51,7 @@ var enrollmentExemptStoreSubcommands = map[string]string{
 	"store-identity-escrow-reseal":        "a holder's offline step on its own escrowed shard; reads no Store state",
 	"store-identity-restore":              "rebuilds the shards on a replacement host and proves them against an explicit operator key; acts with no release authority, and the restored Store passes this gate at startup",
 	"genesis-dist-init":                   "creates the empty first-install dist snapshot before enrollment exists; derives no operator and reads no chain state",
+	"provider-pairing-attest":             "client of the provider pairing signer socket; derives no operator and verifies the returned attestation against -expect-keyid",
 }
 
 // enrollmentGatedEntryPoint is one process entry point that acts with this
@@ -69,6 +70,7 @@ func enrollmentGatedEntryPoints(indexSHA256, cohortDir string) []enrollmentGated
 		{name: "genesis-bootstrap", after: "genesis bootstrap: catalog writer exclusion: catalog_migration_state_dir"},
 		{name: "listing-bootstrap", args: []string{"-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "listing-bootstrap catalog writer exclusion: open existing writer.lock"},
 		{name: "listing-signer", after: "refusing to replace an unsafe listing signer socket path"},
+		{name: "provider-pairing-signer", args: []string{"-socket", filepath.Join(filepath.Dir(cohortDir), "absent-runtime-directory", "signer.sock")}, after: "provider-pairing-signer: " + refusalPairingSignerSocketUnsafe + ":socket directory"},
 		{name: "catalog-retire", args: []string{"-app-id", "gate-probe", "-reason", "enrollment gate probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-retire writer exclusion: open existing writer.lock"},
 		{name: "catalog-reconcile-retirement", args: []string{"-dry-run"}, after: "open existing writer.lock"},
 		{name: "catalog-reconcile-unserved", args: []string{"-app-id", "gate-probe", "-reason", "enrollment gate probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-reconcile-unserved writer exclusion: open existing writer.lock"},

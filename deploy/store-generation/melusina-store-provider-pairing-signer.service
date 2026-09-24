@@ -1,0 +1,42 @@
+[Unit]
+Description=Melusina Store provider pairing signer (V2 operator attestation only)
+Documentation=https://github.com/hrbrlife/melusina-static-store/blob/main/sidecar/melusina-store-sidecar/provider_pairing_signer.go
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/melusina/store/store.config.json
+ConditionFileIsExecutable=/opt/melusina-store/current/bin/melusina-store-sidecar
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+# Started for a provider pairing ceremony and stopped after it; there is no
+# [Install] section, so it cannot be enabled at boot. It passes the enrollment
+# gate at start and before every signature, signs only the V2 operator
+# attestation, and never signs a work-order control, binding or receipt.
+# Its runtime directory is its own: systemd removes a unit's
+# RuntimeDirectory when that unit stops, so sharing /run/melusina with the
+# listing signer would delete that signer's socket.
+RuntimeDirectory=melusina-store-provider-pairing
+RuntimeDirectoryMode=0700
+ExecStart=/opt/melusina-store/current/bin/melusina-store-sidecar provider-pairing-signer -config /etc/melusina/store/store.config.json -socket /run/melusina-store-provider-pairing/signer.sock
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=45s
+TimeoutStopSec=15s
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/etc/melusina/store
+ReadWritePaths=/run/melusina-store-provider-pairing
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=melusina-store-provider-pairing-signer

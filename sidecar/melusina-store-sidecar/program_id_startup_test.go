@@ -102,6 +102,7 @@ var registryFreeStoreSubcommands = map[string]string{
 	"store-recovery-keygen":        "offline recovery key generation",
 	"store-identity-escrow-reseal": "a holder's offline reseal of one escrowed shard",
 	"genesis-dist-init":            "offline producer of the empty first-install dist snapshot",
+	"provider-pairing-attest":      "client of the local provider pairing signer socket; reads no chain state",
 }
 
 // storeMainSubcommands derives the dispatched subcommands from main() itself,
@@ -211,6 +212,7 @@ func TestEveryStoreEntryPointPinsItsConfiguredLicenseRegistry(t *testing.T) {
 		{name: "estate-enroll-successor", args: []string{"-config", configPath, "-enrollment", successorDocument}, after: "store estate enrollment successor requires an absolute catalog_migration_state_dir"},
 		{name: "listing-bootstrap", args: []string{"-config", configPath, "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "listing-bootstrap: estate enrollment: store-estate-profile-not-enrolled"},
 		{name: "listing-signer", args: []string{"-config", signerConfigPath}, after: "listing-signer: estate enrollment: store-estate-profile-not-enrolled"},
+		{name: "provider-pairing-signer", args: []string{"-config", configPath, "-socket", filepath.Join(dir, "absent-runtime-directory", "signer.sock")}, after: "provider-pairing-signer: estate enrollment: store-estate-profile-not-enrolled"},
 		{name: "catalog-retire", args: []string{"-config", configPath, "-app-id", "pin-probe", "-reason", "entry-point pin probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-retire: estate enrollment: store-estate-profile-not-enrolled"},
 		{name: "catalog-reconcile-retirement", args: []string{"-config", configPath, "-dry-run"}, after: "catalog-reconcile-retirement: estate enrollment: store-estate-profile-not-enrolled"},
 		{name: "catalog-reconcile-unserved", args: []string{"-config", configPath, "-app-id", "pin-probe", "-reason", "entry-point pin probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-reconcile-unserved: estate enrollment: store-estate-profile-not-enrolled"},

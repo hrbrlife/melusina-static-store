@@ -1,0 +1,221 @@
+{
+  "schema": "melusina.provider-operator-attestation-v2-vectors.v1",
+  "note": "Shared vectors for the V2 operator attestation a shared Edge, DNS or mail provider needs to pair. The Store's provider-pairing-signer and the deployer's installengine.ProviderOperatorInventoryAttestationMessage each rebuild every message byte for byte from the request's provider, and the deployer's verifier accepts every attestation. All keys are TEST-ONLY, derived from public labels in provider_pairing_signer_test.go; none is an estate key.",
+  "deployerSource": "melusina-os-deployer deploy-ui/internal/installengine/provider_pairing.go at 502999a5 (ProviderOperatorInventoryAttestationMessage, verifyOperatorPairingAttestation)",
+  "operatorKeyId": "ed25519:KGkJ_daEvbPGLME8Tqi5BbQOSBAfp_2OgbkYH23Qcu0",
+  "operatorSignPubkeyB58": "3ikCtVHAVvhYanP4MMKEahPix6KtKbVXjuGm19onxy9N",
+  "receiptSigner": "ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw",
+  "targetAgentIdentity": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+  "vectors": [
+    {
+      "name": "edge-minimal",
+      "request": {
+        "delegatedInventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "provider": {
+          "trustPin": "wg-pubkey:q0hzYv6xHq4xXk5o7i2gE8V4kP1Ubf3mD0tA9cLr2Ws=",
+          "inventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+          "receiptSigner": "ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw",
+          "identity": "edge@edge.estate.test",
+          "ownership": "shared-provider",
+          "kind": "edge",
+          "id": "edge"
+        },
+        "targetAgentIdentity": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "targetIdentity": "target:estate-test-host",
+        "kind": "provider-operator-inventory-attestation-v2",
+        "schema": "melusina-store-provider-pairing-signer-v1"
+      },
+      "canonicalProvider": "{\"id\":\"edge\",\"kind\":\"edge\",\"ownership\":\"shared-provider\",\"identity\":\"edge@edge.estate.test\",\"trustPin\":\"wg-pubkey:q0hzYv6xHq4xXk5o7i2gE8V4kP1Ubf3mD0tA9cLr2Ws=\",\"receiptSigner\":\"ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw\",\"inventorySigner\":\"ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg\"}",
+      "providerDigest": "sha256:cb2749cdb8f0681041050e2387832de3b4f06e3d17ce3fec4c8a8c294c0215ec",
+      "message": "MELUSINA_PROVIDER_OPERATOR_ATTESTATION_V2\n{\"providerDigest\":\"sha256:cb2749cdb8f0681041050e2387832de3b4f06e3d17ce3fec4c8a8c294c0215ec\",\"providerId\":\"edge\",\"kind\":\"edge\",\"ownership\":\"shared-provider\",\"targetIdentity\":\"target:estate-test-host\",\"identity\":\"edge@edge.estate.test\",\"trustPin\":\"wg-pubkey:q0hzYv6xHq4xXk5o7i2gE8V4kP1Ubf3mD0tA9cLr2Ws=\",\"operationReceiptSigner\":\"ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw\",\"delegatedInventorySigner\":\"ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg\"}",
+      "messageSha256": "247d8bd351ed2f78b4f91d47d2cb1285cd026e7663db53c13cb8fabde55706b0",
+      "attestation": {
+        "algorithm": "ed25519",
+        "keyId": "ed25519:KGkJ_daEvbPGLME8Tqi5BbQOSBAfp_2OgbkYH23Qcu0",
+        "delegatedInventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "signature": "Tax51S83xj9SjDVJzUvcYnJRfEkf-wdaYCQMFWuByRF49MRtUMG12UcZB-xiA5tdLTD2hmNQTQkglrGtXq4rCQ"
+      }
+    },
+    {
+      "name": "edge-with-handoff",
+      "request": {
+        "schema": "melusina-store-provider-pairing-signer-v1",
+        "kind": "provider-operator-inventory-attestation-v2",
+        "targetIdentity": "target:estate-test-host",
+        "targetAgentIdentity": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "delegatedInventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "provider": {
+          "id": "edge",
+          "kind": "edge",
+          "ownership": "shared-provider",
+          "identity": "edge@edge.estate.test",
+          "endpoint": "wg://edge.estate.test:51820",
+          "trustPin": "wg-pubkey:q0hzYv6xHq4xXk5o7i2gE8V4kP1Ubf3mD0tA9cLr2Ws=",
+          "receiptSigner": "ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw",
+          "inventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+          "control": {
+            "ownershipHandoff": {
+              "desiredUnitState": "masked",
+              "desiredActiveState": "inactive",
+              "initialUnitState": "enabled",
+              "initialActiveState": "active",
+              "managedFiles": [
+                {
+                  "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+                  "path": "/etc/nginx/nginx.conf",
+                  "mode": 420
+                }
+              ],
+              "dropIns": [],
+              "archivedUnitPath": "/var/lib/melusina/provider/archive/nginx.service",
+              "unitFile": {
+                "mode": 420,
+                "path": "/lib/systemd/system/nginx.service",
+                "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+              },
+              "legacyService": "nginx.service",
+              "contractGeneration": "1",
+              "providerIdentity": "edge@edge.estate.test",
+              "providerRef": "provider/edge",
+              "schema": "melusina-provider-ownership-handoff-v1"
+            }
+          }
+        }
+      },
+      "canonicalProvider": "{\"id\":\"edge\",\"kind\":\"edge\",\"ownership\":\"shared-provider\",\"identity\":\"edge@edge.estate.test\",\"endpoint\":\"wg://edge.estate.test:51820\",\"trustPin\":\"wg-pubkey:q0hzYv6xHq4xXk5o7i2gE8V4kP1Ubf3mD0tA9cLr2Ws=\",\"receiptSigner\":\"ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw\",\"inventorySigner\":\"ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg\",\"control\":{\"ownershipHandoff\":{\"schema\":\"melusina-provider-ownership-handoff-v1\",\"providerRef\":\"provider/edge\",\"providerIdentity\":\"edge@edge.estate.test\",\"contractGeneration\":\"1\",\"legacyService\":\"nginx.service\",\"unitFile\":{\"path\":\"/lib/systemd/system/nginx.service\",\"sha256\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"mode\":420},\"archivedUnitPath\":\"/var/lib/melusina/provider/archive/nginx.service\",\"dropIns\":[],\"managedFiles\":[{\"path\":\"/etc/nginx/nginx.conf\",\"sha256\":\"3333333333333333333333333333333333333333333333333333333333333333\",\"mode\":420}],\"initialActiveState\":\"active\",\"initialUnitState\":\"enabled\",\"desiredActiveState\":\"inactive\",\"desiredUnitState\":\"masked\"}}}",
+      "providerDigest": "sha256:02004c36f512e2b33ca6dbdca2a76548b8032642e27000c447f10220e05263db",
+      "message": "MELUSINA_PROVIDER_OPERATOR_ATTESTATION_V2\n{\"providerDigest\":\"sha256:02004c36f512e2b33ca6dbdca2a76548b8032642e27000c447f10220e05263db\",\"providerId\":\"edge\",\"kind\":\"edge\",\"ownership\":\"shared-provider\",\"targetIdentity\":\"target:estate-test-host\",\"identity\":\"edge@edge.estate.test\",\"trustPin\":\"wg-pubkey:q0hzYv6xHq4xXk5o7i2gE8V4kP1Ubf3mD0tA9cLr2Ws=\",\"operationReceiptSigner\":\"ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw\",\"delegatedInventorySigner\":\"ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg\"}",
+      "messageSha256": "044dc1b6a43b322ad96e40011f5a60efa5304d4df399449ec45816b5f802dbb4",
+      "attestation": {
+        "algorithm": "ed25519",
+        "keyId": "ed25519:KGkJ_daEvbPGLME8Tqi5BbQOSBAfp_2OgbkYH23Qcu0",
+        "delegatedInventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "signature": "FAj3uD7A-MD0DKGkw9m_QAWpTSCAZjbCfXBUBXygIwGk3USFkkJerGBRNOUC5zdTL_ZzxbFXR5F9AMg6YHSSDg"
+      }
+    },
+    {
+      "name": "dns-with-control",
+      "request": {
+        "schema": "melusina-store-provider-pairing-signer-v1",
+        "kind": "provider-operator-inventory-attestation-v2",
+        "targetIdentity": "target:estate-test-host",
+        "targetAgentIdentity": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "delegatedInventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "provider": {
+          "id": "dns",
+          "description": "Shared DNS for estate.test & its tenants <rehearsal>",
+          "acmeResponder": {
+            "challengeZone": "_acme.estate.test",
+            "tlsSpkiSha256": "4444444444444444444444444444444444444444444444444444444444444444",
+            "endpoint": "https://acme.estate.test:8453",
+            "providerIdentity": "dns@ns1.estate.test",
+            "providerRef": "provider/dns",
+            "schema": "melusina-provider-acme-responder-v1"
+          },
+          "control": {
+            "rfc2136Policy": {
+              "dnssecSigning": true,
+              "acmeChallengeZone": "_acme.estate.test",
+              "acmeResponderKeyPath": "/etc/bind/keys/acme-responder.key",
+              "acmeResponderKeyName": "acme-responder.estate.test.",
+              "keyFileMode": 384,
+              "legacyAcmeRecordType": "TXT",
+              "legacyAcmeKeyName": "",
+              "allowedRecordTypes": [
+                "A",
+                "CNAME",
+                "MX",
+                "TXT"
+              ],
+              "policySha256": "5555555555555555555555555555555555555555555555555555555555555555",
+              "namedConfigAfterSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+              "namedConfigBefore": {
+                "mode": 420,
+                "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+                "path": "/etc/bind/named.conf.local"
+              },
+              "namedConfigPath": "/etc/bind/named.conf.local",
+              "policyPath": "/etc/bind/melusina-update-policy.conf",
+              "keyPath": "/etc/bind/keys/tenant-update.key",
+              "keyAlgorithm": "hmac-sha256",
+              "keyName": "tenant-update.estate.test.",
+              "nameservers": [
+                "ns1.estate.test."
+              ],
+              "zone": "estate.test.",
+              "contractGeneration": "1",
+              "providerIdentity": "dns@ns1.estate.test",
+              "providerRef": "provider/dns",
+              "schema": "melusina-provider-rfc2136-policy-v1"
+            }
+          },
+          "inventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+          "receiptSigner": "ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw",
+          "trustPin": "dns-authority:ns1.estate.test",
+          "identity": "dns@ns1.estate.test",
+          "ownership": "shared-provider",
+          "kind": "dns"
+        }
+      },
+      "canonicalProvider": "{\"id\":\"dns\",\"kind\":\"dns\",\"ownership\":\"shared-provider\",\"identity\":\"dns@ns1.estate.test\",\"trustPin\":\"dns-authority:ns1.estate.test\",\"receiptSigner\":\"ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw\",\"inventorySigner\":\"ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg\",\"description\":\"Shared DNS for estate.test \\u0026 its tenants \\u003crehearsal\\u003e\",\"control\":{\"rfc2136Policy\":{\"schema\":\"melusina-provider-rfc2136-policy-v1\",\"providerRef\":\"provider/dns\",\"providerIdentity\":\"dns@ns1.estate.test\",\"contractGeneration\":\"1\",\"zone\":\"estate.test.\",\"nameservers\":[\"ns1.estate.test.\"],\"keyName\":\"tenant-update.estate.test.\",\"keyAlgorithm\":\"hmac-sha256\",\"keyPath\":\"/etc/bind/keys/tenant-update.key\",\"policyPath\":\"/etc/bind/melusina-update-policy.conf\",\"namedConfigPath\":\"/etc/bind/named.conf.local\",\"namedConfigBefore\":{\"path\":\"/etc/bind/named.conf.local\",\"sha256\":\"7777777777777777777777777777777777777777777777777777777777777777\",\"mode\":420},\"namedConfigAfterSha256\":\"6666666666666666666666666666666666666666666666666666666666666666\",\"policySha256\":\"5555555555555555555555555555555555555555555555555555555555555555\",\"allowedRecordTypes\":[\"A\",\"CNAME\",\"MX\",\"TXT\"],\"legacyAcmeKeyName\":\"\",\"legacyAcmeRecordType\":\"TXT\",\"keyFileMode\":384,\"acmeResponderKeyName\":\"acme-responder.estate.test.\",\"acmeResponderKeyPath\":\"/etc/bind/keys/acme-responder.key\",\"acmeChallengeZone\":\"_acme.estate.test\",\"dnssecSigning\":true}},\"acmeResponder\":{\"schema\":\"melusina-provider-acme-responder-v1\",\"providerRef\":\"provider/dns\",\"providerIdentity\":\"dns@ns1.estate.test\",\"endpoint\":\"https://acme.estate.test:8453\",\"tlsSpkiSha256\":\"4444444444444444444444444444444444444444444444444444444444444444\",\"challengeZone\":\"_acme.estate.test\"}}",
+      "providerDigest": "sha256:478247c9ce3f7a6389966186396b7c4e242511179fe8c95cae56480372b3e1dc",
+      "message": "MELUSINA_PROVIDER_OPERATOR_ATTESTATION_V2\n{\"providerDigest\":\"sha256:478247c9ce3f7a6389966186396b7c4e242511179fe8c95cae56480372b3e1dc\",\"providerId\":\"dns\",\"kind\":\"dns\",\"ownership\":\"shared-provider\",\"targetIdentity\":\"target:estate-test-host\",\"identity\":\"dns@ns1.estate.test\",\"trustPin\":\"dns-authority:ns1.estate.test\",\"operationReceiptSigner\":\"ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw\",\"delegatedInventorySigner\":\"ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg\"}",
+      "messageSha256": "87dd7e00796dacce88c68e0cf3c2c12124e3e9534a69d5bb784b658b78650749",
+      "attestation": {
+        "algorithm": "ed25519",
+        "keyId": "ed25519:KGkJ_daEvbPGLME8Tqi5BbQOSBAfp_2OgbkYH23Qcu0",
+        "delegatedInventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "signature": "W90vNL-iqF2MF-ANgnJPbrLscQehPpwz3gVIKp2cZkucNVZqwAjdRRuik6YKnKNc-O_dJIJU6rVRVlmiZkq_BQ"
+      }
+    },
+    {
+      "name": "mail-relay-shared",
+      "request": {
+        "schema": "melusina-store-provider-pairing-signer-v1",
+        "kind": "provider-operator-inventory-attestation-v2",
+        "targetIdentity": "target:estate-test-host",
+        "targetAgentIdentity": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "delegatedInventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "provider": {
+          "mailRelay": {
+            "fcrdnsObservedAt": "2026-09-24T00:00:00Z",
+            "hourlyMessageLimit": 200,
+            "baseContractSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+            "tlsSpkiSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+            "submissionPort": 587,
+            "submissionAddress": "10.77.0.1",
+            "egressIpv4": "192.0.2.25",
+            "hostname": "relay.estate.test",
+            "providerIdentity": "mail@relay.estate.test",
+            "providerRef": "provider/mail",
+            "schema": "melusina-provider-mail-relay-v1"
+          },
+          "mxCertificate": {
+            "delegationPublicKey": "ed25519:a49cLCYUNAdDW4VUpYniUklBKc8ErGU3-3PVjZ7REIM",
+            "providerIdentity": "mail@relay.estate.test",
+            "providerRef": "provider/mail",
+            "schema": "melusina-provider-mx-certificate-v1"
+          },
+          "credentialRef": "secret://provider/mail/relay",
+          "inventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+          "receiptSigner": "ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw",
+          "trustPin": "spki-sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "identity": "mail@relay.estate.test",
+          "ownership": "shared-provider",
+          "kind": "mail",
+          "id": "mail"
+        }
+      },
+      "canonicalProvider": "{\"id\":\"mail\",\"kind\":\"mail\",\"ownership\":\"shared-provider\",\"identity\":\"mail@relay.estate.test\",\"trustPin\":\"spki-sha256:9999999999999999999999999999999999999999999999999999999999999999\",\"receiptSigner\":\"ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw\",\"inventorySigner\":\"ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg\",\"credentialRef\":\"secret://provider/mail/relay\",\"mxCertificate\":{\"schema\":\"melusina-provider-mx-certificate-v1\",\"providerRef\":\"provider/mail\",\"providerIdentity\":\"mail@relay.estate.test\",\"delegationPublicKey\":\"ed25519:a49cLCYUNAdDW4VUpYniUklBKc8ErGU3-3PVjZ7REIM\"},\"mailRelay\":{\"schema\":\"melusina-provider-mail-relay-v1\",\"providerRef\":\"provider/mail\",\"providerIdentity\":\"mail@relay.estate.test\",\"hostname\":\"relay.estate.test\",\"egressIpv4\":\"192.0.2.25\",\"submissionAddress\":\"10.77.0.1\",\"submissionPort\":587,\"tlsSpkiSha256\":\"9999999999999999999999999999999999999999999999999999999999999999\",\"baseContractSha256\":\"8888888888888888888888888888888888888888888888888888888888888888\",\"hourlyMessageLimit\":200,\"fcrdnsObservedAt\":\"2026-09-24T00:00:00Z\"}}",
+      "providerDigest": "sha256:b7412051f405455fb948f990ec569c260060b72a48f409678b7cf7c7ff4ad045",
+      "message": "MELUSINA_PROVIDER_OPERATOR_ATTESTATION_V2\n{\"providerDigest\":\"sha256:b7412051f405455fb948f990ec569c260060b72a48f409678b7cf7c7ff4ad045\",\"providerId\":\"mail\",\"kind\":\"mail\",\"ownership\":\"shared-provider\",\"targetIdentity\":\"target:estate-test-host\",\"identity\":\"mail@relay.estate.test\",\"trustPin\":\"spki-sha256:9999999999999999999999999999999999999999999999999999999999999999\",\"operationReceiptSigner\":\"ed25519:-GzGSS4_0TUzfRYTQiDOJ-5ytdPL39pfJT0UToJhGaw\",\"delegatedInventorySigner\":\"ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg\"}",
+      "messageSha256": "fc15990f488a40f4d84adf3d6fbabe8fb2d479e74b580ccf335cbba782dabe0e",
+      "attestation": {
+        "algorithm": "ed25519",
+        "keyId": "ed25519:KGkJ_daEvbPGLME8Tqi5BbQOSBAfp_2OgbkYH23Qcu0",
+        "delegatedInventorySigner": "ed25519:bZ-A988QRo4B_9dNqlCPIZerlYamdBHrSilYgTdbCFg",
+        "signature": "_3zPwCUcQby8OvL0iwd0Ovuk6VARCw3F6o42YStrOFFzJnZo4oRxgbQO_3rIT5_3S5cFuQkWfoqlyvD_BunPBA"
+      }
+    }
+  ]
+}

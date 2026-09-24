@@ -51,7 +51,7 @@ func TestRecoverLiveBindsArtifactToLiveReleaseWithoutMutation(t *testing.T) {
 		receipt.AppHash != v1.AppHash || receipt.PackageID != v1.PkgID || receipt.Release.PDA != v1.PdaNew {
 		t.Fatalf("unexpected recovery receipt: %+v", receipt)
 	}
-	for _, forbidden := range []string{"build", "stage", "propose-register", "approve-register", "promote", "revoke"} {
+	for _, forbidden := range []string{"build", "stage", "propose-register", "finalize-release", "promote", "revoke"} {
 		if got := countOp(h.callOps(), forbidden); got != 0 {
 			t.Fatalf("recover-live must be read-only; called %s %d times", forbidden, got)
 		}

@@ -37,6 +37,11 @@ type estateBinding struct {
 	ProgramID        string          // programs.license-registry.programId
 	MasterNftMint    string          // anchors.masterMint
 	Squads           SquadsAuthority // roles.store-release + externalPrograms.squads-v4
+	// PublisherKeys and PublisherThreshold are releaseTrust: the publishers
+	// the owners enrolled. approve admits a ReleaseEntry only when one of
+	// these keys signed it (see releaseEntryTrust).
+	PublisherKeys      []string // releaseTrust.publisherKeys (lowercase hex)
+	PublisherThreshold uint32   // releaseTrust.threshold
 }
 
 // loadEstateBinding reads, verifies and pins the owner-signed profile, then
@@ -247,6 +252,8 @@ func estateBindingOf(profile estateprofile.EstateProfileV1, digest string) (esta
 			Threshold:   int(release.Threshold),
 			MemberCount: int(release.MemberCount),
 		},
+		PublisherKeys:      append([]string(nil), profile.ReleaseTrust.PublisherKeys...),
+		PublisherThreshold: profile.ReleaseTrust.Threshold,
 	}
 	return binding, nil
 }

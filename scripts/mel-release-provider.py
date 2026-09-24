@@ -3,11 +3,13 @@
 
 The Go CLI owns the durable two-command state machine.  This provider is its
 only real-world adapter: it builds an SPK from a committed app tree, creates a
-private store stage, creates an *unexecuted* Squads ReleaseEntry proposal, then
-later approves/executes that proposal, promotes the staged bytes, and revokes
-only declared stale ReleaseEntries.  Signing paths are supplied by environment
-variables; key material is never read from the Bazaar catalog manifest or written to a
-receipt.
+private store stage and an *unexecuted* Squads ReleaseEntry proposal, and on
+the approve side reads the ReleaseEntry account back (raw, for mel-release to
+admit), binds the candidate RELEASE.json to it, promotes the staged bytes, and
+revokes only declared stale ReleaseEntries.  It never approves or executes a
+register proposal: the owner-authorized runner registers every ReleaseEntry.
+Signing paths are supplied by environment variables; key material is never
+read from the Bazaar catalog manifest or written to a receipt.
 
 The provider targets no Store of its own.  mel-release binds the Store origin
 and domain (MEL_RELEASE_STORE_URL, MEL_RELEASE_STORE_DOMAIN), the
@@ -3102,17 +3104,12 @@ def archive_foreign_transaction_state(context: dict[str, Any], state: dict[str, 
     return archived
 
 
-def release_entry_exists(pda: str) -> bool:
-    """Read only: decide whether an approved ReleaseEntry is already on-chain.
-
-    This makes approve retry-safe when execution succeeded but receipt
-    finalization was interrupted. The subsequent pearl finalizer still decodes
-    and cryptographically binds the account before accepting it.
-    """
+def read_account(pda: str, commitment: str) -> dict[str, Any] | None:
+    """Read only: the raw getAccountInfo value at exactly pda, or None."""
     rpc = env("MEL_RELEASE_RPC_URL", required=True)
     request = urllib.request.Request(
         rpc,
-        data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo", "params": [pda, {"encoding": "base64", "commitment": "confirmed"}]}).encode(),
+        data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo", "params": [pda, {"encoding": "base64", "commitment": commitment}]}).encode(),
         headers={"Content-Type": "application/json"},
     )
     try:
@@ -3122,7 +3119,37 @@ def release_entry_exists(pda: str) -> bool:
         raise ProviderError(f"read ReleaseEntry {pda}: {exc}") from exc
     if reply.get("error"):
         raise ProviderError(f"read ReleaseEntry {pda}: {reply['error']}")
-    return isinstance(reply.get("result"), dict) and reply["result"].get("value") is not None
+    result = reply.get("result")
+    if not isinstance(result, dict) or "value" not in result:
+        raise ProviderError(f"read ReleaseEntry {pda}: RPC answer has no result.value")
+    value = result["value"]
+    if value is not None and not isinstance(value, dict):
+        raise ProviderError(f"read ReleaseEntry {pda}: account value is not an object")
+    return value
+
+
+def release_entry_exists(pda: str) -> bool:
+    """Read only: whether the runner-registered ReleaseEntry is on chain yet."""
+    return read_account(pda, "confirmed") is not None
+
+
+def release_entry_account(pda: str) -> None:
+    """Print the exact account at pda, raw, for mel-release to admit.
+
+    This operation decodes and judges nothing: `mel-release approve` decodes
+    the bytes with the program's exact layout and admits them itself. It reads
+    at finalized commitment, so approve never promotes on a rolled-back slot.
+    """
+    value = read_account(pda, "finalized")
+    if value is None:
+        print(json.dumps({"pda": pda, "present": False}, separators=(",", ":")))
+        return
+    data = value.get("data")
+    owner = value.get("owner")
+    if (not isinstance(data, list) or len(data) != 2 or data[1] != "base64" or not isinstance(data[0], str)
+            or not isinstance(owner, str) or not owner):
+        raise ProviderError(f"ReleaseEntry {pda} account has no base64 data or no owner")
+    print(json.dumps({"pda": pda, "present": True, "owner": owner, "dataBase64": data[0]}, separators=(",", ":")))
 
 
 def finalize_release(context: dict[str, Any]) -> None:
@@ -3205,36 +3232,43 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
     raise ProviderError("Squads transaction index stayed occupied after three fresh ceremony preparations")
 
 
-def approve(app_id: str, transaction_pda: str, receipt_out: Path, final_release_out: Path) -> None:
+def finalize_register(app_id: str, app_hash: str, release_hash: str, version: str, nonce: str,
+                      final_release_out: Path) -> None:
+    """Bind the candidate RELEASE.json to the runner-registered ReleaseEntry.
+
+    There is no approval here. The owner-authorized runner registers the
+    entry through the master NFT custodian's vault, and `mel-release approve`
+    has already read that account back and admitted it before it asks for
+    this. This step reads the chain and rewrites local files only: the Pearl
+    finalizer binds authorSig, signedAtUnix and the release PDA from the
+    registered entry, and the Store-only runtime-contract fields are restored.
+    mel-release then checks the result against the entry it admitted.
+    """
     authority = require_shared_squads_authority()
     context = require_context(app_id)
     state = read_json(clean_abs(str(context["statePath"]), "provider statePath"))
-    if state.get("transactionPda") != transaction_pda:
-        raise ProviderError("approve transaction PDA does not match the immutable proposal state")
+    expected = {
+        "appId": app_id, "appHash": app_hash, "releaseHash": release_hash,
+        "version": version, "releaseNonce": nonce,
+    }
+    mismatches = [name for name, value in expected.items() if state.get(name) != value]
+    if mismatches:
+        raise ProviderError("finalize request does not bind the immutable candidate state: " + ", ".join(mismatches))
     policy = state.get("quorumPolicy")
     if (not isinstance(policy, dict) or policy.get("multisigPda") != authority["multisig"] or
             state.get("licenseSquadsVault") != authority["vault"]):
-        raise ProviderError("approve ceremony state does not bind the catalog-pinned shared authority")
-    ed_ix = state.get("ed25519Instruction")
-    if not isinstance(ed_ix, dict):
-        raise ProviderError("prepared ceremony state lacks Ed25519 instruction")
-    already_registered = release_entry_exists(str(state["releaseEntryPda"]))
-    result: dict[str, Any] = {"transactionSignatures": []}
-    if not already_registered:
-        raw = run([node_bin(), str(register_executor()), "approve-execute", str(context["statePath"])], extra_env=register_executor_env())
-        result = last_json(raw)
-        if result.get("alreadyExecuted") is not False or not result.get("executeSignature") or not result.get("transactionSignatures"):
-            raise ProviderError("Squads did not execute the registered proposal")
+        raise ProviderError("candidate state does not bind the catalog-pinned shared authority")
+    pda = str(state.get("releaseEntryPda", ""))
+    if not release_entry_exists(pda):
+        raise ProviderError(
+            f"release-entry-missing: no ReleaseEntry at {pda}; the owner-authorized runner registers it "
+            "and this provider executes no Squads proposal"
+        )
     finalize_release(context)
     final_release = read_json(clean_abs(str(context["releasePath"]), "provider releasePath"))
     if final_release.get("licenseSquadsVault") != authority["vault"]:
         raise ProviderError("final release does not bind the catalog-pinned shared Squads vault")
     shutil.copyfile(context["releasePath"], final_release_out)
-    signatures = [value for value in result.get("transactionSignatures", []) if isinstance(value, str) and value]
-    write_json(receipt_out, {
-        "schema": "melusina-register-release-receipt-v1", "releaseEntryPda": state["releaseEntryPda"],
-        "releaseHash": state["releaseHash"], "status": "Active", "alreadyRegistered": already_registered, "transactionSignatures": signatures,
-    })
 
 
 def reject_register(app_id: str, app_hash: str, release_hash: str, version: str, nonce: str,
@@ -3418,7 +3452,8 @@ def revoke(pda: str, receipt_out: Path) -> None:
 
 PROVIDER_OPERATIONS = (
     "estate-scan", "audit-cohort", "audit-msb-cohort", "build", "active-releases", "release-status",
-    "served-app-hash", "stage", "propose-register", "approve-register", "reject-register", "promote", "revoke",
+    "release-entry-account", "served-app-hash", "stage", "propose-register", "finalize-release",
+    "reject-register", "promote", "revoke",
 )
 
 
@@ -3433,7 +3468,7 @@ def main() -> None:
     # again: no operation runs under a manifest of the retiring estate.
     catalog_config()
     app_id = env("MEL_APP_ID")
-    if op in {"build", "stage", "propose-register", "approve-register", "promote"}:
+    if op in {"build", "stage", "propose-register", "finalize-release", "promote"}:
         app_id = env("MEL_APP_ID", required=True)
         require_release_ready(app_id)
     if op == "estate-scan":
@@ -3463,6 +3498,8 @@ def main() -> None:
         active_releases(app_id)
     elif op == "release-status":
         release_status(env("MEL_PDA", required=True))
+    elif op == "release-entry-account":
+        release_entry_account(env("MEL_PDA", required=True))
     elif op == "served-app-hash":
         served_hash(app_id)
     elif op == "stage":
@@ -3470,8 +3507,12 @@ def main() -> None:
     elif op == "propose-register":
         authority = require_shared_squads_authority()
         propose(app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_NEW_VERSION", required=True), env("MEL_RELEASE_NONCE", required=True), authority["multisig"], authority["vault"], clean_abs(env("MEL_RELEASE_JSON_OUT", required=True), "MEL_RELEASE_JSON_OUT"), clean_abs(env("MEL_PROPOSE_RECEIPT_OUT", required=True), "MEL_PROPOSE_RECEIPT_OUT"))
-    elif op == "approve-register":
-        approve(app_id, env("MEL_TRANSACTION_PDA", required=True), clean_abs(env("MEL_REGISTER_RECEIPT_OUT", required=True), "MEL_REGISTER_RECEIPT_OUT"), clean_abs(env("MEL_FINAL_RELEASE_JSON_OUT", required=True), "MEL_FINAL_RELEASE_JSON_OUT"))
+    elif op == "finalize-release":
+        finalize_register(
+            app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_RELEASE_HASH", required=True),
+            env("MEL_NEW_VERSION", required=True), env("MEL_RELEASE_NONCE", required=True),
+            clean_abs(env("MEL_FINAL_RELEASE_JSON_OUT", required=True), "MEL_FINAL_RELEASE_JSON_OUT"),
+        )
     elif op == "reject-register":
         reject_register(
             env("MEL_APP_ID", required=True), env("MEL_NEW_APP_HASH", required=True),

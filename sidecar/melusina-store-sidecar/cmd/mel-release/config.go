@@ -62,6 +62,13 @@ type Config struct {
 	ProgramID     string // programs.license-registry.programId (MEL_RELEASE_PROGRAM_ID, MEL_PROGRAM_ID)
 	MasterNftMint string // anchors.masterMint                  (MEL_RELEASE_MASTER_NFT_MINT)
 
+	// ReleasePublisherKeys and ReleasePublisherThreshold are the profile's
+	// releaseTrust. They have no variable at all: approve admits a
+	// runner-registered ReleaseEntry only under the publishers the owners
+	// signed into the profile.
+	ReleasePublisherKeys      []string // releaseTrust.publisherKeys (lowercase hex)
+	ReleasePublisherThreshold uint32   // releaseTrust.threshold
+
 	// Additional env-only settings. The publisher envelope identity is required
 	// for both halves: private staging is itself a signed store mutation, so
 	// publish must fail before building if it cannot sign the stage request.
@@ -175,6 +182,8 @@ func loadConfigForMutation(needsMutationInputs bool) (Config, error) {
 	c.StoreID = estate.StoreID
 	c.ProgramID = estate.ProgramID
 	c.MasterNftMint = estate.MasterNftMint
+	c.ReleasePublisherKeys = estate.PublisherKeys
+	c.ReleasePublisherThreshold = estate.PublisherThreshold
 
 	dir := os.Getenv("MEL_RELEASE_STATE_DIR")
 	if strings.TrimSpace(dir) == "" {

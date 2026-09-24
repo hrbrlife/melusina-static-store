@@ -6,8 +6,11 @@ package main
 //   - the SignerProvider is a tiny stdlib-only Go program compiled once to a temp
 //     dir and pointed at by MEL_RELEASE_SIGNER_PROVIDER. It emits deterministic
 //     canned receipts and maintains a fake-chain state file (active releases,
-//     served appHash, per-PDA status) that mutates exactly where the real chain
-//     would (register adds Active, promote sets served, revoke flips to Revoked).
+//     served appHash, per-PDA status, ReleaseEntry account bytes) that mutates
+//     exactly where the real chain would (promote sets served, revoke flips to
+//     Revoked in the status and in the account bytes). It never registers a
+//     ReleaseEntry: the harness plays the owner-authorized runner
+//     (runnerRegister), which writes the program-layout account.
 //   - the store is an httptest.Server implementing /publish/generation (fold +
 //     operator-sign a single-component DesiredGeneration) and GET
 //     /update/generation.json, returning documents the CLI's own
@@ -35,10 +38,13 @@ const fakeProviderSrc = `package main
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -57,13 +63,39 @@ type Fixture struct {
 	InitialStatuses         map[string]string
 }
 type Inflight struct{ Version, AppHash, PdaNew, ReleaseHash string }
+type Account struct{ Owner, Data string }
+type Finalize struct {
+	AuthorSig, Master, Vault string
+	RegisteredAt             int64
+}
 type State struct {
 	Active      []Ref
 	Served      string
 	Statuses    map[string]string
 	ReleaseHash map[string]string
 	Inflight    map[string]Inflight
+	Accounts    map[string]Account
+	Finalize    map[string]Finalize
 	Seeded      bool
+}
+
+// recallAccount is revoke_release_entry on the stored bytes: status Revoked
+// and revoked_at Some(at), with bump moved after the Option payload.
+func recallAccount(data string, at int64) string {
+	raw, err := base64.StdEncoding.DecodeString(data)
+	if err != nil || len(raw) < 140 {
+		die("stored ReleaseEntry is not an account")
+	}
+	status := 140 + int(binary.LittleEndian.Uint32(raw[136:140])) + 32 + 32 + 64 + 32 + 32 + 8
+	if status+11 > len(raw) || raw[status+1] != 0 {
+		return data
+	}
+	bump := raw[status+2]
+	raw[status] = 1
+	raw[status+1] = 1
+	binary.LittleEndian.PutUint64(raw[status+2:], uint64(at))
+	raw[status+10] = bump
+	return base64.StdEncoding.EncodeToString(raw)
 }
 
 func env(k string) string { return os.Getenv(k) }
@@ -136,6 +168,12 @@ func main() {
 	}
 	if st.Inflight == nil {
 		st.Inflight = map[string]Inflight{}
+	}
+	if st.Accounts == nil {
+		st.Accounts = map[string]Account{}
+	}
+	if st.Finalize == nil {
+		st.Finalize = map[string]Finalize{}
 	}
 
 	lookup := func(pda string) (string, string, bool) {
@@ -247,36 +285,39 @@ func main() {
 			"vault": env("MEL_SQUADS_VAULT"), "instruction": "register_release_entry", "status": "Proposed",
 		})
 
-	case "approve-register":
+	case "release-entry-account":
+		pda := env("MEL_PDA")
+		out := map[string]any{"pda": pda, "present": false}
+		if a, ok := st.Accounts[pda]; ok {
+			out = map[string]any{"pda": pda, "present": true, "owner": a.Owner, "dataBase64": a.Data}
+		}
+		line, _ := json.Marshal(out)
+		fmt.Println(string(line))
+
+	case "finalize-release":
+		// Read-only on the fake chain: bind the provider's RELEASE.json to the
+		// registered entry. It never registers anything.
 		app := env("MEL_APP_ID")
 		inf := st.Inflight[app]
 		if inf.PdaNew == "" {
-			die("no inflight proposal for " + app)
+			die("no inflight candidate for " + app)
 		}
-		present := false
-		for _, r := range st.Active {
-			if r.PDA == inf.PdaNew {
-				present = true
-			}
+		if env("MEL_NEW_APP_HASH") != inf.AppHash || env("MEL_RELEASE_HASH") != inf.ReleaseHash || env("MEL_NEW_VERSION") != inf.Version {
+			die("finalize-release request does not bind the inflight candidate")
 		}
-		rec := map[string]any{
-			"schema": "melusina-register-release-receipt-v1", "releaseEntryPda": inf.PdaNew,
-			"releaseHash": inf.ReleaseHash, "status": "Active",
+		if _, ok := st.Accounts[inf.PdaNew]; !ok {
+			die("release-entry-missing: no ReleaseEntry at " + inf.PdaNew)
 		}
-		if present {
-			rec["alreadyRegistered"] = true
-		} else {
-			st.Active = append(st.Active, Ref{PDA: inf.PdaNew, AppHash: inf.AppHash, Version: inf.Version})
-			st.Statuses[inf.PdaNew] = "Active"
-			dirty = true
-			snapshot()
-			rec["transactionSignatures"] = []string{"regsig-" + inf.PdaNew}
-		}
+		f := st.Finalize[inf.PdaNew]
+		threshold, _ := strconv.Atoi(env("MEL_RELEASE_SQUADS_THRESHOLD"))
+		members, _ := strconv.Atoi(env("MEL_RELEASE_SQUADS_MEMBER_COUNT"))
 		writeJSON(env("MEL_FINAL_RELEASE_JSON_OUT"), map[string]any{
 			"$schema": "melusina-release-v1", "appHash": inf.AppHash, "releaseHash": inf.ReleaseHash,
 			"version": inf.Version, "releaseNonce": env("MEL_RELEASE_NONCE"), "releaseEntryPda": inf.PdaNew,
+			"signedAtUnix": f.RegisteredAt, "masterNftMint": f.Master, "licenseSquadsVault": f.Vault,
+			"authorSig": f.AuthorSig,
+			"quorumPolicy": map[string]any{"threshold": threshold, "memberCount": members, "multisigPda": env("MEL_RELEASE_SQUADS_MULTISIG")},
 		})
-		writeJSON(env("MEL_REGISTER_RECEIPT_OUT"), rec)
 
 	case "promote":
 		appHash := env("MEL_NEW_APP_HASH")
@@ -302,6 +343,10 @@ func main() {
 			rec["alreadyRevoked"] = true
 		} else {
 			st.Statuses[pda] = "Revoked"
+			if a, ok := st.Accounts[pda]; ok {
+				a.Data = recallAccount(a.Data, 1790000999)
+				st.Accounts[pda] = a
+			}
 			na := []Ref{}
 			for _, r := range st.Active {
 				if r.PDA != pda {

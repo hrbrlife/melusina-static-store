@@ -2,13 +2,18 @@ package main
 
 // `mel-release approve` resumes the SAME per-app WAL (keyed on the immutable
 // appId) from the PROPOSED boundary and drives it to DONE. It first re-validates
-// {candidate receipt, staged bytes + stage receipt, the pending Squads proposal}
-// without re-trusting anything, then:
+// {candidate receipt, staged bytes + stage receipt, the publish-side proposal
+// receipt} without re-trusting anything, then:
 //
-//	REGISTERED -> execute the authorized Squads approval; register_release_entry
-//	              lands -> ReleaseEntry Active (the ONE governed authority act).
-//	PROMOTED   -> promote the store catalog pointer for the NEW bytes (no gap:
-//	              the prior release is still Active + on-chain).
+//	REGISTERED -> read back the ReleaseEntry the owner-authorized runner
+//	              registered and admit it (readback.go): the frozen app_hash,
+//	              app_id, release_hash and version, the estate's master mint
+//	              and release custodian, and a publisher the profile's
+//	              releaseTrust enrolled. approve approves, executes and signs
+//	              nothing on chain; a missing entry is refused by name.
+//	PROMOTED   -> re-admit the entry, then promote the store catalog pointer for
+//	              the NEW bytes (no gap: the prior release is still Active +
+//	              on-chain).
 //	REVOKED    -> complete the global-retirement boundary. Normal target-scoped
 //	              approval retains global history; explicit global revocation is
 //	              a separately opted-in operation.
@@ -75,25 +80,18 @@ func runApprove(c Config, catalog *Catalog, selector string) (string, error) {
 	for rec.State != stateDone {
 		switch rec.State {
 		case statePosed:
-			if err := ensureRegistered(c, prov, &rec); err != nil {
-				return "", fmt.Errorf("register: %w", err)
+			if err := registerByReadback(c, prov, &rec); err != nil {
+				return "", fmt.Errorf("register (ReleaseEntry readback): %w", err)
 			}
 			if err := advanceWAL(walPath, &rec, stateRegistered); err != nil {
 				return "", err
 			}
 		case stateRegistered:
-			// Older WALs recorded the proposal-time RELEASE.json and then let the
-			// provider overwrite that path during finalization. Refresh the final
-			// release artifact before promotion so a terminal receipt never binds a
-			// file whose bytes have already changed.
-			before := rec.ReleaseJSON
-			if err := refreshFinalReleaseRef(c, &rec); err != nil {
-				return "", fmt.Errorf("final release artifact: %w", err)
-			}
-			if before != rec.ReleaseJSON {
-				if err := journalWAL(walPath, &rec); err != nil {
-					return "", fmt.Errorf("journal final release artifact: %w", err)
-				}
+			// The entry was admitted when the WAL reached REGISTERED; it may have
+			// been recalled since. Admit it again, against the recorded account
+			// bytes and the recorded final RELEASE.json, before promoting.
+			if err := reverifyBeforePromote(c, prov, &rec); err != nil {
+				return "", fmt.Errorf("promote (ReleaseEntry readback): %w", err)
 			}
 			if err := ensurePromoted(c, prov, app, &rec); err != nil {
 				return "", fmt.Errorf("promote: %w", err)
@@ -170,38 +168,10 @@ func revalidateCandidate(c Config, app App, rec *walReceipt) (candidateReceipt, 
 	return cand, nil
 }
 
-func ensureRegistered(c Config, prov SignerProvider, rec *walReceipt) error {
-	if rec.RegisterReceipt.SHA256 != "" {
-		if err := verifyArtifactRef(rec.RegisterReceipt); err != nil {
-			return err
-		}
-		if err := refreshFinalReleaseRef(c, rec); err != nil {
-			return err
-		}
-		return verifyRegisteredLive(prov, rec)
-	}
-	registerPath := c.receiptPath(rec.AppID, "register.json")
-	finalReleasePath := c.receiptPath(rec.AppID, "final-release.json")
-	if err := prov.ApproveRegister(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.ReleaseNonce, rec.TransactionPDA, registerPath, finalReleasePath); err != nil {
-		return err
-	}
-	ref, err := readRegisterReceipt(registerPath, rec.NewReleasePDA, rec.ReleaseHash)
-	if err != nil {
-		return err
-	}
-	rec.RegisterReceipt = ref
-	if _, finalRef, err := readFinalReleaseJSON(finalReleasePath, rec.NewAppHash, rec.Version, rec.ReleaseNonce); err != nil {
-		return fmt.Errorf("read finalized release: %w", err)
-	} else {
-		rec.ReleaseJSON = finalRef
-	}
-	return verifyRegisteredLive(prov, rec)
-}
-
 // refreshFinalReleaseRef resolves the immutable final RELEASE.json produced
-// after the Squads transaction becomes Active. New releases write it to a
-// separate receipt path; the candidate ceremony path is retained only to
-// recover legacy WALs that overwrote their proposal-time release.json.
+// after the ReleaseEntry becomes Active. New releases write it to a separate
+// receipt path; the candidate ceremony path is retained only to recover legacy
+// WALs that overwrote their proposal-time release.json.
 func refreshFinalReleaseRef(c Config, rec *walReceipt) error {
 	paths := []string{
 		c.receiptPath(rec.AppID, "final-release.json"),

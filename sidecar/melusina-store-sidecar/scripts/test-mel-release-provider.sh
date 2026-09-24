@@ -125,11 +125,21 @@ import json,sys
 d=json.load(open(sys.argv[1]));assert d["schema"] == "melusina-app-promotion-receipt-v1",d;assert d["catalog"]["stageId"] == "c"*64,d
 PY
 
-# The outer precompile is the critical real-chain invariant. Keep this simple
-# assertion here so a refactor cannot silently fall back to generic execute on
-# the normal release path. Approval cascades carry their own reviewed sequence.
-grep -Fq 'state.ceremonyKind === "app-approval-cascade"' "$ROOT/scripts/mel-release-squads-register.mjs"
-grep -Fq ': [decodeIx(state.ed25519Instruction),executeIx];' "$ROOT/scripts/mel-release-squads-register.mjs"
+# One approval rail: the owner-authorized runner registers every ReleaseEntry
+# and mel-release approve only reads it back. Neither the helper nor this
+# provider may approve or execute a Squads proposal.
+for forbidden in 'approve-execute' 'proposalApprove' 'vaultTransactionExecute'; do
+  if grep -Fq "$forbidden" "$ROOT/scripts/mel-release-squads-register.mjs"; then
+    echo "mel-release-squads-register.mjs still contains $forbidden" >&2
+    exit 1
+  fi
+done
+if grep -Fq 'approve-register' "$PROVIDER"; then
+  echo "provider still offers approve-register" >&2
+  exit 1
+fi
+grep -Fq 'release-entry-account) release_entry_account ;;' "$PROVIDER"
+grep -Fq 'finalize-release) finalize_release ;;' "$PROVIDER"
 # @sqds/multisig 2.1.4 assigns logs after translating a transaction error, while
 # recent web3 SendTransactionError exposes logs as getter-only. The helper must
 # normalize that one error shape before the SDK can mask the underlying Anchor
@@ -167,19 +177,22 @@ git -C "$TMP/sources/namedcoin" remote add origin https://github.com/hrbrlife/me
 git -C "$TMP/sources/namedcoin" add product/metadata.json
 git -C "$TMP/sources/namedcoin" commit -qm fixture
 ADAPTER_COMMIT="$(git -C "$TMP/sources/namedcoin" rev-parse HEAD)"
+# The canonical provider estate-scans every catalog before it dispatches, so
+# this fixture describes the new-estate profile vector's Store and release
+# authority (testdata/estate-profile-vectors.json), not the retiring Bazaar.
 cat >"$TMP/bazaar-catalog.yaml" <<YAML
 schema: melusina-bazaar-catalog/v1
-catalog_origin: https://bazaar.melusina-os.org
+catalog_origin: https://bazaar.rehearsal.invalid
 expected_live_app_count: 1
 default_release_state: ready
 default_reconciliation_state: source-pinned
 default_source_branch: dev-publish
 release_squads_authority:
-  multisig: 4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V
-  vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
+  multisig: 3D1TFuixe17WNQGBGUc1c8BKEAfspARX34Ak9yP77wkD
+  vault: QLCZ39GVSyJn89pN4HUe4yFrVXXu2NVKKdbxvfFNbn4
   program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
-  threshold: 3
-  member_count: 4
+  threshold: 2
+  member_count: 3
 groups:
   test:
     apps:
@@ -199,6 +212,9 @@ groups:
 YAML
 set +e
 MEL_RELEASE_CONFIG="$TMP/bazaar-catalog.yaml" MEL_RELEASE_SOURCE_ROOT="$TMP/sources" MEL_APP_ID="$ADAPTER_APP" \
+  MEL_RELEASE_STORE_URL=https://bazaar.rehearsal.invalid MEL_RELEASE_STORE_DOMAIN=bazaar.rehearsal.invalid \
+  MEL_RELEASE_SQUADS_MULTISIG=3D1TFuixe17WNQGBGUc1c8BKEAfspARX34Ak9yP77wkD \
+  MEL_RELEASE_SQUADS_VAULT=QLCZ39GVSyJn89pN4HUe4yFrVXXu2NVKKdbxvfFNbn4 \
   "$CATALOG_ADAPTER" unknown >"$TMP/catalog-adapter.log" 2>&1
 rc=$?
 set -e

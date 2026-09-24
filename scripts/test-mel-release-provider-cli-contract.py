@@ -6,7 +6,9 @@ arguments constrained to the flags the installed binary actually accepts; an
 unknown flag after a real Squads proposal would strand an approval.
 """
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import subprocess
@@ -1087,7 +1089,7 @@ def test_provider_estate_scans_every_selection_receipt_it_reads():
             restore_env(old)
 
 
-def test_release_helper_owns_index_and_atomic_approval_commands():
+def test_release_helper_owns_the_index_and_approve_executes_nothing():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         executor = root / "register-executor.mjs"
@@ -1119,22 +1121,28 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
             restore_env(old)
         assert captured == [[TEST_NODE_BIN, str(executor), "next-index"]], captured
 
+        app_hash = "b" * 64
+        version = "1.2.3"
+        nonce = "c" * 32
+        release_hash = provider.hashlib.sha256((app_hash + version + nonce).encode()).hexdigest()
         state = root / "state.json"
         state.write_text(json.dumps({
+            "appId": "app",
+            "appHash": app_hash,
+            "releaseHash": release_hash,
+            "version": version,
+            "releaseNonce": nonce,
             "transactionPda": "transaction-pda",
             "transactionIndex": 1724,
             "releaseEntryPda": "release-pda",
-            "releaseHash": "a" * 64,
             "licenseSquadsVault": TEST_SQUADS_VAULT,
             "ed25519Instruction": {"programId": "ed25519", "accounts": [], "data": ""},
             "quorumPolicy": {"multisigPda": TEST_SQUADS_MULTISIG, "threshold": 3, "memberCount": 4},
         }))
-        app_hash = "b" * 64
-        version = "1.2.3"
         release = root / "RELEASE.json"
         release.write_text(json.dumps({
             "appHash": app_hash,
-            "releaseHash": "a" * 64,
+            "releaseHash": release_hash,
             "version": version,
             "licenseSquadsVault": TEST_SQUADS_VAULT,
         }) + "\n")
@@ -1151,7 +1159,6 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
             },
         }) + "\n")
         final_release = root / "final-RELEASE.json"
-        receipt = root / "register.json"
         context = {
             "appId": "app",
             "statePath": str(state),
@@ -1160,6 +1167,8 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
             "runtimeContractPath": str(runtime_contract),
         }
         captured = []
+        finalized = []
+        registered = {"value": False}
         old_run = provider.run
         old_context = provider.require_context
         old_exists = provider.release_entry_exists
@@ -1167,24 +1176,76 @@ def test_release_helper_owns_index_and_atomic_approval_commands():
         old = with_env(common)
         try:
             provider.require_context = lambda _: context
-            provider.release_entry_exists = lambda _: False
-            provider.finalize_release = provider.bind_runtime_contract_to_release
-            provider.run = lambda args, **_: captured.append(args) or json.dumps({
-                "alreadyExecuted": False,
-                "transactionSignatures": ["approve-1", "approve-2", "approve-3", "execute"],
-                "executeSignature": "execute",
-            })
-            provider.approve("app", "transaction-pda", receipt, final_release)
+            provider.release_entry_exists = lambda pda: pda == "release-pda" and registered["value"]
+            provider.finalize_release = lambda ctx: finalized.append(ctx) or provider.bind_runtime_contract_to_release(ctx)
+            provider.run = lambda args, **_: captured.append(args) or ""
+
+            # Not registered by the runner yet: refused by name, nothing run,
+            # nothing finalized, no final RELEASE.json.
+            try:
+                provider.finalize_register("app", app_hash, release_hash, version, nonce, final_release)
+            except provider.ProviderError as exc:
+                assert str(exc).startswith("release-entry-missing:"), exc
+            else:
+                raise AssertionError("finalize-release ran with no registered ReleaseEntry")
+            assert captured == [] and finalized == [] and not final_release.exists()
+
+            # A request for another release is refused before the chain read.
+            try:
+                provider.finalize_register("app", "d" * 64, release_hash, version, nonce, final_release)
+            except provider.ProviderError as exc:
+                assert "does not bind the immutable candidate state: appHash" in str(exc), exc
+            else:
+                raise AssertionError("finalize-release accepted another appHash")
+
+            # Registered: finalized and copied, and still no helper command.
+            registered["value"] = True
+            provider.finalize_register("app", app_hash, release_hash, version, nonce, final_release)
         finally:
             provider.run = old_run
             provider.require_context = old_context
             provider.release_entry_exists = old_exists
             provider.finalize_release = old_finalize
             restore_env(old)
-        assert captured == [[TEST_NODE_BIN, str(executor), "approve-execute", str(state)]], captured
-        result = json.loads(receipt.read_text())
-        assert result["transactionSignatures"][-1] == "execute", result
+        assert captured == [], captured
+        assert len(finalized) == 1
         assert final_release.read_text() == release.read_text()
+        assert "approve-register" not in provider.PROVIDER_OPERATIONS
+        assert not hasattr(provider, "approve"), "the self-executing approve path is back"
+
+
+def test_release_entry_account_prints_the_raw_account_only():
+    answers = {
+        "present": {"data": ["AAEC", "base64"], "owner": "Registry1111", "lamports": 1, "executable": False},
+        "absent": None,
+    }
+    for name, value in answers.items():
+        old_read = provider.read_account
+        seen = []
+        out = io.StringIO()
+        try:
+            provider.read_account = lambda pda, commitment: seen.append((pda, commitment)) or value
+            with contextlib.redirect_stdout(out):
+                provider.release_entry_account("Pda1111")
+        finally:
+            provider.read_account = old_read
+        assert seen == [("Pda1111", "finalized")], seen
+        line = json.loads(out.getvalue())
+        if name == "present":
+            assert line == {"pda": "Pda1111", "present": True, "owner": "Registry1111", "dataBase64": "AAEC"}, line
+        else:
+            assert line == {"pda": "Pda1111", "present": False}, line
+    old_read = provider.read_account
+    try:
+        provider.read_account = lambda pda, commitment: {"data": ["AAEC", "base58"], "owner": "R"}
+        try:
+            provider.release_entry_account("Pda1111")
+        except provider.ProviderError as exc:
+            assert "no base64 data" in str(exc), exc
+        else:
+            raise AssertionError("a non-base64 account was printed")
+    finally:
+        provider.read_account = old_read
 
 
 def test_promote_repairs_registered_resume_runtime_binding():
@@ -3450,7 +3511,8 @@ if __name__ == "__main__":
     test_estate_scan_exceptions_are_named_exact_and_single_place()
     test_estate_scan_refuses_an_unusable_reference_or_values_file()
     test_provider_estate_scans_every_selection_receipt_it_reads()
-    test_release_helper_owns_index_and_atomic_approval_commands()
+    test_release_helper_owns_the_index_and_approve_executes_nothing()
+    test_release_entry_account_prints_the_raw_account_only()
     test_promote_repairs_registered_resume_runtime_binding()
     test_release_entry_status_uses_zero_based_borsh_ordinals()
     test_release_status_requires_program_owner()

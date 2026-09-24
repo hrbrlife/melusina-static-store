@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// The Squads half of scripts/mel-release-provider.sh.  Its one non-negotiable
-// distinction from generic `squads-vault-exec.js`: a ReleaseEntry register
-// execution is an inner CPI that validates the immediately-prior OUTER
-// Ed25519 precompile.  `approve-execute` therefore sends [ed25519, execute]
-// as one v0 transaction.
+// The Squads half of the publish-side release providers: the live quorum
+// policy read, the next transaction index, the UNEXECUTED register proposal,
+// and the shared-authority rejection of an invalid one. It approves and
+// executes nothing. A ReleaseEntry becomes Active only through the
+// owner-authorized runner (one governed vault transaction per entry), and
+// `mel-release approve` reads the registered entry back instead of executing a
+// proposal; its former approve-and-execute operation is gone with that rail.
 
 import fs from "fs";
 import path from "path";
@@ -34,7 +36,7 @@ for (const requiredPackage of ["@solana/web3.js/package.json", "@sqds/multisig/p
   }
 }
 const requireFromConfiguredModules = createRequire(path.join(nodeModules, "mel-release-provider.cjs"));
-const { Connection, Keypair, PublicKey, TransactionInstruction, TransactionMessage, VersionedTransaction } = requireFromConfiguredModules("@solana/web3.js");
+const { Connection, Keypair, PublicKey, TransactionInstruction, TransactionMessage } = requireFromConfiguredModules("@solana/web3.js");
 const multisig = requireFromConfiguredModules("@sqds/multisig");
 
 function readJSON(file) { return JSON.parse(fs.readFileSync(file, "utf8")); }
@@ -59,11 +61,6 @@ async function confirm(connection, signature) {
   const latest=await connection.getLatestBlockhash("confirmed");
   const result=await connection.confirmTransaction({signature, ...latest}, "confirmed");
   if (result.value.err) throw new Error(`transaction ${signature} failed: ${JSON.stringify(result.value.err)}`);
-}
-async function sendAndConfirm(connection, transaction) {
-  const signature=await connection.sendTransaction(transaction,{skipPreflight:false,preflightCommitment:"confirmed"});
-  await confirm(connection,signature);
-  return signature;
 }
 function configuredAuthority() {
   const multisigPda=new PublicKey(need("MEL_RELEASE_SQUADS_MULTISIG"));
@@ -309,45 +306,6 @@ async function propose(statePath) {
   }
   process.stdout.write(JSON.stringify({transactionPda:state.transactionPda,proposalPda:state.proposalPda,transactionIndex:state.transactionIndex,vaultTransactionCreateSignature,proposalCreateSignature,recoveredVaultTransaction,alreadyProposed})+"\n");
 }
-async function approveExecute(statePath) {
-  const state=readJSON(statePath), {connection,multisigPda}=context(state);
-  const transactionIndex=BigInt(state.transactionIndex), proposalPda=new PublicKey(state.proposalPda);
-  let proposal=await multisig.accounts.Proposal.fromAccountAddress(connection,proposalPda);
-  const before=String(proposal.pretty().status);
-  if (before === "Executed") {
-    process.stdout.write(JSON.stringify({alreadyExecuted:true,transactionSignatures:[]})+"\n"); return;
-  }
-  const signatures=[];
-  const appId=typeof state.appId === "string" ? state.appId : state.appID;
-  if (!appId) throw new Error("prepared ceremony state lacks appId");
-  if (before === "Active") {
-    for (const member of members()) {
-      try {
-        const signature=await multisig.rpc.proposalApprove({connection,feePayer:member,member,multisigPda,transactionIndex,memo:`approve ${state.ceremonyKind === "app-approval-cascade" ? "app approval cascade" : "ReleaseEntry"} ${appId}`});
-        await confirm(connection,signature); signatures.push(signature);
-      } catch (err) {
-        // Re-running after a process crash can meet quorum between the initial
-        // read and this member's vote. Re-read the proposal below rather than
-        // treating an already-approved member as a reason to strand it.
-        if (!/already|duplicate|invalid proposal status/i.test(String(err))) throw err;
-      }
-    }
-  }
-  proposal=await multisig.accounts.Proposal.fromAccountAddress(connection,proposalPda);
-  if (String(proposal.pretty().status) !== "Approved") throw new Error(`proposal is not executable after approvals: ${String(proposal.pretty().status)}`);
-  const payer=members()[0];
-  const {instruction: executeIx,lookupTableAccounts}=await multisig.instructions.vaultTransactionExecute({connection,multisigPda,transactionIndex,member:payer.publicKey});
-  const executeInstructions=state.ceremonyKind === "app-approval-cascade"
-    ? [executeIx]
-    : [decodeIx(state.ed25519Instruction),executeIx];
-  const message=new TransactionMessage({payerKey:payer.publicKey,recentBlockhash:(await connection.getLatestBlockhash("confirmed")).blockhash,instructions:executeInstructions}).compileToV0Message(lookupTableAccounts);
-  const tx=new VersionedTransaction(message); tx.sign([payer]);
-  const executeSignature=await sendAndConfirm(connection,tx); signatures.push(executeSignature);
-  proposal=await multisig.accounts.Proposal.fromAccountAddress(connection,proposalPda);
-  if (String(proposal.pretty().status) !== "Executed") throw new Error(`proposal did not reach Executed: ${String(proposal.pretty().status)}`);
-  process.stdout.write(JSON.stringify({alreadyExecuted:false,transactionSignatures:signatures,executeSignature})+"\n");
-}
-
 async function rejectProposal(statePath) {
   const state=readJSON(statePath), {connection,multisigPda}=context(state);
   const appId=typeof state.appId === "string" ? state.appId : state.appID;
@@ -403,9 +361,8 @@ try {
   if (op === "next-index" && !statePath) await nextIndex();
   else if (op === "policy" && !statePath) await policy();
   else if (op === "propose" && statePath) await propose(statePath);
-  else if (op === "approve-execute" && statePath) await approveExecute(statePath);
   else if (op === "reject-proposed" && statePath) await rejectProposal(statePath);
-  else throw new Error("usage: mel-release-squads-register.mjs {next-index|policy|propose <state>|approve-execute <state>|reject-proposed <state>}");
+  else throw new Error("usage: mel-release-squads-register.mjs {next-index|policy|propose <state>|reject-proposed <state>}");
 } catch (err) {
   console.error(`mel-release-squads-register: ${formatTransactionFailure(err)}`);
   process.exit(1);

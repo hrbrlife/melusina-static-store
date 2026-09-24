@@ -38,7 +38,7 @@ func TestRepairCatalogReprojectsOnlyVerifiedTerminalCandidate(t *testing.T) {
 	if got, want := countOp(operationsAfter, "promote"), countOp(operationsBefore, "promote")+1; got != want {
 		t.Fatalf("repair promote calls = %d, want %d; operations=%v", got, want, operationsAfter)
 	}
-	for _, op := range []string{"build", "stage", "propose-register", "approve-register", "revoke"} {
+	for _, op := range []string{"build", "stage", "propose-register", "finalize-release", "revoke"} {
 		if got, want := countOp(operationsAfter, op), countOp(operationsBefore, op); got != want {
 			t.Fatalf("repair issued forbidden %s operation: got %d, want %d; operations=%v", op, got, want, operationsAfter)
 		}

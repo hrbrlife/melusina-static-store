@@ -515,6 +515,7 @@ released by a Squads `store-release` role. From the verified profile
 | license-registry program (`MEL_PROGRAM_ID`, `submit --program-id`) | `programs.license-registry.programId` |
 | ReleaseEntry master mint | `anchors.masterMint` |
 | release Squads authority | `roles.store-release` multisig, vault, threshold and member count, and `externalPrograms.squads-v4.programId` |
+| enrolled release publishers (what `approve` admits) | `releaseTrust.publisherKeys` and `releaseTrust.threshold` |
 
 It hands exactly these values to its provider, replacing whatever the
 caller's environment held. The older per-value variables
@@ -534,6 +535,37 @@ before the Store or the chain sees it:
 - the frozen candidate that `approve`, `reject-proposed` and `repair-catalog`
   act on, whose master mint, license-registry program, Store ID and bundle
   origin must all be the profile's.
+
+`mel-release approve` registers nothing and executes no Squads proposal; no
+release tool in this module approves or executes one. The owner-authorized
+runner registers each ReleaseEntry through the master NFT custodian's vault
+(one governed vault transaction per entry). `approve` then reads the account
+at the ReleaseEntry PDA back through the provider's read-only
+`release-entry-account` operation and admits it itself
+(`internal/releaseentry`, checked against the program's own source in
+`internal/releaseentry/testdata/license-registry-excerpt.rs`):
+
+- the account is owned by the profile's license registry and has the
+  program's exact `ReleaseEntry` layout and size;
+- it is Active with no revocation time: a recalled entry is refused as
+  `release-entry-recalled`;
+- its master mint, `app_hash`, `app_id` (sha256 of the appId), `release_hash`
+  and version are the frozen candidate's, and its publisher vault is the
+  release custodian (`roles.store-release`), which also registered it;
+- its signed digest is recomputed from its own fields, its publisher key is
+  one of `releaseTrust.publisherKeys`, and that key's signature verifies. An
+  entry records one publisher signature, so a `releaseTrust.threshold` above 1
+  is refused as `release-entry-publisher-threshold-unmet`.
+
+Each refusal is named (`release-entry-missing`, `release-entry-owner-mismatch`,
+`release-entry-publisher-untrusted`, `release-entry-app-hash-mismatch`, and so
+on) and leaves the WAL where it was. `approve` records the admitted account in
+`release-entry-readback.json`, has the provider bind the candidate RELEASE.json
+to it (`finalize-release`, which reads the chain and writes local files only),
+checks the result field by field, and admits the entry again immediately
+before promote, so an entry recalled between two runs is never promoted. With
+no entry on chain yet, `approve` refuses with `release-entry-missing`; run it
+again once the runner has registered it.
 
 The state directory (`MEL_RELEASE_STATE_DIR`, default `~/.mel-release`) belongs
 to one estate's Store. Before any subcommand reads or writes it, `mel-release`

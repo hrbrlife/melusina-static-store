@@ -1,23 +1,27 @@
 package main
 
 // The signer-provider seam (Invariant 4: no keys dir). mel-release itself holds
-// NO chain signing key. Every governed mutation — the off-box Squads
-// register/approve/revoke ceremonies (HT13, keys never on the box), the store
-// stage/promote routes, and the read-only chain/served queries — is delegated to
-// one configured command, MEL_RELEASE_SIGNER_PROVIDER, invoked as
+// NO chain signing key. Every provider operation — the publish-side Squads
+// proposal and the opted-in revoke ceremony (HT13, keys never on the box), the
+// store stage/promote routes, the post-registration RELEASE.json finalization,
+// and the read-only chain/served queries — is delegated to one configured
+// command, MEL_RELEASE_SIGNER_PROVIDER, invoked as
 //
 //	sh -c "<provider> <op>"
 //
 // with the request bound in the environment and every native receipt written to
-// a MEL_*_RECEIPT_OUT path this process then re-verifies. This is the exact
-// abstraction proven in cmd/publish-supersede's commandOps, with register split
-// into a `propose-register` (publish side, unexecuted) and an `approve-register`
-// (approve side, executes the authorized proposal) so the authority boundary is
-// a real command boundary, not a flag.
+// a MEL_*_RECEIPT_OUT path this process then re-verifies.
+//
+// There is no approve-side register operation. A ReleaseEntry becomes Active
+// only through the owner-authorized runner (one governed vault transaction per
+// entry, spec R5); approve reads the account back (ReleaseEntryAccount) and
+// admits it itself, in Go, before FinalizeRelease and Promote. No provider
+// operation approves or executes a Squads proposal on approve's behalf.
 
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -76,10 +80,16 @@ type SignerProvider interface {
 	// Nothing becomes Active.
 	ProposeRegister(appID, appHash, releaseHash, version, nonce, multisig, vault, releaseJSONOut, proposeOut string) error
 
-	// ApproveRegister executes the authorized Squads approval of transactionPda,
-	// landing register_release_entry -> ReleaseEntry Active, and writes a register
-	// receipt (registerOut, schema melusina-register-release-receipt-v1).
-	ApproveRegister(appID, appHash, releaseHash, version, nonce, transactionPda, registerOut, finalReleaseOut string) error
+	// ReleaseEntryAccount reads the exact account at pda, read-only: whether it
+	// exists, the program that owns it and its raw data. The provider decodes
+	// nothing; approve decodes and admits the bytes itself.
+	ReleaseEntryAccount(pda string) (releaseEntryAccount, error)
+
+	// FinalizeRelease binds the provider's candidate RELEASE.json to the
+	// runner-registered ReleaseEntry (authorSig, signedAtUnix, the release
+	// PDA) and copies the result to finalReleaseOut. It reads the chain and
+	// writes local files only: it approves, executes and signs nothing.
+	FinalizeRelease(appID, appHash, releaseHash, version, nonce, finalReleaseOut string) error
 
 	// RejectRegister records the shared-authority rejection of an exact,
 	// unexecuted register_release_entry proposal and writes a rejection receipt
@@ -322,11 +332,66 @@ func (e *execProvider) ProposeRegister(appID, appHash, releaseHash, version, non
 	return err
 }
 
-func (e *execProvider) ApproveRegister(appID, appHash, releaseHash, version, nonce, transactionPda, registerOut, finalReleaseOut string) error {
-	_, err := e.run("approve-register", map[string]string{
+// releaseEntryAccount is one exact-address account read. Present is false
+// when no account exists there; Owner and Data are then empty.
+type releaseEntryAccount struct {
+	PDA     string
+	Present bool
+	Owner   string
+	Data    []byte
+}
+
+// releaseEntryAccountLine is the provider's one-line JSON answer.
+type releaseEntryAccountLine struct {
+	PDA        string `json:"pda"`
+	Present    *bool  `json:"present"`
+	Owner      string `json:"owner"`
+	DataBase64 string `json:"dataBase64"`
+}
+
+func (e *execProvider) ReleaseEntryAccount(pda string) (releaseEntryAccount, error) {
+	out, err := e.run("release-entry-account", map[string]string{"MEL_PDA": pda})
+	if err != nil {
+		return releaseEntryAccount{}, err
+	}
+	return parseReleaseEntryAccount(out, pda)
+}
+
+// parseReleaseEntryAccount accepts exactly one JSON object naming the
+// requested address. An absent account carries no owner or data; a present
+// one carries both, the data as standard base64.
+func parseReleaseEntryAccount(out, pda string) (releaseEntryAccount, error) {
+	var line releaseEntryAccountLine
+	if err := decodeStrictJSON([]byte(strings.TrimSpace(out)), &line); err != nil {
+		return releaseEntryAccount{}, fmt.Errorf("parse release-entry-account output: %w", err)
+	}
+	if line.PDA != pda {
+		return releaseEntryAccount{}, fmt.Errorf("release-entry-account answered for %q, not the requested %q", line.PDA, pda)
+	}
+	if line.Present == nil {
+		return releaseEntryAccount{}, errors.New("release-entry-account output does not say whether the account exists")
+	}
+	if !*line.Present {
+		if line.Owner != "" || line.DataBase64 != "" {
+			return releaseEntryAccount{}, errors.New("release-entry-account reports an absent account with an owner or data")
+		}
+		return releaseEntryAccount{PDA: pda}, nil
+	}
+	if strings.TrimSpace(line.Owner) == "" {
+		return releaseEntryAccount{}, errors.New("release-entry-account reports a present account with no owner")
+	}
+	data, err := base64.StdEncoding.Strict().DecodeString(line.DataBase64)
+	if err != nil {
+		return releaseEntryAccount{}, fmt.Errorf("release-entry-account data is not standard base64: %w", err)
+	}
+	return releaseEntryAccount{PDA: pda, Present: true, Owner: line.Owner, Data: data}, nil
+}
+
+func (e *execProvider) FinalizeRelease(appID, appHash, releaseHash, version, nonce, finalReleaseOut string) error {
+	_, err := e.run("finalize-release", map[string]string{
 		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash,
-		"MEL_NEW_VERSION": version, "MEL_RELEASE_NONCE": nonce, "MEL_TRANSACTION_PDA": transactionPda,
-		"MEL_REGISTER_RECEIPT_OUT": registerOut, "MEL_FINAL_RELEASE_JSON_OUT": finalReleaseOut,
+		"MEL_NEW_VERSION": version, "MEL_RELEASE_NONCE": nonce,
+		"MEL_FINAL_RELEASE_JSON_OUT": finalReleaseOut,
 	})
 	return err
 }

@@ -20,14 +20,15 @@ die() { printf 'mel-release-catalog-provider: %s\n' "$*" >&2; exit 2; }
 [[ $# -eq 1 ]] || die 'usage: mel-release-catalog-provider.sh <operation>'
 [[ -f "$PROVIDER" && ! -L "$PROVIDER" ]] || die "provider is not a regular file: $PROVIDER"
 
-# Read-only release/store queries and exact-PDA status/revocation have no
-# source-tree input. Requiring a clean checkout for those operations would make
-# durable history recovery depend on an unrelated worktree. The Go CLI already
-# resolves MEL_APP_ID against the closed catalog before invoking this adapter;
-# the provider still performs its RPC/store checks, and revoke remains governed
-# by the caller's catalog-pinned Squads authority.
+# Read-only release/store queries, the exact-PDA ReleaseEntry account read and
+# exact-PDA status/revocation have no source-tree input. Requiring a clean
+# checkout for those operations would make durable history recovery depend on
+# an unrelated worktree. The Go CLI already resolves MEL_APP_ID against the
+# closed catalog before invoking this adapter; the provider still performs its
+# RPC/store checks, and revoke remains governed by the caller's catalog-pinned
+# Squads authority.
 case "$1" in
-  active-releases|served-app-hash|release-status|revoke|reject-register)
+  active-releases|served-app-hash|release-status|release-entry-account|revoke|reject-register)
     exec python3 "$PROVIDER" "$1"
     ;;
 esac

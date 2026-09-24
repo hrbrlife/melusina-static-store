@@ -256,7 +256,7 @@ func requireRotatedTerminalResidue(appDir string, init walReceipt) error {
 			if err := validateHistoricalProposal(path, selected); err != nil {
 				return err
 			}
-		case "register.json":
+		case readbackReceiptName:
 			if err := validateHistoricalRegister(path, selected); err != nil {
 				return err
 			}

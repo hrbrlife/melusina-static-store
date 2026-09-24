@@ -1,0 +1,119 @@
+{
+  "schema": "melusina.store.release-entry-vectors.v1",
+  "source": "license-registry-excerpt.rs",
+  "len": 383,
+  "discriminatorHex": "f87a4976ee689e00",
+  "payloadDomain": "melusina-release-entry-v1",
+  "fieldOrder": [
+    [
+      "master_nft_mint",
+      "Pubkey"
+    ],
+    [
+      "app_hash",
+      "[u8; 32]"
+    ],
+    [
+      "app_id",
+      "[u8; 32]"
+    ],
+    [
+      "release_hash",
+      "[u8; 32]"
+    ],
+    [
+      "version",
+      "String"
+    ],
+    [
+      "publisher_squads_vault",
+      "Pubkey"
+    ],
+    [
+      "publisher_ed25519_pubkey",
+      "[u8; 32]"
+    ],
+    [
+      "signature",
+      "[u8; 64]"
+    ],
+    [
+      "signed_payload_hash",
+      "[u8; 32]"
+    ],
+    [
+      "registered_by",
+      "Pubkey"
+    ],
+    [
+      "registered_at",
+      "i64"
+    ],
+    [
+      "status",
+      "AttestationStatus"
+    ],
+    [
+      "revoked_at",
+      "Option<i64>"
+    ],
+    [
+      "bump",
+      "u8"
+    ]
+  ],
+  "statusVariants": [
+    "Active",
+    "Revoked",
+    "Superseded"
+  ],
+  "publisherSeedLabel": "melusina-release-entry-vector-publisher",
+  "vectors": [
+    {
+      "name": "active-none",
+      "appIdText": "vectorapp0000000000000000000000000000000000000000001",
+      "releaseNonce": "00112233445566778899aabbccddeeff",
+      "fields": {
+        "master_nft_mint": "BMky3j249ZJN33t7o9L9d3KF3H457cjKNRtaWXHHC2hR",
+        "app_hash": "b711e6a8841312a0a06786d8df074288ca1bc566ad77dd76d048e31620904b60",
+        "app_id": "8447c93c2c1f16fe23a6adc87505554a005ed5dc30202f607b9a83535dabf9b7",
+        "release_hash": "815b468f9fa3c1dc07623d9721218ed87ff07df16a5c1d10af3512e57e81df55",
+        "version": "2.4.1",
+        "publisher_squads_vault": "C5z9v4KgiVU6xEjPhCfHpoyDfxTJKx9e3MmiHTEBXoHx",
+        "publisher_ed25519_pubkey": "8bcdd67d23a3f471c8f6fdd5105585599b39bb17c5602e01a683cc9ce1e0788f",
+        "signature": "9af581fdc1351c048d38d6ff018c8879304aa24a2405ce8da2be42718c5e99859da45e4ecaf01c710a0307598c616951ee55a6127056db9bf8cc2126fe1a7c0d",
+        "signed_payload_hash": "52ba7f81d05d93716bd644731fe7142a88e1272331510568205531659e1518fe",
+        "registered_by": "C5z9v4KgiVU6xEjPhCfHpoyDfxTJKx9e3MmiHTEBXoHx",
+        "registered_at": 1767225600,
+        "status": "Active",
+        "revoked_at": null,
+        "bump": 254
+      },
+      "serializedLength": 348,
+      "accountHex": "f87a4976ee689e0099e632c5ba6bebaf145e67ac02463f17b6b2e46fd4222e5b2535ac13879aa404b711e6a8841312a0a06786d8df074288ca1bc566ad77dd76d048e31620904b608447c93c2c1f16fe23a6adc87505554a005ed5dc30202f607b9a83535dabf9b7815b468f9fa3c1dc07623d9721218ed87ff07df16a5c1d10af3512e57e81df5505000000322e342e31a4b780d9dcb622859f8c824979c427ff34e1b3198da00ecd3b71c325922ea83f8bcdd67d23a3f471c8f6fdd5105585599b39bb17c5602e01a683cc9ce1e0788f9af581fdc1351c048d38d6ff018c8879304aa24a2405ce8da2be42718c5e99859da45e4ecaf01c710a0307598c616951ee55a6127056db9bf8cc2126fe1a7c0d52ba7f81d05d93716bd644731fe7142a88e1272331510568205531659e1518fea4b780d9dcb622859f8c824979c427ff34e1b3198da00ecd3b71c325922ea83f00b95569000000000000fe0000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "name": "revoked-some-max-version",
+      "appIdText": "vectorapp0000000000000000000000000000000000000000002",
+      "releaseNonce": "ffeeddccbbaa99887766554433221100",
+      "fields": {
+        "master_nft_mint": "BMky3j249ZJN33t7o9L9d3KF3H457cjKNRtaWXHHC2hR",
+        "app_hash": "1a51b92b3af3d9f9dad56155d133c8a98f05b379e5d02a14306fe85145f93172",
+        "app_id": "17ede2c968446021b1ff9712df3ddfaed10e300e33e79f672692888fd841f2da",
+        "release_hash": "6ffbfcfd124038e7739220068b5d9e098520ed107eee13e066ccf752f5a2d0de",
+        "version": "0123456789abcdefghijklmnopqrstuv",
+        "publisher_squads_vault": "C5z9v4KgiVU6xEjPhCfHpoyDfxTJKx9e3MmiHTEBXoHx",
+        "publisher_ed25519_pubkey": "8bcdd67d23a3f471c8f6fdd5105585599b39bb17c5602e01a683cc9ce1e0788f",
+        "signature": "4b65dd06727b37f6bf4800a2843ba92fe3a9695de06dd8081219cdd62100effa38567c535d62e4996bf391113638bd5a3fa770c7798c1632c86ee0ac68878e0a",
+        "signed_payload_hash": "c4917e8ec41afef720fdd116ff16b339e4661a52d502bc2a469512fba3179f5b",
+        "registered_by": "C5z9v4KgiVU6xEjPhCfHpoyDfxTJKx9e3MmiHTEBXoHx",
+        "registered_at": 1767225601,
+        "status": "Revoked",
+        "revoked_at": 1790000000,
+        "bump": 253
+      },
+      "serializedLength": 383,
+      "accountHex": "f87a4976ee689e0099e632c5ba6bebaf145e67ac02463f17b6b2e46fd4222e5b2535ac13879aa4041a51b92b3af3d9f9dad56155d133c8a98f05b379e5d02a14306fe85145f9317217ede2c968446021b1ff9712df3ddfaed10e300e33e79f672692888fd841f2da6ffbfcfd124038e7739220068b5d9e098520ed107eee13e066ccf752f5a2d0de20000000303132333435363738396162636465666768696a6b6c6d6e6f70717273747576a4b780d9dcb622859f8c824979c427ff34e1b3198da00ecd3b71c325922ea83f8bcdd67d23a3f471c8f6fdd5105585599b39bb17c5602e01a683cc9ce1e0788f4b65dd06727b37f6bf4800a2843ba92fe3a9695de06dd8081219cdd62100effa38567c535d62e4996bf391113638bd5a3fa770c7798c1632c86ee0ac68878e0ac4917e8ec41afef720fdd116ff16b339e4661a52d502bc2a469512fba3179f5ba4b780d9dcb622859f8c824979c427ff34e1b3198da00ecd3b71c325922ea83f01b95569000000000101803bb16a00000000fd"
+    }
+  ]
+}

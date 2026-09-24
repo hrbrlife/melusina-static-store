@@ -22,7 +22,7 @@ const (
 	buildSchema     = "melusina-app-candidate-receipt-v1"
 	releaseSchema   = "melusina-release-v1"
 	proposalSchema  = "melusina-register-proposal-receipt-v1"
-	registerSchema  = "melusina-register-release-receipt-v1"
+	readbackSchema  = "melusina-release-entry-readback-receipt-v1"
 	rejectionSchema = "melusina-register-rejection-receipt-v1"
 	stageSchema     = "melusina-app-stage-receipt-v1"
 	promoteSchema   = "melusina-app-promotion-receipt-v1"
@@ -181,30 +181,56 @@ func readProposalReceipt(path, releaseEntryPda string) (proposalReceipt, artifac
 	return p, ref, nil
 }
 
-// ── register receipt (approve side) ────────────────────────────────────────────
+// ── ReleaseEntry readback receipt (approve side) ───────────────────────────
+//
+// mel-release writes this itself, from the account it read back and admitted
+// (see readback.go). It is the approve half's register evidence: nothing in it
+// is a provider's word, and every field is re-derivable from the account bytes
+// its accountSha256 names.
 
-type registerReceipt struct {
-	Schema                string   `json:"schema"`
-	ReleaseEntryPDA       string   `json:"releaseEntryPda"`
-	ReleaseHash           string   `json:"releaseHash"`
-	Status                string   `json:"status"`
-	AlreadyRegistered     bool     `json:"alreadyRegistered,omitempty"`
-	TransactionSignatures []string `json:"transactionSignatures,omitempty"`
+type readbackReceipt struct {
+	Schema                 string `json:"schema"`
+	AppID                  string `json:"appId"`
+	ReleaseEntryPDA        string `json:"releaseEntryPda"`
+	ProgramID              string `json:"programId"`
+	AccountSHA256          string `json:"accountSha256"`
+	AccountSize            int    `json:"accountSize"`
+	MasterNftMint          string `json:"masterNftMint"`
+	AppHash                string `json:"appHash"`
+	AppIDHash              string `json:"appIdHash"`
+	ReleaseHash            string `json:"releaseHash"`
+	Version                string `json:"version"`
+	PublisherSquadsVault   string `json:"publisherSquadsVault"`
+	PublisherEd25519Pubkey string `json:"publisherEd25519Pubkey"`
+	Signature              string `json:"signature"`
+	SignedPayloadHash      string `json:"signedPayloadHash"`
+	RegisteredBy           string `json:"registeredBy"`
+	RegisteredAt           int64  `json:"registeredAt"`
+	Status                 string `json:"status"`
+	PublisherThreshold     uint32 `json:"publisherThreshold"`
 }
 
+// readRegisterReceipt reads the readback receipt approve wrote for
+// releaseEntryPda and checks it names that release as Active.
 func readRegisterReceipt(path, releaseEntryPda, releaseHash string) (artifactRef, error) {
-	var r registerReceipt
+	_, ref, err := readReadbackReceipt(path, releaseEntryPda, releaseHash)
+	return ref, err
+}
+
+func readReadbackReceipt(path, releaseEntryPda, releaseHash string) (readbackReceipt, artifactRef, error) {
+	var r readbackReceipt
 	ref, err := readNativeJSON(path, &r)
 	if err != nil {
-		return artifactRef{}, err
+		return r, artifactRef{}, err
 	}
-	if r.Schema != registerSchema || r.ReleaseEntryPDA != releaseEntryPda || r.ReleaseHash != releaseHash || r.Status != "Active" {
-		return artifactRef{}, errors.New("register receipt schema or release binding mismatch")
+	if r.Schema != readbackSchema || r.ReleaseEntryPDA != releaseEntryPda || r.ReleaseHash != releaseHash || r.Status != "Active" {
+		return r, artifactRef{}, errors.New("ReleaseEntry readback receipt schema or release binding mismatch")
 	}
-	if !r.AlreadyRegistered && len(r.TransactionSignatures) == 0 {
-		return artifactRef{}, errors.New("new registration receipt has no transaction signature")
+	if !isLowerHex(r.AccountSHA256, 64) || r.AccountSize <= 0 || !isLowerHex(r.PublisherEd25519Pubkey, 64) ||
+		!isLowerHex(r.Signature, 128) || !isLowerHex(r.SignedPayloadHash, 64) || r.RegisteredAt <= 0 {
+		return r, artifactRef{}, errors.New("ReleaseEntry readback receipt does not record the admitted account")
 	}
-	return ref, nil
+	return r, ref, nil
 }
 
 // ── register-proposal rejection receipt (reject-proposed side) ─────────────────

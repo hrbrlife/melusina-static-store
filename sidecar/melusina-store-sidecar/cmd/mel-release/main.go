@@ -12,11 +12,13 @@
 //	    nothing is served, nothing is catalog-visible.
 //
 //	mel-release approve --app <appId|slug|name>
-//	    Re-validate {candidate, staged bytes, pending proposal}, execute the
-//	    authorized Squads approval (ReleaseEntry Active), promote the catalog
-//	    pointer (no-gap), submit + read-back-verify the single-component signed
-//	    DesiredGeneration in the frozen componentrelease release_v2 format, then
-//	    revoke the stale ReleaseEntry LAST, and emit the terminal receipt.
+//	    Re-validate {candidate, staged bytes, proposal receipt}, read back the
+//	    ReleaseEntry the owner-authorized runner registered and admit it (the
+//	    frozen app_hash, app_id, release_hash and version, the estate's master
+//	    mint and release custodian, a releaseTrust publisher; approve executes
+//	    no Squads proposal), re-admit it and promote the catalog pointer
+//	    (no-gap), revoke the stale ReleaseEntry LAST when global retirement was
+//	    opted into, and emit the terminal receipt.
 //
 //	mel-release manifest --out <absolute-path>
 //	    Re-read every accepted terminal receipt and write the exact immutable

@@ -145,12 +145,14 @@ func TestExecProviderRejectsForeignProposalAuthorityBeforeInvocation(t *testing.
 	}
 }
 
-func TestExecProviderBindsApprovalCeremonyFacts(t *testing.T) {
+// FinalizeRelease hands the provider the frozen release facts and the output
+// path, overriding ambient values; it names no Squads transaction at all.
+func TestExecProviderBindsFinalizeFacts(t *testing.T) {
 	dir := t.TempDir()
 	capture := filepath.Join(dir, "capture")
 	script := filepath.Join(dir, "capture-provider.sh")
 	const body = `#!/bin/sh
-printf '%s|%s|%s|%s|%s|%s\n' "$MEL_APP_ID" "$MEL_NEW_APP_HASH" "$MEL_RELEASE_HASH" "$MEL_NEW_VERSION" "$MEL_RELEASE_NONCE" "$MEL_TRANSACTION_PDA" > "$MEL_CAPTURE"
+printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "$1" "$MEL_APP_ID" "$MEL_NEW_APP_HASH" "$MEL_RELEASE_HASH" "$MEL_NEW_VERSION" "$MEL_RELEASE_NONCE" "$MEL_FINAL_RELEASE_JSON_OUT" "${MEL_TRANSACTION_PDA:-none}" > "$MEL_CAPTURE"
 `
 	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
 		t.Fatal(err)
@@ -158,20 +160,70 @@ printf '%s|%s|%s|%s|%s|%s\n' "$MEL_APP_ID" "$MEL_NEW_APP_HASH" "$MEL_RELEASE_HAS
 	t.Setenv("MEL_CAPTURE", capture)
 	t.Setenv("MEL_NEW_APP_HASH", "ambient-app-hash")
 	t.Setenv("MEL_RELEASE_HASH", "ambient-release-hash")
+	t.Setenv("MEL_TRANSACTION_PDA", "")
 	p := &execProvider{command: script, timeout: time.Second}
 	appHash := strings.Repeat("a", 64)
 	releaseHash := strings.Repeat("b", 64)
 	nonce := strings.Repeat("c", 32)
-	if err := p.ApproveRegister("app-id", appHash, releaseHash, "0.7.23", nonce, "transaction-pda", filepath.Join(dir, "register.json"), filepath.Join(dir, "release.json")); err != nil {
-		t.Fatalf("ApproveRegister: %v", err)
+	out := filepath.Join(dir, "final-release.json")
+	if err := p.FinalizeRelease("app-id", appHash, releaseHash, "0.7.23", nonce, out); err != nil {
+		t.Fatalf("FinalizeRelease: %v", err)
 	}
 	got, err := os.ReadFile(capture)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "app-id|" + appHash + "|" + releaseHash + "|0.7.23|" + nonce + "|transaction-pda\n"
+	want := "finalize-release|app-id|" + appHash + "|" + releaseHash + "|0.7.23|" + nonce + "|" + out + "|none\n"
 	if string(got) != want {
-		t.Fatalf("approval ceremony binding = %q, want %q", got, want)
+		t.Fatalf("finalize binding = %q, want %q", got, want)
+	}
+}
+
+// ReleaseEntryAccount asks for the exact PDA and accepts only a well-formed
+// answer about that PDA.
+func TestExecProviderReadsReleaseEntryAccount(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "account-provider.sh")
+	const body = `#!/bin/sh
+[ "$1" = release-entry-account ] || exit 9
+printf '{"pda":"%s","present":true,"owner":"Registry111","dataBase64":"AAEC"}\n' "$MEL_PDA"
+`
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	p := &execProvider{command: script, timeout: time.Second}
+	got, err := p.ReleaseEntryAccount("ExactPda111")
+	if err != nil {
+		t.Fatalf("ReleaseEntryAccount: %v", err)
+	}
+	if !got.Present || got.PDA != "ExactPda111" || got.Owner != "Registry111" || string(got.Data) != "\x00\x01\x02" {
+		t.Fatalf("account = %+v", got)
+	}
+}
+
+func TestParseReleaseEntryAccountRefusesAmbiguousAnswers(t *testing.T) {
+	const pda = "ExactPda111"
+	cases := map[string]string{
+		"another pda":            `{"pda":"OtherPda111","present":false}`,
+		"no presence stated":     `{"pda":"ExactPda111"}`,
+		"absent with data":       `{"pda":"ExactPda111","present":false,"dataBase64":"AAEC"}`,
+		"present with no owner":  `{"pda":"ExactPda111","present":true,"dataBase64":"AAEC"}`,
+		"data not base64":        `{"pda":"ExactPda111","present":true,"owner":"R","dataBase64":"not base64!"}`,
+		"unknown field":          `{"pda":"ExactPda111","present":false,"status":"Active"}`,
+		"two answers":            `{"pda":"ExactPda111","present":false}{"pda":"ExactPda111","present":false}`,
+		"provider decoded entry": `{"pda":"ExactPda111","present":true,"owner":"R","dataBase64":"AAEC","appHash":"aa"}`,
+	}
+	for name, out := range cases {
+		if _, err := parseReleaseEntryAccount(out, pda); err == nil {
+			t.Errorf("%s: accepted %s", name, out)
+		}
+	}
+	// Positive controls: an absent and a present account parse.
+	if got, err := parseReleaseEntryAccount(`{"pda":"ExactPda111","present":false}`, pda); err != nil || got.Present {
+		t.Fatalf("absent control: %+v %v", got, err)
+	}
+	if got, err := parseReleaseEntryAccount(`{"pda":"ExactPda111","present":true,"owner":"R","dataBase64":"AAEC"}`, pda); err != nil || !got.Present || len(got.Data) != 3 {
+		t.Fatalf("present control: %+v %v", got, err)
 	}
 }
 
@@ -223,21 +275,50 @@ func TestProviderUsesPearlToolsCanonicalSquadsProgramFlag(t *testing.T) {
 	}
 }
 
-func TestRegisterHelperExecutesOnlyApprovedSquadsProposal(t *testing.T) {
-	path := filepath.Join("..", "..", "scripts", "mel-release-squads-register.mjs")
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
+// One approval rail: no release tool in this module approves or executes a
+// Squads proposal. The owner-authorized runner registers every ReleaseEntry;
+// approve only reads it back. Each forbidden spelling below is the removed
+// self-executing path; re-adding it fails this test by name.
+func TestReleaseToolsHaveNoSelfExecutingSquadsPath(t *testing.T) {
+	files := map[string][]string{
+		filepath.Join("..", "..", "scripts", "mel-release-squads-register.mjs"): {
+			"approve-execute", "approveExecute", "vaultTransactionExecute", "proposalApprove",
+		},
+		filepath.Join("..", "..", "scripts", "mel-release-provider.sh"): {
+			"approve-register", "approve_register", "approve-execute",
+		},
+		filepath.Join("..", "..", "..", "..", "scripts", "mel-release-provider.py"): {
+			"approve-register", "approve-execute", "def approve(",
+		},
+		filepath.Join("..", "..", "scripts", "mel-release-catalog-provider.sh"): {
+			"approve-register",
+		},
 	}
-	text := string(raw)
-	if !strings.Contains(text, "if (before === \"Active\")") || !strings.Contains(text, "status) !== \"Approved\"") {
-		t.Fatalf("register helper %s does not implement Active -> Approved -> execute", path)
+	for path, forbidden := range files {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, needle := range forbidden {
+			if strings.Contains(string(raw), needle) {
+				t.Errorf("release-tool-self-executes-squads: %s contains %q", path, needle)
+			}
+		}
 	}
-	if strings.Contains(text, "status) !== \"Active\") throw new Error(`proposal is not executable") {
-		t.Fatalf("register helper %s still rejects the approved state Squads requires for execution", path)
-	}
-	if !strings.Contains(text, "creator?.publicKey ?? creator") {
-		t.Fatalf("register helper %s does not preserve the exact on-chain creator when revalidating a proposal", path)
+	// Positive control: the providers do carry the readback operations, so
+	// the scan read the right files.
+	for path, needle := range map[string]string{
+		filepath.Join("..", "..", "scripts", "mel-release-provider.sh"):             "release-entry-account",
+		filepath.Join("..", "..", "..", "..", "scripts", "mel-release-provider.py"): "release-entry-account",
+		filepath.Join("..", "..", "scripts", "mel-release-squads-register.mjs"):     "proposalCreate",
+	} {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(raw), needle) {
+			t.Errorf("positive control: %s lacks %q", path, needle)
+		}
 	}
 }
 

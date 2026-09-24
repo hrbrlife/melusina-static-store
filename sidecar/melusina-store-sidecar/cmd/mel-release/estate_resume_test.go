@@ -188,7 +188,7 @@ func TestResumedCandidateMustBeTheBoundEstates(t *testing.T) {
 			if _, err := rejectProposedState(other, h.catalogApp(), newExecProvider(other)); err == nil || !strings.Contains(err.Error(), tc.want(own)) {
 				t.Fatalf("reject-proposed under another estate's %s: %v, want %q", name, err, tc.want(own))
 			}
-			if got := countOp(h.callOps(), "approve-register") + countOp(h.callOps(), "reject-register"); got != 0 {
+			if got := countOp(h.callOps(), "release-entry-account") + countOp(h.callOps(), "finalize-release") + countOp(h.callOps(), "reject-register"); got != 0 {
 				t.Fatalf("another estate's candidate reached the chain: %v", h.callOps())
 			}
 			if got := h.walState(); got != statePosed {

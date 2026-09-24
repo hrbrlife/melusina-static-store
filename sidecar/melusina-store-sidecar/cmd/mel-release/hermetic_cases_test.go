@@ -145,14 +145,20 @@ func TestHermeticHappyPath(t *testing.T) {
 		t.Fatalf("terminal ActiveAfter is not exactly the new release: %+v", rec.ActiveAfter)
 	}
 
-	// Ordering: register + promote strictly precede any revoke (stale revoked LAST).
+	// Ordering: the ReleaseEntry readback and the RELEASE.json finalization
+	// precede promote, and promote precedes any revoke (stale revoked LAST).
 	ops := h.callOps()
-	reg, prom, rev := firstIndex(ops, "approve-register"), firstIndex(ops, "promote"), firstIndex(ops, "revoke")
-	if reg < 0 || prom < 0 || rev < 0 {
-		t.Fatalf("missing ops: reg=%d promote=%d revoke=%d (%v)", reg, prom, rev, ops)
+	read, fin, prom, rev := firstIndex(ops, "release-entry-account"), firstIndex(ops, "finalize-release"), firstIndex(ops, "promote"), firstIndex(ops, "revoke")
+	if read < 0 || fin < 0 || prom < 0 || rev < 0 {
+		t.Fatalf("missing ops: readback=%d finalize=%d promote=%d revoke=%d (%v)", read, fin, prom, rev, ops)
 	}
-	if !(reg < rev && prom < rev) {
-		t.Fatalf("revoke did not happen LAST: register=%d promote=%d revoke=%d", reg, prom, rev)
+	if !(read < fin && fin < prom && prom < rev) {
+		t.Fatalf("approve order is not readback < finalize < promote < revoke: %d %d %d %d", read, fin, prom, rev)
+	}
+	// The readback runs again right before promote (a recall in between is
+	// refused), so it is read at least twice.
+	if got := countOp(ops, "release-entry-account"); got < 2 {
+		t.Fatalf("ReleaseEntry read %d times, want the admission and the pre-promote re-admission", got)
 	}
 
 	// A complete app release, start to terminal receipt, without one request to
@@ -244,7 +250,8 @@ func TestHermeticInterruptResume(t *testing.T) {
 	frozen := h.candidateBytes()
 
 	approveSteps := []step{
-		{"PROPOSED", h.approve, func() { h.setFaultOp("approve-register") }, h.clearFault, statePosed},
+		{"PROPOSED (readback)", h.approve, func() { h.setFaultOp("release-entry-account") }, h.clearFault, statePosed},
+		{"PROPOSED (finalize)", h.approve, func() { h.setFaultOp("finalize-release") }, h.clearFault, statePosed},
 		{"REGISTERED", h.approve, func() { h.setFaultOp("promote") }, h.clearFault, stateRegistered},
 		// PROMOTED now advances straight to REVOKED (GENERATED is retired), so the
 		// fault that stops it is the revoke op itself.
@@ -590,7 +597,10 @@ func (s *revokeGuardStubProvider) Stage(App, string, string, string, string, str
 func (s *revokeGuardStubProvider) ProposeRegister(string, string, string, string, string, string, string, string, string) error {
 	return nil
 }
-func (s *revokeGuardStubProvider) ApproveRegister(string, string, string, string, string, string, string, string) error {
+func (s *revokeGuardStubProvider) ReleaseEntryAccount(pda string) (releaseEntryAccount, error) {
+	return releaseEntryAccount{PDA: pda}, nil
+}
+func (s *revokeGuardStubProvider) FinalizeRelease(string, string, string, string, string, string) error {
 	return nil
 }
 func (s *revokeGuardStubProvider) RejectRegister(string, string, string, string, string, string, string) error {

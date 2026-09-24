@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
@@ -15,6 +17,9 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry/releaseentrytest"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -106,6 +111,11 @@ type harness struct {
 	callLog     string
 	chainLog    string
 	pdaOld      string
+	// The fake chain's own facts, fixed at creation: the runner registers
+	// under these whatever a test later does to h.cfg.
+	chainProgram, chainMaster, chainCustodian string
+	// noRunner makes approve() skip the runner's registration.
+	noRunner bool
 }
 
 func seedBytes(b byte) [32]byte {
@@ -301,6 +311,12 @@ func newHarness(t *testing.T) *harness {
 		StateDir:        filepath.Join(base, "state"),
 		PublisherKey:    pubKeyPath,
 		OpTimeoutSecs:   60,
+		// The catalog authority's quorum, and the publishers the new-estate
+		// profile vector enrolls in releaseTrust (label-derived test keys).
+		SquadsThreshold:           3,
+		SquadsMemberCount:         4,
+		ReleasePublisherKeys:      testReleaseTrustKeys(),
+		ReleasePublisherThreshold: 1,
 		// Existing supersede fixtures explicitly exercise the separately opted-in
 		// global-retirement path. Production defaults to target-pointer scope.
 		AllowGlobalReleaseRevoke: true,
@@ -309,15 +325,220 @@ func newHarness(t *testing.T) *harness {
 	return &harness{
 		t: t, cfg: cfg, catalog: catalog, store: store, fx: fx,
 		fixturePath: fixturePath, statePath: statePath, callLog: callLog, chainLog: chainLog,
-		pdaOld: pdaOld,
+		pdaOld:       pdaOld,
+		chainProgram: programID, chainMaster: masterMint, chainCustodian: cfg.SquadsVault,
 	}
+}
+
+// testReleaseTrustKeys is releaseTrust.publisherKeys of the new-estate
+// profile vector: the trusted publisher and one more enrolled key.
+func testReleaseTrustKeys() []string {
+	a := releasetest.TrustedPublisher().Public().(ed25519.PublicKey)
+	b := releasetest.VectorKey("rehearsal/publisher-2").Public().(ed25519.PublicKey)
+	keys := []string{hex.EncodeToString(a), hex.EncodeToString(b)}
+	if keys[1] < keys[0] {
+		keys[0], keys[1] = keys[1], keys[0]
+	}
+	return keys
 }
 
 func (h *harness) publish(version string) error {
 	_, err := runPublish(h.cfg, h.catalog, testAppID, version)
 	return err
 }
-func (h *harness) approve() error { _, err := runApprove(h.cfg, h.catalog, testAppID); return err }
+
+// approve stands in for the operator's sequence after publish: the
+// owner-authorized runner registers the frozen candidate's ReleaseEntry (when
+// it is not on chain yet), then `mel-release approve` runs. Tests that need
+// approve alone set noRunner or call approveOnly.
+func (h *harness) approve() error {
+	if !h.noRunner {
+		h.runnerRegisterIfAbsent()
+	}
+	return h.approveOnly()
+}
+func (h *harness) approveOnly() error { _, err := runApprove(h.cfg, h.catalog, testAppID); return err }
+
+// chainState is the fake chain's state file, every field the fake keeps, so
+// the runner can add an entry without dropping one.
+type chainState map[string]json.RawMessage
+
+func (h *harness) readChainState() chainState {
+	h.t.Helper()
+	raw, err := os.ReadFile(h.statePath)
+	if err != nil {
+		h.t.Fatalf("read chainstate: %v", err)
+	}
+	var st chainState
+	if err := json.Unmarshal(raw, &st); err != nil {
+		h.t.Fatalf("parse chainstate: %v", err)
+	}
+	return st
+}
+
+func (h *harness) field(st chainState, name string, dst any) {
+	h.t.Helper()
+	raw, ok := st[name]
+	if !ok || string(raw) == "null" {
+		return
+	}
+	if err := json.Unmarshal(raw, dst); err != nil {
+		h.t.Fatalf("chainstate %s: %v", name, err)
+	}
+}
+
+func (h *harness) setField(st chainState, name string, v any) {
+	h.t.Helper()
+	raw, err := json.Marshal(v)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	st[name] = raw
+}
+
+type fakeAccount struct{ Owner, Data string }
+type fakeFinalize struct {
+	AuthorSig, Master, Vault string
+	RegisteredAt             int64
+}
+
+// candidateEntry is the Active entry the runner registers for the frozen
+// candidate: the chain's master mint and custodian, the WAL's app_hash,
+// release_hash and version, app_id = sha256(appId), signed by key.
+func (h *harness) candidateEntry(key ed25519.PrivateKey) (string, releaseentry.Entry) {
+	h.t.Helper()
+	rec := h.wal()
+	if rec.NewReleasePDA == "" {
+		h.t.Fatalf("no frozen candidate to register (WAL %s)", rec.State)
+	}
+	master, err := pdaKey(h.chainMaster)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	custodian, err := pdaKey(h.chainCustodian)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	appHash, err := hex32(rec.NewAppHash, "appHash")
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	releaseHash, err := hex32(rec.ReleaseHash, "releaseHash")
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	return rec.NewReleasePDA, releaseentrytest.Active(master, custodian, appHash, releaseentry.AppIDHash(rec.AppID), releaseHash, rec.Version, key)
+}
+
+func pdaKey(b58 string) ([32]byte, error) { return base58Key(b58) }
+
+// runnerRegister plays the owner-authorized runner: it writes the
+// program-layout ReleaseEntry account for the frozen candidate, owned by the
+// registry, as register_release_entry would, and records the facts the
+// provider's finalize-release reads back.
+func (h *harness) runnerRegister(key ed25519.PrivateKey, mutate func(*releaseentry.Entry)) releaseentry.Entry {
+	h.t.Helper()
+	pda, entry := h.candidateEntry(key)
+	if mutate != nil {
+		mutate(&entry)
+	}
+	h.putAccount(pda, h.chainProgram, entry)
+	return entry
+}
+
+func (h *harness) runnerRegisterIfAbsent() {
+	h.t.Helper()
+	rec, ok, err := readWAL(h.cfg.walPath(testAppID))
+	if err != nil || !ok || rec.NewReleasePDA == "" {
+		return
+	}
+	st := h.readChainState()
+	accounts := map[string]fakeAccount{}
+	h.field(st, "Accounts", &accounts)
+	if _, present := accounts[rec.NewReleasePDA]; present {
+		return
+	}
+	h.runnerRegister(releasetest.TrustedPublisher(), nil)
+}
+
+// putAccount stores entry as the account at pda owned by owner, and keeps the
+// fake's Active list and status map in step with the entry's status.
+func (h *harness) putAccount(pda, owner string, entry releaseentry.Entry) {
+	h.t.Helper()
+	st := h.readChainState()
+	accounts := map[string]fakeAccount{}
+	finalize := map[string]fakeFinalize{}
+	statuses := map[string]string{}
+	var active []provRef
+	h.field(st, "Accounts", &accounts)
+	h.field(st, "Finalize", &finalize)
+	h.field(st, "Statuses", &statuses)
+	h.field(st, "Active", &active)
+	accounts[pda] = fakeAccount{Owner: owner, Data: base64.StdEncoding.EncodeToString(releaseentrytest.Encode(entry))}
+	finalize[pda] = fakeFinalize{
+		AuthorSig:    base64.StdEncoding.EncodeToString(entry.Signature[:]),
+		Master:       primitives.EncodeBase58(entry.MasterNFTMint[:]),
+		Vault:        primitives.EncodeBase58(entry.PublisherSquadsVault[:]),
+		RegisteredAt: entry.RegisteredAt,
+	}
+	statuses[pda] = entry.Status.String()
+	kept := active[:0]
+	for _, r := range active {
+		if r.PDA != pda {
+			kept = append(kept, r)
+		}
+	}
+	if entry.Status == releaseentry.StatusActive {
+		kept = append(kept, provRef{PDA: pda, AppHash: hex.EncodeToString(entry.AppHash[:]), Version: entry.Version})
+	}
+	h.setField(st, "Accounts", accounts)
+	h.setField(st, "Finalize", finalize)
+	h.setField(st, "Statuses", statuses)
+	h.setField(st, "Active", kept)
+	raw, err := json.MarshalIndent(st, "", "  ")
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	if err := os.WriteFile(h.statePath, append(raw, '\n'), 0o600); err != nil {
+		h.t.Fatal(err)
+	}
+	pdas := make([]string, 0, len(kept))
+	for _, r := range kept {
+		pdas = append(pdas, r.PDA)
+	}
+	line := strings.Join(pdas, ",")
+	if line == "" {
+		line = "EMPTY"
+	}
+	f, err := os.OpenFile(h.chainLog, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(line + "\n"); err != nil {
+		h.t.Fatal(err)
+	}
+}
+
+// storedEntry decodes the account the fake chain holds at pda.
+func (h *harness) storedEntry(pda string) releaseentry.Entry {
+	h.t.Helper()
+	accounts := map[string]fakeAccount{}
+	h.field(h.readChainState(), "Accounts", &accounts)
+	a, ok := accounts[pda]
+	if !ok {
+		h.t.Fatalf("no account at %s", pda)
+	}
+	raw, err := base64.StdEncoding.DecodeString(a.Data)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	e, err := releaseentry.Decode(raw)
+	if err != nil {
+		h.t.Fatalf("stored account at %s: %v", pda, err)
+	}
+	return e
+}
 
 func (h *harness) setFaultOp(op string)     { os.Setenv("MEL_FAKE_FAIL_OP", op) }
 func (h *harness) clearFault()              { os.Unsetenv("MEL_FAKE_FAIL_OP") }

@@ -3,19 +3,17 @@
 # mel-release-provider.sh -- governed local release-runner for `mel-release`.
 #
 # This is intentionally a provider, not a second publisher.  It runs only on
-# the release workstation that holds the approval identities; targets and the
-# store never receive a Squads member or author private key.  The caller is the
-# Go `mel-release` CLI, which binds every resulting receipt into its durable
-# WAL.  The two authority boundaries are literal commands:
+# the release workstation; targets and the store never receive a Squads member
+# or author private key.  The caller is the Go `mel-release` CLI, which binds
+# every resulting receipt into its durable WAL.  The two halves:
 #
 #   mel-release publish -> build, private stage, UNEXECUTED Squads proposal
-#   mel-release approve -> member approvals, execute, promote, generation
+#   mel-release approve -> ReleaseEntry readback, finalize-release, promote
 #
-# The register-release execution requires the Ed25519 precompile as the outer
-# instruction immediately before the Squads execute instruction.  The companion
-# .mjs helper deliberately constructs that transaction; generic
-# squads-vault-exec.js cannot do so and produces the misleading "Failed to
-# unpack instruction data" failure for ReleaseEntry registration.
+# approve approves and executes nothing on chain. The owner-authorized runner
+# registers each ReleaseEntry; `release-entry-account` hands mel-release the
+# raw account to admit, and `finalize-release` only reads the registered entry
+# to bind the candidate RELEASE.json.
 
 set -euo pipefail
 umask 077
@@ -154,14 +152,14 @@ PY
 }
 
 readonly OP="${1:-}"
-[[ $# -eq 1 ]] || die "usage: $0 {build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|promote|revoke}"
+[[ $# -eq 1 ]] || die "usage: $0 {build|active-releases|release-status|release-entry-account|served-app-hash|stage|propose-register|finalize-release|promote|revoke}"
 case "$OP" in
-  build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|promote|revoke) ;;
+  build|active-releases|release-status|release-entry-account|served-app-hash|stage|propose-register|finalize-release|promote|revoke) ;;
   *) die "unknown operation: $OP" ;;
 esac
 
 case "$OP" in
-  build|stage|propose-register|approve-register|promote|revoke) require_catalog_shared_squads_authority ;;
+  build|stage|propose-register|finalize-release|promote|revoke) require_catalog_shared_squads_authority ;;
 esac
 
 need MEL_RELEASE_STATE_DIR
@@ -187,9 +185,9 @@ build() {
 
   # The app's canonical Makefile owns compilation and deterministic candidate
   # creation.  pack-local validates the SPK package itself without pretending
-  # that the not-yet-created ReleaseEntry already exists.  approve-register
-  # later verifies these exact stored bytes against the finalized on-chain
-  # entry before the catalog pointer is promoted.
+  # that the not-yet-created ReleaseEntry already exists.  finalize-release
+  # later verifies these exact stored bytes against the runner-registered
+  # on-chain entry before the catalog pointer is promoted.
   (cd "$app" && "${MEL_RELEASE_MAKE:-make}" build pack-local)
   [[ -f "$spk" && ! -L "$spk" ]] || die "pack did not produce a regular SPK: $spk"
   [[ -f "$meta" && ! -L "$meta" ]] || die "pack did not leave regular metadata: $meta"
@@ -486,25 +484,50 @@ for path, value in ((out_release,doc),(out_receipt,{"schema":"melusina-register-
 PY
 }
 
-approve_register() {
-  need MEL_APP_ID; need MEL_TRANSACTION_PDA; need MEL_REGISTER_RECEIPT_OUT; need MEL_FINAL_RELEASE_JSON_OUT
-  need_ceremony_env
-  local state ceremony release result
-  state="$(app_dir_for)"; ceremony="$state/ceremony-state.json"; release="$state/release.json"; result="$state/approve-result.json"
-  [[ -f "$ceremony" && -f "$release" ]] || die "no persisted unexecuted release proposal for this app"
-  [[ "$(json_get "$ceremony" transactionPda)" = "$MEL_TRANSACTION_PDA" ]] || die "MEL_TRANSACTION_PDA does not bind the persisted proposal"
-  node "$NODE_HELPER" approve-execute "$ceremony" >"$result"
+# release_entry_account: the exact account at MEL_PDA, raw. Read-only; it
+# decodes nothing, because mel-release decodes and admits the bytes itself.
+release_entry_account() {
+  need MEL_PDA; need MEL_RELEASE_RPC_URL
+  python3 - "$MEL_RELEASE_RPC_URL" "$MEL_PDA" <<'PY'
+import json, sys, urllib.request
+
+rpc, pda = sys.argv[1:]
+body = json.dumps({"jsonrpc":"2.0","id":1,"method":"getAccountInfo",
+                   "params":[pda,{"encoding":"base64","commitment":"finalized"}]}).encode()
+req = urllib.request.Request(rpc, data=body, headers={"content-type":"application/json"})
+with urllib.request.urlopen(req, timeout=30) as response:
+    doc = json.load(response)
+if doc.get("error"):
+    raise SystemExit("ReleaseEntry RPC error: " + str(doc["error"]))
+result = doc.get("result")
+if not isinstance(result, dict) or "value" not in result:
+    raise SystemExit("ReleaseEntry RPC answer has no result.value")
+value = result["value"]
+if value is None:
+    print(json.dumps({"pda": pda, "present": False}, separators=(",", ":")))
+    raise SystemExit(0)
+data = value.get("data") if isinstance(value, dict) else None
+if not isinstance(data, list) or len(data) != 2 or data[1] != "base64" or not isinstance(data[0], str):
+    raise SystemExit("ReleaseEntry account data is not base64")
+print(json.dumps({"pda": pda, "present": True, "owner": value.get("owner", ""), "dataBase64": data[0]}, separators=(",", ":")))
+PY
+}
+
+# finalize_release: bind the candidate RELEASE.json to the ReleaseEntry the
+# owner-authorized runner registered. It reads the chain only; nothing here
+# approves, executes or signs a Squads transaction.
+finalize_release() {
+  need MEL_APP_ID; need MEL_NEW_APP_HASH; need MEL_RELEASE_HASH; need MEL_NEW_VERSION; need MEL_RELEASE_NONCE
+  need MEL_FINAL_RELEASE_JSON_OUT; need MEL_RELEASE_RPC_URL; need MEL_PROGRAM_ID
+  need_executable MEL_RELEASE_PEARL_TOOL
+  local state ceremony release
+  state="$(app_dir_for)"; ceremony="$state/ceremony-state.json"; release="$state/release.json"
+  [[ -f "$ceremony" && -f "$release" ]] || die "no persisted release candidate for this app"
+  [[ "$(json_get "$ceremony" appHash)" = "$MEL_NEW_APP_HASH" ]] || die "MEL_NEW_APP_HASH does not bind the persisted candidate"
+  [[ "$(json_get "$ceremony" releaseHash)" = "$MEL_RELEASE_HASH" ]] || die "MEL_RELEASE_HASH does not bind the persisted candidate"
   "$MEL_RELEASE_PEARL_TOOL" finalize-release --app-dir "$state/material" --release-json "$release" --state "$ceremony" --rpc-url "$MEL_RELEASE_RPC_URL" --program-id "$MEL_PROGRAM_ID"
   "$MEL_RELEASE_PEARL_TOOL" verify-release --spk "$state/material/app.spk" --metadata "$state/material/metadata.json" --release-json "$release" --app-slug "$MEL_APP_ID"
-  python3 - "$ceremony" "$release" "$result" "$MEL_FINAL_RELEASE_JSON_OUT" "$MEL_REGISTER_RECEIPT_OUT" <<'PY'
-import json, os, sys
-state_path, release_path, result_path, release_out, receipt_out=sys.argv[1:]
-st=json.load(open(state_path,encoding="utf-8")); res=json.load(open(result_path,encoding="utf-8")); release=json.load(open(release_path,encoding="utf-8"))
-for path, value in ((release_out,release),(receipt_out,{"schema":"melusina-register-release-receipt-v1","releaseEntryPda":st["releaseEntryPda"],"releaseHash":st["releaseHash"],"status":"Active","alreadyRegistered":bool(res.get("alreadyExecuted",False)),"transactionSignatures":res.get("transactionSignatures",[])})):
-    os.makedirs(os.path.dirname(path),exist_ok=True); tmp=path+".tmp"
-    with open(tmp,"w",encoding="utf-8") as f: json.dump(value,f,sort_keys=True);f.write("\n")
-    os.chmod(tmp,0o600);os.replace(tmp,path)
-PY
+  write_json "$MEL_FINAL_RELEASE_JSON_OUT" <"$release"
 }
 
 promote() {
@@ -531,7 +554,8 @@ case "$OP" in
   served-app-hash) served_app_hash ;;
   stage) stage ;;
   propose-register) propose_register ;;
-  approve-register) approve_register ;;
+  release-entry-account) release_entry_account ;;
+  finalize-release) finalize_release ;;
   promote) promote ;;
   revoke) revoke ;;
 esac

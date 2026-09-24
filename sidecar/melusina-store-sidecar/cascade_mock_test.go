@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"strings"
@@ -152,26 +153,66 @@ func mkResellerApprovalAccount(sidecarID string, reseller primitives.Pubkey) []b
 	return b
 }
 
-func mkResellerEntryAccount(reseller, master primitives.Pubkey) []byte {
+// resellerEntryFields are the ResellerEntry fields a cascade test varies. A nil
+// parent or category is encoded as None; otherwise as Some with its payload.
+type resellerEntryFields struct {
+	parent   *primitives.Pubkey
+	category *string
+	status   byte
+}
+
+// seedResellerParent and seedResellerCategory are the seed cascade's
+// ResellerEntry options. Both are Some, as the contracts foundation writes them
+// for a sub-reseller and for an estate profile that names a reseller category.
+// Every byte of the parent key is nonzero, so a decoder that skips only an
+// Option tag reads a nonzero status and refuses the seed instead of passing by
+// luck; TestResellerEntryFixtureDefeatsTagOnlyDecoder holds that property.
+var (
+	seedResellerParent   = primitives.Pubkey(bytes.Repeat([]byte{0x5c}, 32))
+	seedResellerCategory = "x"
+)
+
+// mkResellerEntryAccountWith encodes a ResellerEntry in the contracts Borsh
+// layout (melusina-os-smartcontract programs/license-registry/src/state/
+// reseller.rs, re-read at contracts main 655c5f8): every field in order,
+// including the fields after status.
+func mkResellerEntryAccountWith(reseller, master primitives.Pubkey, f resellerEntryFields) []byte {
 	b := accountDiscriminator("ResellerEntry")
-	b = append(b, reseller[:]...)
-	b = append(b, master[:]...)
-	b = mkPutU64(b, 1)
-	b = append(b, make([]byte, 32)...) // owner
-	b = mkPutString(b, "acceptance reseller")
-	b = mkPutString(b, "test")
-	b = mkPutU32(b, 100)
-	b = mkPutU32(b, 1)
-	b = append(b, 0) // parent_reseller=None
-	b = mkPutU32(b, 0)
-	b = mkPutU32(b, 0)
-	b = append(b, 0) // category=None
-	b = append(b, 0) // status = Active
-	b = mkPutU64(b, 1)
-	b = append(b, 0, 1)
-	b = mkPutU64(b, 0)
-	b = append(b, 0) // base_domain=None
+	b = append(b, reseller[:]...)             // reseller_nft_mint
+	b = append(b, master[:]...)               // master_nft_mint
+	b = mkPutU64(b, 1)                        // edition_number
+	b = append(b, make([]byte, 32)...)        // owner
+	b = mkPutString(b, "acceptance reseller") // name
+	b = mkPutString(b, "test")                // territory
+	b = mkPutU32(b, 100)                      // issuance_limit
+	b = mkPutU32(b, 1)                        // licenses_issued
+	if f.parent == nil {                      // parent_reseller: Option<Pubkey>
+		b = append(b, 0)
+	} else {
+		b = append(b, 1)
+		b = append(b, f.parent[:]...)
+	}
+	b = mkPutU32(b, 0)     // total_sub_resellers
+	b = mkPutU32(b, 0)     // active_sub_resellers
+	if f.category == nil { // category: Option<String>
+		b = append(b, 0)
+	} else {
+		b = append(b, 1)
+		b = mkPutString(b, *f.category)
+	}
+	b = append(b, f.status) // status: ResellerStatus
+	b = mkPutU64(b, 1)      // activated_at
+	b = append(b, 0, 1)     // revoked_at=None, bump
+	b = mkPutU64(b, 0)      // license_price_lamports
+	b = append(b, 0)        // base_domain=None
 	return b
+}
+
+// mkResellerEntryAccount is the seed cascade's Active ResellerEntry, with
+// parent_reseller and category both Some.
+func mkResellerEntryAccount(reseller, master primitives.Pubkey) []byte {
+	parent, category := seedResellerParent, seedResellerCategory
+	return mkResellerEntryAccountWith(reseller, master, resellerEntryFields{parent: &parent, category: &category})
 }
 
 func mkGlobalAccountWithSANs(sidecarID string, master primitives.Pubkey, hash [32]byte, sans ...string) []byte {
@@ -309,6 +350,219 @@ func TestVerifyFiveFactCascadeRejectsAmbiguousOrMismatchedSANTier(t *testing.T) 
 			}
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("cascade accepted invalid SAN/scope binding, err=%v", err)
+			}
+		})
+	}
+}
+
+// resellerEntryParentTagOffset is where the fixture's parent_reseller Option
+// tag sits: discriminator, three keys and edition_number, the name and
+// territory strings, then issuance_limit and licenses_issued.
+const resellerEntryParentTagOffset = 8 + 32 + 32 + 8 + 32 + (4 + len("acceptance reseller")) + (4 + len("test")) + 4 + 4
+
+// resellerEntryTailLen is the fixture's bytes after status: activated_at,
+// revoked_at=None, bump, license_price_lamports and base_domain=None.
+const resellerEntryTailLen = 8 + 1 + 1 + 8 + 1
+
+// TestVerifyFiveFactCascadeDecodesResellerEntryOptions runs the Store's
+// sidecar cascade over ResellerEntry accounts in the contracts layout with
+// parent_reseller and category each None or Some. The contracts foundation
+// writes category=Some when the estate profile names a reseller category, and
+// every sub-reseller has parent_reseller=Some; a Store that read either Option
+// as its tag byte alone refused every sidecar promote and download for such an
+// estate (seam audit round 2, finding 0). Malformed tags, a category length past
+// the account end, truncation and an unknown status byte must be refused.
+func TestVerifyFiveFactCascadeDecodesResellerEntryOptions(t *testing.T) {
+	license, err := primitives.PubkeyFromBase58(testLicenseMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sidecarID = "fineract-v2"
+	artifact := [32]byte{0x42}
+	var reseller, master primitives.Pubkey
+	reseller[0], reseller[1] = 0xAA, 0x01 // seedValidCascade's reseller
+	master[0], master[1] = 0xBB, 0x02
+	resellerPDA, _, err := primitives.FindProgramAddress([][]byte{[]byte("reseller"), reseller[:]}, programID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parent := seedResellerParent
+	str := func(s string) *string { return &s }
+	fields := func(p *primitives.Pubkey, c *string, status byte) resellerEntryFields {
+		return resellerEntryFields{parent: p, category: c, status: status}
+	}
+	// withByte builds the fixture and overwrites one byte, after checking the
+	// byte it replaces, so a fixture layout change fails here by name instead
+	// of corrupting an unrelated field.
+	withByte := func(t *testing.T, f resellerEntryFields, off func([]byte) int, was, now byte) []byte {
+		t.Helper()
+		data := mkResellerEntryAccountWith(reseller, master, f)
+		i := off(data)
+		if data[i] != was {
+			t.Fatalf("fixture byte %d is %d, want %d: the ResellerEntry fixture layout moved", i, data[i], was)
+		}
+		data[i] = now
+		return data
+	}
+	categoryTagOffset := func(parentSome bool) func([]byte) int {
+		return func([]byte) int {
+			off := resellerEntryParentTagOffset + 1 + 4 + 4
+			if parentSome {
+				off += 32
+			}
+			return off
+		}
+	}
+	statusOffset := func(data []byte) int { return len(data) - resellerEntryTailLen - 1 }
+
+	for _, tc := range []struct {
+		name string
+		data func(t *testing.T) []byte
+		want string // empty: the cascade must accept
+	}{
+		{
+			name: "root_reseller_parent_none_category_none",
+			data: func(*testing.T) []byte { return mkResellerEntryAccountWith(reseller, master, fields(nil, nil, 0)) },
+		},
+		{
+			name: "sub_reseller_parent_some",
+			data: func(*testing.T) []byte { return mkResellerEntryAccountWith(reseller, master, fields(&parent, nil, 0)) },
+		},
+		{
+			name: "category_some_x",
+			data: func(*testing.T) []byte { return mkResellerEntryAccountWith(reseller, master, fields(nil, str("x"), 0)) },
+		},
+		{
+			name: "category_some_msb",
+			data: func(*testing.T) []byte {
+				return mkResellerEntryAccountWith(reseller, master, fields(nil, str("msb"), 0))
+			},
+		},
+		{
+			name: "category_at_contracts_max_len_32",
+			data: func(*testing.T) []byte {
+				return mkResellerEntryAccountWith(reseller, master, fields(nil, str(strings.Repeat("c", 32)), 0))
+			},
+		},
+		{
+			name: "sub_reseller_parent_some_category_some",
+			data: func(*testing.T) []byte {
+				return mkResellerEntryAccountWith(reseller, master, fields(&parent, str("x"), 0))
+			},
+		},
+		{
+			name: "revoked_with_parent_some_category_some",
+			data: func(*testing.T) []byte {
+				return mkResellerEntryAccountWith(reseller, master, fields(&parent, str("x"), 1))
+			},
+			want: "ResellerEntry status 1 (Revoked) not Active",
+		},
+		{
+			name: "unknown_status_byte_with_parent_some_category_some",
+			data: func(*testing.T) []byte {
+				return mkResellerEntryAccountWith(reseller, master, fields(&parent, str("x"), 2))
+			},
+			want: "unknown ResellerStatus byte: 2",
+		},
+		{
+			name: "parent_option_tag_2_is_malformed",
+			data: func(t *testing.T) []byte {
+				return withByte(t, fields(&parent, str("x"), 0), func([]byte) int { return resellerEntryParentTagOffset }, 1, 2)
+			},
+			want: "parent_reseller: invalid Option tag: 2",
+		},
+		{
+			name: "category_option_tag_2_is_malformed",
+			data: func(t *testing.T) []byte {
+				return withByte(t, fields(&parent, str("x"), 0), categoryTagOffset(true), 1, 2)
+			},
+			want: "category: invalid Option tag: 2",
+		},
+		{
+			name: "category_length_past_account_end",
+			data: func(t *testing.T) []byte {
+				// The length prefix's high byte follows the tag by four bytes.
+				return withByte(t, fields(&parent, str("x"), 0), func(d []byte) int { return categoryTagOffset(true)(d) + 4 }, 0, 0x7f)
+			},
+			want: "category: buffer too short for Borsh string contents",
+		},
+		{
+			name: "truncated_before_status",
+			data: func(t *testing.T) []byte {
+				data := mkResellerEntryAccountWith(reseller, master, fields(&parent, str("x"), 0))
+				return data[:statusOffset(data)]
+			},
+			want: "buffer too short for status",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newMockChainReader()
+			seedValidCascade(t, m, license, sidecarID, artifact)
+			m.rawAccounts[resellerPDA.Base58()] = tc.data(t)
+
+			svc := &publishService{cr: m}
+			err := svc.verifyFiveFactCascade(context.Background(), componentReleaseChainView{sidecarID: sidecarID, licenseMint: license}, artifact)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("cascade refused an Active ResellerEntry in the contracts layout: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("cascade error = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// tagOnlyResellerStatus is the ResellerEntry decoder the Store shipped before
+// seam audit round 2 finding 0: it skipped each Option's tag byte and never its
+// Some payload. It is kept only as the known-bad reference that
+// TestResellerEntryFixtureDefeatsTagOnlyDecoder measures the fixtures against.
+func tagOnlyResellerStatus(data []byte) (byte, error) {
+	c := &borshCursor{b: data, off: 8}
+	c.skipPubkey()
+	c.skipPubkey()
+	c.skipU64()
+	c.skipPubkey()
+	c.skipString()
+	c.skipString()
+	c.skip(4)
+	c.skip(4)
+	c.skip(1) // parent_reseller tag only
+	c.skip(4)
+	c.skip(4)
+	c.skip(1) // category tag only
+	status := c.u8()
+	return status, c.err
+}
+
+// TestResellerEntryFixtureDefeatsTagOnlyDecoder is the positive control for the
+// Some fixtures: each Active ResellerEntry with a Some option must read as
+// something other than Active under the tag-only decoder. If a fixture stopped
+// encoding its Some payload, or its payload bytes happened to decode as Active,
+// the cascade tests above could pass against the old decoder, and this test
+// fails by name instead.
+func TestResellerEntryFixtureDefeatsTagOnlyDecoder(t *testing.T) {
+	var reseller, master primitives.Pubkey
+	reseller[0], master[0] = 0xAA, 0xBB
+	parent := seedResellerParent
+	for _, tc := range []struct {
+		name string
+		data []byte
+	}{
+		{"seed_cascade_reseller_entry", mkResellerEntryAccount(reseller, master)},
+		{"parent_some", mkResellerEntryAccountWith(reseller, master, resellerEntryFields{parent: &parent})},
+		{"category_some_x", mkResellerEntryAccountWith(reseller, master, resellerEntryFields{category: &seedResellerCategory})},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := verify.ReadResellerEntryStatus(tc.data)
+			if err != nil || got != verify.ResellerStatusActive {
+				t.Fatalf("contracts-layout reader: status=%v err=%v, want Active", got, err)
+			}
+			if old, err := tagOnlyResellerStatus(tc.data); err == nil && old == 0 {
+				t.Fatalf("tag-only decoder also reads Active (%d): this fixture cannot catch a decoder that skips only the Option tag", old)
 			}
 		})
 	}

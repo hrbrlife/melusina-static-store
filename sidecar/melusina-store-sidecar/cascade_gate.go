@@ -474,25 +474,20 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	if err := requireDiscAndOwner("ResellerEntry", reData, reOwner); err != nil {
 		return err
 	}
-	rec := &borshCursor{b: reData, off: 8}
-	rec.skipPubkey() // reseller
-	rec.skipPubkey() // master
-	rec.skipU64()    // registered_at
-	rec.skipPubkey() // owner
-	rec.skipString() // display_name
-	rec.skipString() // tier/slug
-	rec.skip(4)      // u32
-	rec.skip(4)      // u32
-	rec.skip(1)      // parent_reseller Option flag (=0)
-	rec.skip(4)      // u32
-	rec.skip(4)      // u32
-	rec.skip(1)      // category Option flag (=0)
-	reStatus := rec.u8()
-	if rec.err != nil {
-		return fmt.Errorf("parse ResellerEntry: %w", rec.err)
+	// The status byte follows two Options whose payloads are on chain whenever
+	// they are Some: parent_reseller (Option<Pubkey>, Some for every
+	// sub-reseller) and category (Option<String>, Some when the estate profile
+	// names a reseller category). Decode with the vendored reader the tenant
+	// update controller uses (cmd/melusina-update-controller/chaingate.go), so the
+	// Store and the tenant cannot read the same account differently. It walks
+	// every preceding field and refuses an Option tag other than 0 or 1,
+	// truncation, and a status byte that is neither Active nor Revoked.
+	reStatus, err := verify.ReadResellerEntryStatus(reData)
+	if err != nil {
+		return fmt.Errorf("parse ResellerEntry: %w", err)
 	}
-	if reStatus != 0 {
-		return fmt.Errorf("ResellerEntry status %d not Active", reStatus)
+	if reStatus != verify.ResellerStatusActive {
+		return fmt.Errorf("ResellerEntry status %d (%s) not Active", uint8(reStatus), reStatus)
 	}
 
 	return nil

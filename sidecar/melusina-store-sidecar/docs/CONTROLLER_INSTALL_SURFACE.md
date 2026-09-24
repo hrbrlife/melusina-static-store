@@ -221,10 +221,12 @@ from the entry's own fields, `publisher_ed25519_pubkey` is one of the profile's
 `releaseTrust.threshold` above 1 admits none), and that signature verifies. The
 controller refuses to start when `programId` or `masterNftMint` is not the pinned
 profile's. The sidecar path additionally requires `LicenseEntry` Active with the pinned master and,
-for a resold license, an Active `ResellerSidecarApproval`. (`ResellerEntry` status is
-enforced by the store's publish-side five-fact cascade; the controller lacks a
-`verify.RPCClient` `ResellerEntry` reader, so that record is not re-checked
-controller-side — a shared-cascade extraction would add it.)
+for a resold license, an Active seed-derived `ResellerEntry` and an Active
+`ResellerSidecarApproval` (`chaingate.go` `gateLicenseAndReseller`). The controller
+and the Store's publish-side five-fact cascade (`cascade_gate.go`) decode
+`ResellerEntry` with the same vendored `verify.ReadResellerEntryStatus`, which walks
+the `parent_reseller` and `category` Option payloads and refuses an Option tag
+other than 0 or 1, so the two cannot read one account differently.
 
 ## Known follow-ups (flagged, not blocking build)
 

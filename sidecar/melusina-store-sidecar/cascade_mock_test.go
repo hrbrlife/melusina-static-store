@@ -88,6 +88,12 @@ func mkPutVecStrings(dst []byte, values ...string) []byte {
 }
 
 func mkLicenseAccount(license, reseller, master primitives.Pubkey) []byte {
+	return mkLicenseAccountWithStatus(license, reseller, master, 0)
+}
+
+// mkLicenseAccountWithStatus is mkLicenseAccount with the given LicenseStatus
+// byte (Active=0, Revoked=1), written where the program writes it.
+func mkLicenseAccountWithStatus(license, reseller, master primitives.Pubkey, status byte) []byte {
 	b := accountDiscriminator("LicenseEntry")
 	b = append(b, license[:]...)
 	b = append(b, reseller[:]...)
@@ -108,7 +114,7 @@ func mkLicenseAccount(license, reseller, master primitives.Pubkey) []byte {
 	b = append(b, vault[:]...)
 	b = append(b, 1) // squads_multisig=Some
 	b = append(b, multisig[:]...)
-	b = append(b, 0)                   // status = Active
+	b = append(b, status)              // status
 	b = mkPutU64(b, 1)                 // activated_at
 	b = append(b, 0)                   // revoked_at=None
 	b = mkPutU32(b, 0)                 // total_shares

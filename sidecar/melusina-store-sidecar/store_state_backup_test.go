@@ -52,6 +52,9 @@ func newStoreStateFixture(t *testing.T) storeStateFixture {
 	}
 	cfg := Config{
 		Domain: "state-backup.store.example.org", StoreID: "state-backup-store", LicenseNFTMint: randPubkeyB58(t),
+		// The estate the fixture release is registered in, and the master
+		// the Store's own licence is held to (verifyStoreOwnLicence).
+		ReleaseMasterNftMint:     randPubkeyB58(t),
 		DistDir:                  filepath.Join(parent, "dist-publish"),
 		PrivateStageDir:          filepath.Join(parent, "private-app-candidates"),
 		CatalogGenerationRoot:    filepath.Join(parent, "app-catalog-generations"),
@@ -100,7 +103,7 @@ func newStoreStateFixture(t *testing.T) storeStateFixture {
 		t.Fatalf("bootstrap after genesis: %v", err)
 	}
 
-	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	fixture := buildValidFixture(t, cfg, cfg.ReleaseMasterNftMint)
 	release := mustJSON(t, fixture.rel)
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "state-backup", "app", fixture.metadata)
 	chain := newMockChainReader()

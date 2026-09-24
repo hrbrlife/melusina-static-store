@@ -18,6 +18,8 @@ import (
 func (f hostApplyPlanFixture) addControllerUpgradeCandidate(t *testing.T) componentrelease.ComponentRelease {
 	t.Helper()
 	f.svc.cfg.ReleaseMasterNftMint = testMaster
+	// The Store's own licence is under the estate it now names.
+	pinStoreOwnLicence(f.chain, f.svc.cfg)
 	bindTestInstallerReleaseEstate(t, f.chain, &f.svc.cfg)
 	artifact := []byte("fineract-controller-governed-candidate")
 	sum := sha256.Sum256(artifact)

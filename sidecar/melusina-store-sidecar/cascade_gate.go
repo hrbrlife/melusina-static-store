@@ -428,31 +428,11 @@ func checkSidecarCascade(ctx context.Context, rr rawAccountReader, c componentRe
 	if err := requireDiscAndOwner("LicenseEntry", licData, licOwner); err != nil {
 		return err
 	}
-	// layout: disc(8) license(32) reseller(32) master(32) ... status(after 2 strings)
-	if len(licData) < 8+96 {
-		return cascadeRefusal(errCascadeAccountMalformed, "LicenseEntry", "LicenseEntry too short")
+	licence, err := decodeLicenseEntryHead(licData)
+	if err != nil {
+		return cascadeRefusal(errCascadeAccountMalformed, "LicenseEntry", "%v", err)
 	}
-	var named, reseller, master primitives.Pubkey
-	copy(named[:], licData[8:8+32])
-	copy(reseller[:], licData[8+32:8+64])
-	copy(master[:], licData[8+64:8+96])
-	lc := &borshCursor{b: licData, off: 8}
-	lc.skipPubkey()       // license
-	lc.skipPubkey()       // reseller
-	lc.skipPubkey()       // master
-	lc.skipU64()          // edition_number
-	lc.skipString()       // homeserver_domain
-	lc.skipString()       // install_url
-	lc.skip(32)           // tls_cert_fingerprint
-	lc.skip(3)            // threshold + keyholder counters
-	lc.skipPubkey()       // owner
-	lc.skip(1)            // custody_mode
-	lc.skipOptionPubkey() // squads_vault Option<Pubkey>
-	lc.skipOptionPubkey() // squads_multisig Option<Pubkey>
-	licStatus := lc.u8()
-	if lc.err != nil {
-		return cascadeRefusal(errCascadeAccountMalformed, "LicenseEntry", "parse LicenseEntry: %v", lc.err)
-	}
+	named, reseller, master, licStatus := licence.LicenseNFTMint, licence.ResellerNFTMint, licence.MasterNFTMint, licence.Status
 	if licStatus != 0 {
 		return cascadeNotActive("LicenseEntry", licenseStatusName(licStatus), sidecarID, licPDA.Base58())
 	}
@@ -655,6 +635,53 @@ func checkSidecarCascade(ctx context.Context, rr rawAccountReader, c componentRe
 	}
 
 	return nil
+}
+
+// licenseEntryHead is the part of a LicenseEntry (state/license.rs) every
+// licence gate in this Store reads: the three mints and the status byte
+// (LicenseStatus: Active=0, Revoked=1).
+type licenseEntryHead struct {
+	LicenseNFTMint  primitives.Pubkey
+	ResellerNFTMint primitives.Pubkey
+	MasterNFTMint   primitives.Pubkey
+	Status          byte
+}
+
+// decodeLicenseEntryHead is the LicenseEntry walk the approval cascade
+// (checkSidecarCascade, and so the Store's boot cascade) and the own-licence
+// rule (verifyStoreOwnLicence) share, so the Store's own licence reads the
+// same at start and at every gate. The caller has checked the account's owner
+// and discriminator. It walks every field before status as the program lays it
+// out, both Squads Options with their payloads when they are Some, so status
+// is read where the program wrote it; truncation, a string longer than the
+// account and an Option tag other than 0 or 1 are errors.
+func decodeLicenseEntryHead(data []byte) (licenseEntryHead, error) {
+	var head licenseEntryHead
+	// layout: disc(8) license(32) reseller(32) master(32) ... status(after 2 strings)
+	if len(data) < 8+96 {
+		return licenseEntryHead{}, errors.New("LicenseEntry too short")
+	}
+	copy(head.LicenseNFTMint[:], data[8:8+32])
+	copy(head.ResellerNFTMint[:], data[8+32:8+64])
+	copy(head.MasterNFTMint[:], data[8+64:8+96])
+	lc := &borshCursor{b: data, off: 8}
+	lc.skipPubkey()       // license
+	lc.skipPubkey()       // reseller
+	lc.skipPubkey()       // master
+	lc.skipU64()          // edition_number
+	lc.skipString()       // homeserver_domain
+	lc.skipString()       // install_url
+	lc.skip(32)           // tls_cert_fingerprint
+	lc.skip(3)            // threshold + keyholder counters
+	lc.skipPubkey()       // owner
+	lc.skip(1)            // custody_mode
+	lc.skipOptionPubkey() // squads_vault Option<Pubkey>
+	lc.skipOptionPubkey() // squads_multisig Option<Pubkey>
+	head.Status = lc.u8()
+	if lc.err != nil {
+		return licenseEntryHead{}, fmt.Errorf("parse LicenseEntry: %v", lc.err)
+	}
+	return head, nil
 }
 
 // componentReleaseChainView is the minimal view of a sidecar the cascade needs.

@@ -153,6 +153,7 @@ func newHostApplyPlanFixture(t *testing.T) hostApplyPlanFixture {
 	}
 	operatorRaw := operatorSignPub32(t, op)
 	chain.storeAuthz[authz.Base58()] = mockStoreAuthz{status: verify.AuthorizationStatusActive, authority: verify.Pubkey(operatorRaw), tierMask: 0xff, domainHash: primitives.StoreDomainHash(cfg.Domain)}
+	pinStoreOwnLicence(chain, cfg)
 	policyPDA, err := deriveStoreControlPolicy(license, primitives.StoreDomainHash(cfg.Domain), programID)
 	if err != nil {
 		t.Fatal(err)

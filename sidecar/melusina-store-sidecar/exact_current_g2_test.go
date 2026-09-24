@@ -86,7 +86,10 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 	cfg.StoreAuthority = operator.Public().SignPubkeyB58
 	publisher := newTestIdentity(t, "exact-current-publisher", randPubkeyB58(t), "publisher.example.org")
 	cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
-	fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
+	// The estate the release is registered in is the one the Store's own
+	// licence is held to (verifyStoreOwnLicence).
+	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	fixture := buildValidFixture(t, cfg, cfg.ReleaseMasterNftMint)
 	release := mustJSON(t, fixture.rel)
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "exact-current", "app", fixture.metadata)
 	if err := NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir).AssemblePublishedAppWithRuntimeContract(fixture.spk, release, fixture.metadata, fixture.runtimeContract); err != nil {

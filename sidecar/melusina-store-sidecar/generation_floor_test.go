@@ -441,10 +441,19 @@ func TestFloorRecordingRefusalsNameTheirCheck(t *testing.T) {
 	}
 }
 
-// One promote from a floor may carry the current components forward with no
-// update. This drives the real POST /publish/generation route with an
-// accepted publisher's envelope, as submit-generation -carry-forward sends it.
-func TestRestoredStoreFloorCarryForwardThroughThePromoteRoute(t *testing.T) {
+// promoteRoute is a restored Store (newRestoredBehindTenant) whose chain
+// admits its operator on POST /publish/generation: an Active operator row and
+// the Store's own licence as verify_license accepts it. post sends one empty
+// carry-forward request over expected, signed by an accepted publisher's
+// envelope, as submit-generation -carry-forward sends it.
+type promoteRoute struct {
+	restoredBehindTenant
+	chain *mockChainReader
+	post  func(expected uint64) *httptest.ResponseRecorder
+}
+
+func newPromoteRoute(t *testing.T) promoteRoute {
+	t.Helper()
 	s := newRestoredBehindTenant(t)
 	svc := s.svc
 	publisher := newTestIdentity(t, "generation-publisher", testLicenseMint, "publisher.example.org")
@@ -462,6 +471,8 @@ func TestRestoredStoreFloorCarryForwardThroughThePromoteRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	chain.storeAuthz[authz.Base58()] = mockStoreAuthz{status: verify.AuthorizationStatusActive, authority: verify.Pubkey(operatorSignPub32(t, svc.operator)), tierMask: 0xff, domainHash: primitives.StoreDomainHash(svc.cfg.Domain)}
+	svc.cfg.ReleaseMasterNftMint = seedCascadeMaster().Base58()
+	pinStoreOwnLicence(chain, svc.cfg)
 	svc.cr = chain
 
 	slot := uint64(41000)
@@ -489,6 +500,16 @@ func TestRestoredStoreFloorCarryForwardThroughThePromoteRoute(t *testing.T) {
 		svc.handleGeneratePromote(rec, httptest.NewRequest(http.MethodPost, "/publish/generation", bytes.NewReader(body)))
 		return rec
 	}
+
+	return promoteRoute{restoredBehindTenant: s, chain: chain, post: post}
+}
+
+// One promote from a floor may carry the current components forward with no
+// update. This drives the real POST /publish/generation route with an
+// accepted publisher's envelope, as submit-generation -carry-forward sends it.
+func TestRestoredStoreFloorCarryForwardThroughThePromoteRoute(t *testing.T) {
+	route := newPromoteRoute(t)
+	s, svc, post := route.restoredBehindTenant, route.svc, route.post
 
 	// Control: with no floor, the empty request reaches the promote step past
 	// every chain gate and is refused there.

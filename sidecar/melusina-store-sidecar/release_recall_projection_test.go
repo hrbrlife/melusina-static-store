@@ -233,6 +233,11 @@ func TestReleaseRecallProjection_EveryOtherStateStaysFailClosed(t *testing.T) {
 		// mutate returns the config the gate runs with.
 		mutate func(t *testing.T, fx *recallFixture) Config
 		want   string
+		// storeWide is a Store-wide refusal the same config also earns on the
+		// survivor's row. The rows are verified concurrently and the first
+		// refusal names the catalogue, so either may; the recalled row's own
+		// verdict is then asserted by the case itself.
+		storeWide string
 	}{
 		{
 			name: "rpc_error_on_the_recalled_entry",
@@ -308,9 +313,18 @@ func TestReleaseRecallProjection_EveryOtherStateStaysFailClosed(t *testing.T) {
 				fx.pinAccount(releaseentrytest.Recall(fx.activeEntry(t, fx.recalled), recallTestRevokedAt), fx.recalled)
 				cfg := fx.cfg
 				cfg.ReleaseMasterNftMint = ""
+				// Without the estate master the recall is not recognised:
+				// the recalled row is refused, never omitted.
+				err := VerifyServeHash(context.Background(), fx.mock, cfg, fx.recalled.rel.AppHash, fx.recalled.appIDText, fx.recalled.rel)
+				if err == nil || errors.Is(err, errReleaseEntryRecalled) || !strings.Contains(err.Error(), "check=release_entry: status Revoked not Active") {
+					t.Fatalf("release-recall-misclassified:estate_master_mint_unconfigured: the recalled row's verdict = %v", err)
+				}
 				return cfg
 			},
 			want: "check=release_entry: status Revoked not Active",
+			// The Store cannot hold its own licence to verify_license's
+			// rule without its estate master either (verifyStoreOwnLicence).
+			storeWide: storeOwnLicenceCheck + ": " + refusalBootCascadeMasterAbsent,
 		},
 		{
 			name: "row_master_mint_is_not_the_estate_master",
@@ -318,6 +332,9 @@ func TestReleaseRecallProjection_EveryOtherStateStaysFailClosed(t *testing.T) {
 				fx.pinAccount(releaseentrytest.Recall(fx.activeEntry(t, fx.recalled), recallTestRevokedAt), fx.recalled)
 				cfg := fx.cfg
 				cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+				// The Store's own licence is under the estate it names
+				// (verifyStoreOwnLicence); only the rows are not.
+				pinStoreOwnLicence(fx.mock, cfg)
 				return cfg
 			},
 			want: "check=release_entry: status Revoked not Active",
@@ -371,7 +388,7 @@ func TestReleaseRecallProjection_EveryOtherStateStaysFailClosed(t *testing.T) {
 			if got.Code != http.StatusServiceUnavailable {
 				t.Fatalf("release-recall-fail-open:%s: catalog = %d, want 503: %s", tc.name, got.Code, body)
 			}
-			if !strings.Contains(body, tc.want) {
+			if !strings.Contains(body, tc.want) && (tc.storeWide == "" || !strings.Contains(body, tc.storeWide)) {
 				t.Fatalf("release-recall-refusal-unnamed:%s: body %q does not name %q", tc.name, body, tc.want)
 			}
 			if strings.Contains(body, errReleaseEntryRecalled.Error()) {

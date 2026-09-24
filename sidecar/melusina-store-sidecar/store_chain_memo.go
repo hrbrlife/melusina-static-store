@@ -17,10 +17,14 @@ import (
 // storeDomainHash), so every row asks for the same address. At 32 rows that is
 // 32 identical reads of one address in a single request, and it is a large
 // share of why one /apps/index.json cost ~128 getAccountInfo calls and
-// exhausted the store's RPC key (F-235). Clearance reads (BlacklistStatusEntry)
-// are memoized by address too: each app's App clearance is its own address, so
-// the memo only collapses a clearance two rows share, and the catalog prime
-// (store_catalog_prime.go) is what batches the per-app ones.
+// exhausted the store's RPC key (F-235). The Store's own LicenseEntry and the
+// ResellerEntry it names (store_own_licence.go) are request-invariant in the
+// same way: every row's serve gate holds the Store's licence to
+// verify_license's rule, so each is read once per request. Clearance reads
+// (BlacklistStatusEntry) are memoized by address too: each app's App clearance
+// is its own address, so the memo only collapses a clearance two rows share,
+// and the catalog prime (store_catalog_prime.go) is what batches the per-app
+// ones.
 //
 // Nothing about verification changes. The same address is read, decoded by the
 // same function, and judged by the same predicates in verify.go, which is not
@@ -37,111 +41,99 @@ import (
 type memoChainReader struct {
 	chainReader
 	mu        sync.Mutex
-	authz     map[string]*authzEntry
-	clearance map[string]*clearanceEntry
+	authz     map[string]*memoRead[authzResult]
+	clearance map[string]*memoRead[blacklistStatusEntry]
+	licence   map[string]*memoRead[licenseEntryHead]
+	reseller  map[string]*memoRead[verify.ResellerEntry]
 }
 
-// authzEntry is one in-flight-or-settled read. done is closed when res is final.
-type authzEntry struct {
-	done chan struct{}
-	res  authzResult
-}
-
+// authzResult is one StoreOperatorAuthorization read, held as one value.
 type authzResult struct {
 	status          verify.AuthorizationStatus
 	storeAuthority  verify.Pubkey
 	allowedTierMask uint8
 	isRoot          bool
 	storeDomainHash [32]byte
-	err             error
 }
 
 func newMemoChainReader(inner chainReader) *memoChainReader {
 	return &memoChainReader{
 		chainReader: inner,
-		authz:       make(map[string]*authzEntry, 1),
-		clearance:   make(map[string]*clearanceEntry, 1),
+		authz:       make(map[string]*memoRead[authzResult], 1),
+		clearance:   make(map[string]*memoRead[blacklistStatusEntry], 1),
+		licence:     make(map[string]*memoRead[licenseEntryHead], 1),
+		reseller:    make(map[string]*memoRead[verify.ResellerEntry], 1),
 	}
 }
 
-// clearanceEntry mirrors authzEntry for a BlacklistStatusEntry read, keyed by
-// its address: rows that share a clearance share one read, and rows that do
-// not simply each read their own.
-type clearanceEntry struct {
+// memoRead is one in-flight-or-settled read of one address. done is closed
+// when value and err are final.
+type memoRead[T any] struct {
 	done  chan struct{}
-	entry blacklistStatusEntry
+	value T
 	err   error
 }
 
-func (m *memoChainReader) FetchBlacklistStatus(ctx context.Context, addrB58 string) (blacklistStatusEntry, error) {
-	m.mu.Lock()
-	entry, found := m.clearance[addrB58]
+// readOnce answers addr from table, reading it through read at most once per
+// request; every memoized read goes through it.
+//
+// Someone else owning an address means waiting for their answer rather than
+// issuing the duplicate read this type exists to remove. A caller whose own
+// context dies while waiting returns its own error and leaves the in-flight
+// read alone for the others. A context cancellation is a property of the
+// CALLER, not of the account, so keeping it would poison every sibling row
+// with one row's timeout: an answer produced under a cancelled context is
+// dropped from the table first, then the waiters are released onto that same
+// non-authoritative answer, and the next fresh caller re-reads the chain.
+func readOnce[T any](ctx context.Context, mu *sync.Mutex, table map[string]*memoRead[T], addr string, read func(context.Context, string) (T, error)) (T, error) {
+	mu.Lock()
+	entry, found := table[addr]
 	if !found {
-		entry = &clearanceEntry{done: make(chan struct{})}
-		m.clearance[addrB58] = entry
+		entry = &memoRead[T]{done: make(chan struct{})}
+		table[addr] = entry
 	}
-	m.mu.Unlock()
+	mu.Unlock()
 
 	if found {
 		select {
 		case <-entry.done:
-			return entry.entry, entry.err
+			return entry.value, entry.err
 		case <-ctx.Done():
-			return blacklistStatusEntry{}, ctx.Err()
+			var zero T
+			return zero, ctx.Err()
 		}
 	}
 
-	status, err := m.chainReader.FetchBlacklistStatus(ctx, addrB58)
-	entry.entry, entry.err = status, err
+	entry.value, entry.err = read(ctx, addr)
 	if ctx.Err() != nil {
-		m.mu.Lock()
-		if m.clearance[addrB58] == entry {
-			delete(m.clearance, addrB58)
+		mu.Lock()
+		if table[addr] == entry {
+			delete(table, addr)
 		}
-		m.mu.Unlock()
+		mu.Unlock()
 	}
 	close(entry.done)
-	return status, err
+	return entry.value, entry.err
+}
+
+// FetchBlacklistStatus is keyed by the clearance's address: rows that share a
+// clearance share one read, and rows that do not simply each read their own.
+func (m *memoChainReader) FetchBlacklistStatus(ctx context.Context, addrB58 string) (blacklistStatusEntry, error) {
+	return readOnce(ctx, &m.mu, m.clearance, addrB58, m.chainReader.FetchBlacklistStatus)
 }
 
 func (m *memoChainReader) FetchStoreOperatorAuthz(ctx context.Context, addrB58 string) (verify.AuthorizationStatus, verify.Pubkey, uint8, bool, [32]byte, error) {
-	m.mu.Lock()
-	entry, found := m.authz[addrB58]
-	if !found {
-		entry = &authzEntry{done: make(chan struct{})}
-		m.authz[addrB58] = entry
-	}
-	m.mu.Unlock()
+	r, err := readOnce(ctx, &m.mu, m.authz, addrB58, func(ctx context.Context, addr string) (authzResult, error) {
+		status, authority, mask, isRoot, domainHash, err := m.chainReader.FetchStoreOperatorAuthz(ctx, addr)
+		return authzResult{status, authority, mask, isRoot, domainHash}, err
+	})
+	return r.status, r.storeAuthority, r.allowedTierMask, r.isRoot, r.storeDomainHash, err
+}
 
-	if found {
-		// Someone else owns this address: wait for their answer rather than
-		// issuing the duplicate read this type exists to remove. A caller whose
-		// own context dies while waiting returns its own error and leaves the
-		// in-flight read alone for the others.
-		select {
-		case <-entry.done:
-			r := entry.res
-			return r.status, r.storeAuthority, r.allowedTierMask, r.isRoot, r.storeDomainHash, r.err
-		case <-ctx.Done():
-			var authority verify.Pubkey
-			var domainHash [32]byte
-			return 0, authority, 0, false, domainHash, ctx.Err()
-		}
-	}
+func (m *memoChainReader) FetchLicenseEntry(ctx context.Context, addrB58 string) (licenseEntryHead, error) {
+	return readOnce(ctx, &m.mu, m.licence, addrB58, m.chainReader.FetchLicenseEntry)
+}
 
-	status, authority, mask, isRoot, domainHash, err := m.chainReader.FetchStoreOperatorAuthz(ctx, addrB58)
-	entry.res = authzResult{status, authority, mask, isRoot, domainHash, err}
-	// A context cancellation is a property of the CALLER, not of the account, so
-	// keeping it would poison every sibling row with one row's timeout. Drop the
-	// entry first, then release the waiters onto that same non-authoritative
-	// answer; the next fresh caller re-reads the chain.
-	if ctx.Err() != nil {
-		m.mu.Lock()
-		if m.authz[addrB58] == entry {
-			delete(m.authz, addrB58)
-		}
-		m.mu.Unlock()
-	}
-	close(entry.done)
-	return status, authority, mask, isRoot, domainHash, err
+func (m *memoChainReader) FetchResellerEntry(ctx context.Context, addrB58 string) (verify.ResellerEntry, error) {
+	return readOnce(ctx, &m.mu, m.reseller, addrB58, m.chainReader.FetchResellerEntry)
 }

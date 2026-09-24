@@ -199,6 +199,21 @@ recall a Store build, and the start is refused with the name the sidecars' own
 boot gate gives (`check=sidecar_cascade: cascade-not-active:GlobalSidecarApproval:
 status Revoked`, `cascade-binding-mismatch:LicenseEntry.master_nft_mint`, ...).
 Any mismatch / missing entry / RPC error is FATAL (Inv 5).
+The start is not the only time the licence is read. Wherever the Store reads
+its own `StoreOperatorAuthorization` — every write gate through
+`VerifyStoreOperator` (`/publish/stage`, `/publish`, installer publish,
+generation promote, listing registration and bootstrap, host apply, the root
+trust bundle) and the serve gate's per-request listing check — it also holds
+that licence to the contracts' `verify_license` rule (`store_own_licence.go`):
+the `LicenseEntry` Active and the `ResellerEntry` that `LicenseEntry` names
+Active, both under `release_master_nft_mint`. The Master revoking the reseller
+leaves the licence, the operator row and the licence's clearance Active, so
+without this a running Store kept publishing and serving while every tenant's
+authorization daemon refused installs from it. The refusals use the daemon's
+names (`check=store_own_licence: store-reseller-inactive: ...`,
+`store-license-revoked`, `store-license-master-mismatch`, ...); the
+catalogue answers `503`, never an omission, and the package route refuses on
+the next request, never from the verdict cache.
 When `shards_dir` is unset the store is deliberately read-only: operator nil,
 the legacy `/publish` route returns `503` (or `410` after cutover), and the
 serve gate is unaffected.

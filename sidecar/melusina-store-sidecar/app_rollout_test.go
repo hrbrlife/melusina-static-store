@@ -159,6 +159,7 @@ func pinRolloutListingActive(t *testing.T, m *mockChainReader, cfg Config, f rol
 		operatorAuthorization: authzPDA,
 		status:                storeListingStatusActive,
 	}
+	pinStoreOwnLicence(m, cfg)
 }
 
 func TestPrepareAppRollout_RetainsPriorAndSignsWindow(t *testing.T) {

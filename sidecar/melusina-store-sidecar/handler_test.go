@@ -1515,14 +1515,18 @@ func TestHandlePublishInstaller_Rejects(t *testing.T) {
 			wantBody: "name must be a single safe path segment",
 		},
 		{
+			// The Store's own licence is held to verify_license's rule under
+			// the estate master before any installer check reads it, so a
+			// Store that names no master is refused by the operator gate
+			// (verifyStoreOwnLicence), by the boot cascade's name.
 			name: "missing_master_mint_config",
 			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) {
 				pinRootStoreOperator(t, cfg, m, op)
 			},
 			class:    "shell",
 			fileName: "sandstorm-42.tar.xz",
-			wantCode: http.StatusServiceUnavailable,
-			wantBody: "release_master_nft_mint is required",
+			wantCode: http.StatusForbidden,
+			wantBody: "check=store_own_licence: estate-anchor-absent:master-mint: release_master_nft_mint is required",
 		},
 	}
 

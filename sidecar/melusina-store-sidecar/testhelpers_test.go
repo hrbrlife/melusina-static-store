@@ -96,6 +96,9 @@ type mockChainReader struct {
 	installerErr  error
 	foundationErr error
 	sidecarErr    error
+	// licenceErr fails the own-licence reads (FetchLicenseEntry and
+	// FetchResellerEntry) as an RPC failure would.
+	licenceErr error
 }
 
 type mockReleaseEntry struct {
@@ -351,6 +354,37 @@ func (m *mockChainReader) FetchBlacklistStatus(ctx context.Context, addr string)
 	return readBlacklistStatusAccount(addr, data, owner)
 }
 
+// FetchLicenseEntry and FetchResellerEntry serve the accounts seeded in
+// rawAccounts through the production readers (owner check and complete
+// decode). Nothing seeded is absent, exactly as on chain.
+func (m *mockChainReader) FetchLicenseEntry(ctx context.Context, addr string) (licenseEntryHead, error) {
+	if m.licenceErr != nil {
+		return licenseEntryHead{}, m.licenceErr
+	}
+	data, owner, err := m.fetchRawAccount(ctx, addr)
+	if err != nil {
+		return licenseEntryHead{}, err
+	}
+	if data == nil {
+		return licenseEntryHead{}, verify.ErrPDANotFound
+	}
+	return readStoreLicenceAccount(data, owner)
+}
+
+func (m *mockChainReader) FetchResellerEntry(ctx context.Context, addr string) (verify.ResellerEntry, error) {
+	if m.licenceErr != nil {
+		return verify.ResellerEntry{}, m.licenceErr
+	}
+	data, owner, err := m.fetchRawAccount(ctx, addr)
+	if err != nil {
+		return verify.ResellerEntry{}, err
+	}
+	if data == nil {
+		return verify.ResellerEntry{}, verify.ErrPDANotFound
+	}
+	return readStoreResellerAccount(data, owner)
+}
+
 func (m *mockChainReader) FetchInstallerReleaseEntryMeta(_ context.Context, addr string) (installerReleaseMeta, error) {
 	if m.installerErr != nil {
 		return installerReleaseMeta{}, m.installerErr
@@ -536,6 +570,10 @@ func testConfig(t *testing.T) (Config, string) {
 	cfg := Config{
 		LicenseNFTMint: licenseMint,
 		StoreAuthority: randPubkeyB58(t),
+		// The estate master the Store's own licence is held to
+		// (verifyStoreOwnLicence): seedValidCascade's, so a component
+		// cascade seeded under this licence agrees with pinStoreOwnLicence.
+		ReleaseMasterNftMint: seedCascadeMaster().Base58(),
 		ReleaseSquadsAuthority: ReleaseSquadsAuthority{
 			Multisig:    testStoreAuthority,
 			Vault:       testReleaseCustodianVault,
@@ -595,6 +633,14 @@ func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, sp
 			MemberCount: defaultBazaarSquadsMemberCount,
 		}
 		configureReleaseAuthorityFixtureForBuild(&cfg, t.TempDir())
+	}
+
+	// A Store that publishes holds its own licence to verify_license's rule
+	// under its estate's master mint (verifyStoreOwnLicence), which is the
+	// mint its releases are registered under. A test that names no
+	// release_master_nft_mint gets the app's.
+	if strings.TrimSpace(cfg.ReleaseMasterNftMint) == "" {
+		cfg.ReleaseMasterNftMint = masterMintB58
 	}
 
 	spkSum := sha256.Sum256(spk)
@@ -779,6 +825,7 @@ func (f publishFixture) pinAccept(m *mockChainReader, operatorPub [32]byte) {
 	}
 	// no FoundationAppEntry pinned => resolveFoundationTier returns tier 0 (no ceiling)
 	f.pinClearances(m)
+	pinStoreOwnLicence(m, f.cfg)
 }
 
 // withReleaseTrust is cfg as the enrolled Store of the estate pinAccept last
@@ -860,6 +907,46 @@ func (f publishFixture) pinServeListingActive(m *mockChainReader) {
 		operatorAuthorization: authzPDA,
 		status:                storeListingStatusActive,
 	}
+	pinStoreOwnLicence(m, f.cfg)
+}
+
+// testStoreOwnReseller is the reseller the fixture Store's licence is issued
+// under: seedValidCascade's, so a component cascade seeded under the Store's
+// own licence names the same one.
+func testStoreOwnReseller() primitives.Pubkey {
+	var reseller primitives.Pubkey
+	reseller[0], reseller[1] = 0xAA, 0x01
+	return reseller
+}
+
+// storeOwnLicencePDAs are the addresses verifyStoreOwnLicence reads for cfg:
+// the LicenseEntry of cfg.LicenseNFTMint and the ResellerEntry of
+// testStoreOwnReseller.
+func storeOwnLicencePDAs(cfg Config) (licence, reseller string) {
+	licenseMint := mustPubkey(strings.TrimSpace(cfg.LicenseNFTMint))
+	licencePDA, _, err := primitives.DeriveLicense(licenseMint, programID)
+	if err != nil {
+		panic("test fixture LicenseEntry PDA: " + err.Error())
+	}
+	resellerMint := testStoreOwnReseller()
+	resellerPDA, _, err := primitives.FindProgramAddress([][]byte{[]byte("reseller"), resellerMint[:]}, programID, nil)
+	if err != nil {
+		panic("test fixture ResellerEntry PDA: " + err.Error())
+	}
+	return licencePDA.Base58(), resellerPDA.Base58()
+}
+
+// pinStoreOwnLicence seeds the licence cfg's Store operates under as
+// verify_license accepts it, under cfg's release_master_nft_mint: an Active
+// LicenseEntry naming testStoreOwnReseller, both Squads Options Some, and
+// that reseller's Active ResellerEntry with parent_reseller and category
+// Some. Every fixture that seeds an Active operator row seeds this too; a
+// test of the rule replaces either account.
+func pinStoreOwnLicence(m *mockChainReader, cfg Config) {
+	master := mustPubkey(strings.TrimSpace(cfg.ReleaseMasterNftMint))
+	licenceAddr, resellerAddr := storeOwnLicencePDAs(cfg)
+	m.rawAccounts[licenceAddr] = mkLicenseAccount(mustPubkey(strings.TrimSpace(cfg.LicenseNFTMint)), testStoreOwnReseller(), master)
+	m.rawAccounts[resellerAddr] = mkResellerEntryAccount(testStoreOwnReseller(), master)
 }
 
 // pinFoundationApp marks the fixture's app as a Foundation app of the given tier

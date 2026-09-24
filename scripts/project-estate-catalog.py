@@ -32,8 +32,13 @@ projects the manifest it publishes from instead:
 Before anything is written the projection is parsed back and compared with
 the ledger entry by entry, validated by the release provider's own catalog
 validation for the profile's Store, and searched by the provider's estate scan
-for every value of the retiring estate. The output directory must not exist;
-it receives bazaar-catalog.yaml and prepublish-selections/, or nothing.
+(text and parsed values) for every value of the retiring estate: the Store's
+forbid set and the given ledger's own Store, index digest and release
+authority. Each copied selection receipt is scanned the same way, with no
+exception. A cohort entry or receipt that carries a retiring value is refused
+by field and place; this command never rewrites one. The output directory must
+not exist; it receives bazaar-catalog.yaml and prepublish-selections/, or
+nothing.
 
 The ledger itself is never edited.
 """
@@ -429,7 +434,7 @@ def project_text(binding: dict[str, Any], ledger_text: str, ledger: dict[str, An
 
 
 def check_projection(provider: Any, text: str, binding: dict[str, Any], ledger: dict[str, Any],
-                     ledger_sha256: str, cohort: str, app_ids: list[str]) -> dict[str, Any]:
+                     ledger_sha256: str, ledger_path: Path, cohort: str, app_ids: list[str]) -> dict[str, Any]:
     """Parse the projection back and refuse any difference from what it must be.
 
     Returns the provider's estate-scan report.
@@ -474,7 +479,7 @@ def check_projection(provider: Any, text: str, binding: dict[str, Any], ledger: 
     except provider.ProviderError as exc:
         raise ProjectionError("projection-invalid", str(exc)) from exc
     try:
-        return provider.estate_scan(text, document)
+        return provider.estate_scan(text, document, ledger_path)
     except provider.ProviderError as exc:
         raise ProjectionError("projection-estate-scan", str(exc)) from exc
 
@@ -484,7 +489,8 @@ def selection_receipts(provider: Any, ledger: dict[str, Any], ledger_path: Path,
     """Return the cohort's declared source-selection receipts, byte for byte.
 
     The provider resolves a receipt beside the manifest it reads, so the
-    projection carries them. Each is estate-scanned like the manifest.
+    projection carries them. Each is estate-scanned like the manifest, with
+    no exception, against the same ledger.
     """
     apps = catalog_apps(ledger)
     receipts: dict[str, bytes] = {}
@@ -497,7 +503,7 @@ def selection_receipts(provider: Any, ledger: dict[str, Any], ledger_path: Path,
         raw = read_regular(ledger_path.parent / RECEIPT_DIR / f"{app_id}.json", MAX_RECEIPT_BYTES,
                            "selection-receipt-unreadable")
         try:
-            provider.estate_scan(raw.decode("utf-8"), {})
+            provider.estate_scan_receipt(raw.decode("utf-8"), ledger_path)
         except (UnicodeDecodeError, provider.ProviderError) as exc:
             raise ProjectionError("projection-estate-scan", f"{app_id} selection receipt: {exc}") from exc
         receipts[app_id] = raw
@@ -556,7 +562,7 @@ def project(profile_path: Path, pin: str, verifier: Path, out_dir: Path, cohort:
     ledger_raw, ledger_text, ledger = read_ledger(ledger_path, provider)
     ledger_sha256 = hashlib.sha256(ledger_raw).hexdigest()
     text, app_ids = project_text(binding, ledger_text, ledger, ledger_sha256, ledger_path, cohort)
-    scan = check_projection(provider, text, binding, ledger, ledger_sha256, cohort, app_ids)
+    scan = check_projection(provider, text, binding, ledger, ledger_sha256, ledger_path, cohort, app_ids)
     receipts = selection_receipts(provider, ledger, ledger_path, app_ids)
     manifest = text.encode("utf-8")
     write_projection(out_dir, manifest, receipts)

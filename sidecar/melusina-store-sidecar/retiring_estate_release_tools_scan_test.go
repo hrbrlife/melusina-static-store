@@ -52,11 +52,11 @@ func releaseToolScripts(t *testing.T) []string {
 }
 
 // releaseToolForbiddenValues is the retiring estate's profile-derived forbid
-// set, widened by the Store and release authority the checked-in catalog
-// ledger itself records. The retiring profile vector marks its store-release
-// multisig and vault illustrative, so the real Bazaar authority comes from the
-// ledger rather than a hand-written list; whichever estate the ledger names,
-// the tools must not compile it.
+// set, widened by the Store, catalog index digest and release authority the
+// checked-in catalog ledger itself records. The retiring profile vector marks
+// its store-release multisig and vault illustrative, so the real Bazaar
+// authority comes from the ledger rather than a hand-written list; whichever
+// estate the ledger names, the tools must not compile it.
 func releaseToolForbiddenValues(t *testing.T) map[string]string {
 	t.Helper()
 	values := retiringEstateValues(t)
@@ -79,8 +79,11 @@ func releaseToolForbiddenValues(t *testing.T) map[string]string {
 		switch {
 		case !strings.HasPrefix(line, " "):
 			inAuthority = key == "release_squads_authority"
-			if key == "catalog_origin" {
+			switch key {
+			case "catalog_origin":
 				ledger["catalog-ledger/catalog_origin"] = strings.TrimPrefix(value, "https://")
+			case "catalog_index_sha256":
+				ledger["catalog-ledger/catalog_index_sha256"] = value
 			}
 		case inAuthority && (key == "multisig" || key == "vault" || key == "program_id"):
 			ledger["catalog-ledger/release_squads_authority."+key] = value
@@ -89,7 +92,7 @@ func releaseToolForbiddenValues(t *testing.T) map[string]string {
 	if err := scanner.Err(); err != nil {
 		t.Fatal(err)
 	}
-	if len(ledger) != 4 {
+	if len(ledger) != 5 {
 		t.Fatalf("catalog ledger yielded %v; the scan would silently lose width", ledger)
 	}
 	for field, value := range ledger {

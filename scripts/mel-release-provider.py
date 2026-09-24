@@ -18,10 +18,16 @@ manifest must name that same Store.  An absent or malformed value is refused
 by name; nothing falls back to a compiled Store, domain or program.
 
 Before any operation dispatches, the catalog manifest is validated and
-estate-scanned: a manifest that carries a value of the retiring estate
-(derived from fleet/bazaar-catalog.yaml, the snapshot of the retiring default
-Bazaar) is refused as ``estate-scan-retiring-value``.  A new estate publishes
-from the manifest scripts/project-estate-catalog.py projects for it.
+estate-scanned: a manifest that carries a value of the retiring estate, in its
+text or in any parsed key or value, is refused as
+``estate-scan-retiring-value``.  The forbid set is the Store's own
+(fleet/retiring-estate-values.json, generated from the Store's Go derivation)
+together with the catalog ledger's Store and release authority
+(fleet/bazaar-catalog.yaml, the snapshot of the retiring default Bazaar); the
+only retiring values a manifest may carry are the named ESTATE_SCAN_EXCEPTIONS.
+Every source-selection receipt the provider reads is scanned the same way,
+with no exception.  A new estate publishes from the manifest
+scripts/project-estate-catalog.py projects for it.
 """
 
 from __future__ import annotations
@@ -580,40 +586,111 @@ def catalog_config() -> dict[str, Any]:
     return value
 
 
-# The catalog membership ledger is also the snapshot of the retiring default
-# Bazaar: its catalog_origin, catalog_index_sha256 and release_squads_authority
-# are that estate's (see its header). estate_scan derives the retiring values
-# from it instead of listing them, the same source the Store's Go scans widen
-# their forbid set with (retiring_estate_release_tools_scan_test.go), and this
-# file names none of them.
+# The retiring estate's forbid set has two sources, and this file names none
+# of its values:
+#
+# - fleet/retiring-estate-values.json is the Store's own forbid set,
+#   storeProductionForbiddenValues in sidecar/melusina-store-sidecar: every
+#   value the paype-devnet-revision-1 profile vector projects (programs, mints,
+#   anchors, authorities, the root Store's domain, ID and operator key), the
+#   catalog ledger's Store, index digest and release authority, the retiring
+#   tenant hosts, and the retiring facts the profile does not project (root
+#   domain, sidecar ID, operator keys, prior licence NFT). This script cannot
+#   run that Go derivation, so it reads the derivation's committed rendering;
+#   TestRetiringEstateValuesFileIsTheStoreForbidSet fails by name when the two
+#   differ.
+# - the catalog ledger a scan is given (by default fleet/bazaar-catalog.yaml,
+#   the snapshot of the retiring default Bazaar): its catalog_origin host and
+#   parent domain, catalog_index_sha256 and release_squads_authority. A
+#   projection from another ledger file is also scanned for that file's values.
 ESTATE_SCAN_REFERENCE = ROOT / "fleet" / "bazaar-catalog.yaml"
-ESTATE_SCAN_REPORT_SCHEMA = "melusina-release-catalog-estate-scan/v1"
+ESTATE_SCAN_VALUES = ROOT / "fleet" / "retiring-estate-values.json"
+ESTATE_SCAN_VALUES_SCHEMA = "melusina-retiring-estate-values/v1"
+ESTATE_SCAN_REPORT_SCHEMA = "melusina-release-catalog-estate-scan/v2"
 ESTATE_SCAN_REFUSAL = "estate-scan-retiring-value"
 ESTATE_SCAN_REFERENCE_REFUSAL = "estate-scan-reference-unusable"
+ESTATE_SCAN_MATCHING = (
+    "ASCII case-insensitive substring, as the Store's Go scans match (textHits), of the whole "
+    "text with comments and of every parsed key and scalar value"
+)
+# Fields the Store's derivation always yields. A values file without one of
+# them is refused rather than scanned for fewer values.
+ESTATE_SCAN_REQUIRED_FIELDS = (
+    "catalog-ledger/catalog_index_sha256",
+    "catalog-ledger/catalog_origin",
+    "catalog-ledger/release_squads_authority.multisig",
+    "catalog-ledger/release_squads_authority.program_id",
+    "catalog-ledger/release_squads_authority.vault",
+    "retiring/anchors.masterMint",
+    "retiring/programs.license-registry.programId",
+    "retiring/root-domain",
+    "retiring/store.rootDomain",
+    "retiring/store.sidecarId",
+    "retiring/tenant-host-0",
+    "retiring/tenant-host-1",
+    "retiring/tenant-host-dev",
+)
+# The only retiring values a catalog manifest may carry, each named: the value
+# of the forbid-set field valueField, permitted as the whole value of the one
+# manifest field at `at` and refused everywhere else, in text and parsed alike.
+# A selection receipt is scanned with no exceptions. An owner-accepted carve-out
+# (for example an app's approved display name) is added here, by name, or not
+# at all.
+ESTATE_SCAN_EXCEPTIONS: tuple[dict[str, Any], ...] = (
+    {
+        "name": "squads-v4-program",
+        "valueField": "catalog-ledger/release_squads_authority.program_id",
+        "at": ("release_squads_authority", "program_id"),
+        "reason": (
+            "the Squads v4 program is a network program, not an estate anchor (the deployer's "
+            "estatescan classifies external programs the same way); mel-release requires this "
+            "field to equal the owner-signed profile's externalPrograms.squads-v4"
+        ),
+    },
+)
 DNS_LABEL_RE = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
+_ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 
 
-def retiring_estate_values(reference: Path | None = None) -> list[dict[str, str]]:
-    """Derive the retiring estate's forbid set from the catalog ledger.
+def _ascii_lower(value: str) -> str:
+    return value.translate(_ASCII_LOWER)
 
-    Each item names a field, its value and how it is matched:
 
-    - ``host``: the retiring Store host and its parent domain, matched as a
-      whole DNS name in any letter case;
-    - ``key``: a base58 authority key, matched exactly;
-    - ``hex``: the retiring catalog index digest, matched in any letter case.
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key {key!r}")
+        result[key] = value
+    return result
 
-    ``sharedAt`` marks the one value two estates may legitimately hold in
-    common: the Squads v4 program is a network program, not an estate anchor
-    (the deployer's estatescan classifies external programs the same way). It
-    is permitted only as the value of the field it names, where mel-release
-    requires it to equal the owner-signed profile's externalPrograms.squads-v4;
-    anywhere else in the manifest it is refused like the rest.
 
-    A reference that lacks one of the four core fields is refused rather than
+def _store_retiring_values() -> list[dict[str, str]]:
+    """The Store's forbid set, from its committed rendering (ESTATE_SCAN_VALUES)."""
+    path = ESTATE_SCAN_VALUES
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_json_object)
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path}: {exc}") from exc
+    values = document.get("values") if isinstance(document, dict) else None
+    if (not isinstance(document, dict) or document.get("schema") != ESTATE_SCAN_VALUES_SCHEMA or
+            not isinstance(values, dict)):
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} is not a {ESTATE_SCAN_VALUES_SCHEMA} document")
+    for field, value in values.items():
+        if not field or not isinstance(value, str) or not value or value != value.strip():
+            raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has a malformed value for {field!r}")
+    missing = [field for field in ESTATE_SCAN_REQUIRED_FIELDS if field not in values]
+    if missing:
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} lacks {', '.join(missing)}")
+    return [{"field": field, "value": value} for field, value in sorted(values.items())]
+
+
+def _ledger_retiring_values(path: Path) -> list[dict[str, str]]:
+    """The Store, index digest and release authority a catalog ledger records.
+
+    A ledger that lacks its origin or release authority is refused rather than
     scanned for fewer values.
     """
-    path = ESTATE_SCAN_REFERENCE if reference is None else reference
     try:
         _, ledger = load_catalog_text(path)
     except ProviderError as exc:
@@ -633,13 +710,9 @@ def retiring_estate_values(reference: Path | None = None) -> list[dict[str, str]
     labels = host.split(".") if host else []
     if len(labels) < 2 or not all(DNS_LABEL_RE.fullmatch(label) for label in labels):
         raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has no bare https catalog_origin")
-    values = [{"field": "retiring/catalog_origin.host", "kind": "host", "value": host}]
+    values = [{"field": "ledger/catalog_origin.host", "value": host}]
     if len(labels) >= 3:
-        values.append({
-            "field": "retiring/catalog_origin.parent-domain",
-            "kind": "host",
-            "value": ".".join(labels[1:]),
-        })
+        values.append({"field": "ledger/catalog_origin.parent-domain", "value": ".".join(labels[1:])})
     authority = ledger.get("release_squads_authority")
     if not isinstance(authority, dict):
         raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has no release_squads_authority")
@@ -649,73 +722,214 @@ def retiring_estate_values(reference: Path | None = None) -> list[dict[str, str]
             value = canonical_solana_public_key(str(authority.get(key, "")), field)
         except ProviderError as exc:
             raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path}: {exc}") from exc
-        item = {"field": f"retiring/{field}", "kind": "key", "value": value}
-        if key == "program_id":
-            item["sharedAt"] = field
-        values.append(item)
+        values.append({"field": f"ledger/{field}", "value": value})
     index_digest = ledger.get("catalog_index_sha256")
     if index_digest is not None:
         if not isinstance(index_digest, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", index_digest):
             raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has a malformed catalog_index_sha256")
-        values.append({"field": "retiring/catalog_index_sha256", "kind": "hex", "value": index_digest.lower()})
+        values.append({"field": "ledger/catalog_index_sha256", "value": index_digest.lower()})
     return values
 
 
-def _estate_scan_occurrences(text: str, item: dict[str, str]) -> int:
-    value = item["value"]
-    if item["kind"] == "host":
-        pattern = r"(?<![A-Za-z0-9-])" + re.escape(value) + r"(?![A-Za-z0-9-])"
-        return len(re.findall(pattern, text, flags=re.IGNORECASE))
-    if item["kind"] == "hex":
-        return text.lower().count(value)
-    return text.count(value)
+def retiring_estate_values(reference: Path | None = None) -> list[dict[str, str]]:
+    """The retiring estate's forbid set: the Store's, then the reference ledger's.
+
+    Each item is a field name and its value. Every value is matched the same
+    way (ESTATE_SCAN_MATCHING); a field name says where the value came from.
+    """
+    return _store_retiring_values() + _ledger_retiring_values(
+        ESTATE_SCAN_REFERENCE if reference is None else reference
+    )
 
 
-def _declared_value(document: dict[str, Any], dotted: str) -> Any:
-    current: Any = document
-    for part in dotted.split("."):
+def _dotted(path: tuple[Any, ...]) -> str:
+    return ".".join(str(part) for part in path) or "<document>"
+
+
+def _value_at(document: Any, path: tuple[Any, ...]) -> Any:
+    current = document
+    for part in path:
         if not isinstance(current, dict):
             return None
         current = current.get(part)
     return current
 
 
-def estate_scan(text: str, document: dict[str, Any], reference: Path | None = None) -> dict[str, Any]:
-    """Refuse a catalog manifest that carries a value of the retiring estate.
+def _node_at(node: Any, path: tuple[Any, ...]) -> Any:
+    for part in path:
+        if not isinstance(node, yaml.MappingNode):
+            return None
+        found = None
+        for key_node, value_node in node.value:
+            if isinstance(key_node, yaml.ScalarNode) and key_node.value == part:
+                found = value_node
+        if found is None:
+            return None
+        node = found
+    return node
 
-    The whole manifest text is searched, comments included, so a retiring
-    value cannot hide in a note. The result names every field it checked and
-    how, so "clean" is observable rather than assumed.
+
+def _applied_exceptions(text: str, document: Any, exceptions: tuple[dict[str, Any], ...],
+                        by_field: dict[str, str]) -> list[dict[str, Any]]:
+    """Return the exceptions this document uses, each with the text span of
+    the one scalar it permits.
+
+    An exception applies only where the parsed document holds exactly its
+    value at its field. The span is that scalar's own source text, located by
+    composing the same text; when it cannot be located the literal is left in
+    the text and refused there.
+    """
+    applied: list[dict[str, Any]] = []
+    root: Any = None
+    for exception in exceptions:
+        value = by_field.get(exception["valueField"])
+        if value is None:
+            raise ProviderError(
+                f"{ESTATE_SCAN_REFERENCE_REFUSAL}: exception {exception['name']} names "
+                f"{exception['valueField']}, which the forbid set lacks"
+            )
+        if _value_at(document, exception["at"]) != value:
+            continue
+        if root is None:
+            try:
+                root = yaml.compose(text, Loader=DuplicateKeySafeLoader)
+            except yaml.YAMLError as exc:
+                raise ProviderError(f"{ESTATE_SCAN_REFUSAL}: the document text does not compose: {exc}") from exc
+        node = _node_at(root, exception["at"])
+        span = None
+        if isinstance(node, yaml.ScalarNode) and node.value == value:
+            span = (node.start_mark.index, node.end_mark.index)
+        applied.append({**exception, "value": value, "span": span})
+    return applied
+
+
+def _estate_scan_leaves(value: Any, path: tuple[Any, ...], seen: set[int]):
+    """Yield (path, is_key, scalar) for every key and scalar of a parsed
+    document. A container reached twice through an alias is walked once."""
+    if isinstance(value, (dict, list, tuple, set, frozenset)):
+        if id(value) in seen:
+            return
+        seen.add(id(value))
+    if isinstance(value, dict):
+        for key, item in value.items():
+            yield path + (key,), True, key
+            yield from _estate_scan_leaves(item, path + (key,), seen)
+    elif isinstance(value, (list, tuple, set, frozenset)):
+        for index, item in enumerate(value):
+            yield from _estate_scan_leaves(item, path + (index,), seen)
+    else:
+        yield path, False, value
+
+
+def _scalar_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value).decode("latin-1")
+    return str(value)
+
+
+def estate_scan(text: str, document: Any, reference: Path | None = None, *,
+                exceptions: tuple[dict[str, Any], ...] = ESTATE_SCAN_EXCEPTIONS) -> dict[str, Any]:
+    """Refuse a document that carries a value of the retiring estate.
+
+    ``document`` is ``text`` parsed. Two searches run over the forbid set
+    (retiring_estate_values), with the same matcher:
+
+    - the whole text, comments included, so a value cannot hide in a note;
+    - every parsed key and scalar value, so a value written with escapes
+      (``\\x2e``, ``\\u002e``, a quoted line continuation) that the text does
+      not show literally is still found.
+
+    A named exception (ESTATE_SCAN_EXCEPTIONS) removes exactly one scalar from
+    both searches. The refusal names each field and where it was found; the
+    report names every field and exception it checked, so "clean" is
+    observable rather than assumed.
     """
     path = ESTATE_SCAN_REFERENCE if reference is None else reference
     values = retiring_estate_values(path)
-    found: list[str] = []
-    dispositions: dict[str, str] = {}
+    by_field = {item["field"]: item["value"] for item in values}
+    applied = _applied_exceptions(text, document, exceptions, by_field)
+    scanned = text
+    for exception in applied:
+        if exception["span"] is not None:
+            start, end = exception["span"]
+            scanned = scanned[:start] + "".join(
+                "\n" if char == "\n" else " " for char in scanned[start:end]
+            ) + scanned[end:]
+    needles: dict[str, list[str]] = {}
     for item in values:
-        allowed = 0
-        disposition = "forbid"
-        shared_at = item.get("sharedAt")
-        if shared_at:
-            disposition = "forbid-elsewhere"
-            if _declared_value(document, shared_at) == item["value"]:
-                allowed = 1
-                disposition = f"shared-at:{shared_at}"
-        if _estate_scan_occurrences(text, item) > allowed:
-            found.append(item["field"])
-        dispositions[item["field"]] = disposition
+        needles.setdefault(_ascii_lower(item["value"]), []).append(item["field"])
+    found: dict[str, list[str]] = {}
+
+    def record(fields: list[str], where: str) -> None:
+        for field in fields:
+            places = found.setdefault(field, [])
+            if where not in places:
+                places.append(where)
+
+    folded = _ascii_lower(scanned)
+    for needle, fields in needles.items():
+        index = folded.find(needle)
+        while index != -1:
+            record(fields, f"line {folded.count(chr(10), 0, index) + 1}")
+            index = folded.find(needle, index + 1)
+    for where, is_key, scalar in _estate_scan_leaves(document, (), set()):
+        if not is_key and any(
+            where == exception["at"] and isinstance(scalar, str) and scalar == exception["value"]
+            for exception in applied
+        ):
+            continue
+        folded_scalar = _ascii_lower(_scalar_text(scalar))
+        for needle, fields in needles.items():
+            if needle in folded_scalar:
+                record(fields, ("key " if is_key else "") + _dotted(where))
     if found:
+        detail = "; ".join(f"{field} at {', '.join(places)}" for field, places in sorted(found.items()))
         raise ProviderError(
-            f"{ESTATE_SCAN_REFUSAL}: {', '.join(sorted(found))}; this catalog manifest carries the retiring "
-            f"estate recorded by {path.name}; project a manifest for the bound estate with "
+            f"{ESTATE_SCAN_REFUSAL}: {detail}; this document carries the retiring estate recorded by "
+            f"{ESTATE_SCAN_VALUES.name} and {path.name}; project a manifest for the bound estate with "
             "scripts/project-estate-catalog.py"
         )
+    applied_names = {exception["name"] for exception in applied}
+    dispositions: dict[str, str] = {}
+    for item in values:
+        disposition = "forbid"
+        for exception in exceptions:
+            if by_field[exception["valueField"]] == item["value"]:
+                state = "excepted" if exception["name"] in applied_names else "forbid-except"
+                disposition = f"{state}:{exception['name']}@{_dotted(exception['at'])}"
+        dispositions[item["field"]] = disposition
     return {
         "schema": ESTATE_SCAN_REPORT_SCHEMA,
         "status": "clean",
         "catalogSha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "valuesSha256": hex_sha(ESTATE_SCAN_VALUES),
         "referenceSha256": hex_sha(path),
+        "valueCount": len(values),
+        "matching": ESTATE_SCAN_MATCHING,
         "fields": dispositions,
+        "exceptions": [
+            {"name": exception["name"], "at": _dotted(exception["at"]), "valueField": exception["valueField"],
+             "applied": exception["name"] in applied_names, "reason": exception["reason"]}
+            for exception in exceptions
+        ],
     }
+
+
+def estate_scan_receipt(text: str, reference: Path | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Parse a source-selection receipt and estate-scan it, with no exception.
+
+    Duplicate keys are refused: a later value must not hide an earlier one
+    from the parsed search.
+    """
+    try:
+        receipt = json.loads(text, object_pairs_hook=_unique_json_object)
+    except ValueError as exc:
+        raise ProviderError(f"source selection receipt is not a JSON object: {exc}") from exc
+    if not isinstance(receipt, dict):
+        raise ProviderError("source selection receipt is not a JSON object")
+    return receipt, estate_scan(text, receipt, reference, exceptions=())
 
 
 def validate_catalog_document(value: dict[str, Any], bound_origin: Any) -> dict[str, Any]:
@@ -1012,7 +1226,11 @@ def require_source_selection_record(spec: dict[str, str]) -> dict[str, Any]:
             f"catalog app {spec['appId']} is held for source selection ({state})"
         )
     path = source_selection_receipt_path(spec)
-    receipt = read_json(path)
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ProviderError(f"read {path}: {exc}") from exc
+    receipt, _ = estate_scan_receipt(text)
     if receipt.get("schema") != SOURCE_SELECTION_RECEIPT_SCHEMA:
         raise ProviderError("source selection receipt has an unsupported schema")
     if receipt.get("appId") != spec["appId"]:

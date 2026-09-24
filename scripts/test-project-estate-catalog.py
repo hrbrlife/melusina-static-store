@@ -39,6 +39,19 @@ MSB_COHORT = "msb"
 # replacement first (fleet/bazaar-catalog.yaml, the cyberteller entry).
 CYBERTELLER_APP_ID = "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"
 LOBBY_APP_ID = "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"
+POPAYE_APP_ID = "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
+OPENSANCTIONS_APP_ID = "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh"
+# The checked-in MSB cohort carries retiring-estate values in exactly these
+# places, so the projector refuses it
+# (test_projection_refuses_the_ledger_cohort_by_field_and_place). None of them
+# is the projector's to rewrite: Popaye's approved public name is bound to its
+# signed metadata (require_catalog_metadata_identity), and a selection receipt
+# is a decision record. The other tests project fixture_ledger(), in which
+# each is replaced, as a renamed forward release and reissued receipts would
+# replace them.
+RETIRING_DISPLAY_NAME_APP = POPAYE_APP_ID
+RETIRING_PROSE_RECEIPTS = (POPAYE_APP_ID, OPENSANCTIONS_APP_ID)
+FIXTURE_DISPLAY_NAME = "Popaye"
 
 
 def load(name: str, path: Path):
@@ -98,6 +111,43 @@ def ledger_document() -> dict:
     return provider.validate_catalog_document(document, document["catalog_origin"])
 
 
+def forbid_values() -> dict:
+    return {item["field"]: item["value"] for item in provider.retiring_estate_values()}
+
+
+def fixture_ledger(root: Path, *, display_name: bool = True, receipts: bool = True) -> Path:
+    """Copy the checked-in ledger and its MSB cohort's receipts under root.
+
+    display_name replaces the one retiring display name (RETIRING_DISPLAY_NAME_APP);
+    receipts replaces every retiring value in RETIRING_PROSE_RECEIPTS. Nothing
+    else changes.
+    """
+    directory = root / "ledger"
+    (directory / "prepublish-selections").mkdir(parents=True)
+    values = forbid_values()
+    text = LEDGER.read_text(encoding="utf-8")
+    name_line = f"        catalog_name: {values['retiring/tenant-host-0']}\n"
+    assert text.count(name_line) == 1, name_line
+    if display_name:
+        text = text.replace(name_line, f"        catalog_name: {FIXTURE_DISPLAY_NAME}\n")
+    ledger = directory / "bazaar-catalog.yaml"
+    ledger.write_text(text, encoding="utf-8")
+    longest_first = sorted(set(values.values()), key=len, reverse=True)
+    for app_id in ledger_document()["scoped_cohorts"][MSB_COHORT]["app_ids"]:
+        raw = (LEDGER.parent / "prepublish-selections" / f"{app_id}.json").read_text(encoding="utf-8")
+        if receipts and app_id in RETIRING_PROSE_RECEIPTS:
+            for value in longest_first:
+                raw = re.sub(re.escape(value), "the retiring tenant", raw, flags=re.IGNORECASE)
+        (directory / "prepublish-selections" / f"{app_id}.json").write_text(raw, encoding="utf-8")
+    return ledger
+
+
+def ledger_text_with(ledger: Path, old: str, new: str) -> None:
+    text = ledger.read_text(encoding="utf-8")
+    assert text.count(old) == 1, old
+    ledger.write_text(text.replace(old, new), encoding="utf-8")
+
+
 def apps_by_id(document: dict) -> dict:
     return {
         spec["appId"]: (group_name, name, spec)
@@ -148,15 +198,16 @@ def expected_authority(profile: dict) -> dict:
 
 def test_projection_is_the_cohort_under_the_profile_estate():
     profile, pin = new_estate_profile()
-    ledger = ledger_document()
-    ledger_apps = apps_by_id(ledger)
-    cohort = ledger["scoped_cohorts"][MSB_COHORT]["app_ids"]
     origin = "https://" + profile["store"]["rootDomain"]
-    ledger_before = LEDGER.read_bytes()
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
+        fixture = fixture_ledger(root)
+        ledger_before = fixture.read_bytes()
+        _, ledger = provider.load_catalog_text(fixture)
+        ledger_apps = apps_by_id(ledger)
+        cohort = ledger["scoped_cohorts"][MSB_COHORT]["app_ids"]
         out = root / "seed"
-        result = run_projector(write_profile(root, profile), pin, out)
+        result = run_projector(write_profile(root, profile), pin, out, "--ledger", str(fixture))
         assert result.returncode == 0, result.stderr
         report = json.loads(result.stdout)
         manifest = out / "bazaar-catalog.yaml"
@@ -193,17 +244,26 @@ def test_projection_is_the_cohort_under_the_profile_estate():
         assert receipts == sorted(f"{app_id}.json" for app_id in cohort), receipts
         for app_id in cohort:
             assert (out / "prepublish-selections" / f"{app_id}.json").read_bytes() == (
-                LEDGER.parent / "prepublish-selections" / f"{app_id}.json"
+                fixture.parent / "prepublish-selections" / f"{app_id}.json"
             ).read_bytes(), app_id
         assert report["status"] == "projected", report
         assert report["appCount"] == len(cohort), report
         assert report["profileSha256"] == pin, report
         assert report["catalogOrigin"] == origin, report
         assert report["manifestSha256"] == hashlib.sha256(raw).hexdigest(), report
-        assert report["ledgerSha256"] == hashlib.sha256(LEDGER.read_bytes()).hexdigest(), report
-        assert report["estateScan"]["status"] == "clean", report
-        assert report["estateScan"]["catalogSha256"] == hashlib.sha256(raw).hexdigest(), report
-        assert report["estateScan"]["fields"]["retiring/release_squads_authority.program_id"] == "forbid-elsewhere"
+        assert report["ledgerSha256"] == hashlib.sha256(fixture.read_bytes()).hexdigest(), report
+        # The scan searched for the Store's whole forbid set and the ledger's
+        # own values; the profile's Squads program is not the retiring one, so
+        # the one named exception was not used.
+        scan = report["estateScan"]
+        assert scan["status"] == "clean", report
+        assert scan["catalogSha256"] == hashlib.sha256(raw).hexdigest(), report
+        assert set(scan["fields"]) == set(forbid_values()) and scan["valueCount"] == len(forbid_values()), scan
+        assert scan["fields"]["ledger/release_squads_authority.program_id"] == (
+            "forbid-except:squads-v4-program@release_squads_authority.program_id"
+        ), scan["fields"]
+        assert scan["fields"]["retiring/tenant-host-0"] == "forbid", scan["fields"]
+        assert [(item["name"], item["applied"]) for item in scan["exceptions"]] == [("squads-v4-program", False)], scan
 
         # The release provider reads it for the profile's Store.
         old = with_env({"MEL_RELEASE_CONFIG": str(manifest), "MEL_RELEASE_STORE_URL": origin})
@@ -226,8 +286,8 @@ def test_projection_is_the_cohort_under_the_profile_estate():
         finally:
             restore_env(old)
         assert text == raw.decode("utf-8")
-    # The ledger is read, never written.
-    assert LEDGER.read_bytes() == ledger_before
+        # The ledger is read, never written.
+        assert fixture.read_bytes() == ledger_before
 
 
 def mel_release(config: Path, profile_path: Path, pin: str, state: Path, provider_script: Path, *args: str):
@@ -257,7 +317,7 @@ def test_mel_release_reads_the_projection_under_the_profile():
         root = Path(tmp)
         profile_path = write_profile(root, profile)
         out = root / "seed"
-        result = run_projector(profile_path, pin, out)
+        result = run_projector(profile_path, pin, out, "--ledger", str(fixture_ledger(root)))
         assert result.returncode == 0, result.stderr
         manifest = out / "bazaar-catalog.yaml"
         state = root / "state"
@@ -383,11 +443,26 @@ def test_binding_takes_only_a_root_store_released_by_squads():
 def test_projection_check_refuses_any_difference_from_the_ledger():
     profile, pin = new_estate_profile()
     binding = projector.binding_from_profile(profile, pin, provider)
-    raw, ledger_text, ledger = projector.read_ledger(LEDGER, provider)
+    tmp = tempfile.TemporaryDirectory()
+    atexit.register(tmp.cleanup)
+    ledger_path = fixture_ledger(Path(tmp.name))
+    raw, ledger_text, ledger = projector.read_ledger(ledger_path, provider)
     ledger_sha256 = hashlib.sha256(raw).hexdigest()
-    text, app_ids = projector.project_text(binding, ledger_text, ledger, ledger_sha256, LEDGER, MSB_COHORT)
+    text, app_ids = projector.project_text(binding, ledger_text, ledger, ledger_sha256, ledger_path, MSB_COHORT)
     # Positive control.
-    assert projector.check_projection(provider, text, binding, ledger, ledger_sha256, MSB_COHORT, app_ids)["status"] == "clean"
+    assert projector.check_projection(
+        provider, text, binding, ledger, ledger_sha256, ledger_path, MSB_COHORT, app_ids,
+    )["status"] == "clean"
+    values = forbid_values()
+    # The values the narrower scan missed, planted in a note (comments are not
+    # compared with the ledger, so only the scan can refuse them).
+    planted = [
+        "retiring/programs.license-registry.programId", "retiring/anchors.masterMint",
+        "retiring/tenant-host-dev", "retiring/tenant-host-1", "retiring/store.sidecarId",
+    ]
+    plant = "# was " + " ".join(
+        ("https://" + values[field]) if field == "retiring/tenant-host-dev" else values[field] for field in planted
+    ) + "\n"
 
     cyberteller_start = text.index(f"appId: {CYBERTELLER_APP_ID}")
     next_app = re.search(r"\n {6}[a-z0-9-]+:\n", text[cyberteller_start:])
@@ -409,11 +484,138 @@ def test_projection_check_refuses_any_difference_from_the_ledger():
     ):
         assert mutated != text, name
         try:
-            projector.check_projection(provider, mutated, binding, ledger, ledger_sha256, MSB_COHORT, app_ids)
+            projector.check_projection(provider, mutated, binding, ledger, ledger_sha256, ledger_path, MSB_COHORT, app_ids)
         except projector.ProjectionError as exc:
             assert str(exc).startswith(name), (name, exc)
         else:
             raise AssertionError(f"projection check accepted a projection that should be {name}")
+    try:
+        projector.check_projection(
+            provider, text.replace("groups:\n", plant + "groups:\n", 1), binding, ledger, ledger_sha256,
+            ledger_path, MSB_COHORT, app_ids,
+        )
+    except projector.ProjectionError as exc:
+        assert exc.name == "projection-estate-scan", exc
+        for field in planted:
+            assert f"{field} at line " in str(exc), (field, exc)
+    else:
+        raise AssertionError("projection check accepted the planted retiring values")
+
+
+def test_projection_refuses_the_ledger_cohort_by_field_and_place():
+    """Known-positive control on real data: the checked-in MSB cohort carries
+    retiring-estate values, and the projector refuses it by field and place,
+    first in the manifest and then in the receipts it would copy, rather than
+    reporting clean or rewriting either."""
+    profile, pin = new_estate_profile()
+    ledger = ledger_document()
+    group, name, _ = apps_by_id(ledger)[RETIRING_DISPLAY_NAME_APP]
+    cohort = ledger["scoped_cohorts"][MSB_COHORT]["app_ids"]
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        profile_path = write_profile(root, profile)
+        out = root / "seed"
+
+        result = run_projector(profile_path, pin, out)
+        expect_refusal(result, "projection-estate-scan: estate-scan-retiring-value: ")
+        assert f"retiring/tenant-host-0 at line " in result.stderr, result.stderr
+        assert f"groups.{group}.apps.{name}.catalog_name" in result.stderr, result.stderr
+        assert not out.exists()
+
+        # With the display name replaced, the first receipt the projection
+        # would copy that carries a retiring value is refused by appId.
+        first = next(app_id for app_id in cohort if app_id in RETIRING_PROSE_RECEIPTS)
+        partial = fixture_ledger(root / "partial", receipts=False)
+        result = run_projector(profile_path, pin, out, "--ledger", str(partial))
+        expect_refusal(result, f"projection-estate-scan: {first} selection receipt: estate-scan-retiring-value: ")
+        assert "retiring/tenant-host-0 at line " in result.stderr and "decisionSummary" in result.stderr, result.stderr
+        assert not out.exists()
+
+    # Exactly these receipts of the cohort carry a retiring value.
+    refused = []
+    for app_id in cohort:
+        try:
+            provider.estate_scan_receipt(
+                (LEDGER.parent / "prepublish-selections" / f"{app_id}.json").read_text(encoding="utf-8"),
+            )
+        except provider.ProviderError as exc:
+            assert str(exc).startswith("estate-scan-retiring-value: "), (app_id, exc)
+            refused.append(app_id)
+    assert sorted(refused) == sorted(RETIRING_PROSE_RECEIPTS), refused
+
+
+def test_projection_scans_the_given_ledger_and_its_parsed_values():
+    """--ledger names the ledger the projection is scanned against too, and a
+    retiring value written with escapes in a copied entry is refused."""
+    profile, pin = new_estate_profile()
+    values = forbid_values()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        profile_path = write_profile(root, profile)
+        origin_line = f"catalog_origin: {ledger_document()['catalog_origin']}\n"
+        lobby_line = f"        appId: {LOBBY_APP_ID}\n"
+
+        # Another ledger's own Store, in a note of a copied entry. The Store's
+        # forbid set does not hold it; only the given ledger does.
+        other = fixture_ledger(root / "other")
+        host = "bazaar.other-retiring.invalid"
+        assert host not in values.values()
+        ledger_text_with(other, origin_line, f"catalog_origin: https://{host}\n")
+        ledger_text_with(other, lobby_line, lobby_line + f"        # mirrored at {host}\n")
+        result = run_projector(profile_path, pin, root / "seed-other", "--ledger", str(other))
+        expect_refusal(result, "projection-estate-scan: estate-scan-retiring-value: ")
+        assert "ledger/catalog_origin.host at line " in result.stderr, result.stderr
+        # Positive control: the same ledger without the note projects.
+        ledger_text_with(other, f"        # mirrored at {host}\n", "")
+        result = run_projector(profile_path, pin, root / "seed-other-clean", "--ledger", str(other))
+        assert result.returncode == 0, result.stderr
+
+        # The retiring Store's host with escaped dots, as a copied entry's
+        # display name: the text never shows it, the parsed value is it.
+        escaped = fixture_ledger(root / "escaped")
+        store_host = values["retiring/store.rootDomain"]
+        hidden_line = '        catalog_name: "' + store_host.replace(".", "\\x2e") + '"\n'
+        assert store_host not in hidden_line, hidden_line
+        ledger_text_with(escaped, "        catalog_name: Lobby\n", hidden_line)
+        _, parsed = provider.load_catalog_text(escaped)
+        group, name, spec = apps_by_id(parsed)[LOBBY_APP_ID]
+        assert spec["catalog_name"] == store_host, spec["catalog_name"]
+        result = run_projector(profile_path, pin, root / "seed-escaped", "--ledger", str(escaped))
+        expect_refusal(result, "projection-estate-scan: estate-scan-retiring-value: ")
+        assert f"retiring/store.rootDomain at groups.{group}.apps.{name}.catalog_name" in result.stderr, result.stderr
+        for directory in ("seed-other", "seed-escaped"):
+            assert not (root / directory).exists(), directory
+
+
+def test_verified_profile_requires_the_reviewed_estate_id():
+    """The profile the projection reads must be the one the verifier reported:
+    same digest (the reviewed pin) and same estateId."""
+    profile, pin = new_estate_profile()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        profile_path = write_profile(root, profile)
+
+        def stub(estate_id: str) -> Path:
+            review = {"schema": projector.REVIEW_SCHEMA, "status": projector.REVIEW_STATUS,
+                      "profileSha256": pin, "estateId": estate_id}
+            script = root / f"verifier-{estate_id[:12]}"
+            script.write_text("#!/bin/sh\ncat <<'REVIEW'\n" + json.dumps(review) + "\nREVIEW\n", encoding="utf-8")
+            script.chmod(0o700)
+            return script
+
+        # Positive control: a review of the profile's own estateId passes.
+        verified, review = projector.verified_profile(profile_path, pin, stub(profile["estateId"]))
+        assert verified["estateId"] == review["estateId"] == profile["estateId"]
+        other = ("0" if profile["estateId"][0] != "0" else "1") + profile["estateId"][1:]
+        try:
+            projector.verified_profile(profile_path, pin, stub(other))
+        except projector.ProjectionError as exc:
+            assert exc.name == "estate-profile-review-mismatch", exc
+        else:
+            raise AssertionError("a review of another estate was accepted for this profile")
+        expect_refusal(run_projector(profile_path, pin, root / "seed", verifier=stub(other)),
+                       "estate-profile-review-mismatch")
+        assert not (root / "seed").exists()
 
 
 if __name__ == "__main__":
@@ -422,4 +624,7 @@ if __name__ == "__main__":
     test_projection_is_the_cohort_under_the_profile_estate()
     test_mel_release_reads_the_projection_under_the_profile()
     test_projection_refuses_by_name()
+    test_projection_refuses_the_ledger_cohort_by_field_and_place()
+    test_projection_scans_the_given_ledger_and_its_parsed_values()
+    test_verified_profile_requires_the_reviewed_estate_id()
     print("project-estate-catalog tests passed")

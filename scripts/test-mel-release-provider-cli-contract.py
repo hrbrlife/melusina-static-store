@@ -714,7 +714,25 @@ def test_catalog_must_describe_the_bound_store():
 
 
 def retiring_values_by_field():
-    return {item["field"]: item for item in provider.retiring_estate_values()}
+    return {item["field"]: item["value"] for item in provider.retiring_estate_values()}
+
+
+def store_forbid_set():
+    """The Store's forbid set as the provider reads it: the committed rendering
+    of storeProductionForbiddenValues (TestRetiringEstateValuesFileIsTheStoreForbidSet)."""
+    return json.loads(provider.ESTATE_SCAN_VALUES.read_text(encoding="utf-8"))["values"]
+
+
+def refused_fields(message):
+    """Parse an estate-scan refusal into {field: [places]}."""
+    assert message.startswith("estate-scan-retiring-value: "), message
+    hits = {}
+    for part in message.removeprefix("estate-scan-retiring-value: ").split("; "):
+        if part.startswith("this document carries"):
+            break
+        field, places = part.split(" at ", 1)
+        hits[field] = places.split(", ")
+    return hits
 
 
 def expect_estate_scan_refusal(expected_fields, unexpected_fields=()):
@@ -724,12 +742,29 @@ def expect_estate_scan_refusal(expected_fields, unexpected_fields=()):
         message = str(exc)
     else:
         raise AssertionError(f"estate scan accepted a manifest carrying {sorted(expected_fields)}")
-    assert message.startswith("estate-scan-retiring-value: "), message
+    hits = refused_fields(message)
     for field in expected_fields:
-        assert field in message, (field, message)
+        assert field in hits, (field, message)
     for field in unexpected_fields:
-        assert field not in message, (field, message)
-    return message
+        assert field not in hits, (field, message)
+    return hits
+
+
+def escaped(value):
+    """value with one character written as a \\u escape, chosen so that the
+    text no longer shows the value in any letter case; the parsed document
+    still does."""
+    for index in range(1, len(value)):
+        hidden = value[:index] + "\\u%04x" % ord(value[index]) + value[index + 1:]
+        if value.lower() not in hidden.lower():
+            return hidden
+    raise AssertionError(f"no escape hides {value!r}")
+
+
+def with_note(json_text, raw_value, key="note"):
+    """Insert a raw (already escaped) JSON string member at the top level."""
+    assert json_text.startswith("{"), json_text[:20]
+    return '{"' + key + '": "' + raw_value + '", ' + json_text[1:]
 
 
 def test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog():
@@ -738,31 +773,61 @@ def test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog():
     provider operation, not only by a caller that remembers to scan."""
     document = checked_in_ledger_document()
     values = retiring_values_by_field()
-    assert set(values) == {
-        "retiring/catalog_origin.host",
-        "retiring/catalog_origin.parent-domain",
-        "retiring/release_squads_authority.multisig",
-        "retiring/release_squads_authority.vault",
-        "retiring/release_squads_authority.program_id",
-        "retiring/catalog_index_sha256",
+    store = store_forbid_set()
+    ledger_fields = {field for field in values if field.startswith("ledger/")}
+    assert ledger_fields == {
+        "ledger/catalog_origin.host",
+        "ledger/catalog_origin.parent-domain",
+        "ledger/release_squads_authority.multisig",
+        "ledger/release_squads_authority.vault",
+        "ledger/release_squads_authority.program_id",
+        "ledger/catalog_index_sha256",
     }, values
-    # Each value is the ledger's own, derived rather than restated.
-    assert values["retiring/catalog_origin.host"]["value"] == document["catalog_origin"].removeprefix("https://")
-    assert values["retiring/release_squads_authority.multisig"]["value"] == document["release_squads_authority"]["multisig"]
-    assert values["retiring/release_squads_authority.vault"]["value"] == document["release_squads_authority"]["vault"]
-    assert values["retiring/release_squads_authority.program_id"]["value"] == document["release_squads_authority"]["program_id"]
-    assert values["retiring/catalog_index_sha256"]["value"] == document["catalog_index_sha256"]
+    # Each ledger value is the ledger's own, derived rather than restated.
+    assert values["ledger/catalog_origin.host"] == document["catalog_origin"].removeprefix("https://")
+    for key in ("multisig", "vault", "program_id"):
+        assert values[f"ledger/release_squads_authority.{key}"] == document["release_squads_authority"][key]
+    assert values["ledger/catalog_index_sha256"] == document["catalog_index_sha256"]
+    # The rest is exactly the Store's forbid set, not a narrower copy: the
+    # retiring profile vector's values, the tenant hosts and the retiring
+    # facts the profile does not project, all recording the same ledger.
+    scanned_store = {field: value for field, value in values.items() if field not in ledger_fields}
+    assert scanned_store == store, (
+        "retiring-values-not-the-store-set",
+        sorted(set(store) - set(scanned_store)),
+        sorted(field for field in scanned_store if scanned_store[field] != store.get(field)),
+    )
+    assert set(provider.ESTATE_SCAN_REQUIRED_FIELDS) <= set(store), sorted(set(provider.ESTATE_SCAN_REQUIRED_FIELDS) - set(store))
+    assert store["catalog-ledger/catalog_origin"] == values["ledger/catalog_origin.host"]
+    assert store["catalog-ledger/catalog_index_sha256"] == values["ledger/catalog_index_sha256"]
+    for key in ("multisig", "vault", "program_id"):
+        assert store[f"catalog-ledger/release_squads_authority.{key}"] == values[f"ledger/release_squads_authority.{key}"]
+    program = values["ledger/release_squads_authority.program_id"]
+    program_fields = sorted(field for field, value in values.items() if value == program)
+    assert len(program_fields) == 3, program_fields
+    # Width control: the ledger's Popaye entry carries a retiring tenant host as
+    # its display name, a value only the Store's forbid set knows.
+    tenant_host = store["retiring/tenant-host-0"]
+    display = [
+        f"groups.{group_name}.apps.{name}.catalog_name"
+        for group_name, group in document["groups"].items()
+        for name, spec in group["apps"].items()
+        if spec["catalog_name"].lower() == tenant_host
+    ]
+    assert len(display) == 1, display
     old = with_env({
         "MEL_RELEASE_CONFIG": str(CHECKED_IN_LEDGER),
         "MEL_RELEASE_STORE_URL": document["catalog_origin"],
     })
     try:
-        # The Squads program is shared at its declared field, so the ledger is
-        # refused for the rest and not for that one occurrence.
-        expect_estate_scan_refusal(
-            [field for field in values if field != "retiring/release_squads_authority.program_id"],
-            ["retiring/release_squads_authority.program_id"],
+        # The Squads program is excepted at its declared field, so the ledger
+        # is refused for the rest and not for that one occurrence.
+        hits = expect_estate_scan_refusal(
+            [field for field in ledger_fields if field != "ledger/release_squads_authority.program_id"]
+            + ["retiring/tenant-host-0", "retiring/store.rootDomain", "retiring/root-domain"],
+            program_fields,
         )
+        assert display[0] in hits["retiring/tenant-host-0"], hits["retiring/tenant-host-0"]
         ready_app_id = next(
             app["appId"] for group in document["groups"].values() for app in group["apps"].values()
             if app.get("release_state") == "ready"
@@ -786,7 +851,10 @@ def test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog():
         restore_env(old)
 
 
-def test_estate_scan_refuses_each_retiring_value_by_field():
+def test_estate_scan_refuses_each_retiring_value_in_text_and_parsed_values():
+    """Every value of the forbid set is refused by its field: in a comment in
+    any letter case (the text search), and written with an escape as a value
+    and as a key (the parsed search, which the text cannot show)."""
     values = retiring_values_by_field()
     with tempfile.TemporaryDirectory() as tmp:
         config = Path(tmp) / "bazaar-catalog.yaml"
@@ -794,45 +862,98 @@ def test_estate_scan_refuses_each_retiring_value_by_field():
         clean = config.read_text(encoding="utf-8")
         old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN})
         try:
-            # Positive control: the fixture itself is clean.
+            # Positive control: the fixture itself is clean, and the report
+            # names every field it searched for.
             provider.catalog_config()
-            host = values["retiring/catalog_origin.host"]["value"]
-            parent = values["retiring/catalog_origin.parent-domain"]["value"]
-            index_digest = values["retiring/catalog_index_sha256"]["value"]
-            for note, fields in (
-                (f"# formerly https://{host.upper()}/apps", ["retiring/catalog_origin.host"]),
-                (f"# see store.{parent}", ["retiring/catalog_origin.parent-domain"]),
-                (f"# multisig {values['retiring/release_squads_authority.multisig']['value']}", ["retiring/release_squads_authority.multisig"]),
-                (f"# vault {values['retiring/release_squads_authority.vault']['value']}", ["retiring/release_squads_authority.vault"]),
-                (f"# program {values['retiring/release_squads_authority.program_id']['value']}", ["retiring/release_squads_authority.program_id"]),
-                (f"# index {index_digest.upper()}", ["retiring/catalog_index_sha256"]),
-            ):
-                config.write_text(clean + note + "\n", encoding="utf-8")
-                expect_estate_scan_refusal(fields)
-            # A host is matched as a whole DNS name, not as any substring.
-            config.write_text(clean + f"# x{parent}\n", encoding="utf-8")
-            provider.catalog_config()
-            # The Squads program is a network program: a catalog may declare
-            # it as its release authority's program, and only there.
-            shared = json.loads(clean)
-            shared["release_squads_authority"]["program_id"] = values["retiring/release_squads_authority.program_id"]["value"]
-            config.write_text(json.dumps(shared) + "\n", encoding="utf-8")
             text, document = provider.load_catalog_text(config)
             report = provider.estate_scan(text, document)
-            assert report["fields"]["retiring/release_squads_authority.program_id"] == (
-                "shared-at:release_squads_authority.program_id"
-            ), report
             assert report["status"] == "clean", report
-            config.write_text(
-                json.dumps(shared) + "\n# again " + values["retiring/release_squads_authority.program_id"]["value"] + "\n",
-                encoding="utf-8",
-            )
-            expect_estate_scan_refusal(["retiring/release_squads_authority.program_id"])
+            assert report["valueCount"] == len(values) and set(report["fields"]) == set(values), report
+            assert report["exceptions"][0]["name"] == "squads-v4-program" and not report["exceptions"][0]["applied"], report
+            note_line = f"line {clean.count(chr(10)) + 1}"
+            for field, value in sorted(values.items()):
+                config.write_text(clean + f"# was {value.upper()}\n", encoding="utf-8")
+                hits = expect_estate_scan_refusal([field])
+                assert hits[field] == [note_line], (field, hits)
+                hidden = escaped(value)
+                assert value.lower() not in hidden.lower(), field
+                config.write_text(with_note(clean, hidden), encoding="utf-8")
+                hits = expect_estate_scan_refusal([field])
+                assert "note" in hits[field], (field, hits)
+                config.write_text('{"notes": {"' + hidden + '": 1}, ' + clean[1:], encoding="utf-8")
+                hits = expect_estate_scan_refusal([field])
+                assert f"key notes.{value}" in hits[field], (field, hits)
+            # A near miss is not a hit: the retiring root domain's name under
+            # another top-level domain.
+            near = values["retiring/root-domain"].rsplit(".", 1)[0] + ".example"
+            assert not any(value.lower() in near for value in values.values()), near
+            config.write_text(clean + f"# see https://bazaar.{near}\n", encoding="utf-8")
+            provider.catalog_config()
         finally:
             restore_env(old)
 
 
-def test_estate_scan_reference_must_carry_the_core_fields():
+def test_estate_scan_exceptions_are_named_exact_and_single_place():
+    """The Squads v4 program, a network program, is the one retiring value a
+    manifest may carry, and only as the whole value of
+    release_squads_authority.program_id."""
+    values = retiring_values_by_field()
+    program = values["ledger/release_squads_authority.program_id"]
+    program_fields = sorted(field for field, value in values.items() if value == program)
+    excepted = "excepted:squads-v4-program@release_squads_authority.program_id"
+    with tempfile.TemporaryDirectory() as tmp:
+        config = Path(tmp) / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
+        shared = json.loads(config.read_text(encoding="utf-8"))
+        shared["release_squads_authority"]["program_id"] = program
+        shared_text = json.dumps(shared) + "\n"
+        old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN})
+        try:
+            config.write_text(shared_text, encoding="utf-8")
+            text, document = provider.load_catalog_text(config)
+            report = provider.estate_scan(text, document)
+            assert report["status"] == "clean", report
+            for field in program_fields:
+                assert report["fields"][field] == excepted, (field, report["fields"][field])
+            assert [(item["name"], item["at"], item["applied"]) for item in report["exceptions"]] == [
+                ("squads-v4-program", "release_squads_authority.program_id", True)
+            ], report["exceptions"]
+            # Everywhere else it is refused.
+            anchored = provider.yaml.safe_dump(shared, sort_keys=False)
+            program_line = f"  program_id: {program}\n"
+            assert anchored.count(program_line) == 1, anchored
+            anchored = f"note: &program {program}\n" + anchored.replace(program_line, "  program_id: *program\n")
+            lowered = dict(shared, release_squads_authority=dict(shared["release_squads_authority"], program_id=program.lower()))
+            for label, text in (
+                ("a comment", shared_text + f"# again {program}\n"),
+                ("an escaped copy in another field", with_note(shared_text, escaped(program))),
+                ("a copy anchored in another field and aliased into the declared one", anchored),
+                ("another letter case at the declared field", json.dumps(lowered) + "\n"),
+            ):
+                config.write_text(text, encoding="utf-8")
+                scanned, parsed = provider.load_catalog_text(config)
+                try:
+                    provider.estate_scan(scanned, parsed)
+                except provider.ProviderError as exc:
+                    hits = refused_fields(str(exc))
+                    assert set(program_fields) <= set(hits), (label, hits)
+                else:
+                    raise AssertionError(f"the Squads program exception admitted {label}")
+            # The exception must name a field the forbid set has.
+            text, document = provider.load_catalog_text(config)
+            try:
+                provider.estate_scan(text, document, exceptions=(
+                    {**provider.ESTATE_SCAN_EXCEPTIONS[0], "valueField": "retiring/no-such-field"},
+                ))
+            except provider.ProviderError as exc:
+                assert str(exc).startswith("estate-scan-reference-unusable: exception squads-v4-program"), exc
+            else:
+                raise AssertionError("an exception naming no forbid field was applied")
+        finally:
+            restore_env(old)
+
+
+def test_estate_scan_refuses_an_unusable_reference_or_values_file():
     ledger = CHECKED_IN_LEDGER.read_text(encoding="utf-8")
     text, document = "{}\n", {}
     with tempfile.TemporaryDirectory() as tmp:
@@ -860,6 +981,110 @@ def test_estate_scan_reference_must_carry_the_core_fields():
         # Positive control: the same reference, unmutated, scans.
         reference.write_text(ledger, encoding="utf-8")
         assert provider.estate_scan(text, document, reference)["status"] == "clean"
+
+        # The Store's forbid set is refused, not narrowed, when its file is
+        # truncated, foreign or unreadable.
+        committed = provider.ESTATE_SCAN_VALUES.read_text(encoding="utf-8")
+        store = json.loads(committed)
+        values_file = Path(tmp) / "retiring-estate-values.json"
+        old_values = provider.ESTATE_SCAN_VALUES
+        provider.ESTATE_SCAN_VALUES = values_file
+
+        def variant(change):
+            value = json.loads(committed)
+            change(value)
+            return json.dumps(value, indent=2) + "\n"
+
+        try:
+            for label, raw, expected in (
+                ("no tenant host", variant(lambda v: v["values"].pop("retiring/tenant-host-0")),
+                 "lacks retiring/tenant-host-0"),
+                ("no licence registry", variant(lambda v: v["values"].pop("retiring/programs.license-registry.programId")),
+                 "lacks retiring/programs.license-registry.programId"),
+                ("another schema", variant(lambda v: v.update(schema="melusina-retiring-estate-values/v0")),
+                 "is not a melusina-retiring-estate-values/v1 document"),
+                ("an empty value", variant(lambda v: v["values"].update({"retiring/root-domain": ""})),
+                 "malformed value for 'retiring/root-domain'"),
+                ("a duplicate key", committed.replace('"values": {', '"values": {"retiring/root-domain": "x.invalid", ', 1),
+                 "duplicate JSON key 'retiring/root-domain'"),
+            ):
+                assert raw != committed, label
+                values_file.write_text(raw, encoding="utf-8")
+                try:
+                    provider.estate_scan(text, document, reference)
+                except provider.ProviderError as exc:
+                    assert str(exc).startswith("estate-scan-reference-unusable: "), (label, exc)
+                    assert expected in str(exc), (label, exc)
+                else:
+                    raise AssertionError(f"estate scan ran with a values file that has {label}")
+            values_file.unlink()
+            try:
+                provider.estate_scan(text, document, reference)
+            except provider.ProviderError as exc:
+                assert str(exc).startswith("estate-scan-reference-unusable: "), exc
+            else:
+                raise AssertionError("estate scan ran with no values file")
+            # Positive control: the committed bytes, copied, scan.
+            values_file.write_text(committed, encoding="utf-8")
+            report = provider.estate_scan(text, document, reference)
+            assert report["status"] == "clean" and report["valueCount"] == len(store["values"]) + 6, report
+        finally:
+            provider.ESTATE_SCAN_VALUES = old_values
+
+
+def test_provider_estate_scans_every_selection_receipt_it_reads():
+    """A release reads the app's selection receipt beside the manifest; the
+    receipt is scanned like the manifest, with no exception, before any field
+    of it is trusted."""
+    values = retiring_values_by_field()
+    app_id = "estate-scan-receipt-app"
+    commit = "c" * 40
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        config = root / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": app_id, "source_path": "app", "source_commit": commit}})
+        receipt_path = root / "prepublish-selections" / f"{app_id}.json"
+        receipt = receipt_path.read_text(encoding="utf-8")
+        checks = '"checks": ["fixture"]'
+        assert receipt.count(checks) == 1, receipt
+        host = values["retiring/tenant-host-1"]
+        vault = values["ledger/release_squads_authority.vault"]
+        program = values["ledger/release_squads_authority.program_id"]
+        old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN})
+        try:
+            provider.require_release_ready(app_id)  # positive control
+            for label, text, field, place in (
+                ("prose", receipt.replace(checks, f'"checks": ["fixture diagnosed on {host}"]'),
+                 "retiring/tenant-host-1", "line 1"),
+                ("an escaped value", receipt.replace(checks, f'"checks": ["fixture {escaped(host)}"]'),
+                 "retiring/tenant-host-1", "internalControls.checks.0"),
+                ("the Squads program at the field a manifest may carry it in",
+                 '{"release_squads_authority": {"program_id": "' + program + '"}, ' + receipt[1:],
+                 "ledger/release_squads_authority.program_id", "release_squads_authority.program_id"),
+            ):
+                receipt_path.write_text(text, encoding="utf-8")
+                try:
+                    provider.require_release_ready(app_id)
+                except provider.ProviderError as exc:
+                    hits = refused_fields(str(exc))
+                    assert place in hits.get(field, []), (label, hits)
+                else:
+                    raise AssertionError(f"a selection receipt carrying {label} was accepted")
+            # A duplicate key cannot hide a value from the parsed search: the
+            # escaped vault is in no other form in the text.
+            hidden = with_note(with_note(receipt, "later"), escaped(vault))
+            assert not any(value.lower() in hidden.lower() for value in values.values()), hidden
+            receipt_path.write_text(hidden, encoding="utf-8")
+            try:
+                provider.require_release_ready(app_id)
+            except provider.ProviderError as exc:
+                assert "duplicate JSON key 'note'" in str(exc), exc
+            else:
+                raise AssertionError("a selection receipt with a duplicate key was accepted")
+            receipt_path.write_text(receipt, encoding="utf-8")
+            provider.require_release_ready(app_id)
+        finally:
+            restore_env(old)
 
 
 def test_release_helper_owns_index_and_atomic_approval_commands():
@@ -3221,8 +3446,10 @@ if __name__ == "__main__":
     test_submit_refuses_a_missing_or_malformed_estate_target()
     test_catalog_must_describe_the_bound_store()
     test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog()
-    test_estate_scan_refuses_each_retiring_value_by_field()
-    test_estate_scan_reference_must_carry_the_core_fields()
+    test_estate_scan_refuses_each_retiring_value_in_text_and_parsed_values()
+    test_estate_scan_exceptions_are_named_exact_and_single_place()
+    test_estate_scan_refuses_an_unusable_reference_or_values_file()
+    test_provider_estate_scans_every_selection_receipt_it_reads()
     test_release_helper_owns_index_and_atomic_approval_commands()
     test_promote_repairs_registered_resume_runtime_binding()
     test_release_entry_status_uses_zero_based_borsh_ordinals()

@@ -88,6 +88,12 @@ type chainReader interface {
 	// RELEASE.json — to enforce the operator tier ceiling (B1-05/B2-05).
 	FetchReleaseEntryAppID(ctx context.Context, addrB58 string) (appID [32]byte, err error)
 	FetchStoreOperatorAuthz(ctx context.Context, addrB58 string) (status verify.AuthorizationStatus, storeAuthority verify.Pubkey, allowedTierMask uint8, isRoot bool, storeDomainHash [32]byte, err error)
+	// FetchLicenseEntry and FetchResellerEntry are the own-licence rule's
+	// reads (store_own_licence.go): the Store's LicenseEntry and the
+	// ResellerEntry it names, each owned by the pinned program and decoded
+	// completely. An absent account is verify.ErrPDANotFound.
+	FetchLicenseEntry(ctx context.Context, addrB58 string) (storeLicenceEntry, error)
+	FetchResellerEntry(ctx context.Context, addrB58 string) (storeResellerEntry, error)
 	// FetchBlacklistStatus reads one BlacklistStatusEntry with its owner
 	// (blacklist_status.go). An absent account is verify.ErrPDANotFound, which
 	// every caller refuses: absence is not a clearance statement.
@@ -324,6 +330,9 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 // + store_domain_hash(cfg.Domain), and its store_authority equals the sidecar's
 // derived operator signing pubkey. Installer/root artifacts additionally require
 // is_root=true so reseller/tenant stores cannot originate fleet-wide artifacts.
+// Last, the licence the row is under must be one verify_license accepts, under
+// this estate's master mint: its LicenseEntry Active and the ResellerEntry it
+// names Active (verifyStoreOwnLicence). Revoking either leaves the row Active.
 func VerifyStoreOperator(ctx context.Context, cr chainReader, cfg Config, operatorPubkey [32]byte, requireRoot bool) (allowedTierMask uint8, licenseMint pda.Pubkey, err error) {
 	storeDomainHash := primitives.StoreDomainHash(cfg.Domain)
 	licenseMint, err = primitives.PubkeyFromBase58(strings.TrimSpace(cfg.LicenseNFTMint))
@@ -349,6 +358,9 @@ func VerifyStoreOperator(ctx context.Context, cr chainReader, cfg Config, operat
 	}
 	if requireRoot && !isRoot {
 		return 0, pda.Pubkey{}, fmt.Errorf("check=store_operator_authz: is_root=false; installer artifacts require root store authority")
+	}
+	if err := verifyStoreOwnLicence(ctx, cr, cfg, licenseMint); err != nil {
+		return 0, pda.Pubkey{}, err
 	}
 	return allowedTierMask, licenseMint, nil
 }
@@ -464,9 +476,11 @@ func verifyCurrentStoreReleaseListing(ctx context.Context, cr chainReader, cfg C
 // verifyStoreReleaseListing proves that the globally active ReleaseEntry is
 // intentionally projected by THIS store. The configuration pins one store
 // authority; the active StoreOperatorAuthorization pins that authority to the
-// configured license+domain; and the listing PDA pins that tuple to this exact
+// configured license+domain; the licence is one verify_license accepts
+// (verifyStoreOwnLicence); and the listing PDA pins that tuple to this exact
 // app hash. A missing, malformed, mismatched, revoked, unknown, or RPC-unreadable
-// listing always refuses service. Only an explicitly Delisted exact listing is
+// listing always refuses service, and so does a Store whose licence or whose
+// licence's reseller is revoked. Only an explicitly Delisted exact listing is
 // distinguishable so the catalog projection can omit that one target.
 func verifyStoreReleaseListing(ctx context.Context, cr chainReader, cfg Config, appHash [32]byte, releasePDA pda.Pubkey) error {
 	if strings.TrimSpace(cfg.StoreAuthority) == "" {
@@ -497,6 +511,11 @@ func verifyStoreReleaseListing(ctx context.Context, cr chainReader, cfg Config, 
 	}
 	if onchainDomainHash != domainHash {
 		return fmt.Errorf("check=store_release_listing: StoreOperatorAuthorization domain hash %x != cfg domain hash %x", onchainDomainHash[:], domainHash[:])
+	}
+	// A Store-wide verdict, checked before this row's listing so that no row
+	// is omitted as Delisted by a Store whose own licence is invalid.
+	if err := verifyStoreOwnLicence(ctx, cr, cfg, licenseMint); err != nil {
+		return err
 	}
 
 	listingPDA, _, err := pda.StoreReleaseListing(storeAuthority, appHash, licenseRegistryProgramID())

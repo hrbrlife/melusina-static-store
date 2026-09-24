@@ -96,6 +96,9 @@ type mockChainReader struct {
 	installerErr  error
 	foundationErr error
 	sidecarErr    error
+	// licenceErr fails the own-licence reads (FetchLicenseEntry and
+	// FetchResellerEntry) as an RPC failure would.
+	licenceErr error
 }
 
 type mockReleaseEntry struct {
@@ -349,6 +352,37 @@ func (m *mockChainReader) FetchBlacklistStatus(ctx context.Context, addr string)
 		return blacklistStatusEntry{}, verify.ErrPDANotFound
 	}
 	return readBlacklistStatusAccount(addr, data, owner)
+}
+
+// FetchLicenseEntry and FetchResellerEntry serve the accounts seeded in
+// rawAccounts through the production readers (owner check and complete
+// decode). Nothing seeded is absent, exactly as on chain.
+func (m *mockChainReader) FetchLicenseEntry(ctx context.Context, addr string) (storeLicenceEntry, error) {
+	if m.licenceErr != nil {
+		return storeLicenceEntry{}, m.licenceErr
+	}
+	data, owner, err := m.fetchRawAccount(ctx, addr)
+	if err != nil {
+		return storeLicenceEntry{}, err
+	}
+	if data == nil {
+		return storeLicenceEntry{}, verify.ErrPDANotFound
+	}
+	return readStoreLicenceAccount(addr, data, owner)
+}
+
+func (m *mockChainReader) FetchResellerEntry(ctx context.Context, addr string) (storeResellerEntry, error) {
+	if m.licenceErr != nil {
+		return storeResellerEntry{}, m.licenceErr
+	}
+	data, owner, err := m.fetchRawAccount(ctx, addr)
+	if err != nil {
+		return storeResellerEntry{}, err
+	}
+	if data == nil {
+		return storeResellerEntry{}, verify.ErrPDANotFound
+	}
+	return readStoreResellerAccount(addr, data, owner)
 }
 
 func (m *mockChainReader) FetchInstallerReleaseEntryMeta(_ context.Context, addr string) (installerReleaseMeta, error) {

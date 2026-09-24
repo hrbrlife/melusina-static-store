@@ -39,6 +39,11 @@ type memoChainReader struct {
 	mu        sync.Mutex
 	authz     map[string]*authzEntry
 	clearance map[string]*clearanceEntry
+	// licence and reseller are the Store's own LicenseEntry and the
+	// ResellerEntry it names (store_own_licence.go). Like the operator row they
+	// are request-invariant, and every row's serve gate reads both.
+	licence  map[string]*memoRead[storeLicenceEntry]
+	reseller map[string]*memoRead[storeResellerEntry]
 }
 
 // authzEntry is one in-flight-or-settled read. done is closed when res is final.
@@ -61,7 +66,60 @@ func newMemoChainReader(inner chainReader) *memoChainReader {
 		chainReader: inner,
 		authz:       make(map[string]*authzEntry, 1),
 		clearance:   make(map[string]*clearanceEntry, 1),
+		licence:     make(map[string]*memoRead[storeLicenceEntry], 1),
+		reseller:    make(map[string]*memoRead[storeResellerEntry], 1),
 	}
+}
+
+// memoRead is one in-flight-or-settled read of one address, with the same
+// single-flight and cancellation rules as authzEntry.
+type memoRead[T any] struct {
+	done  chan struct{}
+	value T
+	err   error
+}
+
+// readOnce answers addr from table, reading it through read at most once per
+// request. A caller whose context dies while waiting returns its own error;
+// an answer produced under a cancelled context is dropped from the table
+// before the waiters see it, so the next fresh caller re-reads the chain.
+func readOnce[T any](ctx context.Context, mu *sync.Mutex, table map[string]*memoRead[T], addr string, read func(context.Context, string) (T, error)) (T, error) {
+	mu.Lock()
+	entry, found := table[addr]
+	if !found {
+		entry = &memoRead[T]{done: make(chan struct{})}
+		table[addr] = entry
+	}
+	mu.Unlock()
+
+	if found {
+		select {
+		case <-entry.done:
+			return entry.value, entry.err
+		case <-ctx.Done():
+			var zero T
+			return zero, ctx.Err()
+		}
+	}
+
+	entry.value, entry.err = read(ctx, addr)
+	if ctx.Err() != nil {
+		mu.Lock()
+		if table[addr] == entry {
+			delete(table, addr)
+		}
+		mu.Unlock()
+	}
+	close(entry.done)
+	return entry.value, entry.err
+}
+
+func (m *memoChainReader) FetchLicenseEntry(ctx context.Context, addrB58 string) (storeLicenceEntry, error) {
+	return readOnce(ctx, &m.mu, m.licence, addrB58, m.chainReader.FetchLicenseEntry)
+}
+
+func (m *memoChainReader) FetchResellerEntry(ctx context.Context, addrB58 string) (storeResellerEntry, error) {
+	return readOnce(ctx, &m.mu, m.reseller, addrB58, m.chainReader.FetchResellerEntry)
 }
 
 // clearanceEntry mirrors authzEntry for a BlacklistStatusEntry read, keyed by

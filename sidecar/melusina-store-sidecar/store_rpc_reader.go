@@ -162,6 +162,22 @@ func (c *rpcFailoverChainReader) FetchStoreOperatorAuthz(ctx context.Context, ad
 	return status, authority, tierMask, isRoot, domainHash, err
 }
 
+func (c *rpcFailoverChainReader) FetchLicenseEntry(ctx context.Context, addr string) (entry storeLicenceEntry, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		entry, err = reader.FetchLicenseEntry(ctx, addr)
+		return err
+	})
+	return entry, err
+}
+
+func (c *rpcFailoverChainReader) FetchResellerEntry(ctx context.Context, addr string) (entry storeResellerEntry, err error) {
+	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
+		entry, err = reader.FetchResellerEntry(ctx, addr)
+		return err
+	})
+	return entry, err
+}
+
 func (c *rpcFailoverChainReader) FetchBlacklistStatus(ctx context.Context, addr string) (entry blacklistStatusEntry, err error) {
 	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
 		entry, err = reader.FetchBlacklistStatus(ctx, addr)

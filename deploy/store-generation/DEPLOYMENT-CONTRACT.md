@@ -183,6 +183,22 @@ paths. Before enabling the unit it must install or create:
    `/etc/systemd/system/melusina-store-listing-signer.service`,
    `/etc/systemd/system/melusina-update-controller.service`, and
    `/etc/systemd/system/melusina-update-controller.timer`.
+   The Store, listing-signer and provider pairing signer units (item 10) run
+   under `ProtectSystem=strict`, and their `ReadWritePaths` and
+   `ReadOnlyPaths` name only paths that exist before the first start:
+   `/etc/melusina/store` (read-only), each signer's own runtime directory, and,
+   for the Store alone, the rendered state root `/var/lib/melusina-store`
+   (read-write). Every path the rendered config makes the Store write is
+   under that root, which must exist before `genesis-dist-init` runs. systemd
+   refuses to start a unit, with `226/NAMESPACE`, when a listed path without
+   a leading `-` is missing, before the Store runs; a path that may be absent
+   at first start, such as `catalog_generation_root`, needs the `-`. The
+   signers get no write access to the state root.
+   `TestBundledStoreUnitNamespacePathsExistAtFirstStart` checks every bundled
+   unit against the renderer's own output. The retiring estate's roots
+   `/var/lib/melusina-store-{private,catalog,migrations}`, which the legacy
+   `store.config.template.json` names, are not granted, so a config copied
+   from that template cannot run under these units.
    The listing-signer unit is installed but enabled **only** when the rendered
    config sets `listing_signer_socket`. It owns that mode-0600 socket and has
    only the Store's configured operator derivation and staged-release read

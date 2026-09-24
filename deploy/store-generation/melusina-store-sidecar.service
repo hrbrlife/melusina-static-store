@@ -31,7 +31,15 @@ RestrictSUIDSGID=yes
 LockPersonality=yes
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 ReadOnlyPaths=/etc/melusina/store
-ReadWritePaths=/var/lib/melusina-store /var/lib/melusina-store-private /var/lib/melusina-store-catalog /var/lib/melusina-store-migrations
+# The rendered config (estate-store-config-render) puts every root the Store
+# writes under /var/lib/melusina-store: dist-publish, private-app-candidates,
+# app-catalog-generations, migrations, catalog-source and the enrollment
+# state. That directory exists before the first start, because
+# genesis-dist-init refuses to run without it. systemd refuses to start a
+# unit (226/NAMESPACE) when a path listed here without a leading '-' is
+# missing; store_unit_namespace_paths_test.go admits only paths that exist
+# before the first start.
+ReadWritePaths=/var/lib/melusina-store
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=melusina-store-sidecar

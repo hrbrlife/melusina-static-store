@@ -57,7 +57,7 @@ func TestStoreGenerationBundleCarriesConstrainedListingSignerUnit(t *testing.T) 
 		"listing-signer -config /etc/melusina/store/store.config.json",
 		"RuntimeDirectory=melusina",
 		"RuntimeDirectoryMode=0700",
-		"ReadOnlyPaths=/etc/melusina/store /var/lib/melusina-store-private",
+		"ReadOnlyPaths=/etc/melusina/store\n",
 		"ReadWritePaths=/run/melusina",
 		"NoNewPrivileges=yes",
 	} {

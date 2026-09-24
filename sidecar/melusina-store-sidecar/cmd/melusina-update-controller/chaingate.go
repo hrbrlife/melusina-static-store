@@ -207,7 +207,14 @@ func (g *solanaChainGate) gateSidecarCascade(ctx context.Context, c componentrel
 		return err
 	}
 	sidecarID := c.Chain.SidecarID
+	// The signed key version is the one derived with. 0 (an omitted keyVersion)
+	// is refused by the same name as the Store's promote and serve gates
+	// (componentrelease validate already refuses it inside Verify; this keeps
+	// the gate itself from deriving an address the program never writes).
 	keyVersion := c.Chain.KeyVersion
+	if keyVersion == 0 {
+		return fmt.Errorf("chain gate %s: %w", c.ComponentID, componentrelease.ErrSidecarIdentityKeyVersionZero)
+	}
 
 	// Phase 1 — derive every doc-supplied PDA from the pinned mints + seeds and REFUSE
 	// any mismatch before touching the chain.

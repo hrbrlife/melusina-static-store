@@ -284,19 +284,21 @@ func deleteResellerSidecarApproval(t *testing.T, f *keylessFixture) {
 func TestKeyBearingSidecarStillRequiresItsIdentity(t *testing.T) {
 	f := newKeylessFixture(t)
 	f.m.sidecarErr = nil // absent, not an RPC error: verify.ErrPDANotFound
-	c := f.component
-	c.Chain.Kind = componentrelease.AuthoritySidecarIdentity
-	c.Chain.KeyVersion = 1
-	c.Chain.IdentityPDA = "declared-by-the-publisher"
-	err := f.svc.verifyComponentReleaseOnChain(context.Background(), c)
-	if err == nil || !strings.Contains(err.Error(), "fetch SidecarIdentityEntry") || !errors.Is(err, verify.ErrPDANotFound) {
-		t.Fatalf("key-bearing-sidecar-without-identity-accepted: err=%v", err)
-	}
-	// Positive control: with its identity registered it promotes.
+	// The component names the seed-derived identity address (the promote gate
+	// refuses any other), so the refusal below is the account's absence.
 	sidPDA, _, err := primitives.DeriveSidecarIdentity(f.license, f.sidecarID, 1, programID)
 	if err != nil {
 		t.Fatal(err)
 	}
+	c := f.component
+	c.Chain.Kind = componentrelease.AuthoritySidecarIdentity
+	c.Chain.KeyVersion = 1
+	c.Chain.IdentityPDA = sidPDA.Base58()
+	err = f.svc.verifyComponentReleaseOnChain(context.Background(), c)
+	if err == nil || !strings.Contains(err.Error(), "fetch SidecarIdentityEntry") || !errors.Is(err, verify.ErrPDANotFound) {
+		t.Fatalf("key-bearing-sidecar-without-identity-accepted: err=%v", err)
+	}
+	// Positive control: with its identity registered it promotes.
 	f.m.sidecarIdentity[sidPDA.Base58()] = mockSidecarIdentity{sid: verify.SidecarIdentity{Status: verify.AttestationStatusActive, BinaryHash: f.artifact}}
 	if err := f.svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
 		t.Fatalf("key-bearing-sidecar-with-identity-refused: %v", err)

@@ -61,7 +61,12 @@ func Projection(profile EstateProfileV1) (map[string]string, error) {
 	}
 	for _, program := range profile.Programs {
 		projection[FieldProgramID(program.Role)] = program.ProgramID
-		projection["programs."+program.Role+".upgradeAuthority"] = program.UpgradeAuthority
+		// A final program has no upgrade authority, so the estate defines no
+		// value to compare one with: a declaration of it is unknown, never a
+		// match against the empty string.
+		if !program.Final {
+			projection["programs."+program.Role+".upgradeAuthority"] = program.UpgradeAuthority
+		}
 		projection["programs."+program.Role+".executableSha256"] = program.ExecutableSHA256
 	}
 	for _, program := range profile.ExternalPrograms {

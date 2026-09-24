@@ -24,7 +24,7 @@ const vectorsPath = "../../testdata/estate-profile-vectors.json"
 // updateVectors rewrites the committed file from the fixtures. It is the only
 // way the file is ever produced; running the suite without it re-derives every
 // recorded value and compares.
-var updateVectors = flag.Bool("update-vectors", false, "rewrite testdata/estate-profile-vectors.json from the fixtures")
+var updateVectors = flag.Bool("update-vectors", false, "rewrite testdata/estate-profile-vectors.json and testdata/provider-install-authorization-vectors.json from the fixtures")
 
 const vectorsSchema = "melusina.estate.profile-vectors.v1"
 
@@ -160,7 +160,7 @@ func buildVectors(t *testing.T) vectorsDocument {
 			"A placeholder address is base58(sha256(\"MELUSINA_ILLUSTRATIVE_PLACEHOLDER_V1:\" + label)); a placeholder digest is that sha256 in hex. It is canonically valid and deliberately fictitious.",
 			"preimageHex is the canonical digest preimage: W(domain) then every field in declaration order, top-level signatures excluded. profileSha256 is its SHA-256. A second implementation must reproduce both byte for byte.",
 			"goSources is the SHA-256 of every non-test Go file of the package the vectors gate. The deployer, the Store and authz carry byte-identical copies; a copy that drifts fails its own suite.",
-			"The paype-devnet vector is ILLUSTRATIVE. Its public values are read from tracked sources in the deployer line; every field named in illustrativeFields is a placeholder and is not a measurement of the live estate.",
+			"The paype-devnet vector is ILLUSTRATIVE. Its public values are read from tracked sources and read-only devnet readback; every field named in illustrativeFields is a placeholder and is not a measurement of the live estate.",
 		},
 		GoSources: packageGoSources(t),
 	}
@@ -188,7 +188,7 @@ func buildVectors(t *testing.T) vectorsDocument {
 		},
 		{
 			name:         "paype-devnet-revision-1",
-			description:  "The estate as it stands today, from public values only: devnet genesis, the Squads v4 program, the licence registry and witness verifier program ids, the core vault read back as 3 of 4 with four full-permission members, the root install admin, and the root store bazaar.melusina-os.org.",
+			description:  "The retiring estate from public values: devnet genesis, the Squads v4 program, the licence registry and witness verifier program ids, the witness verifier final (no upgrade authority), the core multisig and its vault, the licence registry's observed upgrade authority, the root install admin, and the root store bazaar.melusina-os.org. Role shape and other fields remain illustrative where listed.",
 			illustrative: true,
 			fields:       paypeIllustrativeFields,
 			profile:      paype,
@@ -223,6 +223,7 @@ func buildVectors(t *testing.T) vectorsDocument {
 	}
 
 	raw := marshalProfile(t, rehearsal)
+	governedAuthority := rehearsal.Programs[0].UpgradeAuthority
 	thresholdChanged := rehearsal
 	thresholdChanged.OwnerPolicy.Threshold = 3
 	thresholdChanged = signProfile(t, thresholdChanged, "owner-a", "owner-b", "owner-c")
@@ -262,6 +263,36 @@ func buildVectors(t *testing.T) vectorsDocument {
 			Name: "missing-field", Stage: "decode", Refusal: RefusalJSONMissingField + ":$.network.commitment",
 			Description: "Every key of every object is required: nothing is optional and nothing defaults.",
 			Document:    string(mutateJSON(t, raw, `,"commitment":"finalized"`, ``)),
+		},
+		{
+			Name: "final-program-with-authority", Stage: "decode", Refusal: RefusalProgramMustBeFinal + ":programs.witness-verifier.upgradeAuthority",
+			Description: "The witness verifier is deployed final: finalized read-back finds no upgrade authority. A profile naming one asks its owners to sign an authority the chain does not have.",
+			Document:    string(mutateJSON(t, raw, `"upgradeAuthority":"","final":true`, `"upgradeAuthority":"`+governedAuthority+`","final":true`)),
+		},
+		{
+			Name: "final-program-stated-governed", Stage: "decode", Refusal: RefusalProgramMustBeFinal + ":programs.witness-verifier.final",
+			Description: "The witness verifier stated as a governed program with the core vault as its authority, as revisions of these vectors before the final state existed did.",
+			Document:    string(mutateJSON(t, raw, `"upgradeAuthority":"","final":true`, `"upgradeAuthority":"`+governedAuthority+`","final":false`)),
+		},
+		{
+			Name: "governed-program-stated-final", Stage: "decode", Refusal: RefusalProgramMustBeGoverned + ":programs.license-registry.final",
+			Description: "The licence registry stays governed by the core vault. Final is a closed property of the witness-verifier role, not a choice a profile makes.",
+			Document:    string(mutateJSON(t, raw, `"upgradeAuthority":"`+governedAuthority+`","final":false`, `"upgradeAuthority":"","final":true`)),
+		},
+		{
+			Name: "governed-program-without-authority", Stage: "decode", Refusal: RefusalIncomplete + ":programs.license-registry.upgradeAuthority",
+			Description: "A governed program with no stated authority is a half-profile, refused as incomplete rather than read as final.",
+			Document:    string(mutateJSON(t, raw, `"upgradeAuthority":"`+governedAuthority+`","final":false`, `"upgradeAuthority":"","final":false`)),
+		},
+		{
+			Name: "program-final-missing", Stage: "decode", Refusal: RefusalJSONMissingField + ":$.programs[1].final",
+			Description: "The final flag is required on every program; its absence is not a default of false.",
+			Document:    string(mutateJSON(t, raw, `"upgradeAuthority":"","final":true,`, `"upgradeAuthority":"",`)),
+		},
+		{
+			Name: "program-final-not-boolean", Stage: "decode", Refusal: RefusalJSONWrongType + ":$.programs[1].final",
+			Description: "The final flag is a JSON boolean; the string \"true\" is a different document.",
+			Document:    string(mutateJSON(t, raw, `"final":true`, `"final":"true"`)),
 		},
 		{
 			Name: "draft-not-enrollable", Stage: "decode", Refusal: RefusalDraftNotEnrollable,
@@ -379,6 +410,16 @@ func buildVectors(t *testing.T) vectorsDocument {
 			Description: "The same control on the licence registry program id.",
 		},
 		{
+			Name: "final-program-authority-undefined", Profile: "new-estate-revision-1", Refusal: RefusalProjectionFieldUnknown + ":programs.witness-verifier.upgradeAuthority",
+			Declared:    map[string]string{"programs.witness-verifier.upgradeAuthority": governedAuthority},
+			Description: "A final program has no upgrade authority, so the estate defines no such value: a declaration of one is unknown, not compared with an empty string.",
+		},
+		{
+			Name: "governed-program-authority-matches", Profile: "new-estate-revision-1",
+			Declared:    map[string]string{"programs.license-registry.upgradeAuthority": governedAuthority},
+			Description: "The positive control: the governed licence registry's authority is still an estate value a declaration must equal.",
+		},
+		{
 			Name: "projection-field-unknown", Profile: "new-estate-revision-1", Refusal: RefusalProjectionFieldUnknown + ":anchors.legacyMasterMint",
 			Declared:    map[string]string{"anchors.legacyMasterMint": rehearsal.Anchors.MasterMint},
 			Description: "A declared key this estate does not define. Unknown stops; it is not an absent value with a default.",
@@ -386,17 +427,19 @@ func buildVectors(t *testing.T) vectorsDocument {
 		{
 			Name: "projection-matches", Profile: "paype-devnet-revision-1",
 			Declared: map[string]string{
-				FieldGenesisHash:                       paypeDevnetGenesisHash,
-				FieldStoreRootDomain:                   paypeRootStoreDomain,
-				FieldStoreRootDomainSHA256:             paype.Store.RootDomainSHA256,
-				FieldStoreOperatorKey:                  paypeRootStoreOperatorKey,
-				"programs.license-registry.programId":  paypeLicenseRegistryID,
-				"programs.witness-verifier.programId":  paypeWitnessVerifierID,
-				"externalPrograms.squads-v4.programId": paypeSquadsV4ProgramID,
-				"roles.core.vault":                     paypeCoreVault,
-				"roles.root-install-admin.vault":       paypeRootInstallAdmin,
+				FieldGenesisHash:                             paypeDevnetGenesisHash,
+				FieldStoreRootDomain:                         paypeRootStoreDomain,
+				FieldStoreRootDomainSHA256:                   paype.Store.RootDomainSHA256,
+				FieldStoreOperatorKey:                        paypeRootStoreOperatorKey,
+				"programs.license-registry.programId":        paypeLicenseRegistryID,
+				"programs.witness-verifier.programId":        paypeWitnessVerifierID,
+				"externalPrograms.squads-v4.programId":       paypeSquadsV4ProgramID,
+				"roles.core.vault":                           paypeCoreVault,
+				"roles.core.multisig":                        paypeCoreMultisig,
+				"programs.license-registry.upgradeAuthority": paypeRegistryAuthority,
+				"roles.root-install-admin.vault":             paypeRootInstallAdmin,
 			},
-			Description: "The positive control: the public values of today's estate are exactly its own projection.",
+			Description: "The positive control: the recorded retiring-estate values match their projection.",
 		},
 		{
 			Name: "relabelled-network", Profile: "new-estate-revision-1", ObservedGenesisHash: paypeDevnetGenesisHash,
@@ -582,7 +625,7 @@ func TestVectorsDecodeControls(t *testing.T) {
 			}
 		})
 	}
-	for _, want := range []string{"duplicate-key", "unknown-field", "mainnet-genesis", "changed-threshold-without-succession"} {
+	for _, want := range []string{"duplicate-key", "unknown-field", "mainnet-genesis", "changed-threshold-without-succession", "final-program-with-authority", "governed-program-stated-final", "governed-program-without-authority"} {
 		if !hasVector(document.Decode, want) {
 			t.Fatalf("the named control %q is not in %s", want, vectorsPath)
 		}
@@ -677,14 +720,14 @@ func TestVectorsProjectionControls(t *testing.T) {
 			requireRefusal(t, err, vector.Refusal)
 		})
 	}
-	for _, want := range []string{"foreign-anchor", "relabelled-network"} {
+	for _, want := range []string{"foreign-anchor", "relabelled-network", "final-program-authority-undefined", "governed-program-authority-matches"} {
 		if !named[want] {
 			t.Fatalf("the named control %q is not in %s", want, vectorsPath)
 		}
 	}
 }
 
-// The public values in the paype vector are the ones the record carries; the
+// The public values in the paype vector are the recorded snapshot; the
 // rest are declared placeholders. This keeps the two apart in the file.
 func TestPaypeVectorKeepsPublicValuesAndPlaceholdersApart(t *testing.T) {
 	document := loadVectors(t)
@@ -696,6 +739,8 @@ func TestPaypeVectorKeepsPublicValuesAndPlaceholdersApart(t *testing.T) {
 		{"externalPrograms.squads-v4.programId", profile.ExternalPrograms[0].ProgramID, paypeSquadsV4ProgramID},
 		{"anchors.masterMint", profile.Anchors.MasterMint, paypeMasterMint},
 		{"roles.core.vault", profile.Roles[0].Vault, paypeCoreVault},
+		{"roles.core.multisig", profile.Roles[0].Multisig, paypeCoreMultisig},
+		{"programs.license-registry.upgradeAuthority", profile.Programs[0].UpgradeAuthority, paypeRegistryAuthority},
 		{"roles.root-install-admin.vault", profile.Roles[1].Vault, paypeRootInstallAdmin},
 		{"store.rootDomain", profile.Store.RootDomain, paypeRootStoreDomain},
 		{"store.storeId", profile.Store.StoreID, paypeRootStoreID},
@@ -705,7 +750,11 @@ func TestPaypeVectorKeepsPublicValuesAndPlaceholdersApart(t *testing.T) {
 			t.Fatalf("%s is %q, the public record says %q", item.name, item.got, item.want)
 		}
 	}
-	// The core vault reads back as 3 of 4 with four full-permission members.
+	// The witness verifier was released final: no authority to state.
+	if witness := profile.Programs[1]; witness.Role != ProgramRoleWitnessVerifier || !witness.Final || witness.UpgradeAuthority != "" {
+		t.Fatalf("the paype witness verifier is not stated final with no authority: %+v", witness)
+	}
+	// The fixture's illustrative core role shape is 3 of 4 with full permissions.
 	core := profile.Roles[0]
 	if core.Role != AuthorityRoleCore || core.Threshold != 3 || core.MemberCount != 4 {
 		t.Fatalf("the core role is not 3 of 4: %+v", core)

@@ -110,6 +110,7 @@ func profilePreimage(profile EstateProfileV1) []byte {
 		writer.string(program.Role)
 		writer.string(program.ProgramID)
 		writer.string(program.UpgradeAuthority)
+		writer.bool(program.Final)
 		writer.string(program.SourceCommit)
 		writer.string(program.BuildManifestSHA256)
 		writer.string(program.ExecutableSHA256)

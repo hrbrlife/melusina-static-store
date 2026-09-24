@@ -213,13 +213,15 @@ func validatePrograms(programs []ProgramV1) error {
 			return refuseSubject(RefusalArrayDuplicate, "programs.programId")
 		}
 		seenIDs[program.ProgramID] = true
+		if err := validateProgramAuthority(program, field); err != nil {
+			return err
+		}
 		// Every estate-built fact comes from finalized read-back. An empty one
 		// is a half-profile, which is a different refusal from a malformed one.
 		for _, item := range []struct {
 			name, value string
 			valid       func(string) bool
 		}{
-			{"upgradeAuthority", program.UpgradeAuthority, validAddress},
 			{"sourceCommit", program.SourceCommit, validSourceCommit},
 			{"buildManifestSha256", program.BuildManifestSHA256, validDigest},
 			{"executableSha256", program.ExecutableSHA256, validDigest},
@@ -237,6 +239,44 @@ func validatePrograms(programs []ProgramV1) error {
 		if !seenProgramRole(programs, role) {
 			return refuseSubject(RefusalIncomplete, "programs."+role)
 		}
+	}
+	return nil
+}
+
+// ProgramRoleIsFinal reports whether the program in role is deployed final:
+// created and stripped of its upgrade authority in one transaction, so that
+// finalized read-back finds no authority at all. The witness verifier is the
+// one such role; the licence registry stays governed by the core vault. The
+// set is closed and is the chain foundation's own (its FINAL_PROGRAM_NAMES):
+// a role is final because of what it is, never because a profile says so.
+func ProgramRoleIsFinal(role string) bool {
+	return role == ProgramRoleWitnessVerifier
+}
+
+// validateProgramAuthority holds a program's stated upgrade authority to how
+// its role is deployed. A final role must say final and name no authority -
+// the empty string is the only truthful spelling of None - and a governed
+// role must not say final and must name a real address. Each disagreement is
+// refused by its own name, so "stated an authority the chain lacks" and
+// "omitted the authority the chain has" are never the same failure.
+func validateProgramAuthority(program ProgramV1, field string) error {
+	if ProgramRoleIsFinal(program.Role) {
+		if !program.Final {
+			return refuseSubject(RefusalProgramMustBeFinal, field+".final")
+		}
+		if program.UpgradeAuthority != "" {
+			return refuseSubject(RefusalProgramMustBeFinal, field+".upgradeAuthority")
+		}
+		return nil
+	}
+	if program.Final {
+		return refuseSubject(RefusalProgramMustBeGoverned, field+".final")
+	}
+	if program.UpgradeAuthority == "" {
+		return refuseSubject(RefusalIncomplete, field+".upgradeAuthority")
+	}
+	if !validAddress(program.UpgradeAuthority) {
+		return refuseSubject(RefusalFieldMalformed, field+".upgradeAuthority")
 	}
 	return nil
 }

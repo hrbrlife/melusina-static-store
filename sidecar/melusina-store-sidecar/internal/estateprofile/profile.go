@@ -173,10 +173,21 @@ type NetworkV1 struct {
 
 // ProgramV1 is one estate-built program. Every hash comes from finalized
 // read-back; an empty one makes the profile incomplete.
+//
+// Final states the program's upgrade authority as the chain holds it. A
+// governed program (the licence registry) keeps the core vault as its upgrade
+// authority, so Final is false and UpgradeAuthority is that address. The
+// witness verifier is deployed final - its ProgramData authority is None - so
+// Final is true and UpgradeAuthority is empty: there is no address to state,
+// and a profile that named one would ask its owners to sign an authority the
+// chain does not have. Which roles are final is fixed (ProgramRoleIsFinal);
+// the flag is still carried and digested so the signed document says so in
+// words rather than by an absent value.
 type ProgramV1 struct {
 	Role                string `json:"role"`
 	ProgramID           string `json:"programId"`
 	UpgradeAuthority    string `json:"upgradeAuthority"`
+	Final               bool   `json:"final"`
 	SourceCommit        string `json:"sourceCommit"`
 	BuildManifestSHA256 string `json:"buildManifestSha256"`
 	ExecutableSHA256    string `json:"executableSha256"`

@@ -172,3 +172,24 @@ func TestProjectionRefusesAnInvalidProfileBeforeItProjectsAnything(t *testing.T)
 	requireRefusal(t, RequireProjection(profile, map[string]string{}), RefusalFieldMalformed+":anchors.masterMint")
 	requireRefusal(t, RequireGenesis(profile, profile.Network.GenesisHash), RefusalFieldMalformed+":anchors.masterMint")
 }
+
+// A final program has no upgrade authority, so the estate projects none: a
+// consumer declaring one is refused as unknown, while the governed licence
+// registry's authority is still an estate value to equal.
+func TestProjectionCarriesOnlyAGovernedProgramsAuthority(t *testing.T) {
+	profile := newEstateProfile(t)
+	projection, err := Projection(profile)
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	if got := projection["programs.license-registry.upgradeAuthority"]; got != profile.Programs[0].UpgradeAuthority || got == "" {
+		t.Fatalf("the governed licence registry's authority is %q, want %q", got, profile.Programs[0].UpgradeAuthority)
+	}
+	if got, present := projection["programs.witness-verifier.upgradeAuthority"]; present {
+		t.Fatalf("the final witness verifier projected an upgrade authority %q", got)
+	}
+	requireRefusal(t, RequireProjection(profile, map[string]string{"programs.witness-verifier.upgradeAuthority": ""}),
+		RefusalProjectionFieldUnknown+":programs.witness-verifier.upgradeAuthority")
+	requireRefusal(t, RequireProjection(profile, map[string]string{"programs.witness-verifier.upgradeAuthority": profile.Programs[0].UpgradeAuthority}),
+		RefusalProjectionFieldUnknown+":programs.witness-verifier.upgradeAuthority")
+}

@@ -28,6 +28,13 @@ const (
 	RefusalArrayDuplicate     = "estate-profile-array-duplicate"
 	RefusalIncomplete         = "estate-profile-incomplete"
 	RefusalMainnetGenesis     = "estate-mainnet-genesis-refused"
+	// A program's stated upgrade authority disagrees with how its role is
+	// deployed: a final role (the witness verifier) not stated final or
+	// stated with an authority, or a governed role stated final. The names
+	// mirror the chain-foundation executor's program-must-be-final and
+	// program-must-be-governed.
+	RefusalProgramMustBeFinal    = "estate-profile-program-must-be-final"
+	RefusalProgramMustBeGoverned = "estate-profile-program-must-be-governed"
 
 	// Identity and authority.
 	RefusalIDNotSelfCertifying    = "estate-profile-id-not-self-certifying"
@@ -65,6 +72,17 @@ const (
 	RefusalStoreEnrollmentSignatureInvalid       = "store-enrollment-owner-signature-invalid"
 	RefusalStoreEnrollmentFactsMismatch          = "store-enrollment-facts-mismatch"
 	RefusalStoreRPCGenesisMismatch               = "store-rpc-genesis-mismatch"
+
+	// Provider install. The estate owners' threshold authorizes creating one
+	// provider host's substrate: one host, one Spec, one suite, one profile.
+	RefusalProviderInstallAuthorizationSchemaUnsupported      = "estate-provider-install-authorization-schema-unsupported"
+	RefusalProviderInstallAuthorizationFieldMalformed         = "estate-provider-install-authorization-field-malformed"
+	RefusalProviderInstallAuthorizationTimeInvalid            = "estate-provider-install-authorization-time-invalid"
+	RefusalProviderInstallAuthorizationNotYetValid            = "estate-provider-install-authorization-not-yet-valid"
+	RefusalProviderInstallAuthorizationExpired                = "estate-provider-install-authorization-expired"
+	RefusalProviderInstallAuthorizationProfileMismatch        = "estate-provider-install-authorization-profile-mismatch"
+	RefusalProviderInstallAuthorizationSignaturesInsufficient = "estate-provider-install-authorization-owner-signatures-insufficient"
+	RefusalProviderInstallAuthorizationSignatureInvalid       = "estate-provider-install-authorization-owner-signature-invalid"
 
 	// Select, migrate and recall.
 	RefusalNotEnrolled            = "estate-profile-not-enrolled"

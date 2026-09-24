@@ -212,3 +212,24 @@ func TestProfilePreimageRefusesAnInvalidProfile(t *testing.T) {
 		requireRefusal(t, err, RefusalFieldMalformed+":network.commitment")
 	}
 }
+
+// The final flag is part of what owners sign: the preimage carries it as one
+// byte right after the upgrade authority, so two profiles that differ only in
+// it can never share a digest.
+func TestProfileDigestBindsTheFinalFlag(t *testing.T) {
+	profile := newEstateProfile(t)
+	flipped := profile
+	flipped.Programs = append([]ProgramV1{}, profile.Programs...)
+	flipped.Programs[1].Final = false
+	if bytes.Equal(profilePreimage(profile), profilePreimage(flipped)) {
+		t.Fatalf("the final flag did not reach the digest preimage")
+	}
+	var want binaryWriter
+	want.string(profile.Programs[1].ProgramID)
+	want.string("")
+	want.bool(true)
+	want.string(profile.Programs[1].SourceCommit)
+	if !bytes.Contains(profilePreimage(profile), want.Bytes()) {
+		t.Fatalf("the preimage does not carry programId, the empty authority, final=1 and sourceCommit in that order")
+	}
+}

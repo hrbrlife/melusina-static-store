@@ -86,13 +86,17 @@ const (
 	vectorIssuedAt          = "2026-09-20T00:00:00Z"
 	vectorSuccessorIssuedAt = "2026-09-21T00:00:00Z"
 
-	// Public values of the estate as it stands today, read from tracked
-	// sources in the deployer line, not from any live host.
+	// Public retiring-estate values. The core multisig and vault are checked by
+	// the Squads PDA derivation test; the registry authority was read from
+	// devnet ProgramData on 2026-09-24. This remains an illustrative fixture,
+	// not a substitute for fresh release-time readback.
 	paypeDevnetGenesisHash    = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
 	paypeSquadsV4ProgramID    = "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
 	paypeLicenseRegistryID    = "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
 	paypeWitnessVerifierID    = "ALLaDf2kgENEPFY63fhzC2cVBVfAZLzSDRn9yKjwQgnM"
-	paypeCoreVault            = "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+	paypeCoreMultisig         = "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+	paypeCoreVault            = "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3"
+	paypeRegistryAuthority    = "ANaEQo267D4QN9jjmxQcUHHScPgdxi2d1PTKh6kuX2tp"
 	paypeRootInstallAdmin     = "Arkupda1Giah5RdtyZX4GzNMnpoJTxcGVkNwwS7rfR32"
 	paypeRootStoreDomain      = "bazaar.melusina-os.org"
 	paypeRootStoreID          = "melusina-os-root-store"
@@ -145,9 +149,11 @@ func newEstateProfile(t *testing.T) EstateProfileV1 {
 				IDLSHA256:           vectorDigest("rehearsal/license-registry/idl"),
 			},
 			{
-				Role:                ProgramRoleWitnessVerifier,
-				ProgramID:           vectorAddress("rehearsal/witness-verifier/programId"),
-				UpgradeAuthority:    vectorAddress("rehearsal/core/vault"),
+				Role:      ProgramRoleWitnessVerifier,
+				ProgramID: vectorAddress("rehearsal/witness-verifier/programId"),
+				// Deployed final by the chain foundation: no authority.
+				UpgradeAuthority:    "",
+				Final:               true,
 				SourceCommit:        vectorSourceCommit("rehearsal/witness-verifier/sourceCommit"),
 				BuildManifestSHA256: vectorDigest("rehearsal/witness-verifier/buildManifest"),
 				ExecutableSHA256:    vectorDigest("rehearsal/witness-verifier/executable"),
@@ -229,8 +235,8 @@ func newEstateMigrate(t *testing.T, previous EstateProfileV1, recallPrevious boo
 	return signProfile(t, profile, "owner-a", "owner-b", "owner-d")
 }
 
-// paypeDevnetProfile describes the estate that exists today from public values
-// only. Every value the public record does not carry is a derived placeholder,
+// paypeDevnetProfile is a retiring-estate snapshot from public values.
+// Every value the public record does not carry is a derived placeholder,
 // listed by paypeIllustrativeFields; the vector is illustrative and is not an
 // authority for what the live estate holds.
 func paypeDevnetProfile(t *testing.T) EstateProfileV1 {
@@ -261,16 +267,22 @@ func paypeDevnetProfile(t *testing.T) EstateProfileV1 {
 			{
 				Role:                ProgramRoleLicenseRegistry,
 				ProgramID:           paypeLicenseRegistryID,
-				UpgradeAuthority:    paypeCoreVault,
+				UpgradeAuthority:    paypeRegistryAuthority,
 				SourceCommit:        vectorSourceCommit("paype/license-registry/sourceCommit"),
 				BuildManifestSHA256: vectorDigest("paype/license-registry/buildManifest"),
 				ExecutableSHA256:    vectorDigest("paype/license-registry/executable"),
 				IDLSHA256:           vectorDigest("paype/license-registry/idl"),
 			},
 			{
-				Role:                ProgramRoleWitnessVerifier,
-				ProgramID:           paypeWitnessVerifierID,
-				UpgradeAuthority:    paypeCoreVault,
+				Role:      ProgramRoleWitnessVerifier,
+				ProgramID: paypeWitnessVerifierID,
+				// Final: contracts docs/immutable-witness-verifier.md releases
+				// this program id "with a finalized (null) upgrade authority",
+				// and finalized devnet read-back of its ProgramData
+				// 4wehHBC6zP9W66JZSkJoMscd2DRBTXkHczN9UR6L6Qxu carries option
+				// tag 0 (read 2026-09-24).
+				UpgradeAuthority:    "",
+				Final:               true,
 				SourceCommit:        vectorSourceCommit("paype/witness-verifier/sourceCommit"),
 				BuildManifestSHA256: vectorDigest("paype/witness-verifier/buildManifest"),
 				ExecutableSHA256:    vectorDigest("paype/witness-verifier/executable"),
@@ -290,7 +302,7 @@ func paypeDevnetProfile(t *testing.T) EstateProfileV1 {
 		Roles: []AuthorityRoleV1{
 			{
 				Role: AuthorityRoleCore, Kind: AuthorityKindSquads,
-				Multisig: vectorAddress("paype/core/multisig"), Vault: paypeCoreVault,
+				Multisig: paypeCoreMultisig, Vault: paypeCoreVault,
 				Threshold: 3, MemberCount: 4, PermissionMasks: []uint32{7, 7, 7, 7},
 				ConfigAuthority: "11111111111111111111111111111111", TimeLockSeconds: 0,
 			},
@@ -333,7 +345,6 @@ var paypeIllustrativeFields = []string{
 	"programs.*.idlSha256",
 	"programs.*.sourceCommit",
 	"releaseTrust",
-	"roles.core.multisig",
 	"roles.store-release.multisig",
 	"roles.store-release.vault",
 	"signatures",

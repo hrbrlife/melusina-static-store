@@ -180,3 +180,57 @@ func TestValidateRefusesAnIncompleteProfile(t *testing.T) {
 	missing.Programs = missing.Programs[:1]
 	requireRefusal(t, ValidateProfile(missing), RefusalIncomplete+":programs.witness-verifier")
 }
+
+// The witness verifier is deployed final: its ProgramData authority is None,
+// so the only truthful statement is final with no address. The licence
+// registry is governed: final is refused there and its authority is required.
+// Each disagreement is refused by its own name.
+func TestValidateHoldsEachProgramToHowItsRoleIsDeployed(t *testing.T) {
+	profile := newEstateProfile(t)
+	if err := ValidateProfile(profile); err != nil {
+		t.Fatalf("a final witness verifier beside a governed licence registry must validate: %v", err)
+	}
+	if !ProgramRoleIsFinal(ProgramRoleWitnessVerifier) || ProgramRoleIsFinal(ProgramRoleLicenseRegistry) {
+		t.Fatalf("the witness verifier must be the final role and the licence registry the governed one")
+	}
+	governed := profile.Programs[0].UpgradeAuthority
+	for _, item := range []struct {
+		name   string
+		edit   func(*EstateProfileV1)
+		refuse string
+	}{
+		{"final role naming an authority", func(p *EstateProfileV1) { p.Programs[1].UpgradeAuthority = governed },
+			RefusalProgramMustBeFinal + ":programs.witness-verifier.upgradeAuthority"},
+		{"final role naming the all-zero authority", func(p *EstateProfileV1) { p.Programs[1].UpgradeAuthority = "11111111111111111111111111111111" },
+			RefusalProgramMustBeFinal + ":programs.witness-verifier.upgradeAuthority"},
+		{"final role stated governed", func(p *EstateProfileV1) { p.Programs[1].Final, p.Programs[1].UpgradeAuthority = false, governed },
+			RefusalProgramMustBeFinal + ":programs.witness-verifier.final"},
+		{"final role stated governed with no authority", func(p *EstateProfileV1) { p.Programs[1].Final = false },
+			RefusalProgramMustBeFinal + ":programs.witness-verifier.final"},
+		{"governed role stated final", func(p *EstateProfileV1) { p.Programs[0].Final, p.Programs[0].UpgradeAuthority = true, "" },
+			RefusalProgramMustBeGoverned + ":programs.license-registry.final"},
+		{"governed role stated final keeping its authority", func(p *EstateProfileV1) { p.Programs[0].Final = true },
+			RefusalProgramMustBeGoverned + ":programs.license-registry.final"},
+		{"governed role without authority", func(p *EstateProfileV1) { p.Programs[0].UpgradeAuthority = "" },
+			RefusalIncomplete + ":programs.license-registry.upgradeAuthority"},
+		{"governed role with the all-zero authority", func(p *EstateProfileV1) { p.Programs[0].UpgradeAuthority = "11111111111111111111111111111111" },
+			RefusalFieldMalformed + ":programs.license-registry.upgradeAuthority"},
+	} {
+		t.Run(item.name, func(t *testing.T) {
+			mutated := newEstateProfile(t)
+			item.edit(&mutated)
+			requireRefusal(t, ValidateProfile(mutated), item.refuse)
+			// The consumer decoder refuses the same document by the same name.
+			_, err := DecodeProfile(marshalProfile(t, mutated))
+			requireRefusal(t, err, item.refuse)
+		})
+	}
+}
+
+func TestStrictDecodeRequiresTheFinalFlagAsABoolean(t *testing.T) {
+	raw := marshalProfile(t, newEstateProfile(t))
+	_, err := DecodeProfile(mutateJSON(t, raw, `"upgradeAuthority":"","final":true,`, `"upgradeAuthority":"",`))
+	requireRefusal(t, err, RefusalJSONMissingField+":$.programs[1].final")
+	_, err = DecodeProfile(mutateJSON(t, raw, `"final":true`, `"final":1`))
+	requireRefusal(t, err, RefusalJSONWrongType+":$.programs[1].final")
+}

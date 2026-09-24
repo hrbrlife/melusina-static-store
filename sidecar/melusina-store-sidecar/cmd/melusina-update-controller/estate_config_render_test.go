@@ -21,7 +21,10 @@ type controllerRenderFixture struct {
 	profilePath string
 	inputPath   string
 	outDir      string
-	input       map[string]any
+	// hostRoot stands for the host the renderer runs on. It starts empty,
+	// a host with no Store installed.
+	hostRoot string
+	input    map[string]any
 }
 
 // rehearsalComponent is a well-formed sidecar recipe that is not the Store.
@@ -67,12 +70,17 @@ func newControllerRenderFixture(t *testing.T) *controllerRenderFixture {
 	if err := os.Mkdir(outDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	hostRoot := filepath.Join(dir, "host")
+	if err := os.Mkdir(hostRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	profile := newEstateProfile(t)
 	return &controllerRenderFixture{
 		profile:     profile,
 		profilePath: releasetest.Write(t, profile),
 		inputPath:   filepath.Join(dir, "controller-render-input.json"),
 		outDir:      outDir,
+		hostRoot:    hostRoot,
 		input: map[string]any{
 			"schema":                controllerRenderInputSchema,
 			"kind":                  controllerRenderInputKind,
@@ -104,7 +112,7 @@ func (f *controllerRenderFixture) writeInputRaw(t *testing.T, raw []byte) {
 }
 
 func (f *controllerRenderFixture) render() (controllerRenderReport, error) {
-	return renderEstateControllerConfig(controllerRenderOptions{profilePath: f.profilePath, inputPath: f.inputPath, outDir: f.outDir})
+	return renderEstateControllerConfig(controllerRenderOptions{profilePath: f.profilePath, inputPath: f.inputPath, outDir: f.outDir, hostRoot: f.hostRoot})
 }
 
 func (f *controllerRenderFixture) requireNoOutput(t *testing.T) {
@@ -468,7 +476,9 @@ func TestEstateControllerConfigRenderRefusesUnboundOrInvalidInputsBeforeOutput(t
 		}, "update-controller-render-input-rpc-must-use-https"},
 		{"duplicate rpc", func(d map[string]any) { d["solanaRpcFallbackUrls"] = []string{d["solanaRpcUrl"].(string)} }, "duplicate endpoint"},
 		{"too many rpc attempts", func(d map[string]any) { d["solanaRpcAttempts"] = 9 }, "solanaRpcAttempts must be between"},
-		{"no components", func(d map[string]any) { d["components"] = []any{} }, "update-controller-render-input-invalid:components"},
+		{"no components", func(d map[string]any) { d["components"] = []any{} }, refusalControllerRenderNoComponent},
+		{"null components", func(d map[string]any) { d["components"] = nil }, "update-controller-render-input-invalid:components"},
+		{"components not an array", func(d map[string]any) { d["components"] = map[string]any{} }, "update-controller-render-input-invalid:components"},
 		{"duplicate component", func(d map[string]any) {
 			d["components"] = []any{rehearsalComponent(), rehearsalComponent()}
 		}, "update-controller-render-input-duplicate-component:rehearsal-sidecar"},
@@ -536,7 +546,7 @@ func TestEstateControllerConfigRenderRefusesDuplicateKeysAndAnInsecureInput(t *t
 	if err := os.Symlink(f.inputPath, link); err != nil {
 		t.Fatal(err)
 	}
-	_, err = renderEstateControllerConfig(controllerRenderOptions{profilePath: f.profilePath, inputPath: link, outDir: f.outDir})
+	_, err = renderEstateControllerConfig(controllerRenderOptions{profilePath: f.profilePath, inputPath: link, outDir: f.outDir, hostRoot: f.hostRoot})
 	requireControllerRenderRefusal(t, err, "update-controller-render-input-read")
 	f.requireNoOutput(t)
 
@@ -680,6 +690,268 @@ func TestDeploymentContractNamesTheControllerConfigRenderer(t *testing.T) {
 	} {
 		if !strings.Contains(string(contract), required) {
 			t.Fatalf("%s omits controller-render contract text %q", contractPath, required)
+		}
+	}
+}
+
+// bundledStoreUnitPaths returns every host path a bundled Store unit names:
+// the unit file itself once installed, its executables, EnvironmentFile,
+// condition paths, sandbox paths and runtime directory. It is derived from
+// deploy/store-generation, never listed by hand.
+func bundledStoreUnitPaths(t *testing.T) []string {
+	t.Helper()
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	unitDir := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "deploy", "store-generation")
+	units, err := filepath.Glob(filepath.Join(unitDir, "melusina-store-*.service"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(units) < 3 {
+		t.Fatalf("found %d Store units in %s, want the Store and its two signers", len(units), unitDir)
+	}
+	seen := map[string]bool{}
+	var paths []string
+	add := func(path string) {
+		path = strings.TrimPrefix(path, "-")
+		// /run/melusina is the host's shared runtime directory (the listing
+		// signer's socket parent), not a Store root.
+		if !strings.HasPrefix(path, "/") || path == "/run/melusina" || seen[path] {
+			return
+		}
+		seen[path] = true
+		paths = append(paths, path)
+	}
+	for _, unitPath := range units {
+		add("/etc/systemd/system/" + filepath.Base(unitPath))
+		raw, err := os.ReadFile(unitPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, line := range strings.Split(string(raw), "\n") {
+			key, value, ok := strings.Cut(strings.TrimSpace(line), "=")
+			if !ok || strings.HasPrefix(key, "#") {
+				continue
+			}
+			switch key {
+			case "ExecStart", "ConditionFileIsExecutable", "ConditionPathExists", "EnvironmentFile":
+				add(strings.Fields(value)[0])
+			case "ReadOnlyPaths", "ReadWritePaths":
+				for _, path := range strings.Fields(value) {
+					add(path)
+				}
+			case "RuntimeDirectory":
+				add("/run/" + value)
+			}
+		}
+	}
+	return paths
+}
+
+// expectedRootStoreMarker is the host path the refusal must name for a
+// planted Store path: the Store config root, or the path up to its first
+// Store-named element.
+func expectedRootStoreMarker(t *testing.T, path string) string {
+	t.Helper()
+	if path == storeConfigRoot || strings.HasPrefix(path, storeConfigRoot+"/") {
+		return storeConfigRoot
+	}
+	elements := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	for i, element := range elements {
+		if isStoreName(element) {
+			return "/" + strings.Join(elements[:i+1], "/")
+		}
+	}
+	t.Fatalf("bundled Store path %s names no Store element, so nothing on the host would show it", path)
+	return ""
+}
+
+func plantHostPath(t *testing.T, hostRoot, path string, dir bool) {
+	t.Helper()
+	full := filepath.Join(hostRoot, path)
+	if dir {
+		if err := os.MkdirAll(full, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(full, []byte("planted\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// The root Store host has no controller configuration. Each path the bundled
+// Store units name, planted alone on an otherwise empty host, makes the
+// renderer refuse that host by name, write nothing, and name the marker.
+func TestEstateControllerConfigRenderRefusesTheRootStoreHostByName(t *testing.T) {
+	paths := bundledStoreUnitPaths(t)
+	if len(paths) < 8 {
+		t.Fatalf("derived only %d Store host paths from the bundled units: %v", len(paths), paths)
+	}
+	for _, path := range paths {
+		for _, asDir := range []bool{false, true} {
+			name := path + " as file"
+			if asDir {
+				name = path + " as directory"
+			}
+			t.Run(name, func(t *testing.T) {
+				f := newControllerRenderFixture(t)
+				f.writeInput(t, f.input)
+				plantHostPath(t, f.hostRoot, path, asDir)
+				_, err := f.render()
+				requireControllerRenderRefusal(t, err, refusalControllerRenderRootStore+":"+expectedRootStoreMarker(t, path)+":")
+				f.requireNoOutput(t)
+			})
+		}
+	}
+
+	// The host is refused before any input is read: with no profile and no
+	// input at all, the refusal is still the root Store host's.
+	f := newControllerRenderFixture(t)
+	plantHostPath(t, f.hostRoot, storeConfigRoot, true)
+	_, err := renderEstateControllerConfig(controllerRenderOptions{
+		profilePath: filepath.Join(f.hostRoot, "absent-profile.json"),
+		inputPath:   filepath.Join(f.hostRoot, "absent-input.json"),
+		outDir:      f.outDir,
+		hostRoot:    f.hostRoot,
+	})
+	requireControllerRenderRefusal(t, err, refusalControllerRenderRootStore+":"+storeConfigRoot+":")
+	f.requireNoOutput(t)
+
+	// A marker directory the probe cannot read refuses rather than passing
+	// as "no Store here". Root reads a mode-000 directory, so only a
+	// non-root run can build this case.
+	if os.Geteuid() != 0 {
+		f = newControllerRenderFixture(t)
+		f.writeInput(t, f.input)
+		unreadable := filepath.Join(f.hostRoot, "var", "lib")
+		if err := os.MkdirAll(unreadable, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(unreadable, 0); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(unreadable, 0o755) })
+		_, err = f.render()
+		requireControllerRenderRefusal(t, err, refusalControllerRenderRootStore+":probe: /var/lib:")
+		f.requireNoOutput(t)
+	}
+
+	// Positive control: a host with controller-managed components and the
+	// controller's own files, but no Store, renders. Detection that widened
+	// to /etc/melusina, the controller's units or a melusina-* sibling would
+	// refuse it.
+	f = newControllerRenderFixture(t)
+	for _, plant := range []struct {
+		path string
+		dir  bool
+	}{
+		{"/etc/melusina/update-controller", true},
+		{"/etc/melusina/rehearsal-sidecar", true},
+		{"/usr/local/lib/melusina/melusina-update-controller", false},
+		{"/etc/systemd/system/melusina-update-controller.service", false},
+		{"/etc/systemd/system/melusina-update-controller.timer", false},
+		{"/etc/systemd/system/rehearsal-sidecar.service", false},
+		{"/var/lib/melusina/update-controller/receipts", true},
+		{"/var/lib/rehearsal-sidecar/runtime", true},
+		{"/opt/rehearsal-sidecar/bin/rehearsal-sidecar", false},
+		{"/run/melusina/listing.sock", false},
+	} {
+		plantHostPath(t, f.hostRoot, plant.path, plant.dir)
+	}
+	f.writeInput(t, f.input)
+	if _, err := f.render(); err != nil {
+		t.Fatalf("control render on a host without the Store: %v", err)
+	}
+}
+
+// Every service the root Store host carries is refused as a controller
+// component, so the only input the Store host could give is an empty one, and
+// that is refused by name. The contract must say so, and the bundled
+// controller unit must stay a no-op without both rendered files.
+func TestRootStoreHostHasNoControllerConfiguration(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	bundleDir := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "deploy", "store-generation")
+
+	// The Store host's candidates: a recipe for each bundled Store unit and
+	// each entry of the retiring registry template.
+	var candidates []componentrelease.ComponentInstall
+	units, err := filepath.Glob(filepath.Join(bundleDir, "melusina-store-*.service"))
+	if err != nil || len(units) < 3 {
+		t.Fatalf("Store units: %v %v", units, err)
+	}
+	for _, unitPath := range units {
+		var install componentrelease.ComponentInstall
+		raw, _ := json.Marshal(rehearsalComponent())
+		if err := json.Unmarshal(raw, &install); err != nil {
+			t.Fatal(err)
+		}
+		unit := filepath.Base(unitPath)
+		install.ComponentID = strings.TrimSuffix(unit, ".service")
+		install.ServiceUnit = unit
+		candidates = append(candidates, install)
+	}
+	templateRaw, err := os.ReadFile(filepath.Join(bundleDir, "component-registry.template.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var template componentrelease.ComponentRegistry
+	if err := json.Unmarshal(templateRaw, &template); err != nil {
+		t.Fatal(err)
+	}
+	if len(template.Components) == 0 {
+		t.Fatal("the retiring registry template holds no component")
+	}
+	for _, install := range template.Components {
+		candidates = append(candidates, install)
+	}
+	for _, install := range candidates {
+		if err := refuseStoreBinaryComponent(install); err == nil {
+			t.Fatalf("root-store-host-component-admissible:%s: the renderer admits a Store host service, so the root Store host is no longer free of controller-managed components and the contract's item 8 is wrong", install.ComponentID)
+		}
+	}
+
+	// The empty set that remains is refused by name.
+	f := newControllerRenderFixture(t)
+	doc := copyControllerRenderInput(f.input)
+	doc["components"] = []any{}
+	f.writeInput(t, doc)
+	_, err = f.render()
+	requireControllerRenderRefusal(t, err, refusalControllerRenderNoComponent)
+	f.requireNoOutput(t)
+
+	// Installed but inactive: the bundled service does not run without both
+	// rendered files, so a timer enabled by mistake still starts nothing.
+	service, err := os.ReadFile(filepath.Join(bundleDir, "melusina-update-controller.service"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{controllerRenderConfigPath, controllerRenderRegistryPath} {
+		if !strings.Contains(string(service), "\nConditionPathExists="+path+"\n") {
+			t.Fatalf("controller-unit-runs-without-config:%s: melusina-update-controller.service lacks ConditionPathExists=%s", path, path)
+		}
+	}
+
+	contract, err := os.ReadFile(filepath.Join(bundleDir, "DEPLOYMENT-CONTRACT.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		"**The root Store host has no controller configuration.**",
+		refusalControllerRenderRootStore,
+		refusalControllerRenderNoComponent,
+		"- the root Store host has no controller configuration:",
+	} {
+		if !strings.Contains(string(contract), required) {
+			t.Fatalf("store-host-controller-contract-missing:%q: DEPLOYMENT-CONTRACT.md must state that the root Store host has no controller configuration", required)
 		}
 	}
 }

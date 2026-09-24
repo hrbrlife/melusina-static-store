@@ -50,9 +50,11 @@ update-path inputs and carry retiring-estate facts. Instead the component carrie
 `estate-profile-review` plus `estate-store-config-render` commands. The operator
 uses the signed estate profile and a private mode-`0600` render input to create
 the Store candidate configuration; the template is guidance, never a config to
-copy or start. The controller and component-registry configuration are
-rendered separately, by the bundled controller binary's own profile-bound
-`estate-update-controller-config-render` (item 8). A release-set scan still decides
+copy or start. The controller and component-registry configuration exist only
+on a host with controller-managed components, rendered there by the controller
+binary's own profile-bound `estate-update-controller-config-render` (item 8).
+The root Store host has none, so it has no controller configuration. A
+release-set scan still decides
 whether the complete component is clean; compression never hides a retained
 estate value.
 
@@ -63,13 +65,15 @@ fresh TLS certificate, and the root-owned shard set. It must never hand-compose
 those identity fields or build the preparer on the target.
 
 It also includes the separately running `bin/melusina-update-controller` and
-the controller service/timer units, but no controller configuration. The
-controller is built twice with the same source revision as the Store, but it is
-**not** silently installed or updated by a Store generation: its first
-installation still requires a profile/foundation-aware configuration and an
-authorized, Active `InstallerReleaseEntry` bootstrap ceremony. This bundle
-preserves that independent trust boundary rather than inheriting retired
-configuration values.
+the controller service/timer units, but no controller configuration. On the
+root Store host they are installed and stay inactive (item 8). The controller
+is built twice with the same source revision as the Store, but it is **not**
+silently installed or updated by a Store generation: its first configured
+installation, on a host with controller-managed components, still requires a
+profile/foundation-aware configuration and an authorized, Active
+`InstallerReleaseEntry` bootstrap ceremony. This bundle preserves that
+independent trust boundary rather than inheriting retired configuration
+values.
 
 ## Deployer-owned inputs
 
@@ -155,15 +159,35 @@ paths. Before enabling the unit it must install or create:
    An enrolled Store reports its runtime identity from its enrollment
    instead (gate 2 below).
 8. The root-owned controller binary at
-   `/usr/local/lib/melusina/melusina-update-controller`, plus `config.json`
-   and `component-registry.json` under `/etc/melusina/update-controller/`,
-   rendered by that binary:
+   `/usr/local/lib/melusina/melusina-update-controller`, and no controller
+   configuration. **The root Store host has no controller configuration.**
+   It has no controller-managed component: it carries the Store and its two
+   signers, which item 7 refuses as components, and the controller, which is
+   not one. So nothing is rendered, copied or installed under
+   `/etc/melusina/update-controller/` on this host: no `config.json`, no
+   `component-registry.json` and no `estate-profile.json`. The bundled
+   controller service and timer (item 9) are installed byte-for-byte and are
+   never enabled or started here; the service's `ConditionPathExists` on both
+   files also keeps it from running if its timer is enabled by mistake. Gate 1
+   checks the absence. The renderer refuses this host by name before it reads
+   any input: when `/etc/melusina/store`, or any `melusina-store*` entry
+   directly under `/opt`, `/var/lib`, `/etc/systemd/system` or `/run`, exists,
+   it refuses as
+   `update-controller-render-root-store-host-has-no-controller-config:<marker>`.
+   An input with no component is refused as
+   `update-controller-render-no-controller-managed-component` on any host.
+
+   The rest of this item applies only to a host with controller-managed
+   components, never to the root Store host. There, `config.json` and
+   `component-registry.json` under `/etc/melusina/update-controller/` are
+   rendered by the controller binary:
    `melusina-update-controller estate-update-controller-config-render
    -estate-profile <signed profile> -input <mode-0600 input> -out-dir
    /etc/melusina/update-controller`. The owner-signed profile supplies the
    Store operator key, Store ID, public origin, license-registry program and
    master mint; the input supplies only the target licence, trusted `https`
-   RPC endpoints and this host's component recipes. The renderer:
+   RPC endpoints and this host's component recipes, at least one. The
+   renderer:
    - fixes `autoApply` at `false` and refuses any candidate that is not
      (`update-controller-render-auto-apply-forbidden`, owner-safety gate
      F-358); the input cannot name it, the timing values or a one-shot scope;
@@ -178,14 +202,16 @@ paths. Before enabling the unit it must install or create:
    The installer places the verified profile at
    `/etc/melusina/update-controller/estate-profile.json`; the config pins its
    digest, so any other file is refused at controller start. The bootstrap
-   component supplies neither configuration file. The controller's active
-   `InstallerReleaseEntry` is verified before the bootstrap ceremony enables
-   the bundled timer.
+   component supplies neither configuration file. On such a host, the
+   controller's active `InstallerReleaseEntry` is verified before the
+   bootstrap ceremony enables its timer.
 9. The bundled Store and controller systemd units, byte-for-byte, at
    `/etc/systemd/system/melusina-store-sidecar.service`,
    `/etc/systemd/system/melusina-store-listing-signer.service`,
    `/etc/systemd/system/melusina-update-controller.service`, and
    `/etc/systemd/system/melusina-update-controller.timer`.
+   On the root Store host the two controller units stay disabled and
+   inactive (item 8).
    The Store, listing-signer and provider pairing signer units (item 10) run
    under `ProtectSystem=strict`, and their `ReadWritePaths` and
    `ReadOnlyPaths` name only paths that exist before the first start:
@@ -266,8 +292,8 @@ second gate look green.
 ### 1. Pre-generation Store activation
 
 Immediately after the explicit `genesis-bootstrap` and the one unit
-enable/start, the deployer proves all of the following through the service
-listener:
+enable/start, the deployer proves all of the following, the first five
+through the service listener and the last on the host:
 
 - `GET /healthz` is `200` and binds the configured `store_id` and domain;
 - `GET /apps/index.json` is `200` and is the exact empty canonical index,
@@ -282,6 +308,12 @@ listener:
   binary hash. The report names no generation, so it is not a release. A
   Store that is not enrolled answers the fail-closed `503` here; the
   estate-bootstrap build refuses to start unenrolled.
+- the root Store host has no controller configuration: neither
+  `/etc/melusina/update-controller/config.json` nor
+  `/etc/melusina/update-controller/component-registry.json` exists, and
+  `melusina-update-controller.service` and `melusina-update-controller.timer`
+  are installed but neither enabled nor active (item 8). A controller that is
+  merely configured with `autoApply` off does not pass this clause.
 
 This proves a virgin Store is correctly staged and serving its governed empty
 surface. It is not a launch-ready Store runtime and must never be reported as

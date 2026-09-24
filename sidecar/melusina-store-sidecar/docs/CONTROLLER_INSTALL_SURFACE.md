@@ -187,6 +187,12 @@ Optional manual/bell trigger (admin-initiated immediate check):
 
 ## Provisioning prerequisites (SIDECARS)
 
+- Only on a host with controller-managed components. The root Store host has
+  none, so it has no controller configuration: its bundled controller binary
+  and units are installed but stay inactive, and
+  `estate-update-controller-config-render` refuses that host by name
+  (`update-controller-render-root-store-host-has-no-controller-config`; see
+  `deploy/store-generation/DEPLOYMENT-CONTRACT.md` item 8).
 - Create `stateDir` (`0700`, root) and `stagingRoot`; the binary creates
   `<stateDir>/active`, `<stateDir>/receipts`, `<stateDir>/staging` and the
   controller lock itself, but the parent `stateDir` must exist root-owned `0700`.

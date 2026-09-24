@@ -19,6 +19,17 @@ package main
 // enrollment instead (estate_enroll_successor.go). A component that is the
 // Store binary by id, unit, path or command is refused by name.
 //
+// The renderer is for hosts with controller-managed components only. The root
+// Store host has none: it carries the Store, its two signers and the bundled
+// controller, and the first three are refused as components while the
+// controller is not one. So the root Store host has no controller
+// configuration. Its controller binary and units are installed but stay
+// inactive, and the renderer refuses that host by name before it reads any
+// input, when the host carries the Store's installed tree
+// (update-controller-render-root-store-host-has-no-controller-config). An
+// input with no component is refused by name too
+// (update-controller-render-no-controller-managed-component).
+//
 // The renderer reads no chain state, contacts no endpoint, installs nothing,
 // enables no unit and never replaces an existing file. It validates both
 // candidates with the controller's own loaders before publishing either.
@@ -71,6 +82,8 @@ const (
 	refusalControllerRenderStoreBinary  = "update-controller-render-store-binary-is-not-a-controller-component"
 	refusalControllerRenderOutputExists = "update-controller-render-output-exists"
 	refusalControllerRenderMismatch     = "update-controller-render-candidate-mismatch"
+	refusalControllerRenderRootStore    = "update-controller-render-root-store-host-has-no-controller-config"
+	refusalControllerRenderNoComponent  = "update-controller-render-no-controller-managed-component"
 
 	// storeBinaryComponentID is the component ID the Store's /release-info
 	// reports (runtime_release_info.go storeRuntimeComponentID).
@@ -89,7 +102,19 @@ type controllerRenderOptions struct {
 	profilePath string
 	inputPath   string
 	outDir      string
+	// hostRoot is where the root Store host probe looks. It is not a flag:
+	// the command always probes "/", the host it renders for. Empty means
+	// "/". Tests point it at a directory they build.
+	hostRoot string
 }
+
+// rootStoreHostMarkerDirs hold the Store-named entries the Store bootstrap
+// installs (DEPLOYMENT-CONTRACT items 1, 5, 6 and 9): the release tree
+// /opt/melusina-store, the state root /var/lib/melusina-store, the bundled
+// units /etc/systemd/system/melusina-store-*.service and their runtime
+// directories under /run. Any entry isStoreName matches marks the root Store
+// host, as does storeConfigRoot itself (items 2 to 4).
+var rootStoreHostMarkerDirs = []string{"/opt", "/var/lib", "/etc/systemd/system", "/run"}
 
 // controllerRenderInput is closed. It has no autoApply, timing, one-shot,
 // origin, Store ID, operator key, program or mint field: the first four are
@@ -129,7 +154,7 @@ type controllerRenderReport struct {
 
 func runEstateControllerConfigRenderSubcommand(args []string) {
 	fs := flag.NewFlagSet(estateControllerConfigRenderCommand, flag.ExitOnError)
-	opts := controllerRenderOptions{}
+	opts := controllerRenderOptions{hostRoot: "/"}
 	fs.StringVar(&opts.profilePath, "estate-profile", "", "required absolute path to the owner-signed EstateProfileV1 JSON")
 	fs.StringVar(&opts.inputPath, "input", "", "required absolute path to the mode-0600 controller render input JSON")
 	fs.StringVar(&opts.outDir, "out-dir", "", "required absolute path to an existing owned directory; config.json and component-registry.json must not exist in it")
@@ -152,6 +177,10 @@ func runEstateControllerConfigRenderSubcommand(args []string) {
 }
 
 func renderEstateControllerConfig(opts controllerRenderOptions) (controllerRenderReport, error) {
+	// The host comes first: on the root Store host no input could be right.
+	if err := refuseRootStoreHost(opts.hostRoot); err != nil {
+		return controllerRenderReport{}, err
+	}
 	profilePath, err := cleanControllerRenderPath(opts.profilePath, "estate-profile")
 	if err != nil {
 		return controllerRenderReport{}, err
@@ -358,8 +387,11 @@ func componentInstallFields() []string {
 
 func decodeControllerRenderComponents(raw json.RawMessage) ([]componentrelease.ComponentInstall, error) {
 	var entries []json.RawMessage
-	if err := json.Unmarshal(raw, &entries); err != nil || len(entries) == 0 {
-		return nil, errors.New("update-controller-render-input-invalid:components: a non-empty array of component recipes is required")
+	if err := json.Unmarshal(raw, &entries); err != nil || entries == nil {
+		return nil, errors.New("update-controller-render-input-invalid:components: an array of component recipes is required")
+	}
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("%s: a host with no controller-managed component has no controller configuration; the root Store host is one, so install neither file there and leave the controller units inactive", refusalControllerRenderNoComponent)
 	}
 	allowed := componentInstallFields()
 	seen := map[string]bool{}
@@ -482,6 +514,48 @@ func requireControllerRenderCandidate(cfg ControllerConfig, registry componentre
 		}
 	}
 	return nil
+}
+
+// refuseRootStoreHost refuses to render on the root Store host, which has no
+// controller configuration. It names the first Store marker it finds, and a
+// marker directory it cannot read refuses too.
+func refuseRootStoreHost(hostRoot string) error {
+	if hostRoot == "" {
+		hostRoot = "/"
+	}
+	marker, err := rootStoreHostMarker(hostRoot)
+	if err != nil {
+		return fmt.Errorf("%s:probe: %w", refusalControllerRenderRootStore, err)
+	}
+	if marker == "" {
+		return nil
+	}
+	return fmt.Errorf("%s:%s: this host carries the Store's installed tree; the root Store host has no controller-managed component, so it gets neither config.json nor component-registry.json and its controller service and timer stay inactive", refusalControllerRenderRootStore, marker)
+}
+
+// rootStoreHostMarker returns the host path (without hostRoot) of the first
+// root Store marker under hostRoot, or "" when there is none.
+func rootStoreHostMarker(hostRoot string) (string, error) {
+	if _, err := os.Lstat(filepath.Join(hostRoot, storeConfigRoot)); err == nil {
+		return storeConfigRoot, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return "", fmt.Errorf("%s: %w", storeConfigRoot, err)
+	}
+	for _, dir := range rootStoreHostMarkerDirs {
+		entries, err := os.ReadDir(filepath.Join(hostRoot, dir))
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return "", fmt.Errorf("%s: %w", dir, err)
+		}
+		for _, entry := range entries {
+			if isStoreName(entry.Name()) {
+				return filepath.Join(dir, entry.Name()), nil
+			}
+		}
+	}
+	return "", nil
 }
 
 // refuseStoreBinaryComponent refuses a recipe that installs, restarts, stages

@@ -148,10 +148,11 @@ func TestDeriveVerifiedBootIdentity_FailClosed(t *testing.T) {
 	writeTestShards(t, dir)
 	certPath, _ := writeTestTLSCert(t, dir)
 	base := Config{
-		LicenseNFTMint: randPubkeyB58(t),
-		Domain:         "store.example.org",
-		TLS:            TLSConfig{CertPath: certPath, KeyPath: certPath},
-		BootIdentity:   BootIdentityConfig{ShardsDir: dir, SidecarID: "store", ChainID: "solana:devnet", KeyVersion: 1},
+		LicenseNFTMint:       randPubkeyB58(t),
+		ReleaseMasterNftMint: randPubkeyB58(t),
+		Domain:               "store.example.org",
+		TLS:                  TLSConfig{CertPath: certPath, KeyPath: certPath},
+		BootIdentity:         BootIdentityConfig{ShardsDir: dir, SidecarID: "store", ChainID: "solana:devnet", KeyVersion: 1},
 	}
 
 	// shards provisioned but no chain reader => cannot bind => fail closed.
@@ -175,8 +176,8 @@ func TestDeriveVerifiedBootIdentity_FailClosed(t *testing.T) {
 	}
 
 	// shards set + valid config but NO on-chain SidecarIdentityEntry => fail closed.
-	if _, err := deriveVerifiedBootIdentity(context.Background(), base, newMockChainReader()); err == nil {
-		t.Fatal("missing on-chain SidecarIdentityEntry must fail closed")
+	if _, err := deriveVerifiedBootIdentity(context.Background(), base, newMockChainReader()); err == nil || !strings.HasPrefix(err.Error(), "check=sidecar_identity: fetch ") {
+		t.Fatalf("missing on-chain SidecarIdentityEntry must fail closed by name: %v", err)
 	}
 }
 
@@ -217,10 +218,11 @@ func TestDeriveVerifiedBootIdentity_EndToEnd(t *testing.T) {
 	writeTestShards(t, dir)
 	certPath, tlsFP := writeTestTLSCert(t, dir)
 	cfg := Config{
-		LicenseNFTMint: randPubkeyB58(t),
-		Domain:         "store.example.org",
-		TLS:            TLSConfig{CertPath: certPath, KeyPath: certPath},
-		BootIdentity:   BootIdentityConfig{ShardsDir: dir, SidecarID: "store", ChainID: "solana:devnet", KeyVersion: 1},
+		LicenseNFTMint:       randPubkeyB58(t),
+		ReleaseMasterNftMint: randPubkeyB58(t),
+		Domain:               "store.example.org",
+		TLS:                  TLSConfig{CertPath: certPath, KeyPath: certPath},
+		BootIdentity:         BootIdentityConfig{ShardsDir: dir, SidecarID: "store", ChainID: "solana:devnet", KeyVersion: 1},
 	}
 
 	// Re-derive the EXACT operator the function will derive, so we can pin a
@@ -257,9 +259,12 @@ func TestDeriveVerifiedBootIdentity_EndToEnd(t *testing.T) {
 		Status:             verify.AttestationStatusActive,
 	}
 
-	// Happy path: the derived operator binds to the pinned entry.
+	// Happy path: the derived operator binds to the pinned entry, and the
+	// Store's own approval cascade is Active and pins the same executable.
+	cascade := newRootStoreBootCascade("store", licenseMint, mustPubkey(randPubkeyB58(t)), mustPubkey(cfg.ReleaseMasterNftMint), binHash)
 	m := newMockChainReader()
 	m.sidecarIdentity[sidecarPDA.Base58()] = mockSidecarIdentity{sid: good}
+	cascade.seed(t, m)
 	verified, err := deriveVerifiedBootIdentity(context.Background(), cfg, m)
 	if err != nil {
 		t.Fatalf("verified snapshot: %v", err)
@@ -276,8 +281,16 @@ func TestDeriveVerifiedBootIdentity_EndToEnd(t *testing.T) {
 	bad.BinaryHash = bytes32sidecar(0xEE)
 	mBad := newMockChainReader()
 	mBad.sidecarIdentity[sidecarPDA.Base58()] = mockSidecarIdentity{sid: bad}
-	if _, err := deriveVerifiedBootIdentity(context.Background(), cfg, mBad); err == nil {
-		t.Fatal("binary_hash mismatch must fail closed")
+	cascade.seed(t, mBad)
+	if _, err := deriveVerifiedBootIdentity(context.Background(), cfg, mBad); err == nil || !strings.HasPrefix(err.Error(), "check=sidecar_identity: binary_hash") {
+		t.Fatalf("binary_hash mismatch must fail closed by name: %v", err)
+	}
+	// The identity alone is not enough: with the cascade absent (the mock
+	// this test used before the boot cascade) the same Store refuses.
+	mNoCascade := newMockChainReader()
+	mNoCascade.sidecarIdentity[sidecarPDA.Base58()] = mockSidecarIdentity{sid: good}
+	if _, err := deriveVerifiedBootIdentity(context.Background(), cfg, mNoCascade); err == nil || err.Error() != "check=sidecar_cascade: LicenseEntry absent" {
+		t.Fatalf("an identity without its approval cascade must fail closed by name: %v", err)
 	}
 }
 
@@ -286,9 +299,10 @@ func TestDeriveVerifiedBootIdentity_RotatesBindingWithoutRotatingOperator(t *tes
 	writeTestShards(t, dir)
 	certPath, tlsFP := writeTestTLSCert(t, dir)
 	cfg := Config{
-		LicenseNFTMint: randPubkeyB58(t),
-		Domain:         "melusina-os.org",
-		TLS:            TLSConfig{CertPath: certPath, KeyPath: certPath},
+		LicenseNFTMint:       randPubkeyB58(t),
+		ReleaseMasterNftMint: randPubkeyB58(t),
+		Domain:               "melusina-os.org",
+		TLS:                  TLSConfig{CertPath: certPath, KeyPath: certPath},
 		BootIdentity: BootIdentityConfig{
 			ShardsDir:          dir,
 			SidecarID:          "store",
@@ -336,6 +350,7 @@ func TestDeriveVerifiedBootIdentity_RotatesBindingWithoutRotatingOperator(t *tes
 		EncryptionPubkey:   boxPub,
 		Status:             verify.AttestationStatusActive,
 	}}
+	newRootStoreBootCascade("store", licenseMint, mustPubkey(randPubkeyB58(t)), mustPubkey(cfg.ReleaseMasterNftMint), binHash).seed(t, m)
 	got, err := deriveVerifiedBootIdentity(context.Background(), cfg, m)
 	if err != nil || got == nil {
 		t.Fatalf("expected rotated binding to ACCEPT: %v", err)

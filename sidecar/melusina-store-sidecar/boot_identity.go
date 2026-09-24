@@ -28,7 +28,8 @@ import (
 //     operator stays nil, /publish 503s, read+serve are unaffected. (returns nil,nil)
 //  2. If it is SET, the store is publish-provisioned and EVERYTHING from here
 //     fails CLOSED (Inv 5): a missing shard, an unreadable TLS cert, a missing /
-//     mismatched on-chain SidecarIdentityEntry, or an RPC error → a non-nil error
+//     mismatched on-chain SidecarIdentityEntry, an approval cascade that is not
+//     Active or does not pin this executable, or an RPC error → a non-nil error
 //     that main.go turns into log.Fatalf (refuse to start a publish-provisioned
 //     store with an unverified identity).
 //
@@ -38,8 +39,14 @@ import (
 // match the locally-derived/observed values. So the three secret shards alone are
 // not enough: an attacker who guessed them would still have to match this store's
 // domain, TLS cert, and running binary against the Foundation-cascade-gated chain
-// entry. (This is the store-sidecar analogue of the fleet B11 self-hash gate that
-// binhash.AttestSelfHashWith performs against GlobalSidecarApproval.)
+// entry.
+//
+// The identity entry is checked only when it is registered or updated; nothing
+// on chain revokes it. So after it, the ceremony runs the Store's own five-fact
+// approval cascade (root_store_boot_cascade.go) — the same comparison the
+// sidecars' boot gate (Melusina shared/melusina-attest/binhash) makes — and a
+// revoked licence, Global, Local or reseller approval, or ResellerEntry refuses
+// the start by name.
 
 // shardExeProc is the kernel's view of the running binary; sha256 over it is the
 // binary_hash the SidecarIdentityEntry pins. Overridable in tests.
@@ -59,6 +66,10 @@ type verifiedBootIdentity struct {
 	operatorKeyVersion uint32
 	operatorDomain     string
 	sidecarIdentityPDA string
+	// cascadeMasterMint is the estate master mint the boot cascade required the
+	// Store's LicenseEntry to name. The enrollment gate requires it to be the
+	// enrolled profile's anchors.masterMint (storeEnrollmentRuntimeFacts).
+	cascadeMasterMint primitives.Pubkey
 }
 
 // deriveVerifiedBootIdentity runs the boot-identity ceremony and returns one
@@ -97,6 +108,11 @@ func deriveVerifiedBootIdentity(ctx context.Context, cfg Config, cr chainReader)
 	if err != nil {
 		return nil, fmt.Errorf("boot_identity: bad license_nft_mint: %w", err)
 	}
+	// The estate anchor the boot cascade pins, refused before any chain read.
+	masterMint, err := rootStoreBootMasterMint(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("check=sidecar_cascade: %w", err)
+	}
 	sidecarPDA, _, err := pda.SidecarIdentity(licenseMint, sidecarID, keyVersion, licenseRegistryProgramID())
 	if err != nil {
 		return nil, fmt.Errorf("boot_identity: derive SidecarIdentityEntry PDA: %w", err)
@@ -125,6 +141,12 @@ func deriveVerifiedBootIdentity(ctx context.Context, cfg Config, cr chainReader)
 	if err := verifySidecarIdentity(ctx, cr, sidecarPDA.Base58(), in); err != nil {
 		return nil, err
 	}
+	// No instruction revokes a SidecarIdentityEntry, so the identity alone
+	// cannot recall this build. Its approval cascade can: require it Active and
+	// pinning the executable the identity pins (root_store_boot_cascade.go).
+	if err := verifyRootStoreBootCascade(ctx, cr, sidecarID, licenseMint, masterMint, in.binaryHash); err != nil {
+		return nil, err
+	}
 	public := operator.Public()
 	return &verifiedBootIdentity{
 		operator:           operator,
@@ -134,6 +156,7 @@ func deriveVerifiedBootIdentity(ctx context.Context, cfg Config, cr chainReader)
 		operatorKeyVersion: public.Ref.KeyVersion,
 		operatorDomain:     public.Ref.Domain,
 		sidecarIdentityPDA: sidecarPDA.Base58(),
+		cascadeMasterMint:  masterMint,
 	}, nil
 }
 

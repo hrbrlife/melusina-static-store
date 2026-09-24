@@ -1,0 +1,483 @@
+// Package binhash is the B11 boot gate a Melusina native sidecar runs once,
+// after its RPC client exists and before any TCP/UDS listener comes up.
+//
+// What it attests is the artifact the Store serves and the owners approve: the
+// canonical sidecar bundle, a USTAR tar of runtime.json, the executable and its
+// declared read-only files. AttestNativeArchive rebuilds that tar at boot from
+// the extracted release tree and the kernel's running image (/proc/self/exe)
+// and requires the on-chain sidecar approval cascade to approve its SHA-256.
+// The cascade is the one the license-registry program's
+// require_active_sidecar_cascade requires and the Store's verifyFiveFactCascade
+// checks before it serves the bundle, so a build the Store will not serve does
+// not boot either:
+//
+//  1. LicenseEntry ["license", license NFT mint] Active, naming this license
+//     and the estate's master mint.
+//  2. GlobalSidecarApproval ["global_sidecar", master mint, sidecar_id]
+//     Active, naming this sidecar and the master mint, with a single-tier SAN
+//     list, and its binary_hash equal to the archive hash. The Foundation pin
+//     is the cascade root.
+//  3. LocalSidecarApproval ["local_sidecar", license NFT mint, sidecar_id]
+//     Active, naming this sidecar and license, with the Global SAN tier as its
+//     scope. When the install pinned a build (Option = Some) that pin must
+//     equal the archive hash too; None inherits the Global pin. The Local tier
+//     is mandatory: there is no option to skip it.
+//  4. ResellerSidecarApproval ["reseller_sidecar", the license's reseller
+//     mint, sidecar_id] Active, naming this sidecar and that reseller.
+//  5. ResellerEntry ["reseller", the license's reseller mint] Active.
+//
+// Every account must be owned by the estate's license-registry program and
+// carry its Anchor discriminator: an account the program did not write proves
+// nothing. Revocation keeps an account and its hash and changes only its
+// status (revoke_global_sidecar, revoke_local_sidecar), so a hash that still
+// matches is never enough.
+//
+// Every account is a PDA under the estate's license-registry program, and the
+// Global one is seeded with the estate's master mint. Those are estate values.
+// They come from the owner-signed EstateProfileV1 through the deployer's
+// rendered runtime configuration and are parsed with ParseEstateAnchors. This
+// package compiles in no estate value and has no default: a sidecar built with
+// the previous estate's anchors looks up approval accounts that do not exist
+// on a new estate and cannot boot there (seam round 2, finding 13).
+//
+// Operator tooling replays the gate from outside the process with
+// MeasureNativeArchive (the release's own bytes) and CheckApprovals (the same
+// comparison, returned instead of exited).
+//
+// Any failure - an absent or malformed anchor, a hash that differs, a PDA that
+// is missing, an RPC that is unreachable, an account that is malformed, owned
+// by another program, of another type, not Active or naming another estate,
+// license, reseller or sidecar - logs one FATAL line, named by the Refusal*
+// constants for a cascade fact, and calls os.Exit(1). There is no warn-only mode, no
+// environment bypass and no in-memory cache (CLAUDE.md Inv 5, fail closed). New
+// binaries roll by publishing the new pin BEFORE rolling, never after.
+package binhash
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"strings"
+
+	"github.com/hrbrlife/melusina-identity-gate/verify"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
+)
+
+// ExeProc is the kernel's view of the running executable. The boot gate reads
+// the running image from here, never from a path a caller names.
+const ExeProc = "/proc/self/exe"
+
+// ExitCodeMismatch is the os.Exit status for every failure mode covered by
+// Inv 5. The caller does not get to choose: fail-closed termination, not a
+// returned error the caller might forget to handle.
+const ExitCodeMismatch = 1
+
+// The two estate anchors, named as the authz daemon names its own
+// (authzsign-server requiredEstateAnchorEnv): a refusal reads
+// estate-anchor-absent:<role> or estate-anchor-malformed:<role>.
+const (
+	anchorLicenseRegistry = "license-registry"
+	anchorMasterMint      = "master-mint"
+)
+
+// Options are the inputs to AttestNativeArchive. Every exported field is
+// required. ProgramID and MasterMint are the estate's license-registry program
+// and master mint, obtained with ParseEstateAnchors; LicenseNFT is this
+// install's license mint, which names the mandatory Local approval.
+type Options struct {
+	RPC        *verify.RPCClient
+	SidecarID  string
+	LicenseNFT primitives.Pubkey
+	MasterMint primitives.Pubkey
+	ProgramID  primitives.Pubkey
+
+	// exePath replaces /proc/self/exe in this package's tests. It is not
+	// exported: a caller able to name the measured image could attest a
+	// pristine copy while running something else.
+	exePath string
+
+	// exitFn replaces os.Exit so the failure paths can be driven from tests
+	// without terminating the test runner.
+	exitFn func(int)
+}
+
+// ParseEstateAnchors parses the estate's license-registry program id and master
+// mint, as rendered by the deployer from the owner-signed estate profile
+// (programs.license-registry.programId and anchors.masterMint). There is no
+// default for either. Refusals are named by role:
+//
+//	estate-anchor-absent:license-registry     empty or whitespace
+//	estate-anchor-malformed:license-registry  not a base58 32-byte key, or all-zero
+//	estate-anchor-absent:master-mint          empty or whitespace
+//	estate-anchor-malformed:master-mint       not a base58 32-byte key, all-zero,
+//	                                          or equal to the program id
+func ParseEstateAnchors(programB58, masterB58 string) (programID, masterMint primitives.Pubkey, err error) {
+	var zero primitives.Pubkey
+	programID, err = ParseLicenseRegistryProgramID(programB58)
+	if err != nil {
+		return zero, zero, err
+	}
+	masterMint, err = parseEstateAnchor(anchorMasterMint, "master mint", masterB58)
+	if err != nil {
+		return zero, zero, err
+	}
+	if masterMint == programID {
+		return zero, zero, fmt.Errorf("estate-anchor-malformed:%s: the master mint equals the license-registry program id; they are different accounts of the estate", anchorMasterMint)
+	}
+	return programID, masterMint, nil
+}
+
+// ParseLicenseRegistryProgramID parses the estate's license-registry program id
+// alone, for a consumer that reads the master mint from the LicenseEntry
+// rather than from its configuration. Refusals are those of ParseEstateAnchors
+// for the license-registry role.
+func ParseLicenseRegistryProgramID(programB58 string) (primitives.Pubkey, error) {
+	return parseEstateAnchor(anchorLicenseRegistry, "license-registry program id", programB58)
+}
+
+func parseEstateAnchor(role, noun, raw string) (primitives.Pubkey, error) {
+	var zero primitives.Pubkey
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return zero, fmt.Errorf("estate-anchor-absent:%s: the %s is required; it comes from the estate profile and this build carries no compiled value", role, noun)
+	}
+	key, err := primitives.PubkeyFromBase58(value)
+	if err != nil {
+		return zero, fmt.Errorf("estate-anchor-malformed:%s: the %s is not a base58 32-byte key: %v", role, noun, err)
+	}
+	// 32 zero bytes is what an unfilled placeholder decodes to: the System
+	// Program, never an estate program or mint.
+	if key == zero {
+		return zero, fmt.Errorf("estate-anchor-malformed:%s: the %s must not be the all-zero key", role, noun)
+	}
+	return key, nil
+}
+
+// requireEstateAnchors refuses Options whose anchors were never filled. It runs
+// before any PDA is derived: deriving under a zero program would look up an
+// account that cannot exist and report a missing approval instead of the
+// missing configuration.
+func requireEstateAnchors(opts Options) error {
+	var zero primitives.Pubkey
+	if opts.ProgramID == zero {
+		return fmt.Errorf("estate-anchor-absent:%s: Options.ProgramID is zero; the license-registry program comes from the estate profile, never a default", anchorLicenseRegistry)
+	}
+	if opts.MasterMint == zero {
+		return fmt.Errorf("estate-anchor-absent:%s: Options.MasterMint is zero; the master mint comes from the estate profile, never a default", anchorMasterMint)
+	}
+	if opts.MasterMint == opts.ProgramID {
+		return fmt.Errorf("estate-anchor-malformed:%s: Options.MasterMint equals Options.ProgramID", anchorMasterMint)
+	}
+	return nil
+}
+
+// requireOptions is every input check that needs no file and no RPC. The boot
+// gate runs it before measuring anything.
+func requireOptions(opts Options) error {
+	if opts.RPC == nil {
+		return errors.New("rpc client is nil")
+	}
+	if err := primitives.ValidateSidecarID(opts.SidecarID); err != nil {
+		return fmt.Errorf("invalid sidecar_id: %v", err)
+	}
+	if err := requireEstateAnchors(opts); err != nil {
+		return err
+	}
+	if opts.LicenseNFT == (primitives.Pubkey{}) {
+		return errors.New("the license NFT is zero, and LocalSidecarApproval is mandatory (skipping Local approval is forbidden)")
+	}
+	return nil
+}
+
+// attestMeasuredHash is the boot gate's verdict on a measured archive hash:
+// CheckApprovals, with a refusal logged as one FATAL line and the process
+// exited. AttestNativeArchive is its only caller.
+func attestMeasuredHash(ctx context.Context, opts Options, diskSHA [32]byte) error {
+	globalPDA, err := checkApprovals(ctx, opts, diskSHA)
+	if err != nil {
+		return failWith(opts.exitFn, err.Error())
+	}
+	log.Printf("binhash: B11 attestation OK - sidecar_id=%s sha256=%x global_pda=%s",
+		opts.SidecarID, diskSHA[:8], globalPDA)
+	return nil
+}
+
+// CheckApprovals is the boot gate's comparison without the exit, for operator
+// tooling that measured a release with MeasureNativeArchive: the whole
+// approval cascade must be Active and bound to this estate, license and
+// sidecar, archiveSHA must equal the GlobalSidecarApproval pin, and the
+// mandatory LocalSidecarApproval, when it pins a build, must pin the same
+// hash. It returns the refusal the boot gate would log, by the same name, and
+// nil when the boot gate would start. Options are required exactly as for
+// AttestNativeArchive. A sidecar never calls this; it calls
+// AttestNativeArchive, which measures its own running image.
+func CheckApprovals(ctx context.Context, opts Options, archiveSHA [32]byte) error {
+	_, err := checkApprovals(ctx, opts, archiveSHA)
+	return err
+}
+
+// Refusal names of the approval cascade. A refusal reads
+// "<name>:<Account>[.<field>]: <detail>", where Account is the Anchor account
+// the fact belongs to (verify.Account*). An absent account or an unreachable
+// RPC reads "fetch <Account>(<sidecar_id> @ <address>): <cause>", and a pin
+// that differs from the measured archive reads "GlobalSidecarApproval
+// binary_hash mismatch" or "LocalSidecarApproval binary_hash mismatch".
+const (
+	// RefusalAccountOwner: the account is not owned by the estate's
+	// license-registry program (Options.ProgramID).
+	RefusalAccountOwner = "cascade-account-owner"
+	// RefusalAccountDiscriminator: the account's first 8 bytes are not the
+	// Anchor discriminator of the account the address is derived for.
+	RefusalAccountDiscriminator = "cascade-account-discriminator"
+	// RefusalAccountMalformed: the account does not decode in the program's
+	// layout.
+	RefusalAccountMalformed = "cascade-account-malformed"
+	// RefusalNotActive: the account's status is not Active - Revoked, or a
+	// RevokingCascadeInProgress approval.
+	RefusalNotActive = "cascade-not-active"
+	// RefusalBindingMismatch: the account names another estate, license,
+	// reseller or sidecar than the one the gate derived it for.
+	RefusalBindingMismatch = "cascade-binding-mismatch"
+	// RefusalScopeMismatch: the Global SAN list names no single tier, or the
+	// Local approval's scope is not that tier (B13).
+	RefusalScopeMismatch = "cascade-scope-mismatch"
+)
+
+// checkApprovals is the one comparison: the sidecar approval cascade in the
+// order the Store's verifyFiveFactCascade checks it. It returns the Global
+// approval's address for the success log.
+func checkApprovals(ctx context.Context, opts Options, diskSHA [32]byte) (string, error) {
+	// Step 1 - every input, anchors first, before any PDA is derived.
+	if err := requireOptions(opts); err != nil {
+		return "", err
+	}
+	chain := cascade{ctx: ctx, opts: opts}
+
+	// Step 2 - LicenseEntry: Active, this license, this estate's master mint.
+	// The reseller the rest of the cascade is derived from is the one it
+	// names.
+	licensePDA, _, err := primitives.DeriveLicense(opts.LicenseNFT, opts.ProgramID)
+	if err != nil {
+		return "", errors.New("derive LicenseEntry PDA: " + err.Error())
+	}
+	data, err := chain.fetch(verify.AccountLicenseEntry, licensePDA)
+	if err != nil {
+		return "", err
+	}
+	license, err := verify.ReadLicenseEntrySummary(data)
+	if err != nil {
+		return "", chain.malformed(verify.AccountLicenseEntry, licensePDA, err)
+	}
+	if license.Status != verify.ApprovalStatusActive {
+		return "", chain.notActive(verify.AccountLicenseEntry, licensePDA, licenseStatusName(uint8(license.Status)))
+	}
+	if err := chain.bind(verify.AccountLicenseEntry, "license_nft_mint", licensePDA, license.LicenseNFTMint, opts.LicenseNFT, "the license NFT"); err != nil {
+		return "", err
+	}
+	if err := chain.bind(verify.AccountLicenseEntry, "master_nft_mint", licensePDA, license.MasterNftMint, opts.MasterMint, "the estate's master mint"); err != nil {
+		return "", err
+	}
+	reseller := primitives.Pubkey(license.ResellerNFTMint)
+
+	// Step 3 - GlobalSidecarApproval: this sidecar and master mint, one SAN
+	// tier, Active, and its pin equal to the archive hash.
+	globalPDA, _, err := primitives.DeriveGlobalSidecar(opts.MasterMint, opts.SidecarID, opts.ProgramID)
+	if err != nil {
+		return "", errors.New("derive global PDA: " + err.Error())
+	}
+	if data, err = chain.fetch(verify.AccountGlobalSidecarApproval, globalPDA); err != nil {
+		return "", err
+	}
+	global, err := verify.DecodeGlobalSidecarApproval(data)
+	if err != nil {
+		return "", chain.malformed(verify.AccountGlobalSidecarApproval, globalPDA, err)
+	}
+	if err := chain.bindSidecar(verify.AccountGlobalSidecarApproval, globalPDA, global.SidecarID); err != nil {
+		return "", err
+	}
+	if err := chain.bind(verify.AccountGlobalSidecarApproval, "master_nft_mint", globalPDA, global.MasterNftMint, opts.MasterMint, "the estate's master mint"); err != nil {
+		return "", err
+	}
+	tier, ok := verify.SidecarScopeFromSANList(global.SANList)
+	if !ok {
+		return "", fmt.Errorf("%s:%s.san_list: the SAN list %q does not name one *.sidecar.<tier> tier, sidecar_id=%s, pda=%s",
+			RefusalScopeMismatch, verify.AccountGlobalSidecarApproval, global.SANList, opts.SidecarID, globalPDA.Base58())
+	}
+	if global.Status != verify.ApprovalStatusActive {
+		return "", chain.notActive(verify.AccountGlobalSidecarApproval, globalPDA, global.Status.String())
+	}
+	if diskSHA != global.BinaryHash {
+		return "", fmt.Errorf(
+			"GlobalSidecarApproval binary_hash mismatch - "+
+				"on-disk sha256=%x, on-chain=%x, sidecar_id=%s, pda=%s "+
+				"(refusing to start; Inv 5 fail-closed)",
+			diskSHA[:], global.BinaryHash[:], opts.SidecarID, globalPDA.Base58())
+	}
+
+	// Step 4 - LocalSidecarApproval, always: this sidecar and license, the
+	// Global tier as its scope, Active, and a Some pin equal to the archive
+	// hash; None inherits the Global pin.
+	localPDA, _, err := primitives.DeriveLocalSidecar(opts.LicenseNFT, opts.SidecarID, opts.ProgramID)
+	if err != nil {
+		return "", errors.New("derive local PDA: " + err.Error())
+	}
+	if data, err = chain.fetch(verify.AccountLocalSidecarApproval, localPDA); err != nil {
+		return "", err
+	}
+	local, err := verify.DecodeLocalSidecarApproval(data)
+	if err != nil {
+		return "", chain.malformed(verify.AccountLocalSidecarApproval, localPDA, err)
+	}
+	if err := chain.bindSidecar(verify.AccountLocalSidecarApproval, localPDA, local.SidecarID); err != nil {
+		return "", err
+	}
+	if err := chain.bind(verify.AccountLocalSidecarApproval, "license_nft_mint", localPDA, local.LicenseNFTMint, opts.LicenseNFT, "the license NFT"); err != nil {
+		return "", err
+	}
+	if local.Scope != tier {
+		return "", fmt.Errorf("%s:%s.scope: the Local scope %s is not the Global SAN tier %s, sidecar_id=%s, pda=%s",
+			RefusalScopeMismatch, verify.AccountLocalSidecarApproval, local.Scope, tier, opts.SidecarID, localPDA.Base58())
+	}
+	if local.Status != verify.ApprovalStatusActive {
+		return "", chain.notActive(verify.AccountLocalSidecarApproval, localPDA, local.Status.String())
+	}
+	if local.HasBinaryHash && local.BinaryHash != diskSHA {
+		return "", fmt.Errorf(
+			"LocalSidecarApproval binary_hash mismatch - "+
+				"on-disk sha256=%x, on-chain=%x, sidecar_id=%s, license=%s, pda=%s "+
+				"(refusing to start; Inv 5 fail-closed)",
+			diskSHA[:], local.BinaryHash[:], opts.SidecarID, opts.LicenseNFT.Base58(), localPDA.Base58())
+	}
+
+	// Step 5 - ResellerSidecarApproval of the license's reseller: this
+	// sidecar and reseller, Active.
+	resellerApprovalPDA, _, err := primitives.DeriveResellerSidecar(reseller, opts.SidecarID, opts.ProgramID)
+	if err != nil {
+		return "", errors.New("derive ResellerSidecarApproval PDA: " + err.Error())
+	}
+	if data, err = chain.fetch(verify.AccountResellerSidecarApproval, resellerApprovalPDA); err != nil {
+		return "", err
+	}
+	resellerApproval, err := verify.DecodeResellerSidecarApproval(data)
+	if err != nil {
+		return "", chain.malformed(verify.AccountResellerSidecarApproval, resellerApprovalPDA, err)
+	}
+	if err := chain.bindSidecar(verify.AccountResellerSidecarApproval, resellerApprovalPDA, resellerApproval.SidecarID); err != nil {
+		return "", err
+	}
+	if err := chain.bind(verify.AccountResellerSidecarApproval, "reseller_nft_mint", resellerApprovalPDA, resellerApproval.ResellerNFTMint, reseller, "the license's reseller"); err != nil {
+		return "", err
+	}
+	if resellerApproval.Status != verify.ApprovalStatusActive {
+		return "", chain.notActive(verify.AccountResellerSidecarApproval, resellerApprovalPDA, resellerApproval.Status.String())
+	}
+
+	// Step 6 - ResellerEntry of the license's reseller: Active. Its Options
+	// (parent_reseller, category) are decoded as written, Some included.
+	resellerPDA, _, err := primitives.DeriveReseller(reseller, opts.ProgramID)
+	if err != nil {
+		return "", errors.New("derive ResellerEntry PDA: " + err.Error())
+	}
+	if data, err = chain.fetch(verify.AccountResellerEntry, resellerPDA); err != nil {
+		return "", err
+	}
+	resellerEntry, err := verify.DecodeResellerEntry(data)
+	if err != nil {
+		return "", chain.malformed(verify.AccountResellerEntry, resellerPDA, err)
+	}
+	if err := chain.bind(verify.AccountResellerEntry, "reseller_nft_mint", resellerPDA, resellerEntry.ResellerNFTMint, reseller, "the license's reseller"); err != nil {
+		return "", err
+	}
+	if resellerEntry.Status != verify.ResellerStatusActive {
+		return "", chain.notActive(verify.AccountResellerEntry, resellerPDA, resellerEntry.Status.String())
+	}
+	return globalPDA.Base58(), nil
+}
+
+// cascade reads the accounts of one approval cascade and names its refusals.
+type cascade struct {
+	ctx  context.Context
+	opts Options
+}
+
+// fetch returns the data of the account at address, which must exist, be owned
+// by the estate's license-registry program and carry the Anchor discriminator
+// of account. Nothing is decoded from an account that fails either check.
+func (c cascade) fetch(account string, address primitives.Pubkey) ([]byte, error) {
+	got, err := c.opts.RPC.GetAccount(c.ctx, address.Base58())
+	if err == nil && got == nil {
+		err = verify.ErrPDANotFound
+	}
+	if err != nil {
+		// PDA absent OR rpc unreachable OR malformed response - all fail-closed.
+		return nil, fmt.Errorf("fetch %s(%s @ %s): %w", account, c.opts.SidecarID, address.Base58(), err)
+	}
+	owner, err := primitives.PubkeyFromBase58(got.Owner)
+	if err != nil || owner != c.opts.ProgramID {
+		return nil, fmt.Errorf("%s:%s: the account at %s is owned by %q, not the estate's license-registry program %s, sidecar_id=%s",
+			RefusalAccountOwner, account, address.Base58(), got.Owner, c.opts.ProgramID.Base58(), c.opts.SidecarID)
+	}
+	want := verify.AnchorAccountDiscriminator(account)
+	if len(got.Data) < len(want) || [verify.AccountDiscriminatorLen]byte(got.Data[:len(want)]) != want {
+		return nil, fmt.Errorf("%s:%s: the account at %s does not begin with the %s discriminator %x, sidecar_id=%s",
+			RefusalAccountDiscriminator, account, address.Base58(), account, want[:], c.opts.SidecarID)
+	}
+	return got.Data, nil
+}
+
+func (c cascade) malformed(account string, address primitives.Pubkey, err error) error {
+	return fmt.Errorf("%s:%s: the account at %s does not decode: %v, sidecar_id=%s",
+		RefusalAccountMalformed, account, address.Base58(), err, c.opts.SidecarID)
+}
+
+func (c cascade) notActive(account string, address primitives.Pubkey, status string) error {
+	return fmt.Errorf("%s:%s: status %s, not Active, sidecar_id=%s, pda=%s",
+		RefusalNotActive, account, status, c.opts.SidecarID, address.Base58())
+}
+
+// bind requires the account's field to name want, the value the gate derived
+// the account's address from.
+func (c cascade) bind(account, field string, address primitives.Pubkey, got [32]byte, want primitives.Pubkey, what string) error {
+	if primitives.Pubkey(got) == want {
+		return nil
+	}
+	return fmt.Errorf("%s:%s.%s: the account names %s, not %s %s, sidecar_id=%s, pda=%s",
+		RefusalBindingMismatch, account, field, primitives.Pubkey(got).Base58(), what, want.Base58(), c.opts.SidecarID, address.Base58())
+}
+
+func (c cascade) bindSidecar(account string, address primitives.Pubkey, got string) error {
+	if got == c.opts.SidecarID {
+		return nil
+	}
+	return fmt.Errorf("%s:%s.sidecar_id: the account names sidecar %q, not %q, pda=%s",
+		RefusalBindingMismatch, account, got, c.opts.SidecarID, address.Base58())
+}
+
+// licenseStatusName names a LicenseStatus byte (state/license.rs: Active,
+// Revoked).
+func licenseStatusName(status uint8) string {
+	switch status {
+	case 0:
+		return "Active"
+	case 1:
+		return "Revoked"
+	default:
+		return fmt.Sprintf("Unknown(%d)", status)
+	}
+}
+
+// failWith logs one FATAL line and calls os.Exit(1). Tests swap the exit
+// function and receive the message as an error so they can assert on the
+// refusal by name.
+func failWith(exitFn func(int), msg string) error {
+	log.Printf("FATAL binhash: %s", msg)
+	if exitFn != nil {
+		exitFn(ExitCodeMismatch)
+		return errors.New(msg)
+	}
+	os.Exit(ExitCodeMismatch)
+	// Unreachable - os.Exit does not return.
+	return nil
+}

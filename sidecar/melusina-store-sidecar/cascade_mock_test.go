@@ -318,7 +318,7 @@ func TestVerifyFiveFactCascadeRejectsAmbiguousOrMismatchedSANTier(t *testing.T) 
 			name:       "unknown_local_scope_is_not_an_authorization",
 			sans:       []string{sidecarID + ".sidecar.host"},
 			localScope: 0xff,
-			want:       "scope 255 is unknown",
+			want:       "cascade-scope-mismatch:LocalSidecarApproval.scope: the Local scope Unknown(255) is not the Global SAN tier Host",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -456,7 +456,7 @@ func TestVerifyFiveFactCascadeDecodesResellerEntryOptions(t *testing.T) {
 			data: func(*testing.T) []byte {
 				return mkResellerEntryAccountWith(reseller, master, fields(&parent, str("x"), 1))
 			},
-			want: "ResellerEntry status 1 (Revoked) not Active",
+			want: "cascade-not-active:ResellerEntry: status Revoked, not Active",
 		},
 		{
 			name: "unknown_status_byte_with_parent_some_category_some",

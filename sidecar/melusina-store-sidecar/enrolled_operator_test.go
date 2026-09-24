@@ -84,7 +84,8 @@ func enrollmentGatedEntryPoints(indexSHA256, cohortDir string) []enrollmentGated
 // enrolledEntryPointFixture is a write-capable, profile-enrolled root Store
 // whose boot identity a child process derives for real: three attest shards, a
 // TLS leaf, and a plain-HTTP JSON-RPC endpoint serving its Active
-// SidecarIdentityEntry and the profile network's genesis. The enrollment binds
+// SidecarIdentityEntry, its Active approval cascade and the profile network's
+// genesis. The enrollment binds
 // exactly the facts this test binary derives, so the child (the same binary)
 // is the enrolled Store. The catalog migration root is deliberately absent:
 // every entry point's first action past the gate fails on it, or on the
@@ -170,9 +171,24 @@ func newEnrolledEntryPointFixture(t *testing.T) enrolledEntryPointFixture {
 	if decoded, err := verify.ReadSidecarIdentity(account); err != nil || decoded.SigningPubkey != signPub || decoded.BinaryHash != binaryHash || decoded.Status != verify.AttestationStatusActive {
 		t.Fatalf("SidecarIdentityEntry fixture does not decode as the registry's layout: %+v, %v", decoded, err)
 	}
+	// The Store's own approval cascade under its licence and the profile's
+	// master mint, Active and pinning this executable; and the same cascade
+	// with its Global approval revoked by the owners.
+	cascade := newRootStoreBootCascade("store", licenseMint, mustPubkey(profile.Anchors.ResellerMint), mustPubkey(profile.Anchors.MasterMint), binaryHash)
+	_, cascadeAccounts := cascade.accounts(t)
+	cascade.globalStatus = byte(verify.ApprovalStatusRevoked)
+	_, recalledAccounts := cascade.accounts(t)
 	accounts := map[string][]byte{sidecarPDA.Base58(): account}
+	recalled := map[string][]byte{sidecarPDA.Base58(): account}
+	for address, data := range cascadeAccounts {
+		accounts[address] = data
+	}
+	for address, data := range recalledAccounts {
+		recalled[address] = data
+	}
 	enrolledRPC := newEntryPointRPCFixture(t, profile.Network.GenesisHash, accounts)
 	foreignRPC := newEntryPointRPCFixture(t, randPubkeyB58(t), accounts)
+	recalledRPC := newEntryPointRPCFixture(t, profile.Network.GenesisHash, recalled)
 
 	profile.Store.OperatorKey = operator.Public().SignPubkeyB58
 	profile = signStoreEnrollmentRuntimeProfile(t, profile)
@@ -264,6 +280,7 @@ func newEnrolledEntryPointFixture(t *testing.T) enrolledEntryPointFixture {
 			"not-enrolled":       writeConfig("not-enrolled", filepath.Join(mkdir("empty-state"), "estate-enrollment.json"), enrolledRPC.URL),
 			"foreign-network":    writeConfig("foreign-network", enrolledStatePath, foreignRPC.URL),
 			"foreign-executable": writeConfig("foreign-executable", foreignExecutableStatePath, enrolledRPC.URL),
+			"recalled-global":    writeConfig("recalled-global", enrolledStatePath, recalledRPC.URL),
 		},
 	}
 }
@@ -424,6 +441,9 @@ func TestEveryReleaseAuthorityEntryPointVerifiesItsEnrollment(t *testing.T) {
 		{"not-enrolled", "estate enrollment: store-estate-profile-not-enrolled: enrollment state is absent"},
 		{"foreign-network", "estate enrollment: " + estateprofile.RefusalStoreRPCGenesisMismatch},
 		{"foreign-executable", "estate enrollment: " + estateprofile.RefusalStoreEnrollmentFactsMismatch + ":binarySha256"},
+		// The owners revoked this Store's Global approval; its identity entry,
+		// which nothing revokes, is unchanged. No entry point starts.
+		{"recalled-global", "boot identity: check=sidecar_cascade: cascade-not-active:GlobalSidecarApproval: status Revoked"},
 	}
 	for _, entry := range entryPoints {
 		name := entry.name

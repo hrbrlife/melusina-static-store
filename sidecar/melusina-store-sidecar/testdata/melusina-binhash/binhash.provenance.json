@@ -1,0 +1,37 @@
+{
+  "schema": "melusina.store.vendored-source-provenance.v1",
+  "comment": [
+    "binhash.go.src and cascade_test.go.src are byte-for-byte copies of two files of the Melusina monorepo's sidecar boot",
+    "gate (shared/melusina-attest/binhash). They are test data, never compiled: the .src suffix keeps every Go tool off them.",
+    "root_store_boot_cascade_test.go reads the Refusal* constants from binhash.go and the refusal table (case name and",
+    "expected reason) from cascade_test.go, and requires the Store's own cascade, run for the root Store at boot, to refuse",
+    "each of those cases by the same name. Do not edit the copies. sourceCommit must be the commit vendor/ was exported",
+    "from (testdata/melusina-vendor/vendor.provenance.json), so the refusal names and the decoders the Store compiles come",
+    "from one Melusina commit. To move both, re-vendor first, then copy the two files from that commit, update every field",
+    "below, and replace git-objects/ with that commit's objects:",
+    "  git -C <Melusina> cat-file commit <commit> > git-objects/<commit>.commit",
+    "  git -C <Melusina> cat-file tree <id> > git-objects/<id>.tree, for <commit>^{tree}, <commit>:shared,",
+    "  <commit>:shared/melusina-attest and <commit>:shared/melusina-attest/binhash.",
+    "The test checks, without a Melusina clone, that each copy's size, sha256 and git blob id are the ones recorded here,",
+    "and walks from the recorded commit through those trees to each recorded blob; every object in git-objects/ must be on",
+    "that walk."
+  ],
+  "sourceRepository": "https://github.com/hrbrlife/Melusina",
+  "sourceCommit": "dd9053fdf22bb13892209ed9cb0378db4f61f53a",
+  "files": [
+    {
+      "file": "binhash.go.src",
+      "sourcePath": "shared/melusina-attest/binhash/binhash.go",
+      "gitBlobSha1": "ce78c61f43704a26e9335e4c25dd38f8b67a06ba",
+      "sha256": "875a0493ebe8fc19b84ac3307a059b0e242bc2f8a46ec983498bd221b3ae702f",
+      "bytes": 22471
+    },
+    {
+      "file": "cascade_test.go.src",
+      "sourcePath": "shared/melusina-attest/binhash/cascade_test.go",
+      "gitBlobSha1": "52cb245ae0e755a0f9513b75c02b0546c3f5b740",
+      "sha256": "7a366b48db3f7ba86b5f339f897c5ba51fdc841642d1a6a2ebc5f384ed3ddb9b",
+      "bytes": 15684
+    }
+  ]
+}

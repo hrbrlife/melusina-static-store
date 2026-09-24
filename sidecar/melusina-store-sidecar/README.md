@@ -160,7 +160,19 @@ three deploy-provisioned attest shards (`derive.DeriveSidecar`) and binds it —
 fail-closed — to an on-chain `SidecarIdentityEntry`, asserting **all** of
 `signing_pubkey`, `encryption_pubkey`, `domain_hash`, `tls_cert_fingerprint`, and
 `binary_hash` match the locally derived/observed values before any app-publish
-route is enabled. Any mismatch / missing entry / RPC error is FATAL (Inv 5).
+route is enabled. Nothing on chain revokes that entry, so the ceremony then
+checks the Store's own five-fact approval cascade for its `sidecar_id` and
+`license_nft_mint` (`root_store_boot_cascade.go`): the `LicenseEntry`, which
+must name `release_master_nft_mint` (the enrolled profile's
+`anchors.masterMint`; there is no default and `mirror.root_master_nft_mint` is
+not read), the Global and Local sidecar approvals, whose pins must equal the
+running `binary_hash`, the reseller sidecar approval and the `ResellerEntry`,
+each owned by the configured program, naming what its address was derived
+from, and Active. A revoked licence, approval or reseller is how the owners
+recall a Store build, and the start is refused with the name the sidecars' own
+boot gate gives (`check=sidecar_cascade: cascade-not-active:GlobalSidecarApproval:
+status Revoked`, `cascade-binding-mismatch:LicenseEntry.master_nft_mint`, ...).
+Any mismatch / missing entry / RPC error is FATAL (Inv 5).
 When `shards_dir` is unset the store is deliberately read-only: operator nil,
 the legacy `/publish` route returns `503` (or `410` after cutover), and the
 serve gate is unaffected.
@@ -463,8 +475,12 @@ observed. A successor:
 The sequence, with the chain step first because boot identity refuses a
 binary or certificate the `SidecarIdentityEntry` does not pin:
 
-1. Run the governed chain change (`update_sidecar_identity` for a rebuilt
-   executable; a new key-version `SidecarIdentityEntry` for a new certificate).
+1. Run the governed chain change (for a rebuilt executable
+   `update_global_sidecar_binary_hash`, `update_local_sidecar_binary_hash`,
+   then `update_sidecar_identity`; a new key-version `SidecarIdentityEntry`
+   for a new certificate). The old executable stops starting as soon as the
+   Global pin moves, because the boot cascade requires the Global and Local
+   pins to be the running binary.
 2. With the **new** executable, emit the request. It writes nothing:
 
    ```sh

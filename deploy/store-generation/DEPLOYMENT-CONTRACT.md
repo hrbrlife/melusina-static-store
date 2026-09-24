@@ -91,7 +91,14 @@ paths. Before enabling the unit it must install or create:
    `release_squads_authority` tuple from the profile; it refuses overrides.
 3. The three root-owned mode-`0600` attest shards. They derive the operator
    signer; a private operator key is never packaged. The derived signer and
-   running ELF hash must match an Active `SidecarIdentityEntry` before startup.
+   running ELF hash must match an Active `SidecarIdentityEntry` before startup,
+   and the Store's own approval cascade under sidecar id `store` must be
+   Active and pin that ELF hash: its `LicenseEntry` (naming the profile's
+   `anchors.masterMint`, rendered as `release_master_nft_mint`), Global and
+   Local sidecar approvals, reseller sidecar approval and `ResellerEntry`.
+   The identity entry cannot be revoked on chain, so revoking any one of
+   those accounts is how the owners recall a Store build; the Store then
+   refuses to start (`check=sidecar_cascade: cascade-not-active:<Account>`).
 4. TLS files, including the certificate whose DER hash is pinned by the active
    sidecar identity. The Store re-reads `tls.cert_path` and `tls.key_path`
    every 30 seconds, so replace both files atomically (write, then rename);

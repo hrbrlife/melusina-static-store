@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 type fixedStoreGenesisReader struct {
@@ -160,6 +161,12 @@ func newStoreEnrollmentRuntimeFixture(t *testing.T) storeEnrollmentRuntimeFixtur
 		// these fixtures rather than move them with it.
 		BootIdentity: BootIdentityConfig{SidecarID: "store"},
 	}
+	// The master mint the boot cascade pinned is the profile's anchor, as
+	// deriveVerifiedBootIdentity reads it from release_master_nft_mint.
+	cascadeMaster, err := primitives.PubkeyFromBase58(declaration.ReleaseMasterNFTMint)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return storeEnrollmentRuntimeFixture{
 		profile:     profile,
 		state:       state,
@@ -173,6 +180,7 @@ func newStoreEnrollmentRuntimeFixture(t *testing.T) storeEnrollmentRuntimeFixtur
 			operatorKeyVersion: 1,
 			operatorDomain:     operatorDomain,
 			sidecarIdentityPDA: sidecarPDA,
+			cascadeMasterMint:  cascadeMaster,
 		},
 		genesis: profile.Network.GenesisHash,
 	}

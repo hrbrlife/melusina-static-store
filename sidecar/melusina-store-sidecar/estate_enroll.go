@@ -553,6 +553,11 @@ func storeEnrollmentRuntimeFacts(declaration storeEstateDeclaration, identity *v
 	if err := requireRootStoreSidecarID(identity.sidecarID); err != nil {
 		return estateprofile.StoreEnrollmentFacts{}, err
 	}
+	// The boot cascade pinned the Store's licence to a master mint; it must be
+	// the profile's anchors.masterMint, which the declaration is bound to.
+	if identity.cascadeMasterMint.Base58() != declaration.ReleaseMasterNFTMint {
+		return estateprofile.StoreEnrollmentFacts{}, fmt.Errorf("%s: the boot cascade pinned %s, the enrolled profile's anchors.masterMint is %s", refusalBootCascadeMasterNotEnrolled, identity.cascadeMasterMint.Base58(), declaration.ReleaseMasterNFTMint)
+	}
 	rootDomainHash := sha256.Sum256([]byte(declaration.Domain))
 	public := identity.operator.Public()
 	return estateprofile.StoreEnrollmentFacts{

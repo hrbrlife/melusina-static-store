@@ -127,6 +127,9 @@ type Config struct {
 	// InstallerReleaseEntry PDAs for whole-file artifacts served under
 	// /releases/<class>/<name>. Empty means the /releases serve gate fails closed
 	// unless mirror.root_master_nft_mint is set as the legacy/root fallback.
+	// A publish-provisioned Store (boot_identity.shards_dir set) also requires
+	// it at start: its own LicenseEntry must name this master mint
+	// (root_store_boot_cascade.go), with no fallback to the mirror field.
 	ReleaseMasterNftMint string `json:"release_master_nft_mint,omitempty"`
 	// ReleaseSquadsAuthority is mandatory for the default Bazaar. The read path
 	// checks the on-chain ReleaseEntry.publisher_squads_vault against Vault and

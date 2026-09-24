@@ -1,0 +1,327 @@
+package binhash
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"github.com/hrbrlife/melusina-attest/binhash/binhashtest"
+	"github.com/hrbrlife/melusina-identity-gate/verify"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
+)
+
+// The boot gate requires the approval cascade the Store requires before it
+// serves a sidecar bundle (verifyFiveFactCascade) and the license-registry
+// program requires in require_active_sidecar_cascade: every account owned by
+// the estate's program, of its own Anchor type, Active, and naming this
+// estate, license, reseller and sidecar. The accounts here are encoded in the
+// program's layouts by binhashtest; revocation is what the program's revoke
+// handlers write (the account and its hash stay, the status changes).
+
+// cascadeRefusal is one change to an approving cascade and the refusal, by
+// name, that the boot gate and CheckApprovals must both give.
+type cascadeRefusal struct {
+	name   string
+	mutate func(f *comparisonFixture)
+	reason string
+}
+
+func republish(change func(c *binhashtest.Cascade)) func(f *comparisonFixture) {
+	return func(f *comparisonFixture) {
+		change(f.cascade)
+		f.publish()
+	}
+}
+
+// accountAt names each cascade account's address in the fixture.
+func (f *comparisonFixture) accountAt(account string) string {
+	switch account {
+	case verify.AccountLicenseEntry:
+		return f.at.License
+	case verify.AccountGlobalSidecarApproval:
+		return f.at.Global
+	case verify.AccountLocalSidecarApproval:
+		return f.at.Local
+	case verify.AccountResellerSidecarApproval:
+		return f.at.ResellerSidecar
+	case verify.AccountResellerEntry:
+		return f.at.Reseller
+	}
+	panic("unknown cascade account " + account)
+}
+
+var cascadeAccounts = []string{
+	verify.AccountLicenseEntry,
+	verify.AccountGlobalSidecarApproval,
+	verify.AccountLocalSidecarApproval,
+	verify.AccountResellerSidecarApproval,
+	verify.AccountResellerEntry,
+}
+
+func cascadeRefusals() []cascadeRefusal {
+	other := testAnchor("another")
+	cases := []cascadeRefusal{
+		// Status: the account stays, its hash still matches, only the status
+		// says the owners withdrew it.
+		{"revoked Global", republish(func(c *binhashtest.Cascade) { c.Global.Revoke(1_700_001_000, "recalled") }),
+			"cascade-not-active:GlobalSidecarApproval: status Revoked"},
+		{"Global cascade revoke in progress", republish(func(c *binhashtest.Cascade) {
+			c.Global.Status = binhashtest.StatusRevokingCascadeInProgress
+		}), "cascade-not-active:GlobalSidecarApproval: status RevokingCascadeInProgress"},
+		{"revoked Local", republish(func(c *binhashtest.Cascade) { c.Local.Revoke(1_700_001_000) }),
+			"cascade-not-active:LocalSidecarApproval: status Revoked"},
+		{"Local cascade revoke in progress", republish(func(c *binhashtest.Cascade) {
+			c.Local.Status = binhashtest.StatusRevokingCascadeInProgress
+		}), "cascade-not-active:LocalSidecarApproval: status RevokingCascadeInProgress"},
+		{"revoked Local that inherits the Global pin", republish(func(c *binhashtest.Cascade) {
+			c.Local.BinaryHash = nil
+			c.Local.Revoke(1_700_001_000)
+		}), "cascade-not-active:LocalSidecarApproval: status Revoked"},
+		{"licence revoked", republish(func(c *binhashtest.Cascade) {
+			c.License.Status = binhashtest.StatusRevoked
+			at := int64(1_700_001_000)
+			c.License.RevokedAt = &at
+		}), "cascade-not-active:LicenseEntry: status Revoked"},
+		{"reseller sidecar approval revoked", republish(func(c *binhashtest.Cascade) { c.ResellerSidecar.Revoke(1_700_001_000) }),
+			"cascade-not-active:ResellerSidecarApproval: status Revoked"},
+		{"reseller inactive", republish(func(c *binhashtest.Cascade) { c.Reseller.Status = binhashtest.StatusRevoked }),
+			"cascade-not-active:ResellerEntry: status Revoked"},
+		// ResellerEntry Options are decoded as written. Some(parent) moves every
+		// later field by 32 bytes and Some(category) by its String; a reader
+		// that assumed None would take a byte of the parent key, or the
+		// category's length prefix, for the status. With an empty category that
+		// byte is 0 - Active - for a Revoked reseller.
+		{"reseller inactive, category=Some", republish(func(c *binhashtest.Cascade) {
+			empty := ""
+			c.Reseller.Category = &empty
+			c.Reseller.Status = binhashtest.StatusRevoked
+		}), "cascade-not-active:ResellerEntry: status Revoked"},
+		{"reseller inactive, sub-reseller with category=Some", republish(func(c *binhashtest.Cascade) {
+			parent := testAnchor("parent-reseller")
+			parent[9] = 0 // the byte a walk that read Some as a bare tag would take for status
+			c.Reseller.ParentReseller = &parent
+			category := "infrastructure"
+			c.Reseller.Category = &category
+			c.Reseller.Status = binhashtest.StatusRevoked
+		}), "cascade-not-active:ResellerEntry: status Revoked"},
+		// Absent accounts.
+		{"no LicenseEntry", func(f *comparisonFixture) { delete(f.accounts, f.at.License) }, "fetch LicenseEntry(ailagoon @ "},
+		{"no ResellerSidecarApproval", func(f *comparisonFixture) { delete(f.accounts, f.at.ResellerSidecar) }, "fetch ResellerSidecarApproval(ailagoon @ "},
+		{"no ResellerEntry", func(f *comparisonFixture) { delete(f.accounts, f.at.Reseller) }, "fetch ResellerEntry(ailagoon @ "},
+		// Bindings: what an account names must be what the gate derived it for.
+		{"licence under another master mint", republish(func(c *binhashtest.Cascade) { c.License.MasterNftMint = other }),
+			"cascade-binding-mismatch:LicenseEntry.master_nft_mint"},
+		{"licence names another licence mint", republish(func(c *binhashtest.Cascade) { c.License.LicenseNFTMint = other }),
+			"cascade-binding-mismatch:LicenseEntry.license_nft_mint"},
+		{"Global of another sidecar", republish(func(c *binhashtest.Cascade) { c.Global.SidecarID = "mermail" }),
+			"cascade-binding-mismatch:GlobalSidecarApproval.sidecar_id"},
+		{"Global under another master mint", republish(func(c *binhashtest.Cascade) { c.Global.MasterNftMint = other }),
+			"cascade-binding-mismatch:GlobalSidecarApproval.master_nft_mint"},
+		{"Local of another sidecar", republish(func(c *binhashtest.Cascade) { c.Local.SidecarID = "mermail" }),
+			"cascade-binding-mismatch:LocalSidecarApproval.sidecar_id"},
+		{"Local of another licence", republish(func(c *binhashtest.Cascade) { c.Local.LicenseNFTMint = other }),
+			"cascade-binding-mismatch:LocalSidecarApproval.license_nft_mint"},
+		{"reseller approval of another sidecar", republish(func(c *binhashtest.Cascade) { c.ResellerSidecar.SidecarID = "mermail" }),
+			"cascade-binding-mismatch:ResellerSidecarApproval.sidecar_id"},
+		{"reseller approval of another reseller", republish(func(c *binhashtest.Cascade) { c.ResellerSidecar.ResellerNFTMint = other }),
+			"cascade-binding-mismatch:ResellerSidecarApproval.reseller_nft_mint"},
+		{"reseller entry of another reseller", republish(func(c *binhashtest.Cascade) { c.Reseller.ResellerNFTMint = other }),
+			"cascade-binding-mismatch:ResellerEntry.reseller_nft_mint"},
+		// B13: one SAN tier, and the Local scope is that tier.
+		{"Global SANs of two tiers", republish(func(c *binhashtest.Cascade) {
+			c.Global.SANList = []string{"ailagoon.sidecar.host", "ailagoon.sidecar.local"}
+		}), "cascade-scope-mismatch:GlobalSidecarApproval.san_list"},
+		{"Global SAN without a tier", republish(func(c *binhashtest.Cascade) { c.Global.SANList = []string{"ailagoon.example.com"} }),
+			"cascade-scope-mismatch:GlobalSidecarApproval.san_list"},
+		{"Global SAN list empty", republish(func(c *binhashtest.Cascade) { c.Global.SANList = nil }),
+			"cascade-scope-mismatch:GlobalSidecarApproval.san_list"},
+		{"Local scope another tier", republish(func(c *binhashtest.Cascade) { c.Local.Scope = binhashtest.ScopeLocal }),
+			"cascade-scope-mismatch:LocalSidecarApproval.scope"},
+		// Layouts the program cannot have written.
+		{"Global truncated", func(f *comparisonFixture) {
+			account := f.accounts[f.at.Global]
+			account.Data = account.Data[:8+4+len("ailagoon")+32]
+			f.accounts[f.at.Global] = account
+		}, "cascade-account-malformed:GlobalSidecarApproval"},
+		{"Local scope not a SidecarScope", republish(func(c *binhashtest.Cascade) { c.Local.Scope = 9 }),
+			"cascade-scope-mismatch:LocalSidecarApproval.scope: the Local scope Unknown(9) is not the Global SAN tier Host"},
+		{"Global status not an ApprovalStatus", republish(func(c *binhashtest.Cascade) { c.Global.Status = 7 }),
+			"cascade-account-malformed:GlobalSidecarApproval"},
+		{"licence truncated", func(f *comparisonFixture) {
+			account := f.accounts[f.at.License]
+			account.Data = account.Data[:8+96]
+			f.accounts[f.at.License] = account
+		}, "cascade-account-malformed:LicenseEntry"},
+		{"reseller entry parent tag invalid", func(f *comparisonFixture) {
+			account := f.accounts[f.at.Reseller]
+			r := f.cascade.Reseller
+			account.Data[8+32+32+8+32+4+len(r.Name)+4+len(r.Territory)+4+4] = 2
+			f.accounts[f.at.Reseller] = account
+		}, "cascade-account-malformed:ResellerEntry"},
+		// The retiring-estate attack from the verification record: an account
+		// the System Program owns, with a foreign discriminator.
+		{"System Program account with discriminator NOTANACC", func(f *comparisonFixture) {
+			account := f.accounts[f.at.Global]
+			account.Owner = primitives.Pubkey{}
+			account.Data = append([]byte("NOTANACC"), account.Data[8:]...)
+			f.accounts[f.at.Global] = account
+		}, "cascade-account-owner:GlobalSidecarApproval"},
+	}
+	for _, account := range cascadeAccounts {
+		account := account
+		cases = append(cases,
+			cascadeRefusal{account + " owned by another program", func(f *comparisonFixture) {
+				address := f.accountAt(account)
+				served := f.accounts[address]
+				served.Owner = testAnchor("another-estate-program")
+				f.accounts[address] = served
+			}, "cascade-account-owner:" + account},
+			cascadeRefusal{account + " with another account's discriminator", func(f *comparisonFixture) {
+				address := f.accountAt(account)
+				served := f.accounts[address]
+				foreign := verify.AnchorAccountDiscriminator("InstallAdminEntry")
+				served.Data = append(foreign[:], served.Data[8:]...)
+				f.accounts[address] = served
+			}, "cascade-account-discriminator:" + account},
+		)
+	}
+	return cases
+}
+
+// TestCascadeRefusals: every change to the cascade that the Store would
+// refuse to serve stops the boot gate by name, with one exit, and
+// CheckApprovals returns the same refusal without exiting.
+func TestCascadeRefusals(t *testing.T) {
+	for _, tc := range cascadeRefusals() {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newComparisonFixture(t)
+			tc.mutate(f)
+			f.expectRefusal(t, tc.reason)
+
+			g := newComparisonFixture(t)
+			tc.mutate(g)
+			err := CheckApprovals(context.Background(), g.opts, g.measured)
+			if err == nil || !strings.HasPrefix(err.Error(), tc.reason) || *g.exits != 0 {
+				t.Fatalf("CheckApprovals: want the refusal %q returned without an exit, got err=%v exits=%d", tc.reason, err, *g.exits)
+			}
+		})
+	}
+}
+
+// TestCascadePositiveControls: the fixture the refusals change approves, in
+// every shape the program writes - Local None or Some, a sub-reseller with a
+// category (both ResellerEntry Options Some), a Squads-custodied or a direct
+// licence, and each SAN tier with the matching scope. Without these, a gate
+// that refused everything would pass TestCascadeRefusals.
+func TestCascadePositiveControls(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		change func(c *binhashtest.Cascade)
+	}{
+		{"as approved", func(*binhashtest.Cascade) {}},
+		{"Local None inherits the Global pin", func(c *binhashtest.Cascade) { c.Local.BinaryHash = nil }},
+		{"sub-reseller with category=Some", func(c *binhashtest.Cascade) {
+			parent := testAnchor("parent-reseller")
+			category := "infrastructure"
+			c.Reseller.ParentReseller = &parent
+			c.Reseller.Category = &category
+			domain := "reseller.test.invalid"
+			c.Reseller.BaseDomain = &domain
+		}},
+		{"category=Some empty", func(c *binhashtest.Cascade) {
+			empty := ""
+			c.Reseller.Category = &empty
+		}},
+		{"direct-wallet licence", func(c *binhashtest.Cascade) {
+			c.License.CustodyMode = 2
+			c.License.SquadsVault, c.License.SquadsMultisig = nil, nil
+			c.License.AcceptedStores = nil
+		}},
+		{"hypervisor tier", func(c *binhashtest.Cascade) {
+			c.Global.SANList = []string{"ailagoon.sidecar.hypervisor", "AILAGOON.Sidecar.Hypervisor.shared"}
+			c.Local.Scope = binhashtest.ScopeHypervisor
+		}},
+		{"local tier", func(c *binhashtest.Cascade) {
+			c.Global.SANList = []string{"ailagoon.sidecar.local"}
+			c.Local.Scope = binhashtest.ScopeLocal
+		}},
+		{"remote tier", func(c *binhashtest.Cascade) {
+			c.Global.SANList = []string{"ailagoon.sidecar.remote.shared"}
+			c.Local.Scope = binhashtest.ScopeRemote
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newComparisonFixture(t)
+			tc.change(f.cascade)
+			f.publish()
+			if err := attestMeasuredHash(context.Background(), f.opts, f.measured); err != nil || *f.exits != 0 {
+				t.Fatalf("an approving cascade was refused: %v exits=%d", err, *f.exits)
+			}
+			if err := CheckApprovals(context.Background(), f.opts, f.measured); err != nil {
+				t.Fatalf("CheckApprovals refused an approving cascade: %v", err)
+			}
+		})
+	}
+}
+
+// TestCascadeReadsEachAccountOnce: the gate reads the five accounts, each
+// once, and derives the reseller's two from the reseller the LicenseEntry
+// names - a reseller named anywhere else is not consulted.
+func TestCascadeReadsEachAccountOnce(t *testing.T) {
+	f := newComparisonFixture(t)
+	// The reseller's accounts under another reseller mint: not the licence's.
+	decoy := binhashtest.NewCascade(f.cascade.Program, f.cascade.MasterMint, testAnchor("another-licence"), "ailagoon", f.measured)
+	decoy.ResellerSidecar.Revoke(1)
+	for address, account := range decoy.Accounts() {
+		if address == decoy.Addresses().ResellerSidecar {
+			f.accounts[address] = account
+		}
+	}
+	if err := CheckApprovals(context.Background(), f.opts, f.measured); err != nil {
+		t.Fatalf("a revoked approval of another reseller was consulted: %v", err)
+	}
+	if got := f.calls.Load(); got != 5 {
+		t.Fatalf("the gate made %d account requests; the cascade is five accounts, each read once", got)
+	}
+	// The licence names the decoy's reseller: now its revoked approval is the
+	// one that counts.
+	f.cascade.License.ResellerNFTMint = decoy.ResellerMint
+	f.cascade.ResellerMint = decoy.ResellerMint
+	f.cascade.Reseller.ResellerNFTMint = decoy.ResellerMint
+	f.publish()
+	for address, account := range decoy.Accounts() {
+		if address == decoy.Addresses().ResellerSidecar {
+			f.accounts[address] = account
+		}
+	}
+	err := CheckApprovals(context.Background(), f.opts, f.measured)
+	if err == nil || !strings.HasPrefix(err.Error(), "cascade-not-active:ResellerSidecarApproval: status Revoked") {
+		t.Fatalf("the licence's reseller approval was not the one consulted: %v", err)
+	}
+}
+
+// TestCascadeNamesAreExported: the refusal names consumers match on are the
+// ones the gate emits.
+func TestCascadeNamesAreExported(t *testing.T) {
+	for name, want := range map[string]string{
+		RefusalAccountOwner:         "cascade-account-owner",
+		RefusalAccountDiscriminator: "cascade-account-discriminator",
+		RefusalAccountMalformed:     "cascade-account-malformed",
+		RefusalNotActive:            "cascade-not-active",
+		RefusalBindingMismatch:      "cascade-binding-mismatch",
+		RefusalScopeMismatch:        "cascade-scope-mismatch",
+	} {
+		if name != want {
+			t.Fatalf("refusal name %q, want %q", name, want)
+		}
+	}
+	seen := map[string]bool{}
+	for _, tc := range cascadeRefusals() {
+		seen[strings.SplitN(tc.reason, ":", 2)[0]] = true
+	}
+	for _, name := range []string{RefusalAccountOwner, RefusalAccountDiscriminator, RefusalAccountMalformed, RefusalNotActive, RefusalBindingMismatch, RefusalScopeMismatch} {
+		if !seen[name] {
+			t.Fatalf("no test refuses by %s", name)
+		}
+	}
+}

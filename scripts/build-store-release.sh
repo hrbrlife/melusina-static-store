@@ -80,16 +80,19 @@ validate_completed_output() {
 }
 # Keep the two builds on a volume with enough space for the tracked catalog
 # archives. This changes temporary placement only; both retain the exact HEAD.
-# Non-vendored developer builds still use the historical sibling layout.
 WORK_BASE="${MELUSINA_STORE_BUILD_ROOT:-$(dirname "$ROOT")}"
 WORK_BASE="$(realpath -e -- "$WORK_BASE" 2>/dev/null || true)"
 [[ -n "$WORK_BASE" && -d "$WORK_BASE" && ! -L "$WORK_BASE" && -w "$WORK_BASE" ]] || {
   echo "MELUSINA_STORE_BUILD_ROOT must be a writable real directory" >&2; exit 2; }
 TMP="$(mktemp -d "$WORK_BASE/.store-release-$VERSION.XXXXXX")"
-# Keep detached worktrees directly below WORK_BASE. The sidecar's vendored Go
-# module uses deliberate ../../../Melusina replacements; a nested TMP/build-N
-# checkout resolves those paths somewhere else and makes a clean release build
-# fail before it can prove determinism.
+# Where the two detached worktrees sit does not change what they compile. Both
+# builds pass -mod=vendor, so Go compiles the sidecar's committed vendor/ tree
+# and never reads the ../../../Melusina/shared directories named by go.mod's
+# replace lines: a checkout with no Melusina sibling builds the same bytes.
+# vendor/ is an export of one Melusina main commit, named in
+# sidecar/melusina-store-sidecar/testdata/melusina-vendor/vendor.provenance.json
+# and checked file by file by vendor_provenance_test.go. The replace paths do
+# reach the output, as text: each binary's build info records them.
 W1="$WORK_BASE/$(basename "$TMP").build-1"
 W2="$WORK_BASE/$(basename "$TMP").build-2"
 PUBLISH_TMP=""

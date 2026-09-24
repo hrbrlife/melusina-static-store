@@ -16,6 +16,11 @@ require (
 
 // Local path replaces — shared/* is part of the Melusina monorepo, not
 // separately-versioned upstream modules. Same pattern as dns-sidecar.
+// Builds and tests use -mod=vendor and never read these paths; only go mod
+// vendor does. vendor/ is an export of the Melusina main commit named in
+// testdata/melusina-vendor/vendor.provenance.json, and vendor_provenance_test.go
+// checks it file by file. Keep the paths as they are: each binary's build info
+// records them.
 replace github.com/hrbrlife/melusina-attest => ../../../Melusina/shared/melusina-attest
 
 replace github.com/hrbrlife/melusina-identity-gate => ../../../Melusina/shared/melusina-identity-gate

@@ -34,12 +34,20 @@ func NewRPCClient(endpoint string) *RPCClient {
 	}
 }
 
-// GetAccountInfo fetches the account at addressBase58, returns the
-// raw (non-discriminator-stripped) Borsh-encoded data bytes, and an
-// error otherwise. A nil data slice with no error means the account
-// does not exist on chain — callers MUST treat that as fail-closed
-// (wrap as ErrPDANotFound).
-func (c *RPCClient) GetAccountInfo(ctx context.Context, addressBase58 string) ([]byte, error) {
+// Account is one on-chain account as getAccountInfo returns it: its data and
+// the program that owns it. A reader that decides anything from an account's
+// bytes needs the owner too - only the owner program can have written them.
+type Account struct {
+	// Data is the raw (non-discriminator-stripped) Borsh-encoded account data.
+	Data []byte
+	// Owner is the base58 address of the owning program, as the RPC reported it.
+	Owner string
+}
+
+// GetAccount fetches the account at addressBase58 with its owner. A nil
+// account with no error means the account does not exist on chain - callers
+// MUST treat that as fail-closed (wrap as ErrPDANotFound).
+func (c *RPCClient) GetAccount(ctx context.Context, addressBase58 string) (*Account, error) {
 	req := rpcRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -94,7 +102,20 @@ func (c *RPCClient) GetAccountInfo(ctx context.Context, addressBase58 string) ([
 	if err != nil {
 		return nil, fmt.Errorf("base64 decode: %w", err)
 	}
-	return decoded, nil
+	return &Account{Data: decoded, Owner: parsed.Result.Value.Owner}, nil
+}
+
+// GetAccountInfo fetches the account at addressBase58 and returns its raw
+// (non-discriminator-stripped) Borsh-encoded data bytes, without the owner.
+// A nil data slice with no error means the account does not exist on chain -
+// callers MUST treat that as fail-closed (wrap as ErrPDANotFound). A reader
+// that authorizes from the bytes uses GetAccount and checks the owner.
+func (c *RPCClient) GetAccountInfo(ctx context.Context, addressBase58 string) ([]byte, error) {
+	account, err := c.GetAccount(ctx, addressBase58)
+	if err != nil || account == nil {
+		return nil, err
+	}
+	return account.Data, nil
 }
 
 // FetchStatus fetches an account and returns its ApprovalStatus byte
@@ -302,9 +323,10 @@ func (c *RPCClient) FetchGlobalSidecarStatus(ctx context.Context, addressBase58 
 }
 
 // FetchGlobalSidecarBinaryHash fetches a GlobalSidecarApproval PDA and
-// returns its [32]byte binary_hash. Used by the B11 hash-attestation
-// gate at sidecar boot — the Foundation pin is the cascade root that
-// every install inherits when LocalSidecarApproval.binary_hash is None.
+// returns its [32]byte binary_hash, without its status or owner: a caller
+// checks those separately (the Store's update controller reads the status
+// from the same bytes). The B11 boot gate does not use it; it checks the
+// whole cascade with GetAccount.
 func (c *RPCClient) FetchGlobalSidecarBinaryHash(ctx context.Context, addressBase58 string) ([32]byte, error) {
 	var zero [32]byte
 	data, err := c.GetAccountInfo(ctx, addressBase58)
@@ -321,7 +343,8 @@ func (c *RPCClient) FetchGlobalSidecarBinaryHash(ctx context.Context, addressBas
 // returns its Option<[u8;32]> binary_hash field. The boolean is true
 // when the install has pinned a specific build (Some), false when the
 // field is None (in which case callers must fall back to the Global
-// pin). PDA-not-found is surfaced as ErrPDANotFound.
+// pin). PDA-not-found is surfaced as ErrPDANotFound. Like
+// FetchGlobalSidecarBinaryHash it returns neither status nor owner.
 func (c *RPCClient) FetchLocalSidecarBinaryHash(ctx context.Context, addressBase58 string) ([32]byte, bool, error) {
 	var zero [32]byte
 	data, err := c.GetAccountInfo(ctx, addressBase58)

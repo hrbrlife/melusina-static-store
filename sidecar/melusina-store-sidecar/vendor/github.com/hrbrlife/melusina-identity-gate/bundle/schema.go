@@ -102,7 +102,7 @@ type AuthorizedContract struct {
 // to resolve it to a SignerRole + permission bits.
 type BundleSigner struct {
 	Pubkey         string `json:"pubkey"`
-	Role           string `json:"role"` // "install_admin" | "organization_member" | "cosigner" | "client"
+	Role           string `json:"role"` // "install_admin" | "organization_member" | "cosigner" | "client" | a station class (see policy.RoleStation)
 	LicenseMint    string `json:"license_mint,omitempty"`
 	PermissionBits uint64 `json:"permission_bits,omitempty"`
 	Label          string `json:"label,omitempty"` // human-readable, not load-bearing

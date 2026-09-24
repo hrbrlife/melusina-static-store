@@ -1,0 +1,217 @@
+{
+  "schema": "melusina.store.vendor-provenance.v1",
+  "comment": [
+    "vendor/ holds four modules of the Melusina monorepo, which go.mod replaces with ../../../Melusina/shared/<module>. Every",
+    "release build passes -mod=vendor, so the Store compiles these vendored files and never reads a Melusina checkout. This file",
+    "names the one Melusina commit the vendored files were exported from, the tree id of each module at that commit, and the",
+    "blob id of every file go mod vendor wrote. Do not edit a vendored file: a change goes to Melusina main first.",
+    "vendor_provenance_test.go checks on every run, without a Melusina clone: each object in git-objects/ hashes to its file",
+    "name; the walk from sourceCommit through those trees reaches each module's tree and each recorded blob; every file under",
+    "vendor/<module>/ is a recorded file with that blob, and none is missing; no vendored file is one go mod vendor never",
+    "writes (_test.go, go.mod, go.sum, testdata/); and go.mod and vendor/modules.txt replace exactly these modules with",
+    "exactly these paths. An auditor with a Melusina clone checks the rest in one command per module:",
+    "  git -C <clone> rev-parse <sourceCommit>:<sourcePath>   must print the module's tree",
+    "  git -C <clone> merge-base --is-ancestor <sourceCommit> origin/main",
+    "To re-vendor from a newer Melusina main commit C:",
+    "  1. export the four modules to a directory R: git -C <clone> archive C shared/melusina-attest",
+    "     shared/melusina-identity-gate shared/melusina-artifact-vault shared/melusina-solana-primitives | tar -x -C R/Melusina",
+    "  2. reach this module through a path whose ../../../Melusina is R/Melusina (for example a symlink R/store to the Store",
+    "     checkout, entered as R/store/sidecar/melusina-store-sidecar) and run GOFLAGS= GOWORK=off go mod vendor there.",
+    "     Leave go.mod's replace lines as they are: each binary's build info records them, so a new path changes the bytes.",
+    "  3. set sourceCommit, each module's tree and every file's blob from C, and replace git-objects/ with C's commit object",
+    "     (git cat-file commit C) and the trees on the walk to each vendored file (git cat-file tree <id>). The test names",
+    "     each object it is missing."
+  ],
+  "sourceRepository": "https://github.com/hrbrlife/Melusina",
+  "sourceCommit": "dd9053fdf22bb13892209ed9cb0378db4f61f53a",
+  "modules": [
+    {
+      "module": "github.com/hrbrlife/melusina-attest",
+      "replace": "../../../Melusina/shared/melusina-attest",
+      "sourcePath": "shared/melusina-attest",
+      "tree": "9c62b180f6267ae483fcd025818b6dfd8b2f76ed",
+      "files": [
+        {
+          "path": "canonical/canonical.go",
+          "blob": "4c4fc0b380df123cf61755280befe15d40ba012b"
+        },
+        {
+          "path": "derive/derive.go",
+          "blob": "417f8d85054054fbced7f6e4a0bc1d23dd4bbc73"
+        },
+        {
+          "path": "envelope/envelope.go",
+          "blob": "59902b8a96b57b46efda588f39b2c657375bc81f"
+        },
+        {
+          "path": "envelope/errors.go",
+          "blob": "2792b005a54098bed56af0f4c63750081fbbfa3f"
+        },
+        {
+          "path": "envelope/nonce.go",
+          "blob": "f9ef0e7bd3d7962aacd8cd62c4212c3c66aca370"
+        },
+        {
+          "path": "envelope/profile.go",
+          "blob": "a3dc62bbb1d7ab08942d87ed4d5e6c75ae4314c3"
+        },
+        {
+          "path": "graincert/graincert.go",
+          "blob": "2fd56e0d629636782bdc84892bfe34a877f68890"
+        },
+        {
+          "path": "identity/identity.go",
+          "blob": "2b19d66b017a352036bfd24e11bcaecf18238ce7"
+        },
+        {
+          "path": "pda/pda.go",
+          "blob": "9b994e395227af4d7f6acd60a8b948e5786e6f88"
+        },
+        {
+          "path": "sidecarresult/chain.go",
+          "blob": "f563a134535f83479dace138bb9a94059035f460"
+        },
+        {
+          "path": "sidecarresult/errors.go",
+          "blob": "3c6628b749e3722f15749deab9ba080b6cb11035"
+        },
+        {
+          "path": "sidecarresult/result.go",
+          "blob": "2141ff065f21dd68b739bbd3b50320a671a88f4c"
+        },
+        {
+          "path": "sidecarresult/state.go",
+          "blob": "54408bbee9a1577d61b5bf7bb3068efbb6f939da"
+        },
+        {
+          "path": "sidecarresult/verify.go",
+          "blob": "c72fbb82bc8b051a3e3b8ecec0520f7388f6ecea"
+        }
+      ]
+    },
+    {
+      "module": "github.com/hrbrlife/melusina-identity-gate",
+      "replace": "../../../Melusina/shared/melusina-identity-gate",
+      "sourcePath": "shared/melusina-identity-gate",
+      "tree": "b25b9216cb0ff3feeb997bcdd21ed637819f98fa",
+      "files": [
+        {
+          "path": "bundle/canonical.go",
+          "blob": "2ef79b02a44697c329024c4cdcd5bf2d54ffd5f7"
+        },
+        {
+          "path": "bundle/crosscheck.go",
+          "blob": "4ba90c6e1a63978a2a2b944e64fb32850f311672"
+        },
+        {
+          "path": "bundle/dane.go",
+          "blob": "30b7c806a330303c554126b86f4860ecec91c09a"
+        },
+        {
+          "path": "bundle/dane_exec.go",
+          "blob": "c016f9f2f812a20434ebb9634d3b6cde9f4b07dc"
+        },
+        {
+          "path": "bundle/loader.go",
+          "blob": "be249f003555f81d1e1dcd91085e472cab553a46"
+        },
+        {
+          "path": "bundle/schema.go",
+          "blob": "28474a3929b8f46379c72212e5deaeefc3eef280"
+        },
+        {
+          "path": "bundle/signature.go",
+          "blob": "6ee4ce0ef4ff1feb69c6b21980f4d561aed18302"
+        },
+        {
+          "path": "bundle/wellknown.go",
+          "blob": "cfc659346a373f90ec2d030a516bd690d67cb3f4"
+        },
+        {
+          "path": "envelope/base58.go",
+          "blob": "915538328ec4bcdd5301222258fe07f47c8a3569"
+        },
+        {
+          "path": "envelope/headers.go",
+          "blob": "8f7987fcc7a6c74912f23f19dc7b96ad0b26864d"
+        },
+        {
+          "path": "envelope/payload.go",
+          "blob": "94381c21ad59ba3b1324fad30a504c0deb3ec650"
+        },
+        {
+          "path": "envelope/read.go",
+          "blob": "13df324e16b8d5bb671dc411b62489eae204584c"
+        },
+        {
+          "path": "envelope/verify.go",
+          "blob": "928834b64dfbb669a461644482eda305389c5d46"
+        },
+        {
+          "path": "verify/approvals.go",
+          "blob": "6b5e92b6975ad77d9a7d84241e441176cdc9c15d"
+        },
+        {
+          "path": "verify/attest_records.go",
+          "blob": "463c9500083f6cfa3640d4427a1a2d076e8450aa"
+        },
+        {
+          "path": "verify/foundation.go",
+          "blob": "7e684f3078afb0201d094a3785d0671faf622d46"
+        },
+        {
+          "path": "verify/rpc.go",
+          "blob": "eabd095b399991771ce7821d2f8a0c7856d930ff"
+        },
+        {
+          "path": "verify/sidecar_cascade.go",
+          "blob": "984116946337f429f9dd3caae6297b6c3ad4ab56"
+        },
+        {
+          "path": "verify/verifier.go",
+          "blob": "1eaf5ec246543cb80055bb9eb5c23e86a1282405"
+        }
+      ]
+    },
+    {
+      "module": "github.com/melusina-os/melusina-artifact-vault",
+      "replace": "../../../Melusina/shared/melusina-artifact-vault",
+      "sourcePath": "shared/melusina-artifact-vault",
+      "tree": "edec12e8bd2bae300b2c26ec98bd6d463c13ff38",
+      "files": [
+        {
+          "path": "README.md",
+          "blob": "8264534cd076ba4db317d851cd6c81be88b66724"
+        },
+        {
+          "path": "unix.go",
+          "blob": "e034e0e32e4c78b9b535eaee758438b7d771b220"
+        },
+        {
+          "path": "vault.go",
+          "blob": "2529da60b833ef943aad97535a0ee2d6c82d5c12"
+        }
+      ]
+    },
+    {
+      "module": "github.com/melusina-os/melusina-solana-primitives",
+      "replace": "../../../Melusina/shared/melusina-solana-primitives",
+      "sourcePath": "shared/melusina-solana-primitives",
+      "tree": "fa47acfea7d05fb5729e72e6eea4e9db127ee9b1",
+      "files": [
+        {
+          "path": "README.md",
+          "blob": "f31c7ac5d86069a11aa11be2e821630a0aa36347"
+        },
+        {
+          "path": "base58.go",
+          "blob": "7a749e26ad64dfbd419e20a22463c21c98773cfc"
+        },
+        {
+          "path": "pda.go",
+          "blob": "05911eec842709e05d3ae4397b0898037e68a9e7"
+        }
+      ]
+    }
+  ]
+}

@@ -87,8 +87,7 @@ UI_MANIFEST_SHA="$(sha256sum "$ROOT/sidecar/melusina-store-sidecar/ui/UI-MANIFES
 # A release runner may keep its working copy on a deliberately small tmpfs.
 # Let it place the two detached builds and Go linker temporaries on a chosen
 # writable real directory while preserving the historical parent-of-source
-# default. Keeping the worktrees direct children of this root also preserves
-# the module replacement layout used by non-vendored developer builds.
+# default.
 WORK_BASE="${MELUSINA_STORE_GENERATION_BUILD_ROOT:-$(dirname "$ROOT")}"
 WORK_BASE="$(realpath -e -- "$WORK_BASE" 2>/dev/null || true)"
 [[ -n "$WORK_BASE" && -d "$WORK_BASE" && ! -L "$WORK_BASE" && -w "$WORK_BASE" ]] || {
@@ -96,10 +95,14 @@ WORK_BASE="$(realpath -e -- "$WORK_BASE" 2>/dev/null || true)"
 TMP="$(mktemp -d "$WORK_BASE/.store-generation-release.XXXXXX")"
 BUILD_TMPDIR="$TMP/tmp"
 mkdir -p "$BUILD_TMPDIR"
-# Go module replacements are intentionally relative to a direct child of the
-# shared worktrees root (../../../Melusina). Do not nest detached worktrees
-# under TMP: that changes the replacement base and makes the supposedly
-# isolated release build unable to resolve its pinned shared modules.
+# Where the two detached worktrees sit does not change what they compile. Both
+# builds pass -mod=vendor, so Go compiles the sidecar's committed vendor/ tree
+# and never reads the ../../../Melusina/shared directories named by go.mod's
+# replace lines: a checkout with no Melusina sibling builds the same bytes.
+# vendor/ is an export of one Melusina main commit, named in
+# sidecar/melusina-store-sidecar/testdata/melusina-vendor/vendor.provenance.json
+# and checked file by file by vendor_provenance_test.go. The replace paths do
+# reach the output, as text: each binary's build info records them.
 W1="$WORK_BASE/$(basename "$TMP").build-1"
 W2="$WORK_BASE/$(basename "$TMP").build-2"
 PUBLISH_TMP=""

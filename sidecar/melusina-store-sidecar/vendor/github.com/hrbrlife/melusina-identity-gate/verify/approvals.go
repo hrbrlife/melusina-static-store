@@ -961,70 +961,30 @@ func ReadGlobalAppApprovalStatus(data []byte) (ApprovalStatus, error) {
 //	  | binary_hash (Option<[u8;32]>) | scope (SidecarScope u8)
 //	  | approved_by (Pubkey) | status (u8)
 //
-// scope is the B13 hostname-tier discriminant; readers that care
-// about the tier itself use ReadSidecarApprovalScopeLocal below.
+// scope is the B13 hostname-tier discriminant (DecodeLocalSidecarApproval
+// returns it). The walk is DecodeLocalSidecarApproval's.
 func ReadSidecarApprovalStatusLocal(data []byte) (ApprovalStatus, error) {
-	offset := AccountDiscriminatorLen
-	var err error
-	if offset, err = SkipBorshString(data, offset); err != nil { // sidecar_id
-		return 0, fmt.Errorf("local_sidecar: sidecar_id: %w", err)
-	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // license_nft_mint
-		return 0, fmt.Errorf("local_sidecar: license_nft_mint: %w", err)
-	}
-	// binary_hash: Option<[u8;32]>
-	if offset, err = SkipBorshOption(data, offset, func(d []byte, o int) (int, error) {
-		return skip(d, o, 32)
-	}); err != nil {
-		return 0, fmt.Errorf("local_sidecar: binary_hash: %w", err)
-	}
-	if offset, err = skip(data, offset, 1); err != nil { // scope u8
-		return 0, fmt.Errorf("local_sidecar: scope: %w", err)
-	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // approved_by
-		return 0, fmt.Errorf("local_sidecar: approved_by: %w", err)
-	}
-	return ReadStatusByte(data, offset)
+	a, err := DecodeLocalSidecarApproval(data)
+	return a.Status, err
 }
 
 // ReadLocalSidecarBinaryHash decodes the optional binary_hash field
 // from a LocalSidecarApproval PDA. Returns (hash, true, nil) when the
 // install pinned a specific build, (zero, false, nil) when the field
-// is None, or (zero, false, err) on a parse failure.
+// is None, or (zero, false, err) on a parse failure. The walk is
+// DecodeLocalSidecarApproval's, through status.
 //
-// Used by the B11 runtime hash-attestation gate at sidecar boot: when
-// the install elects to pin (Some), the on-disk SHA-256 must match;
-// when it does not (None), the binary still has to match the Global
-// pin. Either way the gate is fail-closed (Inv 5).
+// The hash alone authorizes nothing: a Revoked approval keeps its hash, and
+// the reader does not see the account's owner. The B11 boot gate
+// (melusina-attest/binhash) checks the whole cascade - owner, discriminator,
+// status and bindings of every account - not this field.
 func ReadLocalSidecarBinaryHash(data []byte) ([32]byte, bool, error) {
 	var zero [32]byte
-	offset := AccountDiscriminatorLen
-	var err error
-	if offset, err = SkipBorshString(data, offset); err != nil { // sidecar_id
-		return zero, false, fmt.Errorf("local_sidecar: sidecar_id: %w", err)
+	a, err := DecodeLocalSidecarApproval(data)
+	if err != nil {
+		return zero, false, err
 	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // license_nft_mint
-		return zero, false, fmt.Errorf("local_sidecar: license_nft_mint: %w", err)
-	}
-	// binary_hash: Option<[u8;32]>
-	if offset >= len(data) {
-		return zero, false, errors.New("local_sidecar: buffer too short for Option tag")
-	}
-	tag := data[offset]
-	offset++
-	switch tag {
-	case 0:
-		return zero, false, nil
-	case 1:
-		if offset+32 > len(data) {
-			return zero, false, errors.New("local_sidecar: buffer too short for Some(binary_hash)")
-		}
-		var hash [32]byte
-		copy(hash[:], data[offset:offset+32])
-		return hash, true, nil
-	default:
-		return zero, false, fmt.Errorf("local_sidecar: invalid Option tag for binary_hash: %d", tag)
-	}
+	return a.BinaryHash, a.HasBinaryHash, nil
 }
 
 // SkipBorshVecOfStrings advances past a Borsh-encoded Vec<String>
@@ -1052,19 +1012,11 @@ func SkipBorshVecOfStrings(data []byte, offset int) (int, error) {
 //
 //	discriminator | sidecar_id (String) | reseller_nft_mint (Pubkey)
 //	  | approved_by (Pubkey) | status (u8) | ...
+//
+// The walk is DecodeResellerSidecarApproval's.
 func ReadSidecarApprovalStatusReseller(data []byte) (ApprovalStatus, error) {
-	offset := AccountDiscriminatorLen
-	var err error
-	if offset, err = SkipBorshString(data, offset); err != nil { // sidecar_id
-		return 0, fmt.Errorf("reseller_sidecar: sidecar_id: %w", err)
-	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // reseller_nft_mint
-		return 0, fmt.Errorf("reseller_sidecar: reseller_nft_mint: %w", err)
-	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // approved_by
-		return 0, fmt.Errorf("reseller_sidecar: approved_by: %w", err)
-	}
-	return ReadStatusByte(data, offset)
+	a, err := DecodeResellerSidecarApproval(data)
+	return a.Status, err
 }
 
 // ReadResellerEntryStatus decodes the authority-parent ResellerEntry PDA.
@@ -1079,74 +1031,27 @@ func ReadSidecarApprovalStatusReseller(data []byte) (ApprovalStatus, error) {
 // The status is not fixed-offset because both name and territory are
 // variable-length and category is optional. This reader walks every preceding
 // Borsh field and rejects malformed tags, truncation, and unknown enum values.
+// The walk is DecodeResellerEntry's.
 func ReadResellerEntryStatus(data []byte) (ResellerStatus, error) {
-	offset := AccountDiscriminatorLen
-	var err error
-	if offset, err = SkipPubkey(data, offset); err != nil { // reseller_nft_mint
-		return 0, fmt.Errorf("reseller: reseller_nft_mint: %w", err)
-	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // master_nft_mint
-		return 0, fmt.Errorf("reseller: master_nft_mint: %w", err)
-	}
-	if offset, err = SkipI64(data, offset); err != nil { // edition_number u64
-		return 0, fmt.Errorf("reseller: edition_number: %w", err)
-	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // owner
-		return 0, fmt.Errorf("reseller: owner: %w", err)
-	}
-	if offset, err = SkipBorshString(data, offset); err != nil { // name
-		return 0, fmt.Errorf("reseller: name: %w", err)
-	}
-	if offset, err = SkipBorshString(data, offset); err != nil { // territory
-		return 0, fmt.Errorf("reseller: territory: %w", err)
-	}
-	if offset, err = skip(data, offset, 4); err != nil { // issuance_limit u32
-		return 0, fmt.Errorf("reseller: issuance_limit: %w", err)
-	}
-	if offset, err = skip(data, offset, 4); err != nil { // licenses_issued u32
-		return 0, fmt.Errorf("reseller: licenses_issued: %w", err)
-	}
-	if offset, err = SkipBorshOption(data, offset, SkipPubkey); err != nil { // parent_reseller
-		return 0, fmt.Errorf("reseller: parent_reseller: %w", err)
-	}
-	if offset, err = skip(data, offset, 4); err != nil { // total_sub_resellers u32
-		return 0, fmt.Errorf("reseller: total_sub_resellers: %w", err)
-	}
-	if offset, err = skip(data, offset, 4); err != nil { // active_sub_resellers u32
-		return 0, fmt.Errorf("reseller: active_sub_resellers: %w", err)
-	}
-	if offset, err = SkipBorshOption(data, offset, SkipBorshString); err != nil { // category
-		return 0, fmt.Errorf("reseller: category: %w", err)
-	}
-	if offset >= len(data) {
-		return 0, errors.New("reseller: buffer too short for status")
-	}
-	status := ResellerStatus(data[offset])
-	if status != ResellerStatusActive && status != ResellerStatusRevoked {
-		return status, fmt.Errorf("reseller: unknown ResellerStatus byte: %d", data[offset])
-	}
-	return status, nil
+	entry, err := DecodeResellerEntry(data)
+	return entry.Status, err
 }
 
 // ReadGlobalSidecarBinaryHash decodes the [32]byte binary_hash field
-// from a GlobalSidecarApproval PDA. The field sits immediately after
-// the variable-length sidecar_id (String), so we walk past sidecar_id
-// then copy 32 bytes. Used by the B11 runtime hash-attestation gate
-// — Foundation's pin is the cascade root, every install inherits it
-// when LocalSidecarApproval.binary_hash is None.
+// from a GlobalSidecarApproval PDA. The walk is
+// DecodeGlobalSidecarApproval's, through status.
+//
+// The hash alone authorizes nothing: a Revoked approval keeps its hash, and
+// the reader does not see the account's owner. The B11 boot gate
+// (melusina-attest/binhash) checks the whole cascade - owner, discriminator,
+// status and bindings of every account - not this field.
 func ReadGlobalSidecarBinaryHash(data []byte) ([32]byte, error) {
 	var zero [32]byte
-	offset := AccountDiscriminatorLen
-	var err error
-	if offset, err = SkipBorshString(data, offset); err != nil { // sidecar_id
-		return zero, fmt.Errorf("global_sidecar: sidecar_id: %w", err)
+	a, err := DecodeGlobalSidecarApproval(data)
+	if err != nil {
+		return zero, err
 	}
-	if offset+32 > len(data) {
-		return zero, errors.New("global_sidecar: buffer too short for binary_hash")
-	}
-	var hash [32]byte
-	copy(hash[:], data[offset:offset+32])
-	return hash, nil
+	return a.BinaryHash, nil
 }
 
 // ReadSidecarApprovalStatusGlobal decodes a GlobalSidecarApproval PDA
@@ -1157,34 +1062,11 @@ func ReadGlobalSidecarBinaryHash(data []byte) ([32]byte, error) {
 //	  | required_permissions (u64) | author (Pubkey)
 //	  | MasterNftMint (Pubkey) | approved_by (Pubkey)
 //	  | status (u8) | ...
+//
+// The walk is DecodeGlobalSidecarApproval's.
 func ReadSidecarApprovalStatusGlobal(data []byte) (ApprovalStatus, error) {
-	offset := AccountDiscriminatorLen
-	var err error
-	if offset, err = SkipBorshString(data, offset); err != nil { // sidecar_id
-		return 0, fmt.Errorf("global_sidecar: sidecar_id: %w", err)
-	}
-	if offset, err = skip(data, offset, 32); err != nil { // binary_hash [u8;32]
-		return 0, fmt.Errorf("global_sidecar: binary_hash: %w", err)
-	}
-	if offset, err = SkipBorshString(data, offset); err != nil { // version
-		return 0, fmt.Errorf("global_sidecar: version: %w", err)
-	}
-	if offset, err = SkipBorshVecOfStrings(data, offset); err != nil { // san_list
-		return 0, fmt.Errorf("global_sidecar: san_list: %w", err)
-	}
-	if offset, err = skip(data, offset, 8); err != nil { // required_permissions u64
-		return 0, fmt.Errorf("global_sidecar: required_permissions: %w", err)
-	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // author
-		return 0, fmt.Errorf("global_sidecar: author: %w", err)
-	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // MasterNftMint
-		return 0, fmt.Errorf("global_sidecar: MasterNftMint: %w", err)
-	}
-	if offset, err = SkipPubkey(data, offset); err != nil { // approved_by
-		return 0, fmt.Errorf("global_sidecar: approved_by: %w", err)
-	}
-	return ReadStatusByte(data, offset)
+	a, err := DecodeGlobalSidecarApproval(data)
+	return a.Status, err
 }
 
 // ── Federated-store readers (FEDERATED-STORE-MVP §C1/§C4) ─────────────────

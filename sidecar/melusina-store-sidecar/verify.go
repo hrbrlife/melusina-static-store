@@ -254,7 +254,7 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 	if err != nil {
 		return fmt.Errorf("check=app_hash: compute app-hash: %w", err)
 	}
-	_, _, relPDA, submittedMeta, err := verifyReleaseEntryHash(ctx, cr, cfg, appHash, rel)
+	_, appHashBytes, relPDA, submittedMeta, err := verifyReleaseEntryHash(ctx, cr, cfg, appHash, rel)
 	if err != nil {
 		return err
 	}
@@ -292,6 +292,16 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 		return err
 	}
 	if err := verifyLicenseClear(ctx, cr, licenseMint); err != nil {
+		return err
+	}
+
+	// (e) Admission. The handler signs rel.ReleaseHash into the receipt and
+	// the catalog pointer once this gate passes, and the tenant refuses both
+	// unless the ReleaseEntry attests that release hash and this app. So the
+	// entry must attest exactly this release (app_hash, app_id, release_hash,
+	// version) and, on an enrolled Store, be admitted by the estate's
+	// releaseTrust as mel-release admits it (admitReleaseEntryForPublish).
+	if err := admitReleaseEntryForPublish(cfg, appHashBytes, submittedMeta, rel, metadataAppID(metadata)); err != nil {
 		return err
 	}
 
@@ -581,8 +591,9 @@ func fetchInstallerReleaseMetaForHash(ctx context.Context, cr chainReader, cfg C
 // ReleaseEntry derived from rel.masterNftMint+appHash exists, pins THIS app_hash,
 // and is Active. Returns the app master NFT mint, the 32-byte app_hash, the
 // ReleaseEntry PDA and its decoded account (whose app_id binds the caller's
-// clearance check). FAIL-CLOSED. (The author ed25519 sig was
-// verified on-chain at register — §1; we confirm the entry, not the sig.)
+// clearance check). FAIL-CLOSED. (The author ed25519 sig was verified
+// on-chain at register — §1. Publish additionally admits the whole entry,
+// release_hash and publisher included: admitReleaseEntryForPublish.)
 func verifyReleaseEntryHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
 	return verifyReleaseEntryHashWithAuthorityPolicy(ctx, cr, cfg, appHashHex, rel, false)
 }

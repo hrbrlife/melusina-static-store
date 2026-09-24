@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -231,6 +232,13 @@ type Config struct {
 	// (bindInstallerReleaseTrust); every InstallerReleaseEntry gate admits
 	// through it, and a Store with no enrolled profile has none and refuses.
 	installerReleaseTrust *installerrelease.Trust
+
+	// appReleaseTrust is never read from the config document either. Startup
+	// projects it from the same enrolled profile (bindAppReleaseTrust): the
+	// estate master mint, the release custodian (roles.store-release's
+	// vault) and releaseTrust. The /publish admission holds every app
+	// ReleaseEntry to it before the Store signs a receipt or catalog pointer.
+	appReleaseTrust *releaseentry.Trust
 }
 
 // BootIdentityConfig provisions the gated /publish operator boot-identity

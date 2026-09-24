@@ -10,12 +10,16 @@ package main
 // decision from the chain (re-hash the SPK, derive + fetch ReleaseEntry /
 // StoreOperatorAuthorization / BlacklistStatusEntry PDAs). The release author's
 // ed25519 signature is verified on-chain by the register handler — see
-// FEDERATED-STORE-MVP §1 — so the sidecar does not re-verify AuthorSig itself;
-// it confirms the on-chain ReleaseEntry exists, is Active, and pins this AppHash.
+// FEDERATED-STORE-MVP §1 — and the sidecar does not read AuthorSig. It confirms
+// the on-chain ReleaseEntry exists, is Active and pins this AppHash, and its
+// publish admission (admitReleaseEntryForPublish) refuses a releaseHash, appId
+// or version the entry does not attest and, on an enrolled Store, an entry
+// whose publisher key, custodian or signature the estate's releaseTrust does
+// not admit.
 type ReleaseJSON struct {
 	Schema             string       `json:"$schema"`
 	AppHash            string       `json:"appHash"`     // lowercase hex tree-hash over {app.spk, metadata.json} (canonicalAppHash; NOT sha256(spk))
-	ReleaseHash        string       `json:"releaseHash"` // lowercase sha256(appHash + version + nonce); the envelope body hash binds the full JSON
+	ReleaseHash        string       `json:"releaseHash"` // lowercase sha256(appHash + version + nonce); must be the ReleaseEntry's release_hash (publish admission)
 	Version            string       `json:"version"`
 	SignedAtUnix       int64        `json:"signedAtUnix"`
 	MasterNftMint      string       `json:"masterNftMint"`      // base58; ReleaseEntry PDA seed

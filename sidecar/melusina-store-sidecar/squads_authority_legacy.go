@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
 )
 
 // The legacy Bazaar currently has one publishing authority. Keep the quorum
@@ -68,5 +69,18 @@ func unenrolledStoreRefusal() error {
 // at all, after the served vault claim and the active ReleaseEntry's publisher
 // vault have both matched the configured vault; publishing never reaches it.
 func servedReleaseWithoutQuorumClaimRefusal() error {
+	return nil
+}
+
+// unboundAppReleaseTrustRefusal keeps the standard build's unenrolled Store:
+// it has no estate profile and so no publisher keys, and its /publish
+// admission still refuses a release its ReleaseEntry does not attest
+// (Entry.Attests: app_hash, app_id, release_hash and version). An enrolled
+// Store always has the trust bound at startup; one that reached the admission
+// without it is refused by name.
+func unboundAppReleaseTrustRefusal(cfg Config) error {
+	if strings.TrimSpace(cfg.EstateEnrollmentStatePath) != "" {
+		return fmt.Errorf("%w: an enrolled Store admits no app release without the enrolled estate's releaseTrust", releaseentry.ErrTrustUnconfigured)
+	}
 	return nil
 }

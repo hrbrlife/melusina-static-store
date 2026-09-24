@@ -23,7 +23,7 @@ func TestVerifyPublish_Accept(t *testing.T) {
 	m := newMockChainReader()
 	f.pinAccept(m, operatorPub)
 
-	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, operatorPub); err != nil {
+	if err := VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, operatorPub); err != nil {
 		t.Fatalf("expected ACCEPT, got: %v", err)
 	}
 }
@@ -77,11 +77,11 @@ func TestVerifyServeHash_QuorumClaimRulesInEveryBuild(t *testing.T) {
 		fixture := buildValidFixture(t, cfg, randPubkeyB58(t))
 		reader := newMockChainReader()
 		fixture.pinAccept(reader, operatorPub)
-		if err := VerifyPublish(ctx, reader, cfg, fixture.spk, fixture.metadata, fixture.rel, operatorPub); err != nil {
+		if err := VerifyPublish(ctx, reader, withReleaseTrust(cfg, reader), fixture.spk, fixture.metadata, fixture.rel, operatorPub); err != nil {
 			t.Fatalf("control: the complete claim was refused at publish: %v", err)
 		}
 		fixture.rel.QuorumPolicy = QuorumPolicy{}
-		err := VerifyPublish(ctx, reader, cfg, fixture.spk, fixture.metadata, fixture.rel, operatorPub)
+		err := VerifyPublish(ctx, reader, withReleaseTrust(cfg, reader), fixture.spk, fixture.metadata, fixture.rel, operatorPub)
 		if !errors.Is(err, errReleaseQuorumClaimAbsent) || !strings.Contains(err.Error(), "check=publisher_squads_authority: release-quorum-claim-absent") {
 			t.Fatalf("publish of a release with no quorum claim = %v, want the named release-quorum-claim-absent refusal", err)
 		}
@@ -191,7 +191,7 @@ func TestVerifyPublish_RejectsAnyPublisherSquadsOverride(t *testing.T) {
 			m := newMockChainReader()
 			f.pinAccept(m, operatorPub)
 			tc.mutate(m, &f, &candidate)
-			if err := VerifyPublish(context.Background(), m, candidate, f.spk, f.metadata, f.rel, operatorPub); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
+			if err := VerifyPublish(context.Background(), m, withReleaseTrust(candidate, m), f.spk, f.metadata, f.rel, operatorPub); err == nil || !strings.Contains(err.Error(), "check=publisher_squads_authority") {
 				t.Fatalf("publisher Squads override accepted or unnamed: %v", err)
 			}
 		})
@@ -343,7 +343,7 @@ func TestVerifyPublish_Reject(t *testing.T) {
 			f.pinAccept(m, operatorPub)
 			tc.mutate(m, &f)
 
-			err := VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, operatorPub)
+			err := VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, operatorPub)
 			if err == nil {
 				t.Fatalf("expected REJECT, got ACCEPT")
 			}
@@ -374,7 +374,7 @@ func TestVerifyPublish_TierMaskCoverage(t *testing.T) {
 	a.tierMask = 0x01
 	m.storeAuthz[f.authzPDA] = a
 
-	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, operatorPub); err == nil {
+	if err := VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, operatorPub); err == nil {
 		t.Fatal("expected REJECT for uncovered Standard tier")
 	} else if !strings.Contains(err.Error(), "check=store_operator_authz") {
 		t.Fatalf("tier reject did not name store_operator_authz: %v", err)
@@ -384,7 +384,7 @@ func TestVerifyPublish_TierMaskCoverage(t *testing.T) {
 	a = m.storeAuthz[f.authzPDA]
 	a.tierMask = 0x03
 	m.storeAuthz[f.authzPDA] = a
-	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, operatorPub); err != nil {
+	if err := VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, operatorPub); err != nil {
 		t.Fatalf("expected ACCEPT once mask covers Standard, got: %v", err)
 	}
 }

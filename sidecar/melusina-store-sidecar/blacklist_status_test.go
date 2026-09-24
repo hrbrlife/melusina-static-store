@@ -722,7 +722,7 @@ func TestPublishGateRefusesAnAppOrLicenceThatIsNotExplicitlyClear(t *testing.T) 
 		return m, f
 	}
 	m, f := setup()
-	if err := VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, opPub); err != nil {
+	if err := VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, opPub); err != nil {
 		t.Fatalf("positive control: %v", err)
 	}
 	for _, target := range []struct {
@@ -737,7 +737,7 @@ func TestPublishGateRefusesAnAppOrLicenceThatIsNotExplicitlyClear(t *testing.T) 
 			t.Run(target.label+"/"+mutation.name, func(t *testing.T) {
 				m, f := setup()
 				mutation.apply(m, target.kind, target.key(f))
-				err := VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, opPub)
+				err := VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, opPub)
 				requireRefusalNamed(t, err, "check=blacklist["+target.label+"]", mutation.want)
 			})
 		}
@@ -747,21 +747,21 @@ func TestPublishGateRefusesAnAppOrLicenceThatIsNotExplicitlyClear(t *testing.T) 
 		m, f := setup()
 		clearanceMutations[0].apply(m, blacklistTargetApp, f.appKey)
 		pinBlacklistStatus(m, blacklistTargetApp, [32]byte(f.masterMint), blacklistStatusClear)
-		requireRefusalNamed(t, VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, opPub), "check=blacklist[app]", "clearance-absent")
+		requireRefusalNamed(t, VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, opPub), "check=blacklist[app]", "clearance-absent")
 	})
 	t.Run("app/clear-at-the-release-app-id-hash", func(t *testing.T) {
 		// SHA-256 of the appId text (ReleaseEntry.app_id) is not the target.
 		m, f := setup()
 		clearanceMutations[0].apply(m, blacklistTargetApp, f.appKey)
 		pinBlacklistStatus(m, blacklistTargetApp, f.appID, blacklistStatusClear)
-		requireRefusalNamed(t, VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, opPub), "check=blacklist[app]", "clearance-absent")
+		requireRefusalNamed(t, VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, opPub), "check=blacklist[app]", "clearance-absent")
 	})
 	t.Run("app/release-app-id-is-another-app", func(t *testing.T) {
 		m, f := setup()
 		entry := m.releaseEntry[f.relPDA]
 		entry.appID = sha256.Sum256([]byte(testAppIDText("another app")))
 		m.releaseEntry[f.relPDA] = entry
-		requireRefusalNamed(t, VerifyPublish(context.Background(), m, cfg, f.spk, f.metadata, f.rel, opPub), "check=blacklist[app]", "app-id-not-the-release-app")
+		requireRefusalNamed(t, VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, opPub), "check=blacklist[app]", "app-id-not-the-release-app")
 	})
 }
 

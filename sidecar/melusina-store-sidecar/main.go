@@ -254,6 +254,9 @@ func main() {
 	if err := bindInstallerReleaseTrust(&cfg, enrolledState); err != nil {
 		log.Fatalf("estate enrollment: %v", err)
 	}
+	if err := bindAppReleaseTrust(&cfg, enrolledState); err != nil {
+		log.Fatalf("estate enrollment: %v", err)
+	}
 	if enrolledState == nil {
 		log.Printf("installer releases: no enrolled estate profile — every InstallerReleaseEntry gate refuses (installer-release-trust-unconfigured)")
 	}

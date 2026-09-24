@@ -140,7 +140,17 @@ publisher's signed artifact envelope, recomputes the AppHash (the tree-hash over
 requires an Active `StoreOperatorAuthorization` whose `store_authority` is this
 sidecar's own operator key, requires explicit Clear `BlacklistStatusEntry` records
 at `["blacklist_status", kind, target]` for the app (its decoded appId) and the
-operator licence — absent is not Clear — then (single
+operator licence — absent is not Clear — and admits the whole `ReleaseEntry`
+(`check=release_entry_admission`, decoded with `internal/releaseentry`): its
+`app_hash`, `app_id` (sha256 of the metadata appId), `release_hash` and version
+must be the RELEASE.json's, because the receipt and catalog pointer below carry
+that `releaseHash` and the tenant's authorization daemon refuses a receipt whose
+release hash or app is not the entry's. An enrolled Store admits the entry
+exactly as `mel-release approve` does (below): the estate master mint, the
+release custodian, the recorded digest, a `releaseTrust` publisher key and its
+signature, projected at startup from the enrolled profile. The estate-bootstrap
+build admits nothing without that trust; the standard build's unenrolled Store,
+which has no profile, applies the release checks alone. Then (single
 writer, under a mutex) runs `build-store.sh` as a convenience assembler and
 returns a store-signed provenance receipt over the raw
 96-byte `appHash||releaseHash||servingDomainHash` (contract C-2). The Go verify

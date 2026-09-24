@@ -37,6 +37,10 @@ func stubAssembler(t *testing.T) *CatalogAssembler {
 // and a stub assembler.
 func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private) *publishService {
 	t.Helper()
+	// A running enrolled Store has its estate's app-release trust bound at
+	// startup (bindAppReleaseTrust); the fixture estate is the one pinAccept
+	// pinned. A test that binds its own trust keeps it.
+	cfg = withReleaseTrust(cfg, m)
 	if cfg.PrivateStageDir == "" {
 		cfg.PrivateStageDir = t.TempDir()
 	}
@@ -1313,7 +1317,7 @@ func TestHandlePublish_AllowsOlderActiveReleaseDuringRollout(t *testing.T) {
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
 	m := newMockChainReader()
 	f.pinAccept(m, operatorPub)
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, version: f.rel.Version, status: verify.AttestationStatusActive, registeredAt: f.rel.SignedAtUnix}
+	m.releaseEntry[f.relPDA] = f.activeReleaseEntry()
 	pinOtherActiveRelease(t, m, &f, "1.0.0")
 	svc := newTestService(t, cfg, m, op)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")

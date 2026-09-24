@@ -12,6 +12,7 @@ import (
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
 )
 
 var (
@@ -19,21 +20,36 @@ var (
 	errSupersedeRequired = errors.New("prior active release must be superseded before publish")
 )
 
+// releaseEntryMeta is one decoded ReleaseEntry account (every field,
+// internal/releaseentry.Decode) and the address it was read from.
 type releaseEntryMeta struct {
 	PDA string
 	// MasterNFTMint is the account's own master_nft_mint field, the first
-	// ReleaseEntry seed. Only an explicit recall reads it
-	// (releaseEntryExplicitRecall): a recall omits a catalog row only when the
-	// entry is the estate master's.
+	// ReleaseEntry seed. An explicit recall (releaseEntryExplicitRecall) and
+	// the publish admission (admitReleaseEntryForPublish) both hold it to the
+	// estate master.
 	MasterNFTMint [32]byte
 	AppHash       [32]byte
 	AppID         [32]byte
+	// ReleaseHash is the release hash the publisher signed and the program
+	// recorded. The publish admission refuses a RELEASE.json whose
+	// releaseHash is not this one: the Store signs the RELEASE.json value into
+	// its receipt and catalog pointer, and the tenant's authorization daemon
+	// refuses a receipt whose release hash is not the entry's.
+	ReleaseHash [32]byte
 	// PublisherSquadsVault is retained from the on-chain ReleaseEntry instead
 	// of skipped by the RPC decoder. It is the chain-authenticated publisher
 	// authority fact used to reject releases from any other vault.
 	PublisherSquadsVault [32]byte
-	Version              string
-	Status               verify.AttestationStatus
+	// PublisherEd25519Pubkey, Signature and SignedPayloadHash are the
+	// publisher's attestation; RegisteredBy is the vault that registered it.
+	// The publish admission holds them to the enrolled estate's releaseTrust.
+	PublisherEd25519Pubkey [32]byte
+	Signature              [64]byte
+	SignedPayloadHash      [32]byte
+	RegisteredBy           [32]byte
+	Version                string
+	Status                 verify.AttestationStatus
 	// RegisteredAt is the on-chain-witnessed attestation time (i64 unix, from
 	// ReleaseEntry.registered_at). It is the tamper-proof anchor for the store
 	// hygiene proximity check (a) — the publisher-supplied RELEASE.json signedAtUnix
@@ -43,6 +59,47 @@ type releaseEntryMeta struct {
 	// sets it together with status Revoked; a Revoked entry without it is not
 	// an explicit recall.
 	RevokedAt *int64
+	Bump      uint8
+}
+
+// releaseEntryMetaFromEntry is the Store's view of a decoded account.
+func releaseEntryMetaFromEntry(e releaseentry.Entry) releaseEntryMeta {
+	return releaseEntryMeta{
+		MasterNFTMint:          e.MasterNFTMint,
+		AppHash:                e.AppHash,
+		AppID:                  e.AppID,
+		ReleaseHash:            e.ReleaseHash,
+		PublisherSquadsVault:   e.PublisherSquadsVault,
+		PublisherEd25519Pubkey: e.PublisherEd25519Pubkey,
+		Signature:              e.Signature,
+		SignedPayloadHash:      e.SignedPayloadHash,
+		RegisteredBy:           e.RegisteredBy,
+		Version:                e.Version,
+		Status:                 verify.AttestationStatus(e.Status),
+		RegisteredAt:           e.RegisteredAt,
+		RevokedAt:              e.RevokedAt,
+		Bump:                   e.Bump,
+	}
+}
+
+// entry is meta as the account releaseentry decodes, for admission.
+func (meta releaseEntryMeta) entry() releaseentry.Entry {
+	return releaseentry.Entry{
+		MasterNFTMint:          meta.MasterNFTMint,
+		AppHash:                meta.AppHash,
+		AppID:                  meta.AppID,
+		ReleaseHash:            meta.ReleaseHash,
+		Version:                meta.Version,
+		PublisherSquadsVault:   meta.PublisherSquadsVault,
+		PublisherEd25519Pubkey: meta.PublisherEd25519Pubkey,
+		Signature:              meta.Signature,
+		SignedPayloadHash:      meta.SignedPayloadHash,
+		RegisteredBy:           meta.RegisteredBy,
+		RegisteredAt:           meta.RegisteredAt,
+		Status:                 releaseentry.Status(meta.Status),
+		RevokedAt:              meta.RevokedAt,
+		Bump:                   meta.Bump,
+	}
 }
 
 // installerReleaseMeta is one decoded InstallerReleaseEntry and the address

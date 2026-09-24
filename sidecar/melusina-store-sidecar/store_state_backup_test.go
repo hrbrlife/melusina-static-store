@@ -61,7 +61,7 @@ func newStoreStateFixture(t *testing.T) storeStateFixture {
 		// roots, which the export must neither carry nor refuse.
 		ServedSnapshotDir: filepath.Join(parent, "served-snapshots"),
 		ReleaseSquadsAuthority: ReleaseSquadsAuthority{
-			Multisig: testStoreAuthority, Vault: testStoreAuthority, ProgramID: testStoreAuthority,
+			Multisig: testStoreAuthority, Vault: testReleaseCustodianVault, ProgramID: testStoreAuthority,
 			Threshold: defaultBazaarSquadsThreshold, MemberCount: defaultBazaarSquadsMemberCount,
 		},
 		ServeVerifyTTLSeconds: -1,
@@ -106,6 +106,9 @@ func newStoreStateFixture(t *testing.T) storeStateFixture {
 	chain := newMockChainReader()
 	fixture.pinAccept(chain, operatorSignPub32(t, operator))
 	fixture.pinServeListingActive(chain)
+	// The Store runs enrolled in the fixture estate: its app-release trust is
+	// bound, as startup binds the enrolled profile's.
+	cfg = withReleaseTrust(cfg, chain)
 	router := newRouterWithCatalogRuntime(cfg, operator, chain, nil, runtime)
 	now := time.Now().UTC()
 	stageBody := exactPublishBody(t, signPublishForRoute(t, publisher, operator.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "state-backup-stage"), release, fixture.spk, fixture.metadata)

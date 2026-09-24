@@ -20,6 +20,8 @@ import (
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry/releaseentrytest"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -80,6 +82,12 @@ type mockChainReader struct {
 	hostApplyContextSlot  uint64
 	hostApplyErr          error
 
+	// releaseTrust is the enrolled estate's app-release trust for the last
+	// fixture pinAccept pinned (publishFixture.releaseTrust). newTestService
+	// binds it to a service whose Config has none, as startup binds the
+	// enrolled profile's (bindAppReleaseTrust).
+	releaseTrust *releaseentry.Trust
+
 	// global error injection: if set, the named Fetch returns this error.
 	releaseErr    error
 	authzErr      error
@@ -91,18 +99,54 @@ type mockChainReader struct {
 }
 
 type mockReleaseEntry struct {
+	masterNFTMint        [32]byte
 	appHash              [32]byte
 	appID                [32]byte
+	releaseHash          [32]byte
 	publisherSquadsVault [32]byte
 	version              string
 	status               verify.AttestationStatus
 	registeredAt         int64 // on-chain witnessed attestation time (ReleaseEntry.registered_at)
-	err                  error
+	// publisher signs the registration; nil is testReleasePublisherKey, the
+	// key the fixture estate's releaseTrust enrolls (publishFixture.releaseTrust).
+	publisher ed25519.PrivateKey
+	err       error
 	// account, when set, is the ReleaseEntry account's exact program bytes.
 	// FetchReleaseEntryMeta then returns what the production decoder
 	// (readReleaseEntryMeta) reads from them and ignores the fields above.
 	// Only the serve-time read honours it.
 	account []byte
+}
+
+// testReleasePublisherKey signs the ReleaseEntry registrations the mock
+// serves. It is derived from a fixed public label and holds no authority
+// anywhere.
+func testReleasePublisherKey() ed25519.PrivateKey {
+	seed := sha256.Sum256([]byte("melusina-store-publish-admission-test-publisher"))
+	return ed25519.NewKeyFromSeed(seed[:])
+}
+
+// programAccount is the account the program writes when the release
+// custodian (publisherSquadsVault) registers e's release under its publisher:
+// registered_by is that vault, the digest is recomputed from the fields and
+// signed. revoked_at stays None.
+func (e mockReleaseEntry) programAccount() []byte {
+	publisher := e.publisher
+	if publisher == nil {
+		publisher = testReleasePublisherKey()
+	}
+	return releaseentrytest.Encode(releaseentrytest.Sign(releaseentry.Entry{
+		MasterNFTMint:        e.masterNFTMint,
+		AppHash:              e.appHash,
+		AppID:                e.appID,
+		ReleaseHash:          e.releaseHash,
+		Version:              e.version,
+		PublisherSquadsVault: e.publisherSquadsVault,
+		RegisteredBy:         e.publisherSquadsVault,
+		RegisteredAt:         e.registeredAt,
+		Status:               releaseentry.Status(e.status),
+		Bump:                 254,
+	}, publisher))
 }
 
 type mockSidecarIdentity struct {
@@ -189,23 +233,18 @@ func (m *mockChainReader) FetchReleaseEntryMeta(_ context.Context, addr string) 
 	if e.err != nil {
 		return releaseEntryMeta{}, e.err
 	}
-	if e.account != nil {
-		meta, err := readReleaseEntryMeta(e.account)
-		if err != nil {
-			return releaseEntryMeta{}, err
-		}
-		meta.PDA = addr
-		return meta, nil
+	account := e.account
+	if account == nil {
+		account = e.programAccount()
 	}
-	return releaseEntryMeta{
-		PDA:                  addr,
-		AppHash:              e.appHash,
-		AppID:                e.appID,
-		PublisherSquadsVault: e.publisherSquadsVault,
-		Version:              e.version,
-		Status:               e.status,
-		RegisteredAt:         e.registeredAt,
-	}, nil
+	// The mock returns what the production decoder reads from the program's
+	// bytes, every field included.
+	meta, err := readReleaseEntryMeta(account)
+	if err != nil {
+		return releaseEntryMeta{}, err
+	}
+	meta.PDA = addr
+	return meta, nil
 }
 
 func (m *mockChainReader) FetchActiveReleaseEntriesByAppID(_ context.Context, appID [32]byte) ([]releaseEntryMeta, error) {
@@ -483,6 +522,13 @@ type publishFixture struct {
 	licenseMint pda.Pubkey
 }
 
+// testReleaseCustodianVault is the fixture estate's release custodian, the
+// Squads vault that registers every fixture ReleaseEntry (the Store's
+// release_squads_authority.vault). It is sha256 of a fixed public label, not
+// an address anyone controls; the zero key testStoreAuthority cannot be one,
+// because an app-release trust refuses a zero custodian.
+const testReleaseCustodianVault = "BJPe8Hbnp1x2K4Gs228eQCPxYzJt3DRM7RtC9HxmaasU"
+
 // testConfig returns a minimal Config bound to a fresh license mint + domain.
 func testConfig(t *testing.T) (Config, string) {
 	t.Helper()
@@ -492,7 +538,7 @@ func testConfig(t *testing.T) (Config, string) {
 		StoreAuthority: randPubkeyB58(t),
 		ReleaseSquadsAuthority: ReleaseSquadsAuthority{
 			Multisig:    testStoreAuthority,
-			Vault:       testStoreAuthority,
+			Vault:       testReleaseCustodianVault,
 			ProgramID:   testStoreAuthority,
 			Threshold:   defaultBazaarSquadsThreshold,
 			MemberCount: defaultBazaarSquadsMemberCount,
@@ -543,7 +589,7 @@ func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, sp
 	if _, err := cfg.sharedSquadsAuthority(); err != nil {
 		cfg.ReleaseSquadsAuthority = ReleaseSquadsAuthority{
 			Multisig:    testStoreAuthority,
-			Vault:       testStoreAuthority,
+			Vault:       testReleaseCustodianVault,
 			ProgramID:   testStoreAuthority,
 			Threshold:   defaultBazaarSquadsThreshold,
 			MemberCount: defaultBazaarSquadsMemberCount,
@@ -719,11 +765,11 @@ func runtimeContractForRelease(t *testing.T, release, spk, metadata []byte) []by
 // operator, no FoundationAppEntry (third-party app — no tier ceiling), and the
 // Foundation's explicit Clear records for the app and the operator licence.
 func (f publishFixture) pinAccept(m *mockChainReader, operatorPub [32]byte) {
-	publisherVault, err := primitives.PubkeyFromBase58(f.cfg.ReleaseSquadsAuthority.Vault)
-	if err != nil {
-		panic(err)
-	}
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, publisherSquadsVault: publisherVault, version: f.rel.Version, status: verify.AttestationStatusActive, registeredAt: f.rel.SignedAtUnix}
+	m.releaseEntry[f.relPDA] = f.activeReleaseEntry()
+	// A fixture whose release custodian is the zero key models an unenrolled
+	// Store: no app-release trust can be projected for it (releaseentry
+	// refuses a zero custodian), so none is recorded.
+	m.releaseTrust, _ = f.releaseTrust()
 	m.storeAuthz[f.authzPDA] = mockStoreAuthz{
 		status:     verify.AuthorizationStatusActive,
 		authority:  verify.Pubkey(operatorPub),
@@ -733,6 +779,51 @@ func (f publishFixture) pinAccept(m *mockChainReader, operatorPub [32]byte) {
 	}
 	// no FoundationAppEntry pinned => resolveFoundationTier returns tier 0 (no ceiling)
 	f.pinClearances(m)
+}
+
+// withReleaseTrust is cfg as the enrolled Store of the estate pinAccept last
+// pinned into m: its app-release trust is bound, as bindAppReleaseTrust binds
+// the enrolled profile's at startup. A trust cfg already carries is kept.
+func withReleaseTrust(cfg Config, m *mockChainReader) Config {
+	if cfg.appReleaseTrust == nil && m != nil {
+		cfg.appReleaseTrust = m.releaseTrust
+	}
+	return cfg
+}
+
+// activeReleaseEntry is the Active ReleaseEntry the release custodian
+// registers for exactly f's release: master mint, app_hash, app_id,
+// release_hash and version, signed by testReleasePublisherKey.
+func (f publishFixture) activeReleaseEntry() mockReleaseEntry {
+	publisherVault, err := primitives.PubkeyFromBase58(f.cfg.ReleaseSquadsAuthority.Vault)
+	if err != nil {
+		panic(err)
+	}
+	releaseHash, err := hash32FromHex(f.rel.ReleaseHash)
+	if err != nil {
+		panic(err)
+	}
+	return mockReleaseEntry{
+		masterNFTMint:        [32]byte(f.masterMint),
+		appHash:              f.appHashBytes,
+		appID:                f.appID,
+		releaseHash:          releaseHash,
+		publisherSquadsVault: publisherVault,
+		version:              f.rel.Version,
+		status:               verify.AttestationStatusActive,
+		registeredAt:         f.rel.SignedAtUnix,
+	}
+}
+
+// releaseTrust is the app-release trust of the estate f is published in, as
+// bindAppReleaseTrust projects it from an enrolled profile: f's master mint,
+// the configured release custodian, testReleasePublisherKey and threshold 1.
+func (f publishFixture) releaseTrust() (*releaseentry.Trust, error) {
+	custodian, err := primitives.PubkeyFromBase58(f.cfg.ReleaseSquadsAuthority.Vault)
+	if err != nil {
+		return nil, err
+	}
+	return releaseentry.NewTrust([32]byte(f.masterMint), [32]byte(custodian), [][32]byte{[32]byte(testReleasePublisherKey().Public().(ed25519.PublicKey))}, 1)
 }
 
 // pinClearances seeds the Foundation's first Clear record for the fixture's

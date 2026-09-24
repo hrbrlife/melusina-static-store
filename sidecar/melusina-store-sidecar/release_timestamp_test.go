@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
-	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
 
 // ── check (a): attestation proximity ──────────────────────────────────────────
@@ -224,13 +223,9 @@ func TestHandlePublish_AttestationProximityReject(t *testing.T) {
 	m := newMockChainReader()
 	f.pinAccept(m, operatorPub)
 	// Override the on-chain registered_at to sit 48h from the claimed signedAtUnix.
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{
-		appHash:      f.appHashBytes,
-		appID:        f.appID,
-		version:      f.rel.Version,
-		status:       verify.AttestationStatusActive,
-		registeredAt: f.rel.SignedAtUnix + 48*3600,
-	}
+	entry := f.activeReleaseEntry()
+	entry.registeredAt = f.rel.SignedAtUnix + 48*3600
+	m.releaseEntry[f.relPDA] = entry
 	release := mustJSON(t, f.rel)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	svc := newTestService(t, cfg, m, op)

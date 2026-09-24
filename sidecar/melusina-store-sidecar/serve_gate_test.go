@@ -111,7 +111,7 @@ func serveSetup(t *testing.T) (Config, *mockChainReader, publishFixture, *serveG
 // pinReleaseActive pins an Active ReleaseEntry pinning the on-chain tree-hash
 // app_hash — the ACCEPT state for the serve gate.
 func pinReleaseActive(m *mockChainReader, f publishFixture) {
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, appID: f.appID, status: verify.AttestationStatusActive}
+	m.releaseEntry[f.relPDA] = f.activeReleaseEntry()
 	f.pinServeListingActive(m)
 	f.pinClearances(m)
 }
@@ -648,7 +648,9 @@ func TestServeGate_VerdictCacheWindow(t *testing.T) {
 	}
 
 	// Revoke on-chain. Within the TTL window the cached verdict still serves.
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: verify.AttestationStatusRevoked}
+	revoked := f.activeReleaseEntry()
+	revoked.status = verify.AttestationStatusRevoked
+	m.releaseEntry[f.relPDA] = revoked
 	now = now.Add(10 * time.Second)
 	if w := serveGet(t, g, http.MethodGet, "/packages/"+base); w.Code != http.StatusOK {
 		t.Fatalf("within TTL want cached 200, got %d: %s", w.Code, w.Body.String())
@@ -680,7 +682,9 @@ func TestServeGate_CacheDisabledReverifies(t *testing.T) {
 	if w := serveGet(t, g, http.MethodGet, "/packages/"+base); w.Code != http.StatusOK {
 		t.Fatalf("want 200, got %d: %s", w.Code, w.Body.String())
 	}
-	m.releaseEntry[f.relPDA] = mockReleaseEntry{appHash: f.appHashBytes, status: verify.AttestationStatusRevoked}
+	revoked := f.activeReleaseEntry()
+	revoked.status = verify.AttestationStatusRevoked
+	m.releaseEntry[f.relPDA] = revoked
 	if w := serveGet(t, g, http.MethodGet, "/packages/"+base); w.Code != http.StatusForbidden {
 		t.Fatalf("cache disabled: revoke must be immediately visible (403), got %d", w.Code)
 	}

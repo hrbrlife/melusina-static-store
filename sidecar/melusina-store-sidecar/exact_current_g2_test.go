@@ -70,6 +70,9 @@ func (c *exactCurrentReadOnlyChain) FetchFoundationAppEntry(ctx context.Context,
 
 func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable(t *testing.T) {
 	cfg, opts, _ := newCatalogBootstrapFixture(t, "authorized")
+	// The release custodian registers the fixture's ReleaseEntry; the promote
+	// admits it under that estate's trust (withReleaseTrust below).
+	cfg.ReleaseSquadsAuthority.Vault = testReleaseCustodianVault
 	cfg.LicenseNFTMint = randPubkeyB58(t)
 	cfg.Domain = "exact-current.store.example.org"
 	cfg.StoreID = "exact-current-store"
@@ -109,6 +112,9 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 	if err != nil {
 		t.Fatalf("authorized legacy bootstrap: %v", err)
 	}
+	// The Store runs enrolled in the fixture estate: its app-release trust is
+	// bound, as startup binds the enrolled profile's.
+	cfg = withReleaseTrust(cfg, baseChain)
 	router := newRouterWithCatalogRuntime(cfg, operator, chain, nil, runtime)
 
 	now := time.Now().UTC()

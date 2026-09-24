@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
 )
 
 // A bootstrap component has no legacy authority path. Its sidecar must carry
@@ -34,4 +35,14 @@ func unenrolledStoreRefusal() error {
 // release by the same name as publishing does.
 func servedReleaseWithoutQuorumClaimRefusal() error {
 	return fmt.Errorf("check=publisher_squads_authority: %w; the estate-bootstrap build serves no release attested before the claim", errReleaseQuorumClaimAbsent)
+}
+
+// unboundAppReleaseTrustRefusal is why a bootstrap component admits no app
+// release without the enrolled estate's release trust. Its server always
+// starts enrolled and binds the trust (bindAppReleaseTrust); a Config that
+// reaches the /publish admission without one is refused by name, never
+// admitted on the trust-free subset the standard build keeps for the
+// retiring Bazaar.
+func unboundAppReleaseTrustRefusal(Config) error {
+	return fmt.Errorf("%w: the estate-bootstrap build admits no app release without the enrolled estate's releaseTrust", releaseentry.ErrTrustUnconfigured)
 }

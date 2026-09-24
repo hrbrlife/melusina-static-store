@@ -437,6 +437,9 @@ func TestServeGate_PreviousReleaseRequiresWindowAndActiveChainEntry(t *testing.T
 	}
 	cfg.AppRollbackWindowSeconds = 300
 	cfg.ServeVerifyTTLSeconds = -1
+	// makeRolloutFixture's releases, and the entries below, name the zero-key
+	// vault testStoreAuthority as their publisher custody.
+	cfg.ReleaseSquadsAuthority.Vault = testStoreAuthority
 	master := randPubkeyB58(t)
 	// The gate reads the app's clearance, keyed by its decoded Sandstorm appId.
 	rolloutAppID := testAppIDText("rollout-serve-app")

@@ -534,6 +534,43 @@ func TestAdmitRefusesByName(t *testing.T) {
 	}
 }
 
+// TestAttestsIsAdmitsReleaseCheckWithNoTrust: Attests is the part of
+// Admit that needs no estate trust. It admits the committed Active vector for
+// exactly the release it attests, with no trust bound anywhere, and refuses
+// each other release by the same name Admit uses; Admit refuses each of them
+// by that name too, so the two cannot drift apart.
+func TestAttestsIsAdmitsReleaseCheckWithNoTrust(t *testing.T) {
+	_, e := activeVector(t)
+	want := expectationOf(e)
+	if err := e.Attests(want); err != nil {
+		t.Fatalf("positive control: %v", err)
+	}
+	// An entry the estate would refuse for its publisher, custodian or
+	// signature still attests its release: Attests judges only the release.
+	if err := resign(e, otherPublisher()).Attests(want); err != nil {
+		t.Fatalf("Attests judged the publisher: %v", err)
+	}
+	flip := func(b [32]byte) [32]byte { b[0] ^= 1; return b }
+	trust := vectorTrust(t, e)
+	for _, c := range []struct {
+		name string
+		want func() Expectation
+		err  error
+	}{
+		{"another app hash", func() Expectation { w := want; w.AppHash = flip(w.AppHash); return w }, ErrAppHashMismatch},
+		{"another app id", func() Expectation { w := want; w.AppID = flip(w.AppID); return w }, ErrAppIDMismatch},
+		{"another release hash", func() Expectation { w := want; w.ReleaseHash = flip(w.ReleaseHash); return w }, ErrReleaseHashMismatch},
+		{"another version", func() Expectation { w := want; w.Version = "2.4.2"; return w }, ErrVersionMismatch},
+		{"no release hash", func() Expectation { w := want; w.ReleaseHash = [32]byte{}; return w }, ErrExpectationIncomplete},
+		{"no app id", func() Expectation { w := want; w.AppID = [32]byte{}; return w }, ErrExpectationIncomplete},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			requireRefusal(t, e.Attests(c.want()), c.err, "Attests: "+c.name)
+			requireRefusal(t, trust.Admit(e, c.want()), c.err, "Admit: "+c.name)
+		})
+	}
+}
+
 // TestRecalledVectorIsRefused: the committed Revoked vector decodes (a recall
 // is a legal account) and is refused as recalled, whatever else matches.
 func TestRecalledVectorIsRefused(t *testing.T) {

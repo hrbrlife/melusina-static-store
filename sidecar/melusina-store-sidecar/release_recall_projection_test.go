@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -290,7 +289,7 @@ func TestReleaseRecallProjection_EveryOtherStateStaysFailClosed(t *testing.T) {
 				fx.pinRaw(account, fx.recalled)
 				return fx.cfg
 			},
-			want: "unknown AttestationStatus byte: 3",
+			want: "release-entry-malformed:status: unknown AttestationStatus 3",
 		},
 		{
 			name: "invalid_revoked_at_tag",
@@ -301,7 +300,7 @@ func TestReleaseRecallProjection_EveryOtherStateStaysFailClosed(t *testing.T) {
 				fx.pinRaw(account, fx.recalled)
 				return fx.cfg
 			},
-			want: "revoked_at option tag 2 is invalid",
+			want: "release-entry-malformed:revoked_at: Option tag 2",
 		},
 		{
 			name: "estate_master_mint_unconfigured",
@@ -490,7 +489,8 @@ func TestReadReleaseEntryMeta_RevokedAtIsDecodedExactly(t *testing.T) {
 		appID[i] = byte(0xA0 + i)
 		vault[i] = byte(0x50 + i)
 	}
-	none := buildReleaseEntryBlobForTest(appHash, appID, vault, "1.2.3", 1790000000, verify.AttestationStatusRevoked)
+	const version = "1.2.3"
+	none := buildReleaseEntryBlobForTest(appHash, appID, vault, version, 1790000000, verify.AttestationStatusRevoked)
 	for i := 0; i < 32; i++ {
 		none[verify.AccountDiscriminatorLen+i] = byte(0xC0 + i)
 	}
@@ -506,9 +506,10 @@ func TestReadReleaseEntryMeta_RevokedAtIsDecodedExactly(t *testing.T) {
 			t.Fatalf("master_nft_mint decoded as %x", meta.MasterNFTMint)
 		}
 	}
-	tagAt := len(none) - 2 // revoked_at tag, then bump
-	some := append(append(append([]byte(nil), none[:tagAt]...), 1), binary.LittleEndian.AppendUint64(nil, uint64(recallTestRevokedAt))...)
-	some = append(some, 0) // bump
+	withRevokedAt := meta.entry()
+	at := recallTestRevokedAt
+	withRevokedAt.RevokedAt = &at
+	some := releaseentrytest.Encode(withRevokedAt)
 	meta, err = readReleaseEntryMeta(some)
 	if err != nil {
 		t.Fatal(err)
@@ -516,14 +517,21 @@ func TestReadReleaseEntryMeta_RevokedAtIsDecodedExactly(t *testing.T) {
 	if meta.RevokedAt == nil || *meta.RevokedAt != recallTestRevokedAt {
 		t.Fatalf("revoked_at Some(%d) decoded as %v", recallTestRevokedAt, meta.RevokedAt)
 	}
+	// revoked_at's Option tag follows status, which follows registered_at.
+	tagAt := verify.AccountDiscriminatorLen + 32*4 + 4 + len(version) + 32 + 32 + 64 + 32 + 32 + 8 + 1
+	if none[tagAt] != 0 || some[tagAt] != 1 {
+		t.Fatalf("revoked_at tag offset %d holds %d and %d, not None and Some", tagAt, none[tagAt], some[tagAt])
+	}
+	unknownTag := append([]byte(nil), none...)
+	unknownTag[tagAt] = 2
 	for _, tc := range []struct {
 		name string
 		data []byte
 		want string
 	}{
-		{"unknown_tag", append(append(append([]byte(nil), none[:tagAt]...), 2), 0), "revoked_at option tag 2 is invalid"},
-		{"truncated_before_tag", append([]byte(nil), none[:tagAt]...), "revoked_at option: buffer too short"},
-		{"truncated_inside_value", some[:tagAt+5], "revoked_at: buffer too short"},
+		{"unknown_tag", unknownTag, "release-entry-malformed:revoked_at: Option tag 2"},
+		{"truncated_before_tag", append([]byte(nil), none[:tagAt]...), "release-entry-malformed:size"},
+		{"truncated_inside_value", append([]byte(nil), some[:tagAt+5]...), "release-entry-malformed:size"},
 	} {
 		if _, err := readReleaseEntryMeta(tc.data); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Fatalf("%s: err = %v, want %q", tc.name, err, tc.want)

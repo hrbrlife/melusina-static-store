@@ -344,14 +344,38 @@ type Expectation struct {
 	Version     string
 }
 
+// Attests is the part of Admit that needs no estate trust: want names a
+// complete release, and e attests exactly it (app_hash, app_id, release_hash
+// and version). Admit runs it after the recall and master-mint checks. A
+// caller with no enrolled estate profile, which therefore has no publisher
+// keys to judge by, can still refuse a release the entry does not attest.
+func (e Entry) Attests(want Expectation) error {
+	if want.AppHash == ([32]byte{}) || want.AppID == ([32]byte{}) || want.ReleaseHash == ([32]byte{}) || want.Version == "" {
+		return fmt.Errorf("%w: the frozen release names no app_hash, app_id, release_hash or version", ErrExpectationIncomplete)
+	}
+	if e.AppHash != want.AppHash {
+		return fmt.Errorf("%w: entry app_hash %x != frozen release %x", ErrAppHashMismatch, e.AppHash[:], want.AppHash[:])
+	}
+	if e.AppID != want.AppID {
+		return fmt.Errorf("%w: entry app_id %x != frozen release %x", ErrAppIDMismatch, e.AppID[:], want.AppID[:])
+	}
+	if e.ReleaseHash != want.ReleaseHash {
+		return fmt.Errorf("%w: entry release_hash %x != frozen release %x", ErrReleaseHashMismatch, e.ReleaseHash[:], want.ReleaseHash[:])
+	}
+	if e.Version != want.Version {
+		return fmt.Errorf("%w: entry version %q != frozen release %q", ErrVersionMismatch, e.Version, want.Version)
+	}
+	return nil
+}
+
 // Admit accepts e as the on-chain attestation of want, or refuses by name.
 // It checks, in order: Active with no revocation time (a recalled entry is
 // never admitted), the master mint, app_hash, app_id, release_hash and
-// version, the custodian (registered_by == publisher_squads_vault == the
-// estate's release custodian), the recorded digest against one recomputed
-// from the entry's own fields, the publisher key against the estate's
-// releaseTrust.publisherKeys, the threshold (an entry records ONE publisher
-// signature), and that signature over the digest.
+// version (Attests), the custodian (registered_by == publisher_squads_vault
+// == the estate's release custodian), the recorded digest against one
+// recomputed from the entry's own fields, the publisher key against the
+// estate's releaseTrust.publisherKeys, the threshold (an entry records ONE
+// publisher signature), and that signature over the digest.
 func (t *Trust) Admit(e Entry, want Expectation) error {
 	if t == nil || len(t.publishers) == 0 {
 		return fmt.Errorf("%w: no estate release trust is bound", ErrTrustUnconfigured)
@@ -368,17 +392,8 @@ func (t *Trust) Admit(e Entry, want Expectation) error {
 	if e.MasterNFTMint != t.masterNFTMint {
 		return fmt.Errorf("%w: entry master_nft_mint %x is not the estate master mint %x", ErrMasterMismatch, e.MasterNFTMint[:], t.masterNFTMint[:])
 	}
-	if e.AppHash != want.AppHash {
-		return fmt.Errorf("%w: entry app_hash %x != frozen release %x", ErrAppHashMismatch, e.AppHash[:], want.AppHash[:])
-	}
-	if e.AppID != want.AppID {
-		return fmt.Errorf("%w: entry app_id %x != frozen release %x", ErrAppIDMismatch, e.AppID[:], want.AppID[:])
-	}
-	if e.ReleaseHash != want.ReleaseHash {
-		return fmt.Errorf("%w: entry release_hash %x != frozen release %x", ErrReleaseHashMismatch, e.ReleaseHash[:], want.ReleaseHash[:])
-	}
-	if e.Version != want.Version {
-		return fmt.Errorf("%w: entry version %q != frozen release %q", ErrVersionMismatch, e.Version, want.Version)
+	if err := e.Attests(want); err != nil {
+		return err
 	}
 	if e.RegisteredBy != e.PublisherSquadsVault {
 		return fmt.Errorf("%w: registered_by %x != publisher_squads_vault %x", ErrCustodianMismatch, e.RegisteredBy[:], e.PublisherSquadsVault[:])

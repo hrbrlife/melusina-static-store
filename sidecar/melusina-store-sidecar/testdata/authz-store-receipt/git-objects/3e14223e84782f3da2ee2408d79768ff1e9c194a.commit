@@ -1,0 +1,43 @@
+tree 9ef83a18fdb193c6c3085346c0da385d53dc260f
+parent e30a9c7ad51c94407f9f7fa773ee848d0d3e5a8e
+author alexeikarp <ak@hrbr.life> 1790257056 +0400
+committer alexeikarp <ak@hrbr.life> 1790257056 +0400
+
+grainauth, handler: hold /sign_authorization to the /authorize gate on both paths — a cold cache no longer signs for a revoked licence, and the warm cache no longer skips the licence clearance
+
+Found by the own-licence reseller work (80ddc10): on a cold cache
+/sign_authorization (runWitnessVerify) signed whenever this install's
+LicenseEntry existed and verify_account finalized, without reading its
+status, its clearance, its reseller, the subject or the action; the cache
+path checked LicenseExists and the reseller only. The built daemon before
+this change signs a revoked licence's request on a cold cache.
+
+- gate.go: the gate's rules move out of decide into Handler.Evaluate, the
+  one rule set both wires call: licence binding, LicenseEntry Active
+  (license-inactive, was not-admin), Active install-admin, verify_license's
+  reseller rule, explicit Clear BlacklistStatusEntry for the licence (absent
+  is proof-pending), known action and held bit, cascade + store stage,
+  settings hash, WITNESS_EXECUTED evidence. decide keeps only this wire's
+  freshness, expiry and signature. An install-admin set the snapshot did not
+  read (PartialAdmins) is now proof-pending, not not-admin.
+- LicenceOnlySnapshot + setLicenseEntry: the poller and the cold path read a
+  LicenseEntry with one function.
+- sign.go: every request is decided by the wired gate's Evaluate — from the
+  shared cache's snapshot, or cold from the inline-witnessed LicenseEntry
+  alone, where a missing/revoked licence or another licence is refused by
+  name and anything else is proof-pending (never signed). An Allow must also
+  grant every permission bit the request asks to have signed
+  (permission-bits-not-held) and expires no later than its evidence pulse.
+  403 authz_denied / 503 authz_proof_pending carry the gate's reason. No gate
+  wired refuses (500). main wires the /authorize gate, licence mint and
+  registry into the handler.
+- Tests: every rule on the cache path and on the cold path, the two wires
+  agreeing on every rule, the evidence rule on Evaluate directly, and the
+  BUILT daemon on a seeded warm cache and on a cold cache whose gateway
+  witnesses the LicenseEntry over both observers. Run against the build
+  before this change, that test fails by name in every row but the control:
+  the old daemon signs the revoked licence cold (HTTP 200, valid signature).
+  21 mutations, one per rule, each fails a named test; the evidence-rule
+  mutation is also held on the sign wire by its pulse-expiry hold.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>

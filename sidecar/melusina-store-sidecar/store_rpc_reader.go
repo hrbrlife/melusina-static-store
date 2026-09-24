@@ -14,6 +14,7 @@ import (
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -300,6 +301,31 @@ type programAccount struct {
 	Data   []byte
 }
 
+// releaseEntryByAppIDFilters selects exactly the ReleaseEntry accounts for
+// appID: the account size is ReleaseEntry::LEN, the Anchor discriminator is
+// ReleaseEntry's, and app_id matches. readReleaseEntryMeta decodes only that
+// layout, so the query asks for nothing else: another account type the
+// program owns that happens to hold these 32 bytes at the app_id offset is
+// not a release and is not returned to be refused.
+func releaseEntryByAppIDFilters(appID [32]byte) []any {
+	discriminator := releaseentry.Discriminator()
+	return []any{
+		map[string]any{"dataSize": releaseentry.Len},
+		map[string]any{
+			"memcmp": map[string]any{
+				"offset": 0,
+				"bytes":  primitives.EncodeBase58(discriminator[:]),
+			},
+		},
+		map[string]any{
+			"memcmp": map[string]any{
+				"offset": releaseEntryAppIDOffset,
+				"bytes":  primitives.EncodeBase58(appID[:]),
+			},
+		},
+	}
+}
+
 func (c *storeRPCReader) getProgramAccountsByAppID(ctx context.Context, appID [32]byte) ([]programAccount, error) {
 	req := storeRPCRequest{
 		JSONRPC: "2.0",
@@ -310,14 +336,7 @@ func (c *storeRPCReader) getProgramAccountsByAppID(ctx context.Context, appID [3
 			map[string]any{
 				"encoding":   "base64",
 				"commitment": "confirmed",
-				"filters": []any{
-					map[string]any{
-						"memcmp": map[string]any{
-							"offset": releaseEntryAppIDOffset,
-							"bytes":  primitives.EncodeBase58(appID[:]),
-						},
-					},
-				},
+				"filters":    releaseEntryByAppIDFilters(appID),
 			},
 		},
 	}
@@ -385,79 +404,19 @@ type storeProgramAccountsResponse struct {
 	Error *storeRPCError `json:"error,omitempty"`
 }
 
+// readReleaseEntryMeta decodes the exact ReleaseEntry account the program
+// writes (internal/releaseentry.Decode): the Anchor discriminator, exactly
+// ReleaseEntry::LEN bytes, every field in declaration order, closed status
+// and revoked_at Option tags, and zero padding after the last field. Nothing
+// is skipped: the publish admission reads release_hash, the publisher key,
+// its signature and the registering vault; the recall projection reads
+// revoked_at (a missing or unknown Option tag is refused, never read as None).
 func readReleaseEntryMeta(data []byte) (releaseEntryMeta, error) {
-	var meta releaseEntryMeta
-	offset := verify.AccountDiscriminatorLen
-	var err error
-	if offset, err = copyFixed(data, offset, meta.MasterNFTMint[:], "release_v2", "master_nft_mint"); err != nil {
-		return meta, err
-	}
-	if offset, err = copyFixed(data, offset, meta.AppHash[:], "release_v2", "app_hash"); err != nil {
-		return meta, err
-	}
-	if offset, err = copyFixed(data, offset, meta.AppID[:], "release_v2", "app_id"); err != nil {
-		return meta, err
-	}
-	if offset, err = skipFixed(data, offset, 32, "release_v2", "release_hash"); err != nil {
-		return meta, err
-	}
-	version, next, err := readBorshStringLocal(data, offset)
+	entry, err := releaseentry.Decode(data)
 	if err != nil {
-		return meta, fmt.Errorf("release_v2: version: %w", err)
+		return releaseEntryMeta{}, err
 	}
-	meta.Version = version
-	offset = next
-	if offset, err = copyFixed(data, offset, meta.PublisherSquadsVault[:], "release_v2", "publisher_squads_vault"); err != nil {
-		return meta, err
-	}
-	for _, step := range []struct {
-		name string
-		n    int
-	}{
-		{"publisher_ed25519_pubkey", 32},
-		{"signature", 64},
-		{"signed_payload_hash", 32},
-		{"registered_by", 32},
-	} {
-		if offset, err = skipFixed(data, offset, step.n, "release_v2", step.name); err != nil {
-			return meta, err
-		}
-	}
-	// registered_at is the on-chain-WITNESSED attestation time (i64 unix, set by the
-	// license program's Clock at register). It is the tamper-proof anchor the publish
-	// gate uses to bound the publisher-supplied RELEASE.json signedAtUnix (store
-	// hygiene check a); the reader now surfaces it instead of skipping it.
-	registeredAt, next, err := readInt64LE(data, offset, "release_v2", "registered_at")
-	if err != nil {
-		return meta, err
-	}
-	meta.RegisteredAt = registeredAt
-	offset = next
-	status, err := verify.ReadAttestationStatusByte(data, offset)
-	if err != nil {
-		return meta, err
-	}
-	meta.Status = status
-	offset++
-	// revoked_at (Option<i64>) is what makes a Revoked entry an explicit recall
-	// (revoke_release_entry writes Revoked and Some(clock) together), so its
-	// tag is decoded exactly: a missing or unknown tag is refused, never read
-	// as None.
-	if offset >= len(data) {
-		return meta, errors.New("release_v2: revoked_at option: buffer too short")
-	}
-	switch data[offset] {
-	case 0:
-	case 1:
-		revokedAt, _, err := readInt64LE(data, offset+1, "release_v2", "revoked_at")
-		if err != nil {
-			return meta, err
-		}
-		meta.RevokedAt = &revokedAt
-	default:
-		return meta, fmt.Errorf("release_v2: revoked_at option tag %d is invalid", data[offset])
-	}
-	return meta, nil
+	return releaseEntryMetaFromEntry(entry), nil
 }
 
 // readInstallerReleaseEntryMeta decodes the exact K3 account layout

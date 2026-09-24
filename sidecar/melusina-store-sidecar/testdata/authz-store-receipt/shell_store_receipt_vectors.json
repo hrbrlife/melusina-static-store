@@ -1,0 +1,32 @@
+{
+  "source": {
+    "repository": "github.com/melusina-os/melusina-os-sandstorm",
+    "commit": "37312a39b573197cdda78429e44896c5d809aef3",
+    "path": "shell/imports/server/accounts/solana/grain-gate.js",
+    "lines": "116-125",
+    "encoderBlockSha256": "1a755b93d208d59312a674941fd6b7c3536f852324d12899a3a933bd9aaed542"
+  },
+  "generator": "pkg/grainauth/testdata/shell-store-receipt-vectors.mjs",
+  "incompleteProvenanceIsNull": true,
+  "devContextLength": 32,
+  "cases": [
+    {
+      "name": "root-store",
+      "appId": "h985ys1r29mtntjd8kueqks9xh4ur8mwwu1sc24d6jyssngphmhh",
+      "servingHost": "bazaar.estate.example.test",
+      "releaseAppHash": "2b1379de982bb5b9bf3cc777168bb14efdf5061db94f9797fffbf2017a090a6c",
+      "releaseHash": "98592a9f138d97004531f7d4004a74bd50b536cb3b73f3486c1400d1e1ccacec",
+      "servingStoreDomainHash": "f5ce37a8392c01edbb529b7276934203ec3319f94e24a1504ae113a0aef9b0f8",
+      "context": "82505f603712679a662c44b4db4b09ec09aba27ce68385888c347d8c51f584e12b1379de982bb5b9bf3cc777168bb14efdf5061db94f9797fffbf2017a090a6c98592a9f138d97004531f7d4004a74bd50b536cb3b73f3486c1400d1e1ccacecf5ce37a8392c01edbb529b7276934203ec3319f94e24a1504ae113a0aef9b0f8"
+    },
+    {
+      "name": "accepted-store",
+      "appId": "0gqmrvuvjkjgg3ztvazrtyv3yz5wf05x1da72rf0r3js9tfr2cwh",
+      "servingHost": "Store.Reseller.Example.Test.",
+      "releaseAppHash": "9d114112aada7d955d36216626355bdd8ae45e4cf214f41e45973cd70aee76ce",
+      "releaseHash": "ea74cf8b14562cc929d056a03b99dee02f8a8bfc711601792dc3c16f441a617a",
+      "servingStoreDomainHash": "42f8dc7afce23722d9ffabda9195e58b67a880a4e1f27b64211a6564c205b17b",
+      "context": "03ed3bef5b8ca2f78ff9dabf7cfb63f7cbc700bd0b14715dc0b8e384e5d712f99d114112aada7d955d36216626355bdd8ae45e4cf214f41e45973cd70aee76ceea74cf8b14562cc929d056a03b99dee02f8a8bfc711601792dc3c16f441a617a42f8dc7afce23722d9ffabda9195e58b67a880a4e1f27b64211a6564c205b17b"
+    }
+  ]
+}

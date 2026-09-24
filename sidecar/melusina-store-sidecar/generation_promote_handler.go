@@ -197,6 +197,23 @@ func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Re
 		http.Error(w, "check=component_class: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+	// BUNDLE LOCATION: every component must live at exactly
+	// <public_base_url>/releases/<componentClass>/<artifactName>. The release
+	// gate answers X-Store-Release-Class from that segment and the typed
+	// installer refuses any other class or basename, so a mis-staged component
+	// (for example a shell staged with `submit-installer --class deployer`) is a
+	// publisher mistake refused here, before any chain read or the writer lock.
+	origin := strings.TrimRight(strings.TrimSpace(s.cfg.PublicBaseURL), "/")
+	if origin == "" {
+		http.Error(w, "generation promote gate not initialized (no public_base_url to pin the bundle origin)", http.StatusServiceUnavailable)
+		return
+	}
+	for _, c := range req.Components {
+		if err := componentrelease.ValidateBundleLocation(origin, c); err != nil {
+			http.Error(w, "check=component_bundle_location: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
 
 	operatorPub, err := signPubkey32(operatorIdentity)
 	if err != nil {
@@ -361,12 +378,25 @@ func (s *publishService) verifySidecarComponentOnChain(ctx context.Context, c co
 // actually served under this store's DistDir and its bytes hash to the
 // component's sha256 — the generation cannot point at bytes that were never
 // published (card B: "verify served bytes").
+//
+// The file it opens is the one the release gate serves for this component:
+// /releases/<componentClass>/<artifactName>, derived from the class and name
+// after ValidateBundleLocation has proved bundleUrl says exactly that. Any
+// /releases/ prefix used to pass here, so a shell staged under
+// /releases/deployer/ verified and was promoted, and the typed installer then
+// refused it on the gate's X-Store-Release-Class.
 func (s *publishService) verifyComponentServedBytes(c componentrelease.ComponentRelease) error {
 	origin := strings.TrimRight(strings.TrimSpace(s.cfg.PublicBaseURL), "/")
-	rel := strings.TrimPrefix(c.BundleURL, origin)
-	if !strings.HasPrefix(rel, "/releases/") {
-		return fmt.Errorf("component %s: bundleUrl %q is not under %s/releases/", c.ComponentID, c.BundleURL, origin)
+	if origin == "" {
+		return fmt.Errorf("component %s: no public_base_url to pin the bundle origin", c.ComponentID)
 	}
+	if componentrelease.IsAppComponent(c) {
+		return fmt.Errorf("component %s: %w", c.ComponentID, componentrelease.ErrAppNotAGenerationComponent)
+	}
+	if err := componentrelease.ValidateBundleLocation(origin, c); err != nil {
+		return err
+	}
+	rel := "/releases/" + c.ComponentClass + "/" + c.ArtifactName
 	clean := filepath.Clean(strings.TrimPrefix(rel, "/"))
 	if strings.HasPrefix(clean, "..") || filepath.IsAbs(clean) {
 		return fmt.Errorf("component %s: unsafe served path %q", c.ComponentID, rel)

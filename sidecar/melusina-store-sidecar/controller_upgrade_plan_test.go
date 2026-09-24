@@ -152,6 +152,10 @@ func TestControllerUpgradeFactsRefuseMissingOrWrongClassCandidate(t *testing.T) 
 	for i := range doc.Components {
 		if doc.Components[i].ComponentID == candidate.ComponentID {
 			doc.Components[i].ComponentClass = componentrelease.ClassSidecar
+			// A signed generation places every host component at
+			// /releases/<componentClass>/<artifactName>, so the reclassified
+			// candidate moves with its class; the refusal below is the class.
+			doc.Components[i].BundleURL = componentrelease.ReleaseBundleURL(f.svc.cfg.PublicBaseURL, componentrelease.ClassSidecar, doc.Components[i].ArtifactName)
 			doc.Components[i].Chain.Kind = componentrelease.AuthoritySidecarIdentity
 			doc.Components[i].Chain.SidecarID = hostApplyFineractSidecarID
 			doc.Components[i].Chain.LicenseNftMint = f.targetLicense
@@ -172,7 +176,7 @@ func TestControllerUpgradeFactsRefuseMissingOrWrongClassCandidate(t *testing.T) 
 	if err := persistDesiredGeneration(f.svc.cfg.DistDir, raw); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fetchControllerUpgradeCurrentFacts(context.Background(), f.svc); err == nil {
-		t.Fatal("wrong controller component class was accepted")
+	if _, err := fetchControllerUpgradeCurrentFacts(context.Background(), f.svc); err == nil || !strings.Contains(err.Error(), "does not contain the governed Fineract controller artifact") {
+		t.Fatalf("wrong controller component class was not refused by class: %v", err)
 	}
 }

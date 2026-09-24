@@ -743,7 +743,7 @@ func (g *serveGate) gateSignedSidecarGeneration(ctx context.Context, class, name
 	if !sameOrigin(doc.BundleOrigin, g.cfg.PublicBaseURL) {
 		return "", errors.New("sidecar generation origin does not match this store's public_base_url")
 	}
-	wantURL := strings.TrimRight(doc.BundleOrigin, "/") + "/releases/" + class + "/" + name
+	wantURL := componentrelease.ReleaseBundleURL(doc.BundleOrigin, class, name)
 	wantHash := hex.EncodeToString(fileHash[:])
 	var matched *componentrelease.ComponentRelease
 	for i := range doc.Components {

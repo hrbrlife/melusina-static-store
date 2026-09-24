@@ -39,10 +39,12 @@ func TestVerifyComponentServedBytes(t *testing.T) {
 	svc := &publishService{cfg: Config{DistDir: dist, PublicBaseURL: "https://bazaar.melusina-os.org"}}
 
 	ok := componentrelease.ComponentRelease{
-		ComponentID: "sandstorm-shell",
-		BundleURL:   "https://bazaar.melusina-os.org/releases/shell/" + name,
-		SHA256:      shaHex,
-		SizeBytes:   int64(len(content)),
+		ComponentID:    "sandstorm-shell",
+		ComponentClass: componentrelease.ClassShell,
+		ArtifactName:   name,
+		BundleURL:      "https://bazaar.melusina-os.org/releases/shell/" + name,
+		SHA256:         shaHex,
+		SizeBytes:      int64(len(content)),
 	}
 	if err := svc.verifyComponentServedBytes(ok); err != nil {
 		t.Fatalf("valid served bytes rejected: %v", err)
@@ -55,9 +57,11 @@ func TestVerifyComponentServedBytes(t *testing.T) {
 	}
 	// Missing file — the generation points at bytes that were never published.
 	missing := componentrelease.ComponentRelease{
-		ComponentID: "x",
-		BundleURL:   "https://bazaar.melusina-os.org/releases/shell/never-published.bin",
-		SHA256:      shaHex,
+		ComponentID:    "x",
+		ComponentClass: componentrelease.ClassShell,
+		ArtifactName:   "never-published.bin",
+		BundleURL:      "https://bazaar.melusina-os.org/releases/shell/never-published.bin",
+		SHA256:         shaHex,
 	}
 	if err := svc.verifyComponentServedBytes(missing); err == nil {
 		t.Fatal("accepted a component whose served artifact is absent")
@@ -176,6 +180,7 @@ func TestVerifySidecarComponentOnChain(t *testing.T) {
 	c := componentrelease.ComponentRelease{
 		ComponentID:    "swaprail",
 		ComponentClass: componentrelease.ClassSidecar,
+		ArtifactName:   name,
 		SHA256:         shaHex,
 		SizeBytes:      int64(len(content)),
 		BundleURL:      "https://bazaar.melusina-os.org/releases/sidecar/" + name,

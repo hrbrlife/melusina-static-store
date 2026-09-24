@@ -290,7 +290,12 @@ the first signed DesiredGeneration may the following stronger gate pass:
 - after a signed `melusina-store-sidecar` component apply, `GET /release-info`
   is `200` and its controller-written component ID, generation ID, version,
   and artifact hash exactly match the applied release;
-- every component `bundleUrl` has the same origin as `public_base_url`;
+- every component `bundleUrl` has the same origin as `public_base_url`, and
+  is exactly `<public_base_url>/releases/<componentClass>/<artifactName>`
+  (`artifactName` is the escaped `bundleUrl` basename). The release gate's
+  `X-Store-Release-Class` is that path segment and the typed installer
+  refuses any other value, so the Store refuses to sign, promote or serve a
+  generation that breaks this (`componentrelease.ValidateBundleLocation`);
 - every referenced artifact returns `200` through the store release gate and
   hashes to the signed `sha256` with the signed byte count.
 

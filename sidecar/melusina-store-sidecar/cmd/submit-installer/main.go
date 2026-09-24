@@ -70,7 +70,7 @@ func parseFlags(args []string) (options, error) {
 	fs := flag.NewFlagSet("submit-installer", flag.ContinueOnError)
 	var o options
 	fs.StringVar(&o.store, "store", "", "store base URL (required)")
-	fs.StringVar(&o.class, "class", "", "release class, e.g. deployer or sidecar (required)")
+	fs.StringVar(&o.class, "class", "", "release class, served at /releases/<class>/<name> (required). For a DesiredGeneration component it must be that component's componentClass: shell, sidecar or data; the Store refuses to promote a component staged under any other class. deployer is the bootstrap bundle, which no generation names")
 	fs.StringVar(&o.name, "name", "", "immutable served filename (required)")
 	fs.StringVar(&o.artifactPath, "artifact", "", "whole-file artifact path (required)")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher identity JSON path or env:NAME (required)")

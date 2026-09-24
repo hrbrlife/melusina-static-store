@@ -42,6 +42,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path"
 	"sort"
 	"strings"
 
@@ -660,6 +661,9 @@ func (doc DesiredGeneration) validateUnsigned() error {
 		if !strings.HasPrefix(c.BundleURL, originPrefix) {
 			return fmt.Errorf("component %s: bundleUrl %q is not under the pinned bundleOrigin %q", c.ComponentID, c.BundleURL, doc.BundleOrigin)
 		}
+		if err := ValidateBundleLocation(doc.BundleOrigin, c); err != nil {
+			return err
+		}
 		// An UPDATE generation (previousGeneration > 0) must carry the rollback
 		// floor (previousSha256 + previousVersion) for every component: this is
 		// what lets the adapter restore the exact prior artifact.
@@ -741,6 +745,81 @@ func (doc DesiredGeneration) Component(id string) (ComponentRelease, bool) {
 		}
 	}
 	return ComponentRelease{}, false
+}
+
+// ── bundle location ───────────────────────────────────────────────────────────
+//
+// A component's bundleUrl and artifactName name one object, and every party
+// that reads a generation must agree which. Two consumers already assume a
+// stricter shape than the generation used to carry:
+//
+//   - The typed installer's generation validator refuses a component whose
+//     artifactName is not path.Base(bundleUrl.EscapedPath())
+//     (deployer deploy-ui/internal/storegeneration/generation.go, "artifactName
+//     does not match bundle URL"), and that refusal rejects the WHOLE generation.
+//   - The Store release gate serves /releases/<class>/<name> and answers
+//     X-Store-Release-Class with the <class> segment (serve_gate.go releaseBase);
+//     the typed installer refuses the artifact unless that header equals the
+//     signed componentClass (deploy-ui/handlers_artifact_resolution.go,
+//     "Store gate release class does not match the signed generation").
+//
+// So a shell component staged with `submit-installer --class deployer`, or one
+// whose artifactName was typed differently from the staged file, used to be
+// signed, promoted and served by this Store and then refused by the installer.
+// ValidateBundleLocation is that shape as one rule. validateUnsigned runs it, so
+// Sign refuses to produce such a generation and Verify refuses to accept one
+// (every Store serve path and host consumer verifies before it acts); the
+// promote handler and the served-bytes check run it directly.
+
+// ErrArtifactNameNotBundleBasename: artifactName is not the escaped basename of
+// bundleUrl. The text is the deployer's refusal, so one grep finds both sides.
+var ErrArtifactNameNotBundleBasename = errors.New("artifactName does not match bundle URL")
+
+// ErrBundleURLNotReleasePath: a host component's bundleUrl is not exactly
+// <bundleOrigin>/releases/<componentClass>/<artifactName>.
+var ErrBundleURLNotReleasePath = errors.New("bundleUrl is not <bundleOrigin>/releases/<componentClass>/<artifactName>")
+
+// ReleaseBundleURL is the one served location of a host component: the release
+// gate's /releases/<class>/<name> under the Store's bundle origin.
+func ReleaseBundleURL(bundleOrigin, class, artifactName string) string {
+	return strings.TrimRight(bundleOrigin, "/") + "/releases/" + class + "/" + artifactName
+}
+
+// ValidateBundleLocation checks where a component's bytes are said to live.
+//
+//   - Every class: artifactName must equal path.Base of the bundleUrl's escaped
+//     path — the typed installer's rule, byte for byte.
+//   - Every non-app class (shell, sidecar, data): bundleUrl must be exactly
+//     ReleaseBundleURL(bundleOrigin, componentClass, artifactName), and its
+//     decoded path must end in the same artifactName, so no query, fragment,
+//     percent-encoding or foreign class segment can make the URL name one file
+//     while artifactName names another.
+//
+// App components keep only the basename rule: they are not generation members
+// (ErrAppNotAGenerationComponent) and historically lived under /packages/.
+func ValidateBundleLocation(bundleOrigin string, c ComponentRelease) error {
+	parsed, err := url.Parse(c.BundleURL)
+	if err != nil {
+		return fmt.Errorf("component %s: bundleUrl %q does not parse: %w", c.ComponentID, c.BundleURL, err)
+	}
+	if base := path.Base(parsed.EscapedPath()); base != c.ArtifactName {
+		return fmt.Errorf("component %s: %w: artifactName %q is not the escaped bundleUrl basename %q", c.ComponentID, ErrArtifactNameNotBundleBasename, c.ArtifactName, base)
+	}
+	switch c.ComponentClass {
+	case ClassApp:
+		return nil
+	case ClassShell, ClassSidecar, ClassData:
+	default:
+		return fmt.Errorf("component %s: invalid class %q", c.ComponentID, c.ComponentClass)
+	}
+	if !isSafeArtifactName(c.ArtifactName) {
+		return fmt.Errorf("component %s: artifactName %q is not a single safe filename", c.ComponentID, c.ArtifactName)
+	}
+	want := ReleaseBundleURL(bundleOrigin, c.ComponentClass, c.ArtifactName)
+	if c.BundleURL != want || path.Base(parsed.Path) != c.ArtifactName {
+		return fmt.Errorf("component %s: %w: got %q, want %q", c.ComponentID, ErrBundleURLNotReleasePath, c.BundleURL, want)
+	}
+	return nil
 }
 
 // isSafeArtifactName rejects an artifact name that is not a single filesystem-safe

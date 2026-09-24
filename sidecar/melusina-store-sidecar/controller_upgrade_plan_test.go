@@ -159,6 +159,7 @@ func TestControllerUpgradeFactsRefuseMissingOrWrongClassCandidate(t *testing.T) 
 			doc.Components[i].Chain.Kind = componentrelease.AuthoritySidecarIdentity
 			doc.Components[i].Chain.SidecarID = hostApplyFineractSidecarID
 			doc.Components[i].Chain.LicenseNftMint = f.targetLicense
+			doc.Components[i].Chain.KeyVersion = 1
 			doc.Components[i].Chain.IdentityPDA = randPubkeyB58(t)
 			doc.Components[i].Chain.GlobalApprovalPDA = randPubkeyB58(t)
 			doc.Components[i].Chain.LocalApprovalPDA = randPubkeyB58(t)

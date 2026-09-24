@@ -198,6 +198,18 @@ var ErrClassAuthorityMismatch = errors.New("component class does not admit this 
 // keys is declared sidecar_identity.
 var ErrKeylessSidecarNamesIdentity = errors.New("keyless-sidecar-names-identity: a sidecar_cascade (keyless) component names no identityPda and no keyVersion; a sidecar whose runtime holds keys is declared sidecar_identity")
 
+// ErrSidecarIdentityKeyVersionZero: a sidecar_identity (key-bearing) component
+// names keyVersion 0. An omitted keyVersion decodes as 0 (the field is
+// omitempty), so it is refused the same way. The key version is a seed of the
+// SidecarIdentityEntry address and is in componentReleaseDigest, so the signed
+// value is the one every consumer derives with: there is no default. Key
+// versions start at 1 (the contracts tenant phase registers key version 1; a
+// rotation registers a higher one). The Store used to read 0 as 1 while the
+// tenant update controller derived with 0, so one signed component was
+// promoted and served by the Store and refused by every tenant (seam audit
+// round 4, finding 9).
+var ErrSidecarIdentityKeyVersionZero = errors.New("sidecar-identity-key-version-zero: a sidecar_identity (key-bearing) component must name keyVersion 1 or higher; an omitted keyVersion is 0, and 0 is refused, never read as 1")
+
 // IsSidecarAuthority reports whether kind is one of the two sidecar rules.
 func IsSidecarAuthority(kind string) bool {
 	return kind == AuthoritySidecarIdentity || kind == AuthoritySidecarCascade
@@ -222,7 +234,9 @@ type ChainAuthority struct {
 
 	// sidecar cascade (both sidecar kinds; KeyVersion and IdentityPDA only for
 	// sidecar_identity, and a sidecar_cascade component that names either is
-	// refused):
+	// refused). A sidecar_identity component's KeyVersion is 1 or higher and is
+	// used exactly as signed; 0 (or omitted) is refused
+	// (ErrSidecarIdentityKeyVersionZero):
 	SidecarID         string `json:"sidecarId,omitempty"`
 	KeyVersion        uint32 `json:"keyVersion,omitempty"`
 	IdentityPDA       string `json:"identityPda,omitempty"`       // SidecarIdentityEntry (sidecar_identity only)
@@ -608,6 +622,11 @@ func (ca ChainAuthority) validate() error {
 		}
 		if strings.TrimSpace(ca.IdentityPDA) == "" || strings.TrimSpace(ca.GlobalApprovalPDA) == "" || strings.TrimSpace(ca.LocalApprovalPDA) == "" {
 			return errors.New("sidecar_identity: identityPda, globalApprovalPda and localApprovalPda are all required (three-PDA cascade)")
+		}
+		// The key version is a seed of identityPda and is signed; it is used
+		// as signed, so 0 (or omitted) is refused rather than read as 1.
+		if ca.KeyVersion == 0 {
+			return ErrSidecarIdentityKeyVersionZero
 		}
 	case AuthoritySidecarCascade:
 		// A keyless sidecar names no identity at all. Checked first, so a

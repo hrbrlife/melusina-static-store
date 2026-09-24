@@ -246,6 +246,16 @@ controller (`chaingate.go`) each re-verify the chain facts of the rule it names.
 | `sidecar_identity` (key-bearing; the default) | the root Store, sidecarresult and identity-gate signers, Fineract native | Active `SidecarIdentityEntry` whose `binary_hash` is the artifact, plus the five-fact cascade; the Local pin is optional (None inherits the Global pin) |
 | `sidecar_cascade` (keyless; must be declared) | tenant sidecars whose runtime holds no keys: MerMail, AilaGoon, WolfDog and similar | the five-fact cascade alone: License, Global, Local, ResellerSidecar approvals and ResellerEntry Active, with the artifact pinned on Global **and** on Local (a Local approval with `binary_hash` None is refused: `keyless-sidecar-local-pin-absent`). No `SidecarIdentityEntry` is derived, read or required, matching the sidecar's own boot gate (Melusina `shared/melusina-attest/binhash` `checkApprovals`) |
 
+A `sidecar_identity` component names `keyVersion` 1 or higher, and every
+consumer derives the `SidecarIdentityEntry` address with that signed value.
+There is no default: an omitted `keyVersion` decodes as 0, and 0 is refused by
+`componentrelease` (Sign and Verify), by the Store's promote and serve gates
+and by this controller, all as `sidecar-identity-key-version-zero`. Its
+`identityPda` must be the address derived from that key version; the Store
+refuses any other before a chain read, as this controller does
+(`SidecarIdentityEntry PDA mismatch`). The two gates are held to one verdict
+per case by `testdata/sidecar-identity-key-version-parity.json`.
+
 A `sidecar_cascade` component carries `globalApprovalPda` and `localApprovalPda`
 (each must be the seed-derived address) and no `identityPda` or `keyVersion`
 (`keyless-sidecar-names-identity`). Any other kind is refused by name

@@ -1,0 +1,65 @@
+{
+  "schema": "melusina.store.sidecar-identity-key-version-parity.v1",
+  "comment": [
+    "Seam audit round 4, finding 9. One sidecar_identity (key-bearing) component, one chain state, two gates that must agree:",
+    "the Store's promote and serve gate (verifySidecarClassComponentOnChain; sidecar_identity_key_version_parity_test.go) and",
+    "the tenant update controller's apply gate (cmd/melusina-update-controller gateSidecarCascade;",
+    "cmd/melusina-update-controller/sidecar_identity_key_version_parity_test.go). Both read this file and must give each case",
+    "the same verdict, refused by the same name. A refusal is matched as a substring of the error; an empty refusal means the",
+    "component is admitted.",
+    "Every chain fact comes from the contracts repository's committed sidecar PDA vector, the byte-for-byte copy at",
+    "testdata/contracts/sidecar-pda-vectors.json (vector contractsVector): its program, master, reseller and licence mints,",
+    "sidecar id, and the Global, Reseller and Local approval addresses. identityPda 'kv1' and 'kv2' are that vector's",
+    "expected SidecarIdentityEntry addresses for key versions 1 and 2. 'kv0' is the key-version-0 address; the vector does",
+    "not carry it, because no program phase registers key version 0, so each consumer derives it with its own code.",
+    "The chain holds exactly one SidecarIdentityEntry, Active and pinning the artifact, at registeredKeyVersion: the only",
+    "key version the contracts tenant phase registers (scripts/estate/lib/tenant-sidecar-authorization.mjs",
+    "TENANT_SIDECAR_KEY_VERSION).",
+    "keyVersion 0 is what an omitted keyVersion decodes to (the field is omitempty); each consumer asserts the component's",
+    "JSON carries no keyVersion key in that case, so 'omitted' is what is refused.",
+    "componentId and artifact name the one component both gates see: its sha256 is sha256(artifact) as UTF-8 bytes, the",
+    "Global approval and the registered identity pin that hash, and every other chain field comes from the contracts vector."
+  ],
+  "contractsVector": "root-store-new-estate",
+  "componentId": "melusina-store-sidecar",
+  "artifact": "key-bearing sidecar bundle bytes, seam audit round 4 finding 9",
+  "registeredKeyVersion": 1,
+  "cases": [
+    {
+      "name": "key-version-omitted-names-kv1",
+      "keyVersion": 0,
+      "identityPda": "kv1",
+      "refusal": "sidecar-identity-key-version-zero"
+    },
+    {
+      "name": "key-version-omitted-names-kv0",
+      "keyVersion": 0,
+      "identityPda": "kv0",
+      "refusal": "sidecar-identity-key-version-zero"
+    },
+    {
+      "name": "key-version-1-names-kv1",
+      "keyVersion": 1,
+      "identityPda": "kv1",
+      "refusal": ""
+    },
+    {
+      "name": "key-version-1-names-kv0",
+      "keyVersion": 1,
+      "identityPda": "kv0",
+      "refusal": "SidecarIdentityEntry PDA mismatch"
+    },
+    {
+      "name": "key-version-1-names-kv2",
+      "keyVersion": 1,
+      "identityPda": "kv2",
+      "refusal": "SidecarIdentityEntry PDA mismatch"
+    },
+    {
+      "name": "key-version-2-names-kv2-unregistered",
+      "keyVersion": 2,
+      "identityPda": "kv2",
+      "refusal": "fetch SidecarIdentityEntry"
+    }
+  ]
+}

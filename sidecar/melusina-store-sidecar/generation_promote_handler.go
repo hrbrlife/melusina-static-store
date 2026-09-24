@@ -354,9 +354,11 @@ func openDistRegularNoFollow(path string) (*os.File, int64, error) {
 
 // verifyKeyBearingSidecarComponentOnChain re-verifies a sidecar_identity
 // (key-bearing) component. The store re-derives the SidecarIdentityEntry PDA
-// itself (never trusting the publisher's claimed PDA), requires it Active, and
-// requires its on-chain binary_hash to equal the served artifact sha256; it then
-// requires the full five-fact cascade.
+// itself from the signed key version (1 or higher; 0 is refused, never read as
+// 1), refuses a component whose identityPda is not that address (as the tenant
+// update controller does), fetches only the derived address, requires it
+// Active, and requires its on-chain binary_hash to equal the served artifact
+// sha256; it then requires the full five-fact cascade.
 func (s *publishService) verifyKeyBearingSidecarComponentOnChain(ctx context.Context, c componentrelease.ComponentRelease) error {
 	sidecarID := strings.TrimSpace(c.Chain.SidecarID)
 	if err := primitives.ValidateSidecarID(sidecarID); err != nil {
@@ -366,13 +368,23 @@ func (s *publishService) verifyKeyBearingSidecarComponentOnChain(ctx context.Con
 	if err != nil {
 		return fmt.Errorf("component %s: bad licenseNftMint: %w", c.ComponentID, err)
 	}
+	// The signed key version is the one derived with: 0 (an omitted keyVersion)
+	// is refused, never read as 1, because the tenant update controller derives
+	// with the signed value and would refuse what the Store promoted (seam audit
+	// round 4, finding 9).
 	keyVersion := c.Chain.KeyVersion
 	if keyVersion == 0 {
-		keyVersion = 1
+		return fmt.Errorf("component %s: %w", c.ComponentID, componentrelease.ErrSidecarIdentityKeyVersionZero)
 	}
 	sidPDA, _, err := pda.SidecarIdentity(licenseMint, sidecarID, keyVersion, licenseRegistryProgramID())
 	if err != nil {
 		return fmt.Errorf("component %s: derive SidecarIdentityEntry PDA: %w", c.ComponentID, err)
+	}
+	// The component's identityPda is signed, and the tenant controller refuses
+	// one that is not the seed-derived address (chaingate.go assertDerivedPDA),
+	// so the Store refuses it too, before any chain read.
+	if c.Chain.IdentityPDA != sidPDA.Base58() {
+		return fmt.Errorf("component %s: SidecarIdentityEntry PDA mismatch: component names %q, seed-derives %s (key version %d)", c.ComponentID, c.Chain.IdentityPDA, sidPDA.Base58(), keyVersion)
 	}
 	sid, err := s.cr.FetchSidecarIdentity(ctx, sidPDA.Base58())
 	if err != nil {

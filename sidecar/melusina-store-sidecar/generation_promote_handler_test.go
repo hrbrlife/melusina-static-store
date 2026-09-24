@@ -189,6 +189,7 @@ func TestVerifySidecarComponentOnChain(t *testing.T) {
 			LicenseNftMint: testLicenseMint,
 			SidecarID:      "swaprail",
 			KeyVersion:     1,
+			IdentityPDA:    sidPDA.Base58(),
 		},
 	}
 	cfg := Config{DistDir: dist, PublicBaseURL: "https://bazaar.melusina-os.org"}

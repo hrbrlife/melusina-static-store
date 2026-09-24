@@ -32,6 +32,12 @@ import (
 const controllerStateUID = 0
 
 func main() {
+	// The one subcommand renders this controller's config for a new estate.
+	// It returns before any poll flag is parsed or any state is touched.
+	if len(os.Args) > 1 && os.Args[1] == estateControllerConfigRenderCommand {
+		runEstateControllerConfigRenderSubcommand(os.Args[2:])
+		return
+	}
 	configPath := flag.String("config", "/etc/melusina/update-controller/config.json", "path to the root-owned controller config (JSON)")
 	trigger := flag.String("trigger", "timer", "poll trigger: timer (default, cadence-gated) | bell | manual")
 	recoverStalledSuccessor := flag.Bool("recover-stalled-successor", false, "one-time governed re-apply of an immediate signed successor blocked behind a pre-mutation refusal")

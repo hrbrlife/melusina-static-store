@@ -339,6 +339,14 @@ func LoadComponentRegistry(path string) (ComponentRegistry, error) {
 	return reg, nil
 }
 
+// ParseComponentRegistry is the registry CONTENT check LoadComponentRegistry
+// applies after its host file gate: the same strict decode and Validate, with
+// no ownership, mode or symlink check. A renderer calls it on the exact bytes
+// it wrote, so a registry it publishes is one this loader accepts.
+func ParseComponentRegistry(raw []byte) (ComponentRegistry, error) {
+	return parseComponentRegistry(raw)
+}
+
 // parseComponentRegistry strictly decodes + validates registry CONTENT with no
 // on-host file gate (ownership/perms/symlink). Split out so content can be unit-
 // tested without a root-owned file; LoadComponentRegistry layers the host trust

@@ -50,8 +50,9 @@ update-path inputs and carry retiring-estate facts. Instead the component carrie
 `estate-profile-review` plus `estate-store-config-render` commands. The operator
 uses the signed estate profile and a private mode-`0600` render input to create
 the Store candidate configuration; the template is guidance, never a config to
-copy or start. Controller and component-registry configuration remain separate
-profile/foundation-aware preparation work. A release-set scan still decides
+copy or start. The controller and component-registry configuration are
+rendered separately, by the bundled controller binary's own profile-bound
+`estate-update-controller-config-render` (item 8). A release-set scan still decides
 whether the complete component is clean; compression never hides a retained
 estate value.
 
@@ -126,22 +127,47 @@ paths. Before enabling the unit it must install or create:
    That includes a copied public catalog, with or without pointer files. The
    versioned runtime-contract schema is served from the governed sidecar ELF,
    not copied from this mutable snapshot.
-7. A root-owned component-registry entry for `melusina-store-sidecar`. Its
-   `runtimeEnvFile` must be exactly
-   `/var/lib/melusina-store/runtime/melusina-store-sidecar.env`, matching the
-   bundled unit's `EnvironmentFile=-` directive. The controller alone writes
-   this marker before a governed component restart and restores it from the
-   WAL before rollback; the deployer must never hand-compose a release tuple.
-   The bootstrap component intentionally does not supply this entry; it must be
-   rendered as a profile/foundation-aware controller configuration, never copied
-   from the retired Store.
+7. No component-registry entry for the Store binary. Enrollment binds the
+   running Store ELF's SHA-256 (`store-enrollment-facts-mismatch:binarySha256`),
+   so a controller swap of that binary could only stop the Store. The binary
+   changes only through the owner-signed successor enrollment
+   (`estate-enrollment-successor-request`, `estate-enroll-successor`) and the
+   deployer executor's journaled switch. The renderer in item 8 therefore
+   refuses by name any recipe that is the Store by its id, unit, paths or
+   commands, including the retiring template's `melusina-store-sidecar`
+   entry. The bundled unit still reads
+   `EnvironmentFile=-/var/lib/melusina-store/runtime/melusina-store-sidecar.env`;
+   the controller WAL alone may write that marker, and the deployer must
+   never hand-compose a release tuple. Open: because the controller never
+   applies the Store, nothing writes that marker on a new-estate Store, so
+   the `GET /release-info` clause of gate 2 has no producer yet.
 8. The root-owned controller binary at
-   `/usr/local/lib/melusina/melusina-update-controller`, plus strict rendered
-   `config.json` and `component-registry.json` under
-   `/etc/melusina/update-controller/`. The bootstrap component intentionally
-   does not supply either configuration file. The controller starts with
-   `autoApply: false`; its active `InstallerReleaseEntry` is verified before
-   the bootstrap ceremony enables the bundled timer.
+   `/usr/local/lib/melusina/melusina-update-controller`, plus `config.json`
+   and `component-registry.json` under `/etc/melusina/update-controller/`,
+   rendered by that binary:
+   `melusina-update-controller estate-update-controller-config-render
+   -estate-profile <signed profile> -input <mode-0600 input> -out-dir
+   /etc/melusina/update-controller`. The owner-signed profile supplies the
+   Store operator key, Store ID, public origin, license-registry program and
+   master mint; the input supplies only the target licence, trusted `https`
+   RPC endpoints and this host's component recipes. The renderer:
+   - fixes `autoApply` at `false` and refuses any candidate that is not
+     (`update-controller-render-auto-apply-forbidden`, owner-safety gate
+     F-358); the input cannot name it, the timing values or a one-shot scope;
+   - refuses the Store binary as a component
+     (`update-controller-render-store-binary-is-not-a-controller-component:<field>`);
+   - never replaces or follows an existing file
+     (`update-controller-render-output-exists:<file>`), and writes neither
+     file when either exists;
+   - reads both files back through the controller's own config, registry and
+     chain-gate loaders before publishing either, and prints their digests,
+     never an RPC URL.
+   The installer places the verified profile at
+   `/etc/melusina/update-controller/estate-profile.json`; the config pins its
+   digest, so any other file is refused at controller start. The bootstrap
+   component supplies neither configuration file. The controller's active
+   `InstallerReleaseEntry` is verified before the bootstrap ceremony enables
+   the bundled timer.
 9. The bundled Store and controller systemd units, byte-for-byte, at
    `/etc/systemd/system/melusina-store-sidecar.service`,
    `/etc/systemd/system/melusina-store-listing-signer.service`,

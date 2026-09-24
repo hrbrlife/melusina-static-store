@@ -161,6 +161,12 @@ per-install material):
   registration. By default the TLS fingerprint is read from `tls.cert_path`;
   set `boot_identity.tls_cert_path` when the on-chain binding should pin a
   public edge certificate while the sidecar listens with container-local TLS.
+- The served pair (`tls.cert_path`, `tls.key_path`) is re-read every 30
+  seconds and replaced without a restart when the new pair passes the start-up
+  checks (`served_tls.go`); a bad pair is refused by name and the old one stays
+  served. When the served file is the boot-identity certificate, a new leaf is
+  refused (`served-tls-identity-pinned`) until the binding moves and the Store
+  restarts. What boot identity binds, and when it checks it, is unchanged.
 - `boot_identity.operator_key_version` and `operator_domain` are optional
   stable-key coordinates for rotations. Leave them unset on a first install.
   When renewing the bound certificate or replacing the binary, advance

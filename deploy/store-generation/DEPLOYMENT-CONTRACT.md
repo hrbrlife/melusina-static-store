@@ -89,7 +89,17 @@ paths. Before enabling the unit it must install or create:
    signer; a private operator key is never packaged. The derived signer and
    running ELF hash must match an Active `SidecarIdentityEntry` before startup.
 4. TLS files, including the certificate whose DER hash is pinned by the active
-   sidecar identity.
+   sidecar identity. The Store re-reads `tls.cert_path` and `tls.key_path`
+   every 30 seconds, so replace both files atomically (write, then rename);
+   no restart is needed to serve a renewed pair. A new pair is served only
+   if every certificate parses, is inside its validity window and is signed
+   by the next one in the file, and the key belongs to the leaf. Otherwise
+   the Store keeps serving the pair it has and logs `served TLS certificate
+   reload refused: <name>`; at start-up the same refusal stops the Store.
+   When `tls.cert_path` is the boot-identity certificate (the rendered config
+   today), a different leaf is refused as `served-tls-identity-pinned`: it is
+   served only after the chain binding and the enrollment successor move and
+   the Store restarts. The boot-identity binding itself is unchanged.
 5. Four disjoint roots named in the config. `catalog_migration_state_dir`
    and `private_stage_dir` are root-owned mode `0700` and, on a virgin
    target, empty; `catalog_generation_root` is root-owned mode `0700` and

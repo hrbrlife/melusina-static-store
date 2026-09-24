@@ -325,6 +325,18 @@ func main() {
 		Handler:           publicHandler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+	// The served certificate is re-read while the Store runs; a renewed pair
+	// replaces it only after the checks in served_tls.go pass. It is loaded
+	// with the same checks here, so a bad pair stops start-up by name.
+	var servedTLS *servedTLSCertificate
+	if cfg.TLS.CertPath != "" && cfg.TLS.KeyPath != "" {
+		servedTLS, err = newServedTLSCertificate(cfg, bootIdentity, time.Now, log.Printf)
+		if err != nil {
+			log.Fatalf("served TLS certificate: %v", err)
+		}
+		srv.TLSConfig = servedTLS.tlsConfig()
+		go servedTLS.watch(ctxRoot, servedTLSReloadInterval)
+	}
 	var storeLinkControlServer *http.Server
 	if cfg.StoreLinkControlMTLS.configured() {
 		storeLinkControlServer, err = newStoreLinkControlServer(cfg.StoreLinkControlMTLS, controlHandler)
@@ -353,9 +365,9 @@ func main() {
 
 	serveErrors := make(chan error, 2)
 	go func() {
-		if cfg.TLS.CertPath != "" && cfg.TLS.KeyPath != "" {
-			log.Printf("listening (TLS) on %s", cfg.ListenAddr)
-			serveErrors <- srv.ListenAndServeTLS(cfg.TLS.CertPath, cfg.TLS.KeyPath)
+		if servedTLS != nil {
+			log.Printf("listening (TLS) on %s; served certificate re-read every %s", cfg.ListenAddr, servedTLSReloadInterval)
+			serveErrors <- srv.ListenAndServeTLS("", "")
 			return
 		}
 		log.Printf("WARNING: listening WITHOUT TLS on %s — production stores MUST set tls.cert_path/key_path", cfg.ListenAddr)

@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/pda"
 )
@@ -38,6 +39,14 @@ func TestStoreStartupChild(t *testing.T) {
 	// that does not pin its own registry from config cannot inherit the
 	// fixture's and pass.
 	programID = pda.Pubkey{}
+	if interval := os.Getenv(servedTLSReloadIntervalChildEnv); interval != "" {
+		parsed, err := time.ParseDuration(interval)
+		if err != nil || parsed <= 0 {
+			fmt.Fprintf(os.Stderr, "startup child %s=%q: %v\n", servedTLSReloadIntervalChildEnv, interval, err)
+			os.Exit(3)
+		}
+		servedTLSReloadInterval = parsed
+	}
 	os.Args = append([]string{"melusina-store-sidecar"}, args...)
 	main()
 	fmt.Fprintln(os.Stderr, "startup child: main returned")

@@ -16,6 +16,12 @@ license-registry program (MEL_PROGRAM_ID), the master mint
 owner-signed estate profile before it starts this process, and the catalog
 manifest must name that same Store.  An absent or malformed value is refused
 by name; nothing falls back to a compiled Store, domain or program.
+
+Before any operation dispatches, the catalog manifest is validated and
+estate-scanned: a manifest that carries a value of the retiring estate
+(derived from fleet/bazaar-catalog.yaml, the snapshot of the retiring default
+Bazaar) is refused as ``estate-scan-retiring-value``.  A new estate publishes
+from the manifest scripts/project-estate-catalog.py projects for it.
 """
 
 from __future__ import annotations
@@ -543,17 +549,184 @@ def context_path(app_id: str) -> Path:
     return state_root(app_id) / "context.json"
 
 
-def catalog_config() -> dict[str, Any]:
-    path = clean_abs(env("MEL_RELEASE_CONFIG", required=True), "MEL_RELEASE_CONFIG")
+def load_catalog_text(path: Path) -> tuple[str, dict[str, Any]]:
+    """Read one catalog manifest once, returning its text and its mapping.
+
+    The estate scan searches the same text the mapping was parsed from, so a
+    file replaced between the two reads cannot pass one check and feed the
+    other.
+    """
     try:
-        value = yaml.load(path.read_text(encoding="utf-8"), Loader=DuplicateKeySafeLoader)
-    except (OSError, yaml.YAMLError) as exc:
+        text = path.read_text(encoding="utf-8")
+        value = yaml.load(text, Loader=DuplicateKeySafeLoader)
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
         raise ProviderError(f"read Bazaar catalog config: {exc}") from exc
     if not isinstance(value, dict):
         raise ProviderError("bazaar-catalog.yaml must be a mapping")
+    return text, value
+
+
+def catalog_config() -> dict[str, Any]:
+    """Return the release catalog, validated and estate-scanned.
+
+    main() calls it before any operation dispatches, and every later read of
+    the catalog comes through here again, so no operation acts on a manifest
+    that carries a value of the retiring estate (estate_scan).
+    """
+    path = clean_abs(env("MEL_RELEASE_CONFIG", required=True), "MEL_RELEASE_CONFIG")
+    text, value = load_catalog_text(path)
+    validate_catalog_document(value, store_origin)
+    estate_scan(text, value)
+    return value
+
+
+# The catalog membership ledger is also the snapshot of the retiring default
+# Bazaar: its catalog_origin, catalog_index_sha256 and release_squads_authority
+# are that estate's (see its header). estate_scan derives the retiring values
+# from it instead of listing them, the same source the Store's Go scans widen
+# their forbid set with (retiring_estate_release_tools_scan_test.go), and this
+# file names none of them.
+ESTATE_SCAN_REFERENCE = ROOT / "fleet" / "bazaar-catalog.yaml"
+ESTATE_SCAN_REPORT_SCHEMA = "melusina-release-catalog-estate-scan/v1"
+ESTATE_SCAN_REFUSAL = "estate-scan-retiring-value"
+ESTATE_SCAN_REFERENCE_REFUSAL = "estate-scan-reference-unusable"
+DNS_LABEL_RE = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
+
+
+def retiring_estate_values(reference: Path | None = None) -> list[dict[str, str]]:
+    """Derive the retiring estate's forbid set from the catalog ledger.
+
+    Each item names a field, its value and how it is matched:
+
+    - ``host``: the retiring Store host and its parent domain, matched as a
+      whole DNS name in any letter case;
+    - ``key``: a base58 authority key, matched exactly;
+    - ``hex``: the retiring catalog index digest, matched in any letter case.
+
+    ``sharedAt`` marks the one value two estates may legitimately hold in
+    common: the Squads v4 program is a network program, not an estate anchor
+    (the deployer's estatescan classifies external programs the same way). It
+    is permitted only as the value of the field it names, where mel-release
+    requires it to equal the owner-signed profile's externalPrograms.squads-v4;
+    anywhere else in the manifest it is refused like the rest.
+
+    A reference that lacks one of the four core fields is refused rather than
+    scanned for fewer values.
+    """
+    path = ESTATE_SCAN_REFERENCE if reference is None else reference
+    try:
+        _, ledger = load_catalog_text(path)
+    except ProviderError as exc:
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path}: {exc}") from exc
+    if ledger.get("schema") != BAZAAR_CATALOG_SCHEMA:
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has an unsupported schema")
+    origin = ledger.get("catalog_origin")
+    host = ""
+    if isinstance(origin, str):
+        try:
+            parsed = urllib.parse.urlsplit(origin)
+            if (parsed.scheme == "https" and not parsed.path and not parsed.query and
+                    not parsed.fragment and parsed.netloc == (parsed.hostname or "")):
+                host = parsed.netloc.lower()
+        except ValueError:
+            host = ""
+    labels = host.split(".") if host else []
+    if len(labels) < 2 or not all(DNS_LABEL_RE.fullmatch(label) for label in labels):
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has no bare https catalog_origin")
+    values = [{"field": "retiring/catalog_origin.host", "kind": "host", "value": host}]
+    if len(labels) >= 3:
+        values.append({
+            "field": "retiring/catalog_origin.parent-domain",
+            "kind": "host",
+            "value": ".".join(labels[1:]),
+        })
+    authority = ledger.get("release_squads_authority")
+    if not isinstance(authority, dict):
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has no release_squads_authority")
+    for key in ("multisig", "vault", "program_id"):
+        field = f"release_squads_authority.{key}"
+        try:
+            value = canonical_solana_public_key(str(authority.get(key, "")), field)
+        except ProviderError as exc:
+            raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path}: {exc}") from exc
+        item = {"field": f"retiring/{field}", "kind": "key", "value": value}
+        if key == "program_id":
+            item["sharedAt"] = field
+        values.append(item)
+    index_digest = ledger.get("catalog_index_sha256")
+    if index_digest is not None:
+        if not isinstance(index_digest, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", index_digest):
+            raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has a malformed catalog_index_sha256")
+        values.append({"field": "retiring/catalog_index_sha256", "kind": "hex", "value": index_digest.lower()})
+    return values
+
+
+def _estate_scan_occurrences(text: str, item: dict[str, str]) -> int:
+    value = item["value"]
+    if item["kind"] == "host":
+        pattern = r"(?<![A-Za-z0-9-])" + re.escape(value) + r"(?![A-Za-z0-9-])"
+        return len(re.findall(pattern, text, flags=re.IGNORECASE))
+    if item["kind"] == "hex":
+        return text.lower().count(value)
+    return text.count(value)
+
+
+def _declared_value(document: dict[str, Any], dotted: str) -> Any:
+    current: Any = document
+    for part in dotted.split("."):
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+    return current
+
+
+def estate_scan(text: str, document: dict[str, Any], reference: Path | None = None) -> dict[str, Any]:
+    """Refuse a catalog manifest that carries a value of the retiring estate.
+
+    The whole manifest text is searched, comments included, so a retiring
+    value cannot hide in a note. The result names every field it checked and
+    how, so "clean" is observable rather than assumed.
+    """
+    path = ESTATE_SCAN_REFERENCE if reference is None else reference
+    values = retiring_estate_values(path)
+    found: list[str] = []
+    dispositions: dict[str, str] = {}
+    for item in values:
+        allowed = 0
+        disposition = "forbid"
+        shared_at = item.get("sharedAt")
+        if shared_at:
+            disposition = "forbid-elsewhere"
+            if _declared_value(document, shared_at) == item["value"]:
+                allowed = 1
+                disposition = f"shared-at:{shared_at}"
+        if _estate_scan_occurrences(text, item) > allowed:
+            found.append(item["field"])
+        dispositions[item["field"]] = disposition
+    if found:
+        raise ProviderError(
+            f"{ESTATE_SCAN_REFUSAL}: {', '.join(sorted(found))}; this catalog manifest carries the retiring "
+            f"estate recorded by {path.name}; project a manifest for the bound estate with "
+            "scripts/project-estate-catalog.py"
+        )
+    return {
+        "schema": ESTATE_SCAN_REPORT_SCHEMA,
+        "status": "clean",
+        "catalogSha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "referenceSha256": hex_sha(path),
+        "fields": dispositions,
+    }
+
+
+def validate_catalog_document(value: dict[str, Any], bound_origin: Any) -> dict[str, Any]:
+    """Validate one parsed catalog manifest for the Store it is bound to.
+
+    ``bound_origin`` is the bound Store origin, or a callable returning it; the
+    callable form keeps the schema refusal ahead of an unset origin.
+    """
     if value.get("schema") != BAZAAR_CATALOG_SCHEMA:
         raise ProviderError("bazaar-catalog.yaml has an unsupported schema")
-    if value.get("catalog_origin") != store_origin():
+    if value.get("catalog_origin") != (bound_origin() if callable(bound_origin) else bound_origin):
         raise ProviderError("bazaar-catalog.yaml catalog_origin must be the bound Store origin MEL_RELEASE_STORE_URL")
     parse_shared_squads_authority(value)
     expected_count = value.get("expected_live_app_count")
@@ -689,8 +862,16 @@ def scoped_cohort_app_ids(cohort_name: str, document: dict[str, Any] | None = No
     return list(app_ids)
 
 
-def app_spec(app_id: str, *, require_release_ready: bool = True) -> dict[str, str]:
-    doc = catalog_config()
+def app_spec(
+    app_id: str, *, require_release_ready: bool = True, document: dict[str, Any] | None = None
+) -> dict[str, str]:
+    """Resolve one app from the release catalog.
+
+    ``document`` is for reading an already-validated manifest, such as the
+    checked-in ledger in its own tests; every release path passes none and so
+    reads through catalog_config and its estate scan.
+    """
+    doc = catalog_config() if document is None else document
     groups = doc.get("groups")
     if not isinstance(groups, dict):
         raise ProviderError("Bazaar catalog config has no groups mapping")
@@ -3017,15 +3198,35 @@ def revoke(pda: str, receipt_out: Path) -> None:
     write_json(receipt_out, {"schema": "melusina-revoke-release-receipt-v1", "releaseEntryPda": pda, "status": "Revoked", "transactionSignature": result.get("signature", "")})
 
 
+PROVIDER_OPERATIONS = (
+    "estate-scan", "audit-cohort", "audit-msb-cohort", "build", "active-releases", "release-status",
+    "served-app-hash", "stage", "propose-register", "approve-register", "reject-register", "promote", "revoke",
+)
+
+
 def main() -> None:
     if len(sys.argv) != 2:
-        raise ProviderError("usage: mel-release-provider.py <audit-cohort|audit-msb-cohort|build|active-releases|release-status|served-app-hash|stage|propose-register|approve-register|reject-register|promote|revoke>")
+        raise ProviderError(f"usage: mel-release-provider.py <{'|'.join(PROVIDER_OPERATIONS)}>")
     op = sys.argv[1]
+    if op not in PROVIDER_OPERATIONS:
+        raise ProviderError(f"unknown provider operation {op!r}")
+    # The catalog is validated and estate-scanned before any operation
+    # dispatches, including the chain and Store reads that never consult it
+    # again: no operation runs under a manifest of the retiring estate.
+    catalog_config()
     app_id = env("MEL_APP_ID")
     if op in {"build", "stage", "propose-register", "approve-register", "promote"}:
         app_id = env("MEL_APP_ID", required=True)
         require_release_ready(app_id)
-    if op == "audit-cohort":
+    if op == "estate-scan":
+        # Operator-facing: the validation and scan above, with the report
+        # printed. A projected seed manifest is checked here before
+        # mel-release is pointed at it.
+        path = clean_abs(env("MEL_RELEASE_CONFIG", required=True), "MEL_RELEASE_CONFIG")
+        text, document = load_catalog_text(path)
+        validate_catalog_document(document, store_origin)
+        print(json.dumps(estate_scan(text, document), separators=(",", ":"), sort_keys=True))
+    elif op == "audit-cohort":
         result = audit_source_cohort(clean_abs(env("MEL_COHORT_AUDIT_OUT", required=True), "MEL_COHORT_AUDIT_OUT"))
         print(json.dumps(result, separators=(",", ":"), sort_keys=True))
         if result["status"] != "ready":

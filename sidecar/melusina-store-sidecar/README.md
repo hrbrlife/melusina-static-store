@@ -555,6 +555,42 @@ profile's release authority; there is no implied 3-of-4 quorum. The checked-in
 `fleet/bazaar-catalog.yaml` describes the retiring default Bazaar, so a new
 estate publishes with its own manifest.
 
+`scripts/project-estate-catalog.py` projects that manifest from the ledger. It
+takes the owner-signed profile, the `profileSha256` the owners reviewed, a
+`melusina-store-sidecar` binary whose `estate-profile-review` verifies the
+profile, a scoped cohort (default `msb`) and a directory that does not exist
+yet, and writes `bazaar-catalog.yaml` plus the cohort's
+`prepublish-selections/` receipts there:
+
+- `catalog_origin` and `release_squads_authority` are the profile's, derived
+  as mel-release derives its binding;
+- the apps are exactly the cohort's, each entry copied unchanged from the
+  ledger, so an app the ledger holds (CyberTeller) stays held;
+- `expected_live_app_count` is the number of apps written, and the release
+  defaults are the ledger's.
+
+Before writing, it parses the result back and compares every entry with the
+ledger, and runs the provider's catalog validation and estate scan on it.
+The ledger itself is never edited.
+
+The estate scan is part of the provider (`mel-release-provider.py`). Every
+provider operation reads its catalog through it, and
+`mel-release-provider.py estate-scan` prints its report. It derives the
+retiring estate's values from the ledger rather than listing them:
+
+- the Store host and its parent domain, matched as whole DNS names in any
+  letter case;
+- the release multisig and vault;
+- the catalog index digest;
+- the Squads program. This is a network program, not an estate anchor, so it
+  may appear once, as the manifest's own `release_squads_authority.program_id`,
+  where mel-release requires it to equal the profile's
+  `externalPrograms.squads-v4`.
+
+A manifest carrying any of these values anywhere, comments included, is
+refused as `estate-scan-retiring-value` with the field names. That includes
+the ledger itself.
+
 Still supplied by the operator, with no default: `MEL_RELEASE_STORE_LICENSE_MINT`
 (the Store's operating licence, which the profile does not carry),
 `MEL_RELEASE_STORE_PUBKEY`, `MEL_RELEASE_PUBLISHER_KEY` and

@@ -331,6 +331,7 @@ func TestStoreProductionFilesCarryNoRetiringEstateValue(t *testing.T) {
 	for _, required := range []string{
 		"scripts/build-store-bootstrap-component.sh", "scripts/materialize-governed-cohort.py",
 		"scripts/bazaar-installation-policy.py", "scripts/generate-app-icon-lock.py", "scripts/mel-release-provider.py",
+		"scripts/project-estate-catalog.py",
 		"deploy/store-generation/store-config-render-input.template.json", "deploy/store-generation/melusina-store-sidecar.service",
 		"deploy/store-generation/DEPLOYMENT-CONTRACT.md", sidecarModuleDir + "store.config.example.json",
 		sidecarModuleDir + "ui/installation-policy.json", "sidecar/bazaar-store-link/config.example.json",

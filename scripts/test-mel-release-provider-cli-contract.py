@@ -37,11 +37,16 @@ TEST_PROGRAM_ID = "7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD"
 os.environ["MEL_RELEASE_STORE_URL"] = TEST_STORE_ORIGIN
 
 
-def checked_in_catalog_env(config):
-    """Bind the checked-in ledger to the Store it itself names, as mel-release
-    would after checking that Store against the estate profile."""
-    own_origin = provider.yaml.safe_load(config.read_text(encoding="utf-8"))["catalog_origin"]
-    return {"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_STORE_URL": own_origin}
+CHECKED_IN_LEDGER = HERE.parent / "fleet" / "bazaar-catalog.yaml"
+
+
+def checked_in_ledger_document():
+    """The checked-in ledger, validated as the complete catalog of the Store it
+    itself names. It is the retiring Bazaar's snapshot, so it is never a
+    release catalog: catalog_config refuses it by estate scan
+    (test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog)."""
+    _, document = provider.load_catalog_text(CHECKED_IN_LEDGER)
+    return provider.validate_catalog_document(document, document["catalog_origin"])
 
 
 def with_env(values):
@@ -708,6 +713,155 @@ def test_catalog_must_describe_the_bound_store():
             restore_env(old)
 
 
+def retiring_values_by_field():
+    return {item["field"]: item for item in provider.retiring_estate_values()}
+
+
+def expect_estate_scan_refusal(expected_fields, unexpected_fields=()):
+    try:
+        provider.catalog_config()
+    except provider.ProviderError as exc:
+        message = str(exc)
+    else:
+        raise AssertionError(f"estate scan accepted a manifest carrying {sorted(expected_fields)}")
+    assert message.startswith("estate-scan-retiring-value: "), message
+    for field in expected_fields:
+        assert field in message, (field, message)
+    for field in unexpected_fields:
+        assert field not in message, (field, message)
+    return message
+
+
+def test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog():
+    """Known-positive control: the retiring Bazaar's own snapshot is refused
+    as a release catalog, even bound to the Store it names, and by every
+    provider operation, not only by a caller that remembers to scan."""
+    document = checked_in_ledger_document()
+    values = retiring_values_by_field()
+    assert set(values) == {
+        "retiring/catalog_origin.host",
+        "retiring/catalog_origin.parent-domain",
+        "retiring/release_squads_authority.multisig",
+        "retiring/release_squads_authority.vault",
+        "retiring/release_squads_authority.program_id",
+        "retiring/catalog_index_sha256",
+    }, values
+    # Each value is the ledger's own, derived rather than restated.
+    assert values["retiring/catalog_origin.host"]["value"] == document["catalog_origin"].removeprefix("https://")
+    assert values["retiring/release_squads_authority.multisig"]["value"] == document["release_squads_authority"]["multisig"]
+    assert values["retiring/release_squads_authority.vault"]["value"] == document["release_squads_authority"]["vault"]
+    assert values["retiring/release_squads_authority.program_id"]["value"] == document["release_squads_authority"]["program_id"]
+    assert values["retiring/catalog_index_sha256"]["value"] == document["catalog_index_sha256"]
+    old = with_env({
+        "MEL_RELEASE_CONFIG": str(CHECKED_IN_LEDGER),
+        "MEL_RELEASE_STORE_URL": document["catalog_origin"],
+    })
+    try:
+        # The Squads program is shared at its declared field, so the ledger is
+        # refused for the rest and not for that one occurrence.
+        expect_estate_scan_refusal(
+            [field for field in values if field != "retiring/release_squads_authority.program_id"],
+            ["retiring/release_squads_authority.program_id"],
+        )
+        ready_app_id = next(
+            app["appId"] for group in document["groups"].values() for app in group["apps"].values()
+            if app.get("release_state") == "ready"
+        )
+        os.environ["MEL_APP_ID"] = ready_app_id
+        old_argv = provider.sys.argv
+        try:
+            # release-status and active-releases never read the catalog
+            # themselves; the scan still runs before they dispatch.
+            for op in ("stage", "promote", "revoke", "release-status", "active-releases", "estate-scan"):
+                provider.sys.argv = [str(HERE / "mel-release-provider.py"), op]
+                try:
+                    provider.main()
+                except provider.ProviderError as exc:
+                    assert str(exc).startswith("estate-scan-retiring-value: "), (op, exc)
+                else:
+                    raise AssertionError(f"provider {op} ran on the retiring ledger")
+        finally:
+            provider.sys.argv = old_argv
+    finally:
+        restore_env(old)
+
+
+def test_estate_scan_refuses_each_retiring_value_by_field():
+    values = retiring_values_by_field()
+    with tempfile.TemporaryDirectory() as tmp:
+        config = Path(tmp) / "bazaar-catalog.yaml"
+        write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
+        clean = config.read_text(encoding="utf-8")
+        old = with_env({"MEL_RELEASE_CONFIG": str(config), "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN})
+        try:
+            # Positive control: the fixture itself is clean.
+            provider.catalog_config()
+            host = values["retiring/catalog_origin.host"]["value"]
+            parent = values["retiring/catalog_origin.parent-domain"]["value"]
+            index_digest = values["retiring/catalog_index_sha256"]["value"]
+            for note, fields in (
+                (f"# formerly https://{host.upper()}/apps", ["retiring/catalog_origin.host"]),
+                (f"# see store.{parent}", ["retiring/catalog_origin.parent-domain"]),
+                (f"# multisig {values['retiring/release_squads_authority.multisig']['value']}", ["retiring/release_squads_authority.multisig"]),
+                (f"# vault {values['retiring/release_squads_authority.vault']['value']}", ["retiring/release_squads_authority.vault"]),
+                (f"# program {values['retiring/release_squads_authority.program_id']['value']}", ["retiring/release_squads_authority.program_id"]),
+                (f"# index {index_digest.upper()}", ["retiring/catalog_index_sha256"]),
+            ):
+                config.write_text(clean + note + "\n", encoding="utf-8")
+                expect_estate_scan_refusal(fields)
+            # A host is matched as a whole DNS name, not as any substring.
+            config.write_text(clean + f"# x{parent}\n", encoding="utf-8")
+            provider.catalog_config()
+            # The Squads program is a network program: a catalog may declare
+            # it as its release authority's program, and only there.
+            shared = json.loads(clean)
+            shared["release_squads_authority"]["program_id"] = values["retiring/release_squads_authority.program_id"]["value"]
+            config.write_text(json.dumps(shared) + "\n", encoding="utf-8")
+            text, document = provider.load_catalog_text(config)
+            report = provider.estate_scan(text, document)
+            assert report["fields"]["retiring/release_squads_authority.program_id"] == (
+                "shared-at:release_squads_authority.program_id"
+            ), report
+            assert report["status"] == "clean", report
+            config.write_text(
+                json.dumps(shared) + "\n# again " + values["retiring/release_squads_authority.program_id"]["value"] + "\n",
+                encoding="utf-8",
+            )
+            expect_estate_scan_refusal(["retiring/release_squads_authority.program_id"])
+        finally:
+            restore_env(old)
+
+
+def test_estate_scan_reference_must_carry_the_core_fields():
+    ledger = CHECKED_IN_LEDGER.read_text(encoding="utf-8")
+    text, document = "{}\n", {}
+    with tempfile.TemporaryDirectory() as tmp:
+        reference = Path(tmp) / "bazaar-catalog.yaml"
+        for label, mutated in (
+            ("no release_squads_authority", ledger.replace("release_squads_authority:", "retired_squads_authority:", 1)),
+            ("a non-https origin", ledger.replace("catalog_origin: https://", "catalog_origin: http://", 1)),
+            ("no catalog_origin", ledger.replace("catalog_origin:", "catalog_origin_note:", 1)),
+        ):
+            assert mutated != ledger, label
+            reference.write_text(mutated, encoding="utf-8")
+            try:
+                provider.estate_scan(text, document, reference)
+            except provider.ProviderError as exc:
+                assert str(exc).startswith("estate-scan-reference-unusable: "), (label, exc)
+            else:
+                raise AssertionError(f"estate scan ran with a reference that has {label}")
+        reference.unlink()
+        try:
+            provider.estate_scan(text, document, reference)
+        except provider.ProviderError as exc:
+            assert str(exc).startswith("estate-scan-reference-unusable: "), exc
+        else:
+            raise AssertionError("estate scan ran with no reference")
+        # Positive control: the same reference, unmutated, scans.
+        reference.write_text(ledger, encoding="utf-8")
+        assert provider.estate_scan(text, document, reference)["status"] == "clean"
+
+
 def test_release_helper_owns_index_and_atomic_approval_commands():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -1117,13 +1271,8 @@ def test_golden_publish_entrypoints_refuse_caller_selected_source_paths():
 
 def test_store_generation_template_pins_catalog_shared_squads_authority():
     """A first install must not omit or drift from the single release authority."""
-    catalog = HERE.parent / "fleet" / "bazaar-catalog.yaml"
     template = HERE.parent / "deploy" / "store-generation" / "store.config.template.json"
-    old = with_env(checked_in_catalog_env(catalog))
-    try:
-        expected = provider.require_shared_squads_authority()
-    finally:
-        restore_env(old)
+    expected = provider.parse_shared_squads_authority(checked_in_ledger_document())
     rendered = json.loads(template.read_text(encoding="utf-8"))
     assert rendered["release_squads_authority"] == {
         "multisig": expected["multisig"],
@@ -2015,12 +2164,7 @@ def test_msb_catalog_slots_and_namedcoin_pack_profile_are_explicit():
 
 
 def checked_in_catalog_entries():
-    config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
-    old = with_env(checked_in_catalog_env(config))
-    try:
-        document = provider.catalog_config()
-    finally:
-        restore_env(old)
+    document = checked_in_ledger_document()
     entries = {}
     for group_name, group in document["groups"].items():
         for name, app in group["apps"].items():
@@ -2488,27 +2632,25 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
 
 
 def test_checked_in_catalog_blocks_all_release_operations_until_reconciled():
-    config = HERE.parent / "fleet" / "bazaar-catalog.yaml"
-    _, entries = checked_in_catalog_entries()
+    # The ledger's holds, read from the ledger itself. A projected seed
+    # manifest copies each entry unchanged, so these are the holds it carries
+    # (scripts/test-project-estate-catalog.py).
+    document, entries = checked_in_catalog_entries()
     held_app_ids = [
         app_id for app_id, app in entries.items()
         if app.get("release_state", "hold") != "ready"
     ]
-    old = with_env(checked_in_catalog_env(config))
-    try:
-        for app_id in held_app_ids:
-            try:
-                provider.app_spec(app_id)
-            except provider.ProviderError as exc:
-                assert "held for reconciliation" in str(exc), exc
-            else:
-                raise AssertionError(f"held catalog app {app_id} was releasable")
-        config_provider = provider.app_spec(CYBERTELLER_CONFIG_APP_ID)
-        assert config_provider["source_path"] == "cybertellerconfig", config_provider
-        assert config_provider["reconciliation_state"] == "source-pinned", config_provider
-        assert config_provider["source_selection_state"] == "direct-dev-verified", config_provider
-    finally:
-        restore_env(old)
+    for app_id in held_app_ids:
+        try:
+            provider.app_spec(app_id, document=document)
+        except provider.ProviderError as exc:
+            assert "held for reconciliation" in str(exc), exc
+        else:
+            raise AssertionError(f"held catalog app {app_id} was releasable")
+    config_provider = provider.app_spec(CYBERTELLER_CONFIG_APP_ID, document=document)
+    assert config_provider["source_path"] == "cybertellerconfig", config_provider
+    assert config_provider["reconciliation_state"] == "source-pinned", config_provider
+    assert config_provider["source_selection_state"] == "direct-dev-verified", config_provider
 
 
 def test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage():
@@ -3078,6 +3220,9 @@ if __name__ == "__main__":
     test_submit_refuses_missing_catalog_slot()
     test_submit_refuses_a_missing_or_malformed_estate_target()
     test_catalog_must_describe_the_bound_store()
+    test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog()
+    test_estate_scan_refuses_each_retiring_value_by_field()
+    test_estate_scan_reference_must_carry_the_core_fields()
     test_release_helper_owns_index_and_atomic_approval_commands()
     test_promote_repairs_registered_resume_runtime_binding()
     test_release_entry_status_uses_zero_based_borsh_ordinals()

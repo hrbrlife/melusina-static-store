@@ -23,7 +23,9 @@ import (
 // must be caught. Every PDA is derived LOCALLY from the pinned program/master/
 // license; the on-chain account owner must equal the pinned program; the 8-byte
 // Anchor account discriminator must match; status must be Active; and the
-// artifact hash must bind Global (and Local, when Local carries a hash).
+// artifact hash must bind Global (and Local, when Local carries a hash). A
+// sidecar_cascade (keyless) component is gated on this cascade alone, and for it
+// the Local hash is required, not optional.
 
 // rawAccountReader is the raw getAccountInfo capability the cascade needs
 // (data + owner). The production *storeRPCReader implements it; test mocks
@@ -301,7 +303,7 @@ func requireGlobalSANTierMatchesLocalScope(globalTier, localScope byte) error {
 
 // verifyFiveFactCascade mirrors require_active_sidecar_cascade: License Active,
 // GlobalSidecarApproval Active + binary_hash==artifact, LocalSidecarApproval
-// Active (+ optional hash==artifact), ResellerSidecarApproval Active, and
+// Active (+ optional hash==artifact; required for a keyless view), ResellerSidecarApproval Active, and
 // ResellerEntry Active. All PDAs derived locally; owner+discriminator checked.
 func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentReleaseChainView, artifact [32]byte) error {
 	rr, ok := s.cr.(rawAccountReader)
@@ -333,6 +335,9 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	var reseller, master primitives.Pubkey
 	copy(reseller[:], licData[8+32:8+64])
 	copy(master[:], licData[8+64:8+96])
+	if c.keyless && master != c.masterMint {
+		return fmt.Errorf("%w: LicenseEntry names %s, the component %s", errKeylessSidecarMasterMismatch, master.Base58(), c.masterMint.Base58())
+	}
 	lc := &borshCursor{b: licData, off: 8}
 	lc.skipPubkey()       // license
 	lc.skipPubkey()       // reseller
@@ -428,6 +433,9 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 	if lStatus != 0 {
 		return fmt.Errorf("LocalSidecarApproval status %d not Active", lStatus)
 	}
+	if c.keyless && !hasHash {
+		return fmt.Errorf("%w (served artifact %x)", errKeylessSidecarLocalPinAbsent, artifact[:])
+	}
 	if hasHash && localHash != artifact {
 		return fmt.Errorf("LocalSidecarApproval optional hash %x != served artifact %x", localHash[:], artifact[:])
 	}
@@ -497,4 +505,21 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 type componentReleaseChainView struct {
 	sidecarID   string
 	licenseMint primitives.Pubkey
+	// keyless is set for a sidecar_cascade component. It changes two things,
+	// both stricter: the LocalSidecarApproval must pin the artifact (Some ==
+	// artifact; None is refused with errKeylessSidecarLocalPinAbsent), and the
+	// LicenseEntry's master must be masterMint, the one the signed component
+	// names. A key-bearing component keeps the identity's binary_hash as its
+	// second pin, so for it the Local pin stays optional.
+	keyless    bool
+	masterMint primitives.Pubkey
 }
+
+// errKeylessSidecarLocalPinAbsent: a keyless sidecar's LocalSidecarApproval has
+// binary_hash None. With no SidecarIdentityEntry, the Local pin is the second
+// pin on the served bytes, so None is not "inherit the Global pin" here.
+var errKeylessSidecarLocalPinAbsent = errors.New("keyless-sidecar-local-pin-absent: a keyless (sidecar_cascade) sidecar's LocalSidecarApproval must pin the served artifact, and its binary_hash is None")
+
+// errKeylessSidecarMasterMismatch: a keyless sidecar names a masterNftMint that
+// is not the one its LicenseEntry names.
+var errKeylessSidecarMasterMismatch = errors.New("keyless-sidecar-master-mismatch: the component's masterNftMint is not the LicenseEntry's master_nft_mint")

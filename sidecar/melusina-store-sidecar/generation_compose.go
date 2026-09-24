@@ -12,13 +12,16 @@ import (
 // by a sidecar generation member. ComponentID is deliberately excluded: it is
 // the install-local registry name and may be corrected without creating a
 // second sidecar identity. All chain-bound fields are included so two tenants,
-// key versions, or approval cascades can never collapse into one component.
+// key versions, or approval cascades can never collapse into one component. The
+// kind is included too, so a keyless (sidecar_cascade) entry and a key-bearing
+// (sidecar_identity) entry are never taken for one another.
 func sidecarAuthorityIdentity(c componentrelease.ComponentRelease) (string, bool) {
 	if c.ComponentClass != componentrelease.ClassSidecar ||
-		c.Chain.Kind != componentrelease.AuthoritySidecarIdentity {
+		!componentrelease.IsSidecarAuthority(c.Chain.Kind) {
 		return "", false
 	}
 	return strings.Join([]string{
+		c.Chain.Kind,
 		c.Chain.Program,
 		c.Chain.MasterNftMint,
 		c.Chain.LicenseNftMint,

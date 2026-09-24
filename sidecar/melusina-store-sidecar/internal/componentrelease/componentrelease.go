@@ -159,28 +159,73 @@ func RejectAppComponents(components []ComponentRelease) error {
 //     identity references a GlobalSidecarApproval (["global_sidecar",
 //     master_nft_mint, sidecar_id]) and a LocalSidecarApproval (["local_sidecar",
 //     license_nft_mint, sidecar_id]). Verified as a whole for production sidecars.
+//     This is the KEY-BEARING sidecar rule, and the default: a sidecar whose
+//     runtime holds keys (the root Store, the sidecarresult and identity-gate
+//     signers, Fineract native) names it, and every sidecar signed before the
+//     keyless rule existed names it.
+//   - sidecar_cascade => a KEYLESS sidecar (MerMail, AilaGoon, WolfDog and
+//     sidecars like them, whose runtime holds no keys). It names no
+//     SidecarIdentityEntry and none is derived, read or required. It is gated on
+//     the five-fact cascade alone: LicenseEntry, GlobalSidecarApproval,
+//     LocalSidecarApproval, ResellerSidecarApproval and ResellerEntry all Active,
+//     with the served sha256 pinned on the Global approval AND on the Local
+//     approval (a Local approval with no pin is refused, because the identity's
+//     binary_hash, the other second pin, is gone). That is what the keyless
+//     sidecar's own boot gate checks (Melusina shared/melusina-attest/binhash
+//     checkApprovals), plus the required Local pin. A keyless sidecar must be
+//     declared: the kind is in componentReleaseDigest, so it is the publisher's
+//     signed claim, and each consumer re-verifies that class's chain facts.
 const (
 	AuthorityInstallerRelease = "installer_release"
 	AuthorityReleaseV2        = "release_v2"
 	AuthoritySidecarIdentity  = "sidecar_identity"
+	AuthoritySidecarCascade   = "sidecar_cascade"
 )
+
+// ErrUnknownAuthorityKind: a component names an on-chain authority kind this
+// consumer does not know. A consumer refuses it rather than guessing which
+// rule applies, so a consumer that predates a kind never skips its checks.
+var ErrUnknownAuthorityKind = errors.New("unknown chain authority kind: the known kinds are installer_release, release_v2, sidecar_identity (key-bearing sidecar) and sidecar_cascade (keyless sidecar)")
+
+// ErrClassAuthorityMismatch: the component's class does not admit the kind it
+// names (a shell cannot ride a sidecar authority, a sidecar cannot ride
+// installer_release).
+var ErrClassAuthorityMismatch = errors.New("component class does not admit this on-chain authority kind")
+
+// ErrKeylessSidecarNamesIdentity: a sidecar_cascade (keyless) component names
+// a SidecarIdentityEntry (identityPda or keyVersion). A keyless sidecar has no
+// identity, so naming one is a class confusion; a sidecar whose runtime holds
+// keys is declared sidecar_identity.
+var ErrKeylessSidecarNamesIdentity = errors.New("keyless-sidecar-names-identity: a sidecar_cascade (keyless) component names no identityPda and no keyVersion; a sidecar whose runtime holds keys is declared sidecar_identity")
+
+// IsSidecarAuthority reports whether kind is one of the two sidecar rules.
+func IsSidecarAuthority(kind string) bool {
+	return kind == AuthoritySidecarIdentity || kind == AuthoritySidecarCascade
+}
+
+// IsKeylessSidecar reports whether c is declared a keyless sidecar.
+func IsKeylessSidecar(c ComponentRelease) bool {
+	return c.ComponentClass == ClassSidecar && c.Chain.Kind == AuthoritySidecarCascade
+}
 
 // ChainAuthority is the per-component on-chain authority reference. Which fields
 // are populated depends on Kind. It is a set of CLAIMS the consumer re-verifies
 // against the chain (the PDAs must exist, be Active, and pin this artifact hash)
 // — never trusted on its own.
 type ChainAuthority struct {
-	Kind    string `json:"kind"`    // installer_release | release_v2 | sidecar_identity
+	Kind    string `json:"kind"`    // installer_release | release_v2 | sidecar_identity | sidecar_cascade
 	Program string `json:"program"` // base58 program id, e.g. 7anRCW8U...
 
 	MasterNftMint  string `json:"masterNftMint,omitempty"`  // installer_release/release_v2 seed; global-approval seed
-	LicenseNftMint string `json:"licenseNftMint,omitempty"` // sidecar_identity / local-approval seed
+	LicenseNftMint string `json:"licenseNftMint,omitempty"` // sidecar_identity / sidecar_cascade local-approval seed
 	ReleasePDA     string `json:"releasePda,omitempty"`     // installer_release | release_v2: InstallerReleaseEntry / ReleaseEntry
 
-	// sidecar_identity cascade:
+	// sidecar cascade (both sidecar kinds; KeyVersion and IdentityPDA only for
+	// sidecar_identity, and a sidecar_cascade component that names either is
+	// refused):
 	SidecarID         string `json:"sidecarId,omitempty"`
 	KeyVersion        uint32 `json:"keyVersion,omitempty"`
-	IdentityPDA       string `json:"identityPda,omitempty"`       // SidecarIdentityEntry
+	IdentityPDA       string `json:"identityPda,omitempty"`       // SidecarIdentityEntry (sidecar_identity only)
 	GlobalApprovalPDA string `json:"globalApprovalPda,omitempty"` // GlobalSidecarApproval
 	LocalApprovalPDA  string `json:"localApprovalPda,omitempty"`  // LocalSidecarApproval
 }
@@ -500,24 +545,37 @@ func validClass(c string) bool {
 
 func validAuthority(a string) bool {
 	switch a {
-	case AuthorityInstallerRelease, AuthorityReleaseV2, AuthoritySidecarIdentity:
+	case AuthorityInstallerRelease, AuthorityReleaseV2, AuthoritySidecarIdentity, AuthoritySidecarCascade:
 		return true
 	}
 	return false
 }
 
-// authorityForClass returns the ONE on-chain authority kind a component class is
-// allowed to ride. Empty for an unknown class.
-func authorityForClass(class string) string {
+// authoritiesForClass returns the on-chain authority kinds a component class is
+// allowed to ride; nil for an unknown class. No kind is shared between the
+// shell/data, sidecar and app classes, so a component can never ride another
+// class's authority. The sidecar class admits exactly two kinds, and the kind
+// is the signed declaration of which rule gates it: sidecar_identity
+// (key-bearing, the default) or sidecar_cascade (keyless, declared).
+func authoritiesForClass(class string) []string {
 	switch class {
 	case ClassShell, ClassData:
-		return AuthorityInstallerRelease
+		return []string{AuthorityInstallerRelease}
 	case ClassSidecar:
-		return AuthoritySidecarIdentity
+		return []string{AuthoritySidecarIdentity, AuthoritySidecarCascade}
 	case ClassApp:
-		return AuthorityReleaseV2
+		return []string{AuthorityReleaseV2}
 	}
-	return ""
+	return nil
+}
+
+func classAdmitsAuthority(class, kind string) bool {
+	for _, admitted := range authoritiesForClass(class) {
+		if admitted == kind {
+			return true
+		}
+	}
+	return false
 }
 
 // validate checks a component's on-chain authority reference is internally
@@ -525,7 +583,7 @@ func authorityForClass(class string) string {
 // re-derives + fetches these PDAs and confirms Active + hash pin at apply time.
 func (ca ChainAuthority) validate() error {
 	if !validAuthority(ca.Kind) {
-		return fmt.Errorf("invalid chain authority kind %q", ca.Kind)
+		return fmt.Errorf("%w: %q", ErrUnknownAuthorityKind, ca.Kind)
 	}
 	if strings.TrimSpace(ca.Program) == "" {
 		return errors.New("empty chain.program")
@@ -550,6 +608,25 @@ func (ca ChainAuthority) validate() error {
 		}
 		if strings.TrimSpace(ca.IdentityPDA) == "" || strings.TrimSpace(ca.GlobalApprovalPDA) == "" || strings.TrimSpace(ca.LocalApprovalPDA) == "" {
 			return errors.New("sidecar_identity: identityPda, globalApprovalPda and localApprovalPda are all required (three-PDA cascade)")
+		}
+	case AuthoritySidecarCascade:
+		// A keyless sidecar names no identity at all. Checked first, so a
+		// component that mixes the two rules is refused as that confusion rather
+		// than as whichever other field happens to be missing.
+		if ca.IdentityPDA != "" || ca.KeyVersion != 0 {
+			return ErrKeylessSidecarNamesIdentity
+		}
+		if strings.TrimSpace(ca.LicenseNftMint) == "" {
+			return errors.New("sidecar_cascade: empty licenseNftMint (local-approval seed)")
+		}
+		if strings.TrimSpace(ca.MasterNftMint) == "" {
+			return errors.New("sidecar_cascade: empty masterNftMint (global-approval seed)")
+		}
+		if !safeComponentID(ca.SidecarID) {
+			return errors.New("sidecar_cascade: sidecarId is not a safe identity token")
+		}
+		if strings.TrimSpace(ca.GlobalApprovalPDA) == "" || strings.TrimSpace(ca.LocalApprovalPDA) == "" {
+			return errors.New("sidecar_cascade: globalApprovalPda and localApprovalPda are both required (the two pinned approvals of the five-fact cascade)")
 		}
 	}
 	return nil
@@ -587,9 +664,9 @@ func (c ComponentRelease) validate() error {
 		return fmt.Errorf("component %s: %w", c.ComponentID, err)
 	}
 	// class <-> on-chain authority must agree — the authority model IS the class
-	// (a shell cannot ride a sidecar_identity, a sidecar cannot ride installer_release).
-	if want := authorityForClass(c.ComponentClass); c.Chain.Kind != want {
-		return fmt.Errorf("component %s: class %q requires authority kind %q, got %q", c.ComponentID, c.ComponentClass, want, c.Chain.Kind)
+	// (a shell cannot ride a sidecar authority, a sidecar cannot ride installer_release).
+	if !classAdmitsAuthority(c.ComponentClass, c.Chain.Kind) {
+		return fmt.Errorf("component %s: %w: class %q admits %s, got %q", c.ComponentID, ErrClassAuthorityMismatch, c.ComponentClass, strings.Join(authoritiesForClass(c.ComponentClass), " or "), c.Chain.Kind)
 	}
 	// contentSha256 = the on-chain-pinned content hash, distinct from the served
 	// artifact sha256. An app MUST carry it (ReleaseEntry pins app_hash != sha256(spk)).

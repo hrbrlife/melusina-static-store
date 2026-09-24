@@ -1,0 +1,27 @@
+{
+  "schema": "melusina.store.vendored-vector-provenance.v1",
+  "comment": [
+    "sidecar-update-public-state.json in this directory is a byte-for-byte copy of the contracts repository's offline ABI",
+    "fixture of one finalized devnet sidecar approval cascade (LicenseEntry, GlobalSidecarApproval, LocalSidecarApproval",
+    "with a Some pin, ResellerSidecarApproval, ResellerEntry) under the licence-registry program the contracts declare at",
+    "this commit. Public account data only: it holds no key material. Do not edit the copy. To take a newer contracts",
+    "fixture, copy the file from a newer contracts commit on main, update every field below from that commit, and replace",
+    "git-objects/ with that commit's objects:",
+    "  git -C <contracts> cat-file commit <commit> > git-objects/<commit>.commit",
+    "  git -C <contracts> cat-file tree <id> > git-objects/<id>.tree, for <commit>^{tree}, <commit>:programs,",
+    "  <commit>:programs/license-registry, <commit>:programs/license-registry/tests and",
+    "  <commit>:programs/license-registry/tests/fixtures.",
+    "keyless_sidecar_test.go checks on every run, without a contracts clone, that the copy's sha256 and git blob id are",
+    "the ones recorded here and that the recorded commit holds that blob at sourcePath, then runs the Store's keyless and",
+    "key-bearing cascade over these bytes; the update controller's keyless gate test reads the same copy. With",
+    "MELUSINA_CONTRACTS_GIT_DIR (scripts/run-tests.sh) it also checks that sourceCommit is on the contracts main line; a",
+    "release or CI run fails without one."
+  ],
+  "file": "sidecar-update-public-state.json",
+  "sourceRepository": "https://github.com/melusina-os/melusina-os-smartcontract",
+  "sourceCommit": "956462f3f164b504a3c34f25146a7e90289ff0f7",
+  "sourcePath": "programs/license-registry/tests/fixtures/sidecar-update-public-state.json",
+  "gitBlobSha1": "326a2f00bc31f7d243d7b6780e747eddfcfadf6d",
+  "sha256": "264252eb91584968d30df2eadd9d1148922b35b1297eba937b6a6947fd066a17",
+  "bytes": 9166
+}

@@ -710,10 +710,12 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 	if class == componentrelease.ClassSidecar {
 		// Sidecars do not ride InstallerReleaseEntry. They are downloadable only
 		// when the exact artifact is named by this store's current
-		// operator-signed DesiredGeneration AND its active SidecarIdentity
-		// cascade re-verifies against these bytes. Do not route sidecars through
-		// the installer gate: that makes a valid sidecar generation impossible to
-		// fetch while weakening neither authority model.
+		// operator-signed DesiredGeneration AND the chain rule its signed kind
+		// declares re-verifies against these bytes: the SidecarIdentity plus
+		// cascade for a key-bearing sidecar, the cascade with Global and Local
+		// pins for a keyless one. Do not route sidecars through the installer
+		// gate: that makes a valid sidecar generation impossible to fetch while
+		// weakening neither authority model.
 		hashHex, err = g.gateSignedSidecarGeneration(r.Context(), class, name, fileHash, servedSize)
 	} else {
 		hashHex, err = g.gateInstallerRelease(r.Context(), fileHash)
@@ -752,9 +754,10 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 
 // gateSignedSidecarGeneration verifies the only sidecar download authority:
 // the current operator-signed DesiredGeneration must name this exact URL, size
-// and hash, and the active SidecarIdentity + full authorization cascade must
-// pin the same bytes. This deliberately has no cache: revocation of any one
-// cascade fact must take effect on the next sidecar download.
+// and hash, and the chain rule the component's signed kind declares must pin
+// the same bytes (verifySidecarClassComponentOnChain, shared with promote). This
+// deliberately has no cache: revocation of any one cascade fact must take effect
+// on the next sidecar download.
 func (g *serveGate) gateSignedSidecarGeneration(ctx context.Context, class, name string, fileHash [32]byte, size int64) (string, error) {
 	if g.operator == nil {
 		return "", errors.New("sidecar generation gate not initialized (no operator identity)")
@@ -796,10 +799,12 @@ func (g *serveGate) gateSignedSidecarGeneration(ctx context.Context, class, name
 		return "", fmt.Errorf("sidecar generation size %d != served size %d", matched.SizeBytes, size)
 	}
 	// Reuse the same live chain verifier used by promotion. It derives every PDA
-	// from the component facts and verifies SidecarIdentity plus the five-fact
-	// cascade; it never trusts a publisher-supplied address alone.
+	// from the component facts and verifies the rule the signed kind declares:
+	// SidecarIdentity plus the five-fact cascade (sidecar_identity), or the
+	// five-fact cascade with Global and Local pins (sidecar_cascade). It never
+	// trusts a publisher-supplied address alone.
 	verifier := &publishService{cfg: g.cfg, cr: g.cr}
-	if err := verifier.verifySidecarComponentOnChain(ctx, *matched); err != nil {
+	if err := verifier.verifySidecarClassComponentOnChain(ctx, *matched); err != nil {
 		return "", fmt.Errorf("sidecar chain gate: %w", err)
 	}
 	return wantHash, nil

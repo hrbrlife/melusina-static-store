@@ -41,7 +41,7 @@ duplicate / trailing keys are refused. `schema` must be
 | `componentRegistryPath` | string (abs) | yes | root-owned host-action allowlist (`ResolveComponent`) |
 | `programId` | string | yes | Solana program id pin (chain gate) |
 | `masterNftMint` | string | yes | installer_release/release_v2 + global-approval seed pin |
-| `licenseNftMint` | string | yes | sidecar_identity / local-approval seed pin |
+| `licenseNftMint` | string | yes | sidecar_identity / sidecar_cascade local-approval seed pin |
 | `solanaRpcUrl` | string | yes | Solana RPC endpoint (getAccountInfo) |
 | `estateProfilePath` | string (abs) | yes | the estate's owner-signed `EstateProfileV1` (installer-release trust) |
 | `estateProfileSha256` | string (hex) | yes | its reviewed `profileSha256` (`estate-profile-review`); a profile with another digest is refused |
@@ -233,6 +233,24 @@ and the Store's publish-side five-fact cascade (`cascade_gate.go`) decode
 `ResellerEntry` with the same vendored `verify.ReadResellerEntryStatus`, which walks
 the `parent_reseller` and `category` Option payloads and refuses an Option tag
 other than 0 or 1, so the two cannot read one account differently.
+
+### Two sidecar rules, declared by the signed `chain.kind`
+
+A sidecar-class component names one of two kinds. The kind is inside the
+operator-signed component digest, so it is the publisher's signed claim; the
+Store's promote and serve gates (`verifySidecarClassComponentOnChain`) and this
+controller (`chaingate.go`) each re-verify the chain facts of the rule it names.
+
+| `chain.kind` | who | chain facts required |
+|---|---|---|
+| `sidecar_identity` (key-bearing; the default) | the root Store, sidecarresult and identity-gate signers, Fineract native | Active `SidecarIdentityEntry` whose `binary_hash` is the artifact, plus the five-fact cascade; the Local pin is optional (None inherits the Global pin) |
+| `sidecar_cascade` (keyless; must be declared) | tenant sidecars whose runtime holds no keys: MerMail, AilaGoon, WolfDog and similar | the five-fact cascade alone: License, Global, Local, ResellerSidecar approvals and ResellerEntry Active, with the artifact pinned on Global **and** on Local (a Local approval with `binary_hash` None is refused: `keyless-sidecar-local-pin-absent`). No `SidecarIdentityEntry` is derived, read or required, matching the sidecar's own boot gate (Melusina `shared/melusina-attest/binhash` `checkApprovals`) |
+
+A `sidecar_cascade` component carries `globalApprovalPda` and `localApprovalPda`
+(each must be the seed-derived address) and no `identityPda` or `keyVersion`
+(`keyless-sidecar-names-identity`). Any other kind is refused by name
+(`unknown chain authority kind`), so a consumer that predates `sidecar_cascade`
+refuses a generation that names it rather than applying it under the wrong rule.
 
 ## Known follow-ups (flagged, not blocking build)
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -136,8 +137,10 @@ func (g *solanaChainGate) gate(ctx context.Context, c componentrelease.Component
 		return g.gateReleaseV2(ctx, c, want)
 	case componentrelease.AuthoritySidecarIdentity:
 		return g.gateSidecarCascade(ctx, c, want)
+	case componentrelease.AuthoritySidecarCascade:
+		return g.gateKeylessSidecarCascade(ctx, c, want)
 	default:
-		return fmt.Errorf("chain gate %s: unknown chain kind %q", c.ComponentID, c.Chain.Kind)
+		return fmt.Errorf("chain gate %s: %w: %q", c.ComponentID, componentrelease.ErrUnknownAuthorityKind, c.Chain.Kind)
 	}
 }
 
@@ -193,17 +196,15 @@ func (g *solanaChainGate) gateReleaseV2(ctx context.Context, c componentrelease.
 	return nil
 }
 
-// gateSidecarCascade DERIVES all three document-claimed sidecar PDAs from the pinned
-// license/master mints + seeds and refuses any doc != derived BEFORE any fetch, then
-// confirms the identity + global + local approvals are Active and hash-pinned, and
-// finally the LicenseEntry is Active with the pinned master (and, when the license is
+// gateSidecarCascade is the sidecar_identity (key-bearing) gate. It DERIVES all
+// three document-claimed sidecar PDAs from the pinned license/master mints +
+// seeds and refuses any doc != derived BEFORE any fetch, then confirms the
+// identity + global + local approvals are Active and hash-pinned, and finally
+// the LicenseEntry is Active with the pinned master (and, when the license is
 // resold, both the reseller entity and its reseller-sidecar approval are Active).
 func (g *solanaChainGate) gateSidecarCascade(ctx context.Context, c componentrelease.ComponentRelease, want [32]byte) error {
-	if c.Chain.LicenseNftMint != g.licenseB58 {
-		return fmt.Errorf("chain gate %s: licenseNftMint pin mismatch", c.ComponentID)
-	}
-	if c.Chain.MasterNftMint != g.masterB58 {
-		return fmt.Errorf("chain gate %s: masterNftMint (global-approval seed) pin mismatch", c.ComponentID)
+	if err := g.requireSidecarMintPins(c); err != nil {
+		return err
 	}
 	sidecarID := c.Chain.SidecarID
 	keyVersion := c.Chain.KeyVersion
@@ -217,19 +218,9 @@ func (g *solanaChainGate) gateSidecarCascade(ctx context.Context, c componentrel
 	if err := assertDerivedPDA("SidecarIdentityEntry", c.Chain.IdentityPDA, idPDA); err != nil {
 		return fmt.Errorf("chain gate %s: %w", c.ComponentID, err)
 	}
-	globalPDA, _, err := primitives.DeriveGlobalSidecar(g.masterMint, sidecarID, g.program)
+	globalPDA, localPDA, err := g.deriveSidecarApprovalPDAs(c)
 	if err != nil {
-		return fmt.Errorf("chain gate %s: derive GlobalSidecarApproval PDA: %w", c.ComponentID, err)
-	}
-	if err := assertDerivedPDA("GlobalSidecarApproval", c.Chain.GlobalApprovalPDA, globalPDA); err != nil {
-		return fmt.Errorf("chain gate %s: %w", c.ComponentID, err)
-	}
-	localPDA, _, err := primitives.DeriveLocalSidecar(g.licenseMintPubkey, sidecarID, g.program)
-	if err != nil {
-		return fmt.Errorf("chain gate %s: derive LocalSidecarApproval PDA: %w", c.ComponentID, err)
-	}
-	if err := assertDerivedPDA("LocalSidecarApproval", c.Chain.LocalApprovalPDA, localPDA); err != nil {
-		return fmt.Errorf("chain gate %s: %w", c.ComponentID, err)
+		return err
 	}
 
 	// Phase 2 — fetch the SEED-DERIVED PDAs and enforce Active + hash pin.
@@ -243,11 +234,88 @@ func (g *solanaChainGate) gateSidecarCascade(ctx context.Context, c componentrel
 	if hex32(id.BinaryHash) != hex32(want) {
 		return fmt.Errorf("chain gate %s: identity binary_hash %s != artifact %s", c.ComponentID, hex32(id.BinaryHash), hex32(want))
 	}
+	// The identity's binary_hash is this class's second pin, so the Local
+	// approval's pin stays optional here (None inherits the Global pin).
+	if err := g.gateSidecarApprovals(ctx, c, globalPDA, localPDA, want, false); err != nil {
+		return err
+	}
 
-	// Read each approval once and validate all of its coupled fields from the
-	// same raw account bytes. In particular, an Active Global approval is not
-	// enough: its SAN tier and the Active Local approval's explicit scope must
-	// name the same runtime plane (B13).
+	// Phase 3 — LicenseEntry Active + pinned master, and the reseller entity +
+	// sidecar approval when the license is resold. The reseller mint is read from
+	// the CHAIN LicenseEntry, never the document.
+	return g.gateLicenseAndReseller(ctx, c, sidecarID)
+}
+
+// errKeylessSidecarLocalPinAbsent: a keyless sidecar's LocalSidecarApproval has
+// binary_hash None. The Store refuses the same case with the same code
+// (cascade_gate.go errKeylessSidecarLocalPinAbsent).
+var errKeylessSidecarLocalPinAbsent = errors.New("keyless-sidecar-local-pin-absent: a keyless (sidecar_cascade) sidecar's LocalSidecarApproval must pin the artifact, and its binary_hash is None")
+
+// gateKeylessSidecarCascade is the sidecar_cascade (keyless) gate: a tenant
+// sidecar whose runtime holds no keys (MerMail, AilaGoon, WolfDog and similar).
+// No SidecarIdentityEntry is derived, read or required, as the sidecar's own
+// boot gate (Melusina shared/melusina-attest/binhash checkApprovals) reads none.
+// The Global and Local approval PDAs are derived from the pinned mints and must
+// equal the document's before any fetch; both approvals must be Active and pin
+// the artifact (the Local pin is required: with no identity, it is the second
+// pin); and the LicenseEntry, reseller entity and reseller-sidecar approval are
+// checked exactly as for a key-bearing sidecar.
+func (g *solanaChainGate) gateKeylessSidecarCascade(ctx context.Context, c componentrelease.ComponentRelease, want [32]byte) error {
+	if c.Chain.IdentityPDA != "" || c.Chain.KeyVersion != 0 {
+		return fmt.Errorf("chain gate %s: %w", c.ComponentID, componentrelease.ErrKeylessSidecarNamesIdentity)
+	}
+	if err := g.requireSidecarMintPins(c); err != nil {
+		return err
+	}
+	globalPDA, localPDA, err := g.deriveSidecarApprovalPDAs(c)
+	if err != nil {
+		return err
+	}
+	if err := g.gateSidecarApprovals(ctx, c, globalPDA, localPDA, want, true); err != nil {
+		return err
+	}
+	return g.gateLicenseAndReseller(ctx, c, c.Chain.SidecarID)
+}
+
+// requireSidecarMintPins refuses a sidecar component that names another
+// license or master mint than this controller's config pins.
+func (g *solanaChainGate) requireSidecarMintPins(c componentrelease.ComponentRelease) error {
+	if c.Chain.LicenseNftMint != g.licenseB58 {
+		return fmt.Errorf("chain gate %s: licenseNftMint pin mismatch", c.ComponentID)
+	}
+	if c.Chain.MasterNftMint != g.masterB58 {
+		return fmt.Errorf("chain gate %s: masterNftMint (global-approval seed) pin mismatch", c.ComponentID)
+	}
+	return nil
+}
+
+// deriveSidecarApprovalPDAs derives the Global and Local approval PDAs from the
+// pinned mints + seeds and refuses a document-claimed address that differs.
+func (g *solanaChainGate) deriveSidecarApprovalPDAs(c componentrelease.ComponentRelease) (primitives.Pubkey, primitives.Pubkey, error) {
+	sidecarID := c.Chain.SidecarID
+	globalPDA, _, err := primitives.DeriveGlobalSidecar(g.masterMint, sidecarID, g.program)
+	if err != nil {
+		return primitives.Pubkey{}, primitives.Pubkey{}, fmt.Errorf("chain gate %s: derive GlobalSidecarApproval PDA: %w", c.ComponentID, err)
+	}
+	if err := assertDerivedPDA("GlobalSidecarApproval", c.Chain.GlobalApprovalPDA, globalPDA); err != nil {
+		return primitives.Pubkey{}, primitives.Pubkey{}, fmt.Errorf("chain gate %s: %w", c.ComponentID, err)
+	}
+	localPDA, _, err := primitives.DeriveLocalSidecar(g.licenseMintPubkey, sidecarID, g.program)
+	if err != nil {
+		return primitives.Pubkey{}, primitives.Pubkey{}, fmt.Errorf("chain gate %s: derive LocalSidecarApproval PDA: %w", c.ComponentID, err)
+	}
+	if err := assertDerivedPDA("LocalSidecarApproval", c.Chain.LocalApprovalPDA, localPDA); err != nil {
+		return primitives.Pubkey{}, primitives.Pubkey{}, fmt.Errorf("chain gate %s: %w", c.ComponentID, err)
+	}
+	return globalPDA, localPDA, nil
+}
+
+// gateSidecarApprovals reads each approval once and validates all of its
+// coupled fields from the same raw account bytes. In particular, an Active
+// Global approval is not enough: its SAN tier and the Active Local approval's
+// explicit scope must name the same runtime plane (B13). requireLocalPin is set
+// for a keyless sidecar, whose Local approval must pin the artifact.
+func (g *solanaChainGate) gateSidecarApprovals(ctx context.Context, c componentrelease.ComponentRelease, globalPDA, localPDA primitives.Pubkey, want [32]byte, requireLocalPin bool) error {
 	globalApproval, err := g.rpc.GetAccountInfo(ctx, globalPDA.Base58())
 	if err != nil {
 		return fmt.Errorf("chain gate %s: fetch GlobalSidecarApproval: %w", c.ComponentID, err)
@@ -292,6 +360,9 @@ func (g *solanaChainGate) gateSidecarCascade(ctx context.Context, c componentrel
 	if err != nil {
 		return fmt.Errorf("chain gate %s: decode LocalSidecarApproval binary_hash: %w", c.ComponentID, err)
 	}
+	if requireLocalPin && !present {
+		return fmt.Errorf("chain gate %s: %w", c.ComponentID, errKeylessSidecarLocalPinAbsent)
+	}
 	if present && hex32(lHash) != hex32(want) {
 		return fmt.Errorf("chain gate %s: local approval binary_hash %s != artifact %s", c.ComponentID, hex32(lHash), hex32(want))
 	}
@@ -302,11 +373,7 @@ func (g *solanaChainGate) gateSidecarCascade(ctx context.Context, c componentrel
 	if globalTier != localScope {
 		return fmt.Errorf("chain gate %s: GlobalSidecarApproval SAN tier %s != LocalSidecarApproval scope %s", c.ComponentID, globalTier, localScope)
 	}
-
-	// Phase 3 — LicenseEntry Active + pinned master, and the reseller entity +
-	// sidecar approval when the license is resold. The reseller mint is read from
-	// the CHAIN LicenseEntry, never the document.
-	return g.gateLicenseAndReseller(ctx, c, sidecarID)
+	return nil
 }
 
 func (g *solanaChainGate) gateLicenseAndReseller(ctx context.Context, c componentrelease.ComponentRelease, sidecarID string) error {

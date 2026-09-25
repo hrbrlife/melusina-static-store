@@ -17,9 +17,11 @@ import (
 // them.
 //
 // It decodes with the SAME functions the live single-read path uses
-// (readReleaseEntryMeta, readStoreReleaseListingMeta, readBlacklistStatusAccount
-// with the batch's owner) and reproduces its exact handling of an absent
-// account (verify.ErrPDANotFound) and of the PDA field.
+// (readReleaseEntryMeta, readStoreReleaseListingMeta) and reproduces its exact
+// handling of an absent account (verify.ErrPDANotFound) and of the PDA field. A
+// clearance is answered as the live read answers it: the batch's bytes with the
+// owner the batch reported, or nil when the batch saw it absent, for
+// verify.RequireBlacklistClear to decide.
 // Reusing the decoders rather than reimplementing them is what makes drift
 // impossible: there is no second copy to fall out of step.
 type primedChainReader struct {
@@ -59,15 +61,15 @@ func (p *primedChainReader) FetchStoreReleaseListingMeta(ctx context.Context, ad
 	return meta, nil
 }
 
-func (p *primedChainReader) FetchBlacklistStatus(ctx context.Context, addr string) (blacklistStatusEntry, error) {
+func (p *primedChainReader) FetchBlacklistStatusAccount(ctx context.Context, addr string) (*verify.Account, error) {
 	value, ok := p.snap[addr]
 	if !ok {
-		return p.chainReader.FetchBlacklistStatus(ctx, addr)
+		return p.chainReader.FetchBlacklistStatusAccount(ctx, addr)
 	}
 	if !value.present {
-		return blacklistStatusEntry{}, verify.ErrPDANotFound
+		return nil, nil
 	}
-	return readBlacklistStatusAccount(addr, value.data, value.owner)
+	return &verify.Account{Data: value.data, Owner: value.owner}, nil
 }
 
 // primeCatalogAccounts fetches every per-row account this request will need in
@@ -121,8 +123,8 @@ func primeCatalogAccounts(ctx context.Context, cfg Config, inner chainReader, ba
 		// The app clearance the gate will read for this row. A row whose
 		// metadata carries no canonical appId primes nothing here; the gate
 		// refuses it by name.
-		if key, err := decodeSandstormAppIDKey(metadataAppID(candidate.app.metadata)); err == nil {
-			if clearancePDA, _, err := deriveBlacklistStatusPDA(blacklistTargetApp, key); err == nil {
+		if key, err := primitives.DecodeSandstormAppID(metadataAppID(candidate.app.metadata)); err == nil {
+			if clearancePDA, _, err := deriveBlacklistStatusPDA(verify.BlacklistTypeApp, key); err == nil {
 				add(clearancePDA.Base58())
 			}
 		}

@@ -1,0 +1,99 @@
+tree c16e4a0bc97d4879fb43dcfc58c5c2e9e510cefc
+parent 8ea9ad7007c291b9f892d555422255dbec95280a
+author alexeikarp <ak@hrbr.life> 1790277173 +0400
+committer alexeikarp <ak@hrbr.life> 1790277173 +0400
+
+fix(shared): GrainCert requires the app's GlobalAppApproval Active, with no revoked_at, before the author clearance (R-15c)
+
+8ea9ad70 made GrainCert read the app's GlobalAppApproval for its author and
+deliberately left the status unjudged. The authz launch path does judge it:
+its cascade requires the global tier Active (pkg/grainauth cascade.go
+CascadeVerify and EvalCachedCascade: Revoked is cascade-blocked:global:revoked,
+RevokingCascadeInProgress is cascade-blocked:global:revoking-cascade-in-progress,
+any other value is unknown and denies), and gate.go decides the cascade before
+its App and Author blacklist stage. GrainCert still verified an artifact of an
+app the Foundation had revoked, or was revoking.
+
+verify (identity-gate)
+- RequireActiveGlobalAppApproval(a) passes only status Active with revoked_at
+  None. Revoked is ErrGlobalAppApprovalRevoked, RevokingCascadeInProgress is
+  ErrGlobalAppApprovalRevokingCascadeInProgress, Active with a revoked_at is
+  ErrGlobalAppApprovalRevokedAtWhileActive, and an out-of-range status is
+  refused as unknown. Every refusal also matches ErrStatusNotActive.
+- RequireCanonicalGlobalAppApproval is unchanged and still does not judge
+  status. Its doc now points to the new function.
+
+How this lines up with authz: authz origin/main (3e14223) decides on the status
+byte alone. It decodes revoked_at as a well-formed Option but does not judge it.
+The revoked_at None requirement follows R-14's reading of the licence. It only
+refuses a state the program never writes: approve_global_app sets Active with
+revoked_at None (instructions/app_approval.rs:80-82), and each revoked_at = Some
+write sets Revoked (:134-135, :186-187). So GrainCert and authz decide the same
+way on every approval the program can hold. revoke_reason is not judged, same
+as in authz.
+
+GrainCert
+- R-15c: after R-15b binds the approval to the app and Foundation, and before
+  R-15 reads any clearance, VerifyGrainCert calls RequireActiveGlobalAppApproval.
+  A refusal is the new ErrAppApprovalNotActive and wraps the verify cause, which
+  names the state. The author the approval names is still R-15's Author target,
+  and the clearance order (app, author, licence) is unchanged.
+- PROVENANCE_CONTRACTS.md: the chain-read table, the R-15b row (status is now
+  R-15c's), a new R-15c row, and 9.6(f). doc.go row ownership lists R-15c.
+
+Vectors: pda/testdata/contracts-global-app-approval now holds one
+GlobalAppApproval per ApprovalStatus, all encoded by the contracts
+(licence-registry-model.mjs encodeAccount), decoded back by the contracts'
+decoder and located at the address the contracts derive. The new account,
+"revoking", is RevokingCascadeInProgress with revoked_at and revoke_reason
+None, which is what revoke_global_app_chunk leaves before its final chunk.
+gen_global_app_approval_vectors.mjs regenerated the file from a clean export of
+contracts origin/main 23007dc6. The active and revoked accounts and the header
+are unchanged, byte for byte. New SHA-256: cad37fea...abf4e. The provenance
+test now also pins instructions/app_approval.rs (blob aa12fc77), because the
+three accounts' field values follow that file's writes. The other three source
+blobs are the same as at 9aefcf7d. The vector test requires one account per
+status and checks each verdict: active passes, revoked is
+ErrGlobalAppApprovalRevoked, revoking is
+ErrGlobalAppApprovalRevokingCascadeInProgress.
+
+Tests
+- verify TestRequireActiveGlobalAppApproval: each state goes through the
+  account bytes and RequireCanonicalGlobalAppApproval. The Active control
+  passes. Revoked (as the program writes it, and with no revoked_at),
+  RevokingCascadeInProgress, and Active with a revoked_at (nonzero and zero)
+  are each refused by their own sentinel and by no other one. An unknown
+  status is refused.
+- trustmaster TestR15c_AppApprovalMustBeActive: each non-Active state is
+  ErrAppApprovalNotActive carrying its cause, and never ErrAppApprovalMismatch.
+- trustmaster TestR15c_StatusIsDecidedBeforeTheClearances: with the author
+  Blocked, a non-Active approval is refused as R-15c after one approval read
+  and zero clearance reads. The control is the same world with the approval
+  Active, where the Blocked author gives ErrBlacklisted.
+- trustmaster TestE2E_RealChainReader_AppApprovalMustBeActive runs the real
+  SolanaChain over RPC with Revoked, RevokingCascadeInProgress and Active with a
+  revoked_at as account bytes.
+- Full suites pass: identity-gate, attest (pda with MELUSINA_CONTRACTS_CHECKOUT
+  on contracts origin/main), dns-sidecar and remotebak-sidecar.
+
+Mutations: 16 were run and restored byte for byte (the tree diff hash was
+unchanged). Each one fails by name:
+- GrainCert skips R-15c; judges the status after the clearances; reports a
+  non-Active approval as ErrAppApprovalMismatch.
+- verify accepts RevokingCascadeInProgress; accepts Revoked; does not check
+  revoked_at; checks revoked_at only when it is nonzero; accepts an unknown
+  status; names Revoked as the cascade in progress; stops matching
+  ErrStatusNotActive.
+- Positive controls: the trustmaster fixture approval set to Revoked, the e2e
+  approval bytes set to RevokingCascadeInProgress, and the verify Active
+  approval set to Revoked.
+- Vector: the revoking account's status changed (SHA drift); the revoking
+  account dropped with the SHA re-pinned (the coverage guard catches it); the
+  instructions blob recorded wrong (contracts provenance catches it).
+
+Follow-up in other repos: consumers that vendor identity-gate verify (the Store
+sidecar, AilaGoon) get RequireActiveGlobalAppApproval when they re-vendor. It
+is new API, so nothing they vendor today changes behaviour. trustmaster has no
+consumer outside this module.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>

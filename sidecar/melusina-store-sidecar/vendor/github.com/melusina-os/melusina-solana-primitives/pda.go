@@ -148,7 +148,7 @@ var (
 	SeedInstallerRelease    = []byte("installer_release")
 	SeedStoreReleaseListing = []byte("store_release_listing")
 	SeedStoreOperator       = []byte("store_operator")
-	SeedBlacklist           = []byte("blacklist")
+	SeedBlacklistStatus     = []byte("blacklist_status")
 	SeedFoundationApp       = []byte("foundation_app")
 )
 
@@ -395,12 +395,47 @@ func DeriveFoundationApp(appID [32]byte, programID Pubkey) (Pubkey, PDABump, err
 	return FindProgramAddress([][]byte{SeedFoundationApp, appID[:]}, programID, nil)
 }
 
-// DeriveBlacklistEntry returns BlacklistEntry PDA, seeds ["blacklist", target]
-// (state/app_approval.rs:107). The cascade verify path (FEDERATED-STORE-MVP
-// §C4) reads this to deny blacklisted licenses / apps / authors. `target` is
-// the blacklisted Pubkey (license_nft_mint, app_id-keyed pubkey, or author).
-func DeriveBlacklistEntry(target Pubkey, programID Pubkey) (Pubkey, PDABump, error) {
-	return FindProgramAddress([][]byte{SeedBlacklist, target[:]}, programID, nil)
+// BlacklistStatusKindSeed is the license registry's type-separated seed for a
+// BlacklistType wire value (contracts programs/license-registry/src/state/
+// blacklist_status.rs BlacklistType::seed(); the wire values are the consumer
+// ABI, License=0, App=1, Author=2, and verify.BlacklistType names them). Any
+// other value is an error: there is no default kind.
+func BlacklistStatusKindSeed(kind uint8) ([]byte, error) {
+	switch kind {
+	case 0:
+		return []byte("license"), nil
+	case 1:
+		return []byte("app"), nil
+	case 2:
+		return []byte("author"), nil
+	default:
+		return nil, fmt.Errorf("blacklist status: unknown BlacklistType %d", kind)
+	}
+}
+
+// DeriveBlacklistStatus returns the BlacklistStatusEntry PDA, seeds
+// ["blacklist_status", kind seed, target] (contracts state/blacklist_status.rs
+// BLACKLIST_STATUS_SEED; client.rs derive_blacklist_status_pda), with its
+// canonical bump. kind is the BlacklistType wire value. target is the kind's
+// 32-byte identity: the licence NFT mint (License), the decoded Sandstorm appId
+// key (App — DecodeSandstormAppID; never SHA-256 of the appId text, which is
+// ReleaseEntry.app_id, and never the master NFT mint), or the author's key
+// (Author). The registry never records an all-zero target, so one is refused.
+//
+// This account is the registry's ONLY blacklist representation, and it is
+// explicit: a consumer requires it to exist, to be the canonical record of that
+// kind and target, and to read Clear (verify.RequireBlacklistClear). The
+// greenfield program has no ["blacklist", target] account and no
+// absence-means-clear reading, so this package derives none.
+func DeriveBlacklistStatus(kind uint8, target [32]byte, programID Pubkey) (Pubkey, PDABump, error) {
+	seed, err := BlacklistStatusKindSeed(kind)
+	if err != nil {
+		return Pubkey{}, 0, err
+	}
+	if target == ([32]byte{}) {
+		return Pubkey{}, 0, errors.New("blacklist status: target is all-zero; the registry never records one")
+	}
+	return FindProgramAddress([][]byte{SeedBlacklistStatus, seed, target[:]}, programID, nil)
 }
 
 // Encode Pubkey as base58 for wire / JSON serialization.

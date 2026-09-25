@@ -178,12 +178,12 @@ func (c *rpcFailoverChainReader) FetchResellerEntry(ctx context.Context, addr st
 	return entry, err
 }
 
-func (c *rpcFailoverChainReader) FetchBlacklistStatus(ctx context.Context, addr string) (entry blacklistStatusEntry, err error) {
+func (c *rpcFailoverChainReader) FetchBlacklistStatusAccount(ctx context.Context, addr string) (account *verify.Account, err error) {
 	err = c.call(ctx, func(ctx context.Context, reader chainReader) error {
-		entry, err = reader.FetchBlacklistStatus(ctx, addr)
+		account, err = reader.FetchBlacklistStatusAccount(ctx, addr)
 		return err
 	})
-	return entry, err
+	return account, err
 }
 
 func (c *rpcFailoverChainReader) FetchInstallerReleaseEntryMeta(ctx context.Context, addr string) (meta installerReleaseMeta, err error) {

@@ -106,9 +106,11 @@ type countingClearanceReader struct {
 	calls atomic.Int32
 }
 
-func (c *countingClearanceReader) FetchBlacklistStatus(_ context.Context, addr string) (blacklistStatusEntry, error) {
+// FetchBlacklistStatusAccount answers each address with an account that names
+// it, so a row that got another address's answer is visible.
+func (c *countingClearanceReader) FetchBlacklistStatusAccount(_ context.Context, addr string) (*verify.Account, error) {
 	c.calls.Add(1)
-	return blacklistStatusEntry{PDA: addr, Status: blacklistStatusClear}, nil
+	return &verify.Account{Data: []byte(addr), Owner: programID.Base58()}, nil
 }
 
 // Two rows can share a clearance (the same app listed twice, or a licence);
@@ -124,9 +126,9 @@ func TestMemoChainReaderCollapsesASharedClearanceRead(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			entry, err := memo.FetchBlacklistStatus(context.Background(), addr)
-			if err != nil || entry.PDA != addr {
-				t.Errorf("unexpected clearance answer: %+v err=%v", entry, err)
+			account, err := memo.FetchBlacklistStatusAccount(context.Background(), addr)
+			if err != nil || account == nil || string(account.Data) != addr {
+				t.Errorf("unexpected clearance answer: %+v err=%v", account, err)
 			}
 		}()
 	}
@@ -136,7 +138,7 @@ func TestMemoChainReaderCollapsesASharedClearanceRead(t *testing.T) {
 	}
 	// A DIFFERENT clearance must still reach the chain: the memo keys on the
 	// address, it never assumes rows share one.
-	if _, err := memo.FetchBlacklistStatus(context.Background(), "ADifferentAppClearancePDA1111111111111111111"); err != nil {
+	if _, err := memo.FetchBlacklistStatusAccount(context.Background(), "ADifferentAppClearancePDA1111111111111111111"); err != nil {
 		t.Fatal(err)
 	}
 	if got := inner.calls.Load(); got != 2 {

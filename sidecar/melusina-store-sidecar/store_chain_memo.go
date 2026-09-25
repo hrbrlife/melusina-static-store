@@ -42,7 +42,7 @@ type memoChainReader struct {
 	chainReader
 	mu        sync.Mutex
 	authz     map[string]*memoRead[authzResult]
-	clearance map[string]*memoRead[blacklistStatusEntry]
+	clearance map[string]*memoRead[*verify.Account]
 	licence   map[string]*memoRead[licenseEntryHead]
 	reseller  map[string]*memoRead[verify.ResellerEntry]
 }
@@ -60,7 +60,7 @@ func newMemoChainReader(inner chainReader) *memoChainReader {
 	return &memoChainReader{
 		chainReader: inner,
 		authz:       make(map[string]*memoRead[authzResult], 1),
-		clearance:   make(map[string]*memoRead[blacklistStatusEntry], 1),
+		clearance:   make(map[string]*memoRead[*verify.Account], 1),
 		licence:     make(map[string]*memoRead[licenseEntryHead], 1),
 		reseller:    make(map[string]*memoRead[verify.ResellerEntry], 1),
 	}
@@ -116,10 +116,12 @@ func readOnce[T any](ctx context.Context, mu *sync.Mutex, table map[string]*memo
 	return entry.value, entry.err
 }
 
-// FetchBlacklistStatus is keyed by the clearance's address: rows that share a
-// clearance share one read, and rows that do not simply each read their own.
-func (m *memoChainReader) FetchBlacklistStatus(ctx context.Context, addrB58 string) (blacklistStatusEntry, error) {
-	return readOnce(ctx, &m.mu, m.clearance, addrB58, m.chainReader.FetchBlacklistStatus)
+// FetchBlacklistStatusAccount is keyed by the clearance's address: rows that
+// share a clearance share one read, and rows that do not simply each read their
+// own. Every row hands the same account to verify.RequireBlacklistClear, which
+// never modifies it.
+func (m *memoChainReader) FetchBlacklistStatusAccount(ctx context.Context, addrB58 string) (*verify.Account, error) {
+	return readOnce(ctx, &m.mu, m.clearance, addrB58, m.chainReader.FetchBlacklistStatusAccount)
 }
 
 func (m *memoChainReader) FetchStoreOperatorAuthz(ctx context.Context, addrB58 string) (verify.AuthorizationStatus, verify.Pubkey, uint8, bool, [32]byte, error) {

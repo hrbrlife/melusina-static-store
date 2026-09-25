@@ -1840,7 +1840,7 @@ func TestHandlePublish_Rejects(t *testing.T) {
 		{
 			name: "blacklisted",
 			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, f *publishFixture, opPub [32]byte) ([]byte, []byte, envelope.Signed) {
-				pinBlacklistStatus(m, blacklistTargetApp, f.appKey, blacklistStatusBlocked)
+				pinBlacklistStatus(m, verify.BlacklistTypeApp, f.appKey, verify.BlacklistStatusBlocked)
 				release := mustJSON(t, f.rel)
 				pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 				return release, f.spk, signPublish(t, pub, op.Public(), f.spk, release)

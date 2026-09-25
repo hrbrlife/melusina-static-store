@@ -489,29 +489,6 @@ func (c *RPCClient) FetchFoundationAppEntry(ctx context.Context, addressBase58 s
 	return e.AppID, uint8(e.Tier), e.Status, nil
 }
 
-// FetchBlacklistEntry fetches a BlacklistEntry PDA (seeds ["blacklist",
-// target]; state/app_approval.rs:109 — the struct IS deployed on-chain) and
-// returns (present, entry_type). The struct carries NO status field: the
-// PDA's mere existence is the deny signal (§C4), so present=true means
-// blacklisted. A non-existent account is NOT an error here — it is the
-// common, expected "not blacklisted" case — so this returns
-// (false, 0, nil) rather than ErrPDANotFound. Genuine RPC / decode errors
-// are still surfaced so the caller fails closed (Inv 5).
-func (c *RPCClient) FetchBlacklistEntry(ctx context.Context, addressBase58 string) (present bool, entryType BlacklistType, err error) {
-	data, gerr := c.GetAccountInfo(ctx, addressBase58)
-	if gerr != nil {
-		return false, 0, gerr
-	}
-	if data == nil {
-		return false, 0, nil // not blacklisted
-	}
-	t, derr := ReadBlacklistEntryType(data)
-	if derr != nil {
-		return true, 0, derr
-	}
-	return true, t, nil
-}
-
 // ── RPC wire types ───────────────────────────────────────────────────────
 
 type rpcRequest struct {

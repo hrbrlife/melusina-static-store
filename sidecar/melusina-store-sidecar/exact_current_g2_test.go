@@ -58,9 +58,9 @@ func (c *exactCurrentReadOnlyChain) FetchStoreOperatorAuthz(ctx context.Context,
 	return c.mockChainReader.FetchStoreOperatorAuthz(ctx, addr)
 }
 
-func (c *exactCurrentReadOnlyChain) FetchBlacklistStatus(ctx context.Context, addr string) (blacklistStatusEntry, error) {
+func (c *exactCurrentReadOnlyChain) FetchBlacklistStatusAccount(ctx context.Context, addr string) (*verify.Account, error) {
 	c.readCalls++
-	return c.mockChainReader.FetchBlacklistStatus(ctx, addr)
+	return c.mockChainReader.FetchBlacklistStatusAccount(ctx, addr)
 }
 
 func (c *exactCurrentReadOnlyChain) FetchFoundationAppEntry(ctx context.Context, addr string) ([32]byte, uint8, verify.ApprovalStatus, error) {

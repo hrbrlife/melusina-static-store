@@ -70,7 +70,7 @@ type mockChainReader struct {
 	installerVault  [32]byte
 
 	// rawAccounts backs fetchRawAccount (the cascade raw-read capability) and
-	// FetchBlacklistStatus: base58 address -> account data. Owner is programID
+	// FetchBlacklistStatusAccount: base58 address -> account data. Owner is programID
 	// unless rawAccountOwners names another for that address.
 	rawAccounts      map[string][]byte
 	rawAccountOwners map[string]string
@@ -337,21 +337,23 @@ func (m *mockChainReader) FetchStoreReleaseListingMeta(_ context.Context, addr s
 	}, nil
 }
 
-// FetchBlacklistStatus serves the account seeded in rawAccounts through the
-// production reader (owner check and strict decode). Nothing seeded is absent,
-// exactly as on chain: the mock never answers Clear for an unseeded address.
-func (m *mockChainReader) FetchBlacklistStatus(ctx context.Context, addr string) (blacklistStatusEntry, error) {
+// FetchBlacklistStatusAccount serves the account seeded in rawAccounts with its
+// owner, undecoded, as the RPC reader does; the production decision
+// (verify.RequireBlacklistClear) checks the owner and decodes it. Nothing
+// seeded is absent (nil), exactly as on chain: the mock never answers Clear for
+// an unseeded address.
+func (m *mockChainReader) FetchBlacklistStatusAccount(ctx context.Context, addr string) (*verify.Account, error) {
 	if m.clearanceErr != nil {
-		return blacklistStatusEntry{}, m.clearanceErr
+		return nil, m.clearanceErr
 	}
 	data, owner, err := m.fetchRawAccount(ctx, addr)
 	if err != nil {
-		return blacklistStatusEntry{}, err
+		return nil, err
 	}
 	if data == nil {
-		return blacklistStatusEntry{}, verify.ErrPDANotFound
+		return nil, nil
 	}
-	return readBlacklistStatusAccount(addr, data, owner)
+	return &verify.Account{Data: data, Owner: owner}, nil
 }
 
 // FetchLicenseEntry and FetchResellerEntry serve the accounts seeded in
@@ -690,15 +692,15 @@ func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, sp
 	if err != nil {
 		t.Fatal(err)
 	}
-	appKey, err := decodeSandstormAppIDKey(appIDText)
+	appKey, err := primitives.DecodeSandstormAppID(appIDText)
 	if err != nil {
 		t.Fatal(err)
 	}
-	blApp, _, err := deriveBlacklistStatusPDA(blacklistTargetApp, appKey)
+	blApp, _, err := deriveBlacklistStatusPDA(verify.BlacklistTypeApp, appKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	blLic, _, err := deriveBlacklistStatusPDA(blacklistTargetLicense, [32]byte(licenseMint))
+	blLic, _, err := deriveBlacklistStatusPDA(verify.BlacklistTypeLicense, [32]byte(licenseMint))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -876,8 +878,8 @@ func (f publishFixture) releaseTrust() (*releaseentry.Trust, error) {
 // pinClearances seeds the Foundation's first Clear record for the fixture's
 // app and its operator licence, as set_blacklist_status writes them.
 func (f publishFixture) pinClearances(m *mockChainReader) {
-	pinBlacklistStatus(m, blacklistTargetApp, f.appKey, blacklistStatusClear)
-	pinBlacklistStatus(m, blacklistTargetLicense, [32]byte(f.licenseMint), blacklistStatusClear)
+	pinBlacklistStatus(m, verify.BlacklistTypeApp, f.appKey, verify.BlacklistStatusClear)
+	pinBlacklistStatus(m, verify.BlacklistTypeLicense, [32]byte(f.licenseMint), verify.BlacklistStatusClear)
 }
 
 // pinServeListingActive adds the exact per-store projection required by the

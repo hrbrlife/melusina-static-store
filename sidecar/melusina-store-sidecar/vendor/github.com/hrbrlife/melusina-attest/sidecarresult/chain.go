@@ -2,7 +2,6 @@ package sidecarresult
 
 import (
 	"context"
-	"errors"
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
@@ -34,7 +33,7 @@ type Root struct {
 // complaint then adds a 5-minute TTL, every clause still holds ("non-nil and
 // chain-backed"), and a revoked license verifies green for the cache's lifetime.
 // An implementation MAY cache pubkeys and immutable bindings; it MUST NOT cache
-// status, revocation, or blacklist presence, and ReadAtMs is how that is
+// status, revocation, or blacklist status, and ReadAtMs is how that is
 // checkable rather than promised.
 //
 // # Errors
@@ -83,51 +82,18 @@ type ChainReader interface {
 	// Rule 7).
 	ReadGlobalSidecarApproval(ctx context.Context, pdaB58 string) (GlobalSidecarApproval, error)
 
-	// ReadBlacklist reports whether targetB58 has a BlacklistEntry, fresh.
+	// ReadBlacklistStatus fetches the account at pdaB58, fresh, with the owner
+	// the RPC reported. pdaB58 is a BlacklistStatusEntry address the VERIFIER
+	// derived (pda.BlacklistStatus under its build-pinned program), never one a
+	// result carried.
 	//
-	// Mirrors the production discipline of the store-sidecar's VerifyPublish
-	// (verify.go:50 + verifyNotBlacklisted): the PDA's mere EXISTENCE is the deny
-	// signal, and a MISSING PDA is the common, expected "clear" case. An
-	// implementation MUST therefore map verify.ErrPDANotFound to
-	// {Present:false}, and MUST return an error for a genuine RPC/decode failure
-	// — which the verifier rejects, fail-closed.
-	//
-	// DO NOT hand-write that mapping: call BlacklistFromPDARead below. This
-	// paragraph is prose, and prose is what this library exists to stop being a
-	// control (canon §0: "a comment cannot be a control"). An implementation that
-	// simply wraps verify.ReadBlacklist and returns its error rejects EVERY honest
-	// result, because absence is the normal clear case — a failure in the safe
-	// direction, but a failure, and the only thing standing between the next
-	// implementer and it was this sentence.
-	ReadBlacklist(ctx context.Context, targetB58 string) (BlacklistRead, error)
-}
-
-// BlacklistFromPDARead converts a raw BlacklistEntry PDA read into the
-// BlacklistRead this port requires. It is the EXECUTABLE form of the mapping
-// ReadBlacklist's doc describes, and implementations MUST use it rather than
-// re-deriving the rule from that prose.
-//
-// The asymmetry it encodes is the whole contract: a MISSING PDA is the expected
-// CLEAR case (BlacklistEntry PDAs are minted only to deny), while ANY OTHER read
-// failure is a rejection the verifier fail-closes on (R-42). Those two look
-// identical to a caller that just forwards err, and getting them backwards in
-// either direction is a defect: forward ErrPDANotFound and nothing honest ever
-// verifies; swallow a genuine RPC failure and an attacker who partitions the
-// verifier from RPC converts BLACKLISTED into CLEAR.
-//
-// readAtMs is the reader's own read timestamp (R-44); the verifier enforces its
-// freshness and rejects a zero.
-func BlacklistFromPDARead(readAtMs int64, err error) (BlacklistRead, error) {
-	switch {
-	case err == nil:
-		// The account exists. Existence IS the deny signal.
-		return BlacklistRead{ReadAtMs: readAtMs, Present: true}, nil
-	case errors.Is(err, verify.ErrPDANotFound):
-		return BlacklistRead{ReadAtMs: readAtMs, Present: false}, nil
-	default:
-		// A genuine RPC/decode failure. Never a clear.
-		return BlacklistRead{}, err
-	}
+	// The license registry keeps an EXPLICIT status per target
+	// (["blacklist_status", kind seed, target]); a missing account is not a
+	// clearance statement. So an absent account is verify.ErrPDANotFound like
+	// every other authority read, and the verifier REJECTS it (R-43). The port
+	// does not judge: the verifier applies verify.RequireBlacklistClear to the
+	// bytes and owner returned here.
+	ReadBlacklistStatus(ctx context.Context, pdaB58 string) (BlacklistStatusAccount, error)
 }
 
 // SidecarKeyVersion is the authoritative current key_version for a sidecar.
@@ -217,9 +183,11 @@ type GlobalSidecarApproval struct {
 	Status verify.ApprovalStatus
 }
 
-// BlacklistRead is a fresh blacklist probe. Present==true is the deny signal.
-type BlacklistRead struct {
+// BlacklistStatusAccount is a fresh read of one BlacklistStatusEntry address:
+// the account as the RPC returned it (data and owner). It is judged only by
+// verify.RequireBlacklistClear.
+type BlacklistStatusAccount struct {
 	// ReadAtMs is when this state was read from chain (R-44).
 	ReadAtMs int64
-	Present  bool
+	Account  verify.Account
 }

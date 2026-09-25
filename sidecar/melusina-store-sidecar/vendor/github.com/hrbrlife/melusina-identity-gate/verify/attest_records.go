@@ -5,7 +5,7 @@ package verify
 //
 // Why they were missing, stated plainly so nobody re-derives it: this file's
 // siblings decode SidecarIdentity (approvals.go:1257), LicenseEntry (:657),
-// ReleaseEntry (:1153), StoreOperatorAuthz (:1349) and BlacklistEntry (:1493).
+// ReleaseEntry (:1153) and StoreOperatorAuthz (:1349).
 // There was NO decoder for PearlIdentityEntry or DomainClaim. The PDA DERIVERS
 // exist (melusina-attest/pda.go); the PARSERS did not — you could compute the
 // address and nothing could parse the account. So no GrainCert check could read

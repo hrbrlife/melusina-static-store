@@ -12,7 +12,13 @@ Scope is intentionally narrow:
   Melusina PDA (InstallAdminEntry, OrganizationMemberEntry,
   LicenseEntry, GlobalAppApproval, ResellerAppApproval, LocalAppApproval,
   GlobalSidecarApproval, ResellerSidecarApproval, LocalSidecarApproval,
-  ContractWhitelist, AppContractPair, DomainClaim).
+  ContractWhitelist, AppContractPair, DomainClaim, BlacklistStatusEntry).
+  The BlacklistStatusEntry derivation (`DeriveBlacklistStatus`) is pinned to
+  the contracts' golden vectors; its account is read only by
+  `melusina-identity-gate/verify.RequireBlacklistClear`.
+- **Sandstorm appId codec** — `DecodeSandstormAppID` / `EncodeSandstormAppID`:
+  the decoded 32-byte key is the App blacklist target; SHA-256 of the text is
+  `ReleaseEntry.app_id`.
 - **Ed25519 thin helpers** — type aliases + base58 round-trip utilities.
 
 Non-goals:

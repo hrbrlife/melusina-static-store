@@ -217,7 +217,7 @@ func TestPublishAdmissionAgreesWithTheDaemonOnItsCommittedReceipts(t *testing.T)
 			if err != nil || len(context) != authzReceiptContextLen {
 				t.Fatalf("authz-receipt-context-length: %d bytes (%v), the daemon reads %d", len(context), err, authzReceiptContextLen)
 			}
-			appKey, err := decodeSandstormAppIDKey(c.AppID)
+			appKey, err := primitives.DecodeSandstormAppID(c.AppID)
 			if err != nil {
 				t.Fatalf("the Store refuses the daemon's appId %q: %v", c.AppID, err)
 			}

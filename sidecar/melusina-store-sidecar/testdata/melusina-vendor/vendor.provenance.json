@@ -23,13 +23,13 @@
     "     each object it is missing."
   ],
   "sourceRepository": "https://github.com/hrbrlife/Melusina",
-  "sourceCommit": "dd9053fdf22bb13892209ed9cb0378db4f61f53a",
+  "sourceCommit": "ad8d6c7df4186c354980fbc0a33fc1212aa1d2ec",
   "modules": [
     {
       "module": "github.com/hrbrlife/melusina-attest",
       "replace": "../../../Melusina/shared/melusina-attest",
       "sourcePath": "shared/melusina-attest",
-      "tree": "9c62b180f6267ae483fcd025818b6dfd8b2f76ed",
+      "tree": "05a5bdbe770795c5d8e29ab3d1ef1809823961c5",
       "files": [
         {
           "path": "canonical/canonical.go",
@@ -65,15 +65,15 @@
         },
         {
           "path": "pda/pda.go",
-          "blob": "9b994e395227af4d7f6acd60a8b948e5786e6f88"
+          "blob": "7a4ae0dcfdeff23a64cf9147a061e4da20779735"
         },
         {
           "path": "sidecarresult/chain.go",
-          "blob": "f563a134535f83479dace138bb9a94059035f460"
+          "blob": "401c072913fd022e2c8f98620f7533a32e108aff"
         },
         {
           "path": "sidecarresult/errors.go",
-          "blob": "3c6628b749e3722f15749deab9ba080b6cb11035"
+          "blob": "c2fcf9b6598140fe81a2616faef03b7763e2f71a"
         },
         {
           "path": "sidecarresult/result.go",
@@ -85,7 +85,7 @@
         },
         {
           "path": "sidecarresult/verify.go",
-          "blob": "c72fbb82bc8b051a3e3b8ecec0520f7388f6ecea"
+          "blob": "b271d8b28c3adc5049807bbecc10e7e61c33f590"
         }
       ]
     },
@@ -93,7 +93,7 @@
       "module": "github.com/hrbrlife/melusina-identity-gate",
       "replace": "../../../Melusina/shared/melusina-identity-gate",
       "sourcePath": "shared/melusina-identity-gate",
-      "tree": "b25b9216cb0ff3feeb997bcdd21ed637819f98fa",
+      "tree": "3d17140bb30d7753e42bfa61339e089c7e3b1764",
       "files": [
         {
           "path": "bundle/canonical.go",
@@ -149,19 +149,27 @@
         },
         {
           "path": "verify/approvals.go",
-          "blob": "6b5e92b6975ad77d9a7d84241e441176cdc9c15d"
+          "blob": "835dfcad002a7c0c49a5690ebc5328174ff9e62f"
         },
         {
           "path": "verify/attest_records.go",
-          "blob": "463c9500083f6cfa3640d4427a1a2d076e8450aa"
+          "blob": "b6943a1ec9b8e2ffa2cfd1a0ada0ac4abeb67f08"
+        },
+        {
+          "path": "verify/blacklist_status.go",
+          "blob": "d42e28fbf60a67b46fbba4b297eb44291c579403"
         },
         {
           "path": "verify/foundation.go",
           "blob": "7e684f3078afb0201d094a3785d0671faf622d46"
         },
         {
+          "path": "verify/global_app_approval.go",
+          "blob": "6fd6d442109c7492de7424b96d3ad02078107c16"
+        },
+        {
           "path": "verify/rpc.go",
-          "blob": "eabd095b399991771ce7821d2f8a0c7856d930ff"
+          "blob": "ac0214c79b80db922a5776c4fe8f5ac511a35e49"
         },
         {
           "path": "verify/sidecar_cascade.go",
@@ -197,11 +205,11 @@
       "module": "github.com/melusina-os/melusina-solana-primitives",
       "replace": "../../../Melusina/shared/melusina-solana-primitives",
       "sourcePath": "shared/melusina-solana-primitives",
-      "tree": "fa47acfea7d05fb5729e72e6eea4e9db127ee9b1",
+      "tree": "a1cfb331cc7506ec5fbd79a59d5a2aa8915d8579",
       "files": [
         {
           "path": "README.md",
-          "blob": "f31c7ac5d86069a11aa11be2e821630a0aa36347"
+          "blob": "0d6e761b71db108043bd2ae6a53188f6c6b6967c"
         },
         {
           "path": "base58.go",
@@ -209,7 +217,11 @@
         },
         {
           "path": "pda.go",
-          "blob": "05911eec842709e05d3ae4397b0898037e68a9e7"
+          "blob": "7c5165d1478cee16807e1314ba8a2753510381c6"
+        },
+        {
+          "path": "sandstorm_appid.go",
+          "blob": "7a1494c86a47e76189d3caab35fbdef8117bde7c"
         }
       ]
     }

@@ -95,10 +95,12 @@ type chainReader interface {
 	// absent account is verify.ErrPDANotFound.
 	FetchLicenseEntry(ctx context.Context, addrB58 string) (licenseEntryHead, error)
 	FetchResellerEntry(ctx context.Context, addrB58 string) (verify.ResellerEntry, error)
-	// FetchBlacklistStatus reads one BlacklistStatusEntry with its owner
-	// (blacklist_status.go). An absent account is verify.ErrPDANotFound, which
-	// every caller refuses: absence is not a clearance statement.
-	FetchBlacklistStatus(ctx context.Context, addrB58 string) (blacklistStatusEntry, error)
+	// FetchBlacklistStatusAccount returns the account at one clearance
+	// address with the owner the RPC reported, undecoded (blacklist_status.go).
+	// An absent account is nil with no error; verify.RequireBlacklistClear,
+	// the one decision over it, refuses that: absence is not a clearance
+	// statement.
+	FetchBlacklistStatusAccount(ctx context.Context, addrB58 string) (*verify.Account, error)
 	// FetchInstallerReleaseEntryMeta is the one InstallerReleaseEntry read: the
 	// whole account decoded exactly (internal/installerrelease), for the serve,
 	// publish and generation gates and the reseller ROOT-MIRROR worker, each of

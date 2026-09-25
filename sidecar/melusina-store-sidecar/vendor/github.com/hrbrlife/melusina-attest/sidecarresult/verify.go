@@ -573,22 +573,33 @@ func (v *Verifier) Verify(ctx context.Context, s Signed, opts Options) (*Atteste
 			ErrApprovalBuildSkew, registeredDigest, hex.EncodeToString(ap.BinaryHash[:]))
 	}
 
-	// R-15a — blacklist, FRESH and retroactive. Mirrors VerifyPublish's pairing:
-	// neither the app master NFT mint nor the operator's license may be denied.
-	for _, t := range []struct{ label, target string }{
-		{"master nft mint", v.ExpectedMasterNFTMint},
-		{"license", r.LicenseNFTMint},
-	} {
-		bl, err := v.Chain.ReadBlacklist(ctx, t.target)
-		if err != nil {
-			return nil, chainErr("blacklist ("+t.label+")", err)
-		}
-		if err := v.requireFresh("blacklist ("+t.label+")", bl.ReadAtMs, nowMs); err != nil {
-			return nil, err
-		}
-		if bl.Present {
-			return nil, fmt.Errorf("%w: %s %s", ErrBlacklisted, t.label, t.target)
-		}
+	// R-15a — the licence's explicit Clear, FRESH and retroactive. The license
+	// registry keeps one BlacklistStatusEntry per target and only a present,
+	// canonical Clear is a clearance: absent is R-43, and Blocked, foreign-owned,
+	// malformed or non-canonical is ErrBlacklisted. The address and bump are
+	// derived here, under the pinned program, and the bytes are judged by the one
+	// shared reader (verify.RequireBlacklistClear).
+	//
+	// There is no master-NFT-mint row. The greenfield registry has no blacklist
+	// kind for the Foundation master mint (an App target is the decoded Sandstorm
+	// appId and "never the Foundation master NFT mint"), so the legacy probe of
+	// that mint could only ever read absence — absence-means-clear, which the
+	// program has no representation for. A sidecar build is denied through its
+	// GlobalSidecarApproval status (R-11c).
+	licenseClearPDA, licenseClearBump, err := pda.BlacklistStatus(verify.BlacklistTypeLicense, licenseMint, programID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: derive license blacklist status PDA: %v", ErrBlacklisted, err)
+	}
+	licenseClearB58 := pda.ToBase58(licenseClearPDA[:])
+	bl, err := v.Chain.ReadBlacklistStatus(ctx, licenseClearB58)
+	if err != nil {
+		return nil, chainErr("blacklist status (license "+r.LicenseNFTMint+" at "+licenseClearB58+")", err)
+	}
+	if err := v.requireFresh("blacklist status (license)", bl.ReadAtMs, nowMs); err != nil {
+		return nil, err
+	}
+	if _, err := verify.RequireBlacklistClear(&bl.Account, v.ProgramID, verify.BlacklistTypeLicense, licenseMint, licenseClearBump); err != nil {
+		return nil, fmt.Errorf("%w: license %s: %w", ErrBlacklisted, r.LicenseNFTMint, err)
 	}
 
 	// R-10 — the signature verifies against the CHAIN's signing_pubkey. Never the
@@ -710,7 +721,7 @@ func (v *Verifier) requireFresh(label string, readAtMs, nowMs int64) error {
 	}
 	if age := nowMs - readAtMs; age > MaxAuthorityStaleness.Milliseconds() {
 		return fmt.Errorf("%w: %s: read %dms ago, ceiling is %dms — the ChainReader MUST NOT "+
-			"cache status, revocation, or blacklist presence",
+			"cache status, revocation, or blacklist status",
 			ErrStaleAuthorityRead, label, age, MaxAuthorityStaleness.Milliseconds())
 	}
 	if readAtMs > nowMs+MaxClockSkew.Milliseconds() {

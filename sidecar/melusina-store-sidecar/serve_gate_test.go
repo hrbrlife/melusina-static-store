@@ -417,7 +417,7 @@ func TestServeGate_Refusals(t *testing.T) {
 			name: "blacklisted_app",
 			mutate: func(t *testing.T, cfg Config, m *mockChainReader, f publishFixture) string {
 				pinReleaseActive(m, f)
-				pinBlacklistStatus(m, blacklistTargetApp, f.appKey, blacklistStatusBlocked)
+				pinBlacklistStatus(m, verify.BlacklistTypeApp, f.appKey, verify.BlacklistStatusBlocked)
 				return "/packages/" + pkgBase(f)
 			},
 			wantCode: http.StatusForbidden,

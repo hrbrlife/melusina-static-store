@@ -1,6 +1,9 @@
 package pda
 
-import primitives "github.com/melusina-os/melusina-solana-primitives"
+import (
+	"github.com/hrbrlife/melusina-identity-gate/verify"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
+)
 
 type Pubkey = primitives.Pubkey
 type Bump = primitives.PDABump
@@ -80,8 +83,29 @@ func StoreOperatorAuthorization(licenseMint Pubkey, storeDomainHash [32]byte, pr
 	return primitives.DeriveStoreOperatorAuthz(licenseMint, storeDomainHash, programID)
 }
 
-func BlacklistEntry(target Pubkey, programID Pubkey) (Pubkey, Bump, error) {
-	return primitives.DeriveBlacklistEntry(target, programID)
+// BlacklistStatus derives the license registry's BlacklistStatusEntry PDA,
+// seeds ["blacklist_status", kind seed, target], and its canonical bump — the
+// only blacklist record the greenfield program writes. The target is the
+// kind's identity: the licence NFT mint, the decoded Sandstorm appId key
+// (primitives.DecodeSandstormAppID — never SHA-256 of the text, never the
+// master mint), or the author's key.
+//
+// The record must exist and read Clear: pass the account read at this address
+// and this bump to verify.RequireBlacklistClear. An absent account is NOT a
+// clearance.
+func BlacklistStatus(kind verify.BlacklistType, target [32]byte, programID Pubkey) (Pubkey, Bump, error) {
+	return primitives.DeriveBlacklistStatus(uint8(kind), target, programID)
+}
+
+// GlobalApp derives the GlobalAppApproval PDA, seeds
+// ["global_app", master_nft_mint, appKey], and its canonical bump. appKey is
+// the app's DECODED Sandstorm appId (primitives.DecodeSandstormAppID) — the
+// key the three approval tiers share, never a release/SPK hash and never
+// ReleaseEntry.app_id. The account there names the app's author, the Author
+// blacklist target: pass the account read at this address and this bump to
+// verify.RequireCanonicalGlobalAppApproval.
+func GlobalApp(masterMint Pubkey, appKey [32]byte, programID Pubkey) (Pubkey, Bump, error) {
+	return primitives.DeriveGlobalApp(masterMint, appKey, programID)
 }
 
 // FoundationApp derives the FoundationAppEntry PDA, seeds

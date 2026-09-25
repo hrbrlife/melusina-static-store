@@ -17,7 +17,7 @@
     "that walk."
   ],
   "sourceRepository": "https://github.com/hrbrlife/Melusina",
-  "sourceCommit": "dd9053fdf22bb13892209ed9cb0378db4f61f53a",
+  "sourceCommit": "ad8d6c7df4186c354980fbc0a33fc1212aa1d2ec",
   "files": [
     {
       "file": "binhash.go.src",

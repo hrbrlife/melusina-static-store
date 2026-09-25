@@ -224,9 +224,13 @@ var (
 
 	// --- Chain reachability: a VERDICT, never a retriable condition (§7.3.2) ---
 
-	// ErrBlacklisted means the license or master NFT mint is blacklisted. R-15a
-	// — v1 had no blacklist row on this path at all (§9.3). Checked FRESH:
-	// retroactive, like revocation.
+	// ErrBlacklisted means the licence is not affirmatively Clear in the license
+	// registry's BlacklistStatusEntry: it is Blocked, or the account at its
+	// canonical address is foreign-owned, malformed or not the canonical record
+	// of that kind and target (the verify cause is wrapped). An ABSENT record is
+	// ErrAuthorityPDANotFound: absence is not Clear. R-15a — v1 had no blacklist
+	// row on this path at all (§9.3). Checked FRESH: retroactive, like
+	// revocation.
 	ErrBlacklisted = errors.New("sidecarresult: blacklisted")
 
 	// ErrChainUnreachable means an authority read failed. R-42.
@@ -238,13 +242,13 @@ var (
 	ErrChainUnreachable = errors.New("sidecarresult: chain unreachable")
 
 	// ErrAuthorityPDANotFound means an authority account does not exist. R-43.
-	// Reject; a missing authority is not a pass. (The blacklist read is the one
-	// deliberate exception — see Verifier.Verify.)
+	// Reject; a missing authority is not a pass. There is no exception: a
+	// missing BlacklistStatusEntry is not a clearance either.
 	ErrAuthorityPDANotFound = errors.New("sidecarresult: authority PDA not found")
 
 	// ErrStaleAuthorityRead means the ChainReader returned liveness state that is
 	// not FRESH. R-44, §7.3.2: "freshness is a contract term", enforced rather
 	// than asserted. The Resolver may cache pubkeys and immutable bindings; it
-	// MUST NOT cache status, revocation, or blacklist presence.
+	// MUST NOT cache status, revocation, or blacklist status.
 	ErrStaleAuthorityRead = errors.New("sidecarresult: authority read is not fresh")
 )

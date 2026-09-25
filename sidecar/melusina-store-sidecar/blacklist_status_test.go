@@ -3,21 +3,23 @@ package main
 // The Store's clearance reads against the licence registry's explicit
 // BlacklistStatusEntry (blacklist_status.go). The contracts own the account and
 // its cross-language vector; the authorization daemon reads the same record
-// with the same rules (authz pkg/grainauth/control_facts.go). These tests hold
-// the Store to both:
+// with the same rules (authz pkg/grainauth/control_facts.go). The Store decides
+// with the vendored verify.RequireBlacklistClear and keeps no decoder of its
+// own. These tests hold the Store to both:
 //
 //   - the vector: a byte-for-byte copy of the contracts'
 //     scripts/estate/testdata/blacklist-clearance-vectors.json, bound to the
 //     contracts commit that holds it (testdata/contracts-blacklist-clearance);
 //     every target's address, bump and target encoding is derived with the
-//     Store's own functions, and the first Clear the vector's instruction
-//     leaves is accepted by the Store's own gate;
-//   - the decoder: each rule authz DecodeBlacklistStatus applies refuses here
-//     too, by name;
+//     functions the Store's gate calls, and the first Clear the vector's
+//     instruction leaves is accepted by the Store's own gate;
+//   - the record rules: each rule authz DecodeBlacklistStatus applies is a
+//     refusal of the Store's gate too, by name, over bytes this file writes
+//     from the contracts layout, not with the vendored encoder;
 //   - the gates: stage, publish and serve each refuse an absent record and a
 //     Blocked one for every target they check, next to a positive control; and
 //   - the legacy ["blacklist", target] account the program never creates is
-//     not read by any Store source file.
+//     not read by any Store source file, nor by the vendored Melusina code.
 
 import (
 	"bytes"
@@ -34,6 +36,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -46,8 +49,13 @@ import (
 
 // ── fixtures ───────────────────────────────────────────────────────────────
 
+// testSandstormBase32Digits is Sandstorm's base32 alphabet (sandstorm
+// util.c++; contracts lib/blacklist-clearance.mjs SANDSTORM_BASE32_DIGITS),
+// written here so the fixtures' encoder is not the vendored one it checks.
+const testSandstormBase32Digits = "0123456789acdefghjkmnpqrstuvwxyz"
+
 // encodeSandstormAppIDText is the canonical 52-character text of a decoded
-// appId key (the inverse of decodeSandstormAppIDKey), for fixtures.
+// appId key (the inverse of primitives.DecodeSandstormAppID), for fixtures.
 func encodeSandstormAppIDText(key [32]byte) string {
 	out := make([]byte, 0, 52)
 	var acc uint32
@@ -57,11 +65,11 @@ func encodeSandstormAppIDText(key [32]byte) string {
 		bits += 8
 		for bits >= 5 {
 			bits -= 5
-			out = append(out, sandstormBase32Digits[(acc>>bits)&31])
+			out = append(out, testSandstormBase32Digits[(acc>>bits)&31])
 		}
 		acc &= (1 << bits) - 1
 	}
-	return string(append(out, sandstormBase32Digits[(acc<<(5-bits))&31]))
+	return string(append(out, testSandstormBase32Digits[(acc<<(5-bits))&31]))
 }
 
 // testAppIDText is a canonical Sandstorm appId unique to label.
@@ -75,26 +83,34 @@ var testClearanceUpdatedBy = sha256.Sum256([]byte("test foundation holder"))
 
 // testBlacklistStatusEntry is the record set_blacklist_status leaves at the
 // canonical address of kind/target after its first write with status.
-func testBlacklistStatusEntry(t testing.TB, kind blacklistTargetKind, target [32]byte, status blacklistStatus) blacklistStatusEntry {
+func testBlacklistStatusEntry(t testing.TB, kind verify.BlacklistType, target [32]byte, status verify.BlacklistStatus) verify.BlacklistStatusEntry {
 	t.Helper()
-	addr, bump, err := deriveBlacklistStatusPDA(kind, target)
+	_, bump, err := deriveBlacklistStatusPDA(kind, target)
 	if err != nil {
 		t.Fatal(err)
 	}
-	entry := blacklistStatusEntry{
-		PDA: addr.Base58(), Kind: kind, Target: target, Status: status,
+	entry := verify.BlacklistStatusEntry{
+		Kind: kind, Target: target, Status: status,
 		Revision: 1, LastNonce: 1, UpdatedBy: testClearanceUpdatedBy, UpdatedAt: 1790000000, Bump: bump,
 	}
-	if status == blacklistStatusBlocked {
+	if status == verify.BlacklistStatusBlocked {
 		entry.ReasonHash = sha256.Sum256([]byte("incident reason"))
 	}
 	return entry
 }
 
-// encodeBlacklistStatusEntry writes the program's 131-byte layout.
-func encodeBlacklistStatusEntry(entry blacklistStatusEntry) []byte {
-	out := make([]byte, 0, blacklistStatusEntryLen)
-	out = append(out, discriminatorBlacklistStatusEntry...)
+// testBlacklistStatusEntryLen is BlacklistStatusEntry::LEN in the contracts
+// (state/blacklist_status.rs), discriminator included.
+const testBlacklistStatusEntryLen = 131
+
+// encodeBlacklistStatusEntry writes the program's 131-byte layout from the
+// contracts' field order, with Anchor's discriminator for the account name. It
+// is deliberately not the vendored verify.EncodeBlacklistStatusEntry: the
+// records the tests seed are written independently of the reader that
+// decides them.
+func encodeBlacklistStatusEntry(entry verify.BlacklistStatusEntry) []byte {
+	out := make([]byte, 0, testBlacklistStatusEntryLen)
+	out = append(out, accountDiscriminator("BlacklistStatusEntry")...)
 	out = append(out, byte(entry.Kind))
 	out = append(out, entry.Target[:]...)
 	out = append(out, byte(entry.Status))
@@ -111,11 +127,11 @@ func encodeBlacklistStatusEntry(entry blacklistStatusEntry) []byte {
 // address, and SHA-256 of the text as the ReleaseEntry's app_id.
 func (f *publishFixture) bindAppIDText(t testing.TB, text string) {
 	t.Helper()
-	key, err := decodeSandstormAppIDKey(text)
+	key, err := primitives.DecodeSandstormAppID(text)
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr, _, err := deriveBlacklistStatusPDA(blacklistTargetApp, key)
+	addr, _, err := deriveBlacklistStatusPDA(verify.BlacklistTypeApp, key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,16 +145,16 @@ func seedBlacklistStatus(m *mockChainReader, addr string, data []byte) {
 
 // pinBlacklistStatus seeds the record of kind/target with status at its
 // canonical address.
-func pinBlacklistStatus(m *mockChainReader, kind blacklistTargetKind, target [32]byte, status blacklistStatus) {
+func pinBlacklistStatus(m *mockChainReader, kind verify.BlacklistType, target [32]byte, status verify.BlacklistStatus) {
 	addr, bump, err := deriveBlacklistStatusPDA(kind, target)
 	if err != nil {
 		panic(err)
 	}
-	entry := blacklistStatusEntry{
+	entry := verify.BlacklistStatusEntry{
 		Kind: kind, Target: target, Status: status,
 		Revision: 1, LastNonce: 1, UpdatedBy: testClearanceUpdatedBy, UpdatedAt: 1790000000, Bump: bump,
 	}
-	if status == blacklistStatusBlocked {
+	if status == verify.BlacklistStatusBlocked {
 		entry.ReasonHash = sha256.Sum256([]byte("incident reason"))
 	}
 	seedBlacklistStatus(m, addr.Base58(), encodeBlacklistStatusEntry(entry))
@@ -171,10 +187,10 @@ const (
 
 // contractsBlacklistTypeWire is the program's BlacklistType in declaration
 // order (blacklist_status.rs: "License=0, App=1, Author=2").
-var contractsBlacklistTypeWire = map[string]blacklistTargetKind{
-	"License": blacklistTargetLicense,
-	"App":     blacklistTargetApp,
-	"Author":  blacklistTargetAuthor,
+var contractsBlacklistTypeWire = map[string]verify.BlacklistType{
+	"License": verify.BlacklistTypeLicense,
+	"App":     verify.BlacklistTypeApp,
+	"Author":  verify.BlacklistTypeAuthor,
 }
 
 type contractsClearanceTarget struct {
@@ -404,7 +420,7 @@ func withVectorProgram(t *testing.T, v contractsClearanceVectors) {
 // TestStoreClearanceDerivationReproducesTheContractsVector derives every
 // target's clearance with the Store's production functions: the address and
 // bump; that a licence or author target is its key; that the App target is the
-// decoded appId (decodeSandstormAppIDKey), whose text hashes to the vector's
+// decoded appId (primitives.DecodeSandstormAppID), whose text hashes to the vector's
 // releaseEntryAppId and which is not that hash. It then seeds, at each
 // address, the record the vector's first-Clear instruction leaves and runs the
 // Store's gate check over it: each must come back Clear.
@@ -421,7 +437,7 @@ func TestStoreClearanceDerivationReproducesTheContractsVector(t *testing.T) {
 	}
 	firstRevision := binary.LittleEndian.Uint64(instruction[42:50])
 	firstNonce := binary.LittleEndian.Uint64(instruction[50:58])
-	if instruction[41] != byte(blacklistStatusClear) || firstRevision != 0 || firstNonce != 1 || !bytes.Equal(instruction[58:90], make([]byte, 32)) {
+	if instruction[41] != byte(verify.BlacklistStatusClear) || firstRevision != 0 || firstNonce != 1 || !bytes.Equal(instruction[58:90], make([]byte, 32)) {
 		t.Fatalf("contracts-clearance-vector-instruction: not a first Clear (status %d, expected_revision %d, nonce %d)", instruction[41], firstRevision, firstNonce)
 	}
 	subjectSeen := false
@@ -436,8 +452,8 @@ func TestStoreClearanceDerivationReproducesTheContractsVector(t *testing.T) {
 		}
 		var key [32]byte
 		switch kind {
-		case blacklistTargetApp:
-			key, err = decodeSandstormAppIDKey(target.Value)
+		case verify.BlacklistTypeApp:
+			key, err = primitives.DecodeSandstormAppID(target.Value)
 			if err != nil {
 				t.Fatalf("clearance-app-target-diverged: %s: the Store cannot decode appId %q: %v", target.Name, target.Value, err)
 			}
@@ -478,7 +494,7 @@ func TestStoreClearanceDerivationReproducesTheContractsVector(t *testing.T) {
 				t.Fatalf("clearance-control-failed:%s: the %s seed reaches the %s address", target.Name, other, target.Kind)
 			}
 		}
-		if kind == blacklistTargetApp {
+		if kind == verify.BlacklistTypeApp {
 			var hashTarget [32]byte
 			hexHash, _ := hex.DecodeString(target.ReleaseEntryAppID)
 			copy(hashTarget[:], hexHash)
@@ -496,13 +512,13 @@ func TestStoreClearanceDerivationReproducesTheContractsVector(t *testing.T) {
 
 		// The account the first Clear leaves: the instruction's kind, target,
 		// status and reason, revision expected_revision+1, last_nonce the nonce.
-		leaves := blacklistStatusEntry{
-			Kind: kind, Target: key, Status: blacklistStatusClear,
+		leaves := verify.BlacklistStatusEntry{
+			Kind: kind, Target: key, Status: verify.BlacklistStatusClear,
 			Revision: firstRevision + 1, LastNonce: firstNonce, UpdatedBy: testClearanceUpdatedBy, UpdatedAt: 1790000000, Bump: bump,
 		}
 		if target.Name == v.FirstClearance.Subject {
 			subjectSeen = true
-			if blacklistTargetKind(instruction[8]) != kind || !bytes.Equal(instruction[9:41], key[:]) {
+			if verify.BlacklistType(instruction[8]) != kind || !bytes.Equal(instruction[9:41], key[:]) {
 				t.Fatalf("contracts-clearance-vector-instruction: the first Clear names kind %d target %x, the Store derives %s %x for %s", instruction[8], instruction[9:41], kind, key, target.Name)
 			}
 		}
@@ -510,10 +526,10 @@ func TestStoreClearanceDerivationReproducesTheContractsVector(t *testing.T) {
 		seedBlacklistStatus(m, target.PDA, encodeBlacklistStatusEntry(leaves))
 		ctx := context.Background()
 		switch kind {
-		case blacklistTargetApp:
+		case verify.BlacklistTypeApp:
 			releaseAppID := sha256.Sum256([]byte(target.Value))
 			err = verifyAppClear(ctx, m, target.Value, &releaseAppID)
-		case blacklistTargetLicense:
+		case verify.BlacklistTypeLicense:
 			err = verifyLicenseClear(ctx, m, pda.Pubkey(key))
 		default:
 			err = verifyBlacklistClear(ctx, m, kind, key, "author")
@@ -570,14 +586,14 @@ func TestDecodeSandstormAppIDKeyAcceptsOnlyCanonicalText(t *testing.T) {
 	for i := 0; i < 64; i++ {
 		key := sha256.Sum256([]byte{byte(i)})
 		text := encodeSandstormAppIDText(key)
-		got, err := decodeSandstormAppIDKey(text)
+		got, err := primitives.DecodeSandstormAppID(text)
 		if err != nil || got != key {
 			t.Fatalf("round trip of %x through %q: %x, %v", key, text, got, err)
 		}
 	}
 	good := testAppIDText("canonical")
-	last := strings.IndexByte(sandstormBase32Digits, good[51])
-	padded := good[:51] + string(sandstormBase32Digits[last|1])
+	last := strings.IndexByte(testSandstormBase32Digits, good[51])
+	padded := good[:51] + string(testSandstormBase32Digits[last|1])
 	for name, text := range map[string]string{
 		"51 characters":        good[:51],
 		"53 characters":        good + "0",
@@ -586,23 +602,46 @@ func TestDecodeSandstormAppIDKeyAcceptsOnlyCanonicalText(t *testing.T) {
 		"nonzero padding":      padded,
 		"53-character legacy":  "testapp0000000000000000000000000000000000000000000000",
 	} {
-		if _, err := decodeSandstormAppIDKey(text); err == nil {
+		if _, err := primitives.DecodeSandstormAppID(text); err == nil {
 			t.Fatalf("%s: %q decoded; want a refusal", name, text)
 		}
 	}
 }
 
-func TestDecodeBlacklistStatusEntryAppliesTheDaemonsRules(t *testing.T) {
-	clear := testBlacklistStatusEntry(t, blacklistTargetApp, sha256.Sum256([]byte("app")), blacklistStatusClear)
-	blocked := testBlacklistStatusEntry(t, blacklistTargetLicense, sha256.Sum256([]byte("licence")), blacklistStatusBlocked)
-	for _, entry := range []blacklistStatusEntry{clear, blocked} {
-		got, err := decodeBlacklistStatusEntry(encodeBlacklistStatusEntry(entry))
-		entry.PDA = ""
+// TestStoreGateAppliesTheDaemonsRecordRules seeds, at a licence's canonical
+// clearance address, bytes written from the contracts layout, each breaking
+// one rule authz DecodeBlacklistStatus applies, and requires the Store's gate
+// (verifyLicenseClear, which decides with the vendored
+// verify.RequireBlacklistClear) to refuse each by name. The positive controls
+// are the same bytes unbroken: the vendored decoder reads back every field
+// this file wrote, and the gate accepts the Clear.
+func TestStoreGateAppliesTheDaemonsRecordRules(t *testing.T) {
+	target := sha256.Sum256([]byte("licence"))
+	clear := testBlacklistStatusEntry(t, verify.BlacklistTypeLicense, target, verify.BlacklistStatusClear)
+	blocked := testBlacklistStatusEntry(t, verify.BlacklistTypeLicense, target, verify.BlacklistStatusBlocked)
+	for _, entry := range []verify.BlacklistStatusEntry{clear, blocked} {
+		data := encodeBlacklistStatusEntry(entry)
+		got, err := verify.DecodeBlacklistStatusEntry(data)
 		if err != nil || got != entry {
-			t.Fatalf("decode %+v: %+v, %v", entry, got, err)
+			t.Fatalf("clearance-layout-diverged: the vendored decoder reads %+v, %v from the contracts layout of %+v", got, err, entry)
+		}
+		if vendored := verify.EncodeBlacklistStatusEntry(entry); !bytes.Equal(vendored, data) {
+			t.Fatalf("clearance-layout-diverged: the vendored encoder writes %x, the contracts layout is %x", vendored, data)
 		}
 	}
+	addr, _, err := deriveBlacklistStatusPDA(verify.BlacklistTypeLicense, target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gate := func(data []byte) error {
+		m := newMockChainReader()
+		seedBlacklistStatus(m, addr.Base58(), data)
+		return verifyLicenseClear(context.Background(), m, pda.Pubkey(target))
+	}
 	good := encodeBlacklistStatusEntry(clear)
+	if err := gate(good); err != nil {
+		t.Fatalf("positive control: the gate refuses the canonical Clear: %v", err)
+	}
 	mutate := func(f func([]byte) []byte) []byte { return f(append([]byte(nil), good...)) }
 	cases := []struct {
 		name string
@@ -612,20 +651,19 @@ func TestDecodeBlacklistStatusEntryAppliesTheDaemonsRules(t *testing.T) {
 		{"short", good[:130], "account length 130"},
 		{"long", append(append([]byte(nil), good...), 0), "account length 132"},
 		{"discriminator", mutate(func(b []byte) []byte { b[0] ^= 1; return b }), "discriminator mismatch"},
-		{"kind", mutate(func(b []byte) []byte { b[8] = 3; return b }), "invalid target kind 3"},
+		{"kind", mutate(func(b []byte) []byte { b[8] = 3; return b }), "invalid entry_type 3"},
 		{"zero target", mutate(func(b []byte) []byte { copy(b[9:41], make([]byte, 32)); return b }), "target is missing"},
 		{"status", mutate(func(b []byte) []byte { b[41] = 2; return b }), "invalid status 2"},
-		{"Clear with reason", mutate(func(b []byte) []byte { b[42] = 1; return b }), "Clear requires zero reason hash"},
-		{"Blocked without reason", mutate(func(b []byte) []byte { b[41] = 1; return b }), "Blocked requires nonzero"},
+		{"Clear with reason", mutate(func(b []byte) []byte { b[42] = 1; return b }), "Clear requires a zero reason hash"},
+		{"Blocked without reason", mutate(func(b []byte) []byte { b[41] = 1; return b }), "Blocked a nonzero one"},
 		{"revision", mutate(func(b []byte) []byte { copy(b[74:82], make([]byte, 8)); return b }), "revision must be nonzero"},
 		{"last_nonce", mutate(func(b []byte) []byte { copy(b[82:90], make([]byte, 8)); return b }), "last_nonce must be nonzero"},
 		{"updated_by", mutate(func(b []byte) []byte { copy(b[90:122], make([]byte, 32)); return b }), "updated_by must be nonzero"},
 	}
 	for _, tc := range cases {
-		_, err := decodeBlacklistStatusEntry(tc.data)
-		if err == nil || !strings.Contains(err.Error(), tc.want) {
-			t.Fatalf("%s: %v, want a refusal naming %q", tc.name, err, tc.want)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			requireRefusalNamed(t, gate(tc.data), "check=blacklist[license]", tc.want)
+		})
 	}
 }
 
@@ -633,11 +671,11 @@ func TestDecodeBlacklistStatusEntryAppliesTheDaemonsRules(t *testing.T) {
 // clearance check over every account shape a clearance address can hold.
 func TestVerifyBlacklistClearAcceptsOnlyTheCanonicalClearRecord(t *testing.T) {
 	target := sha256.Sum256([]byte("licence mint"))
-	addr, _, err := deriveBlacklistStatusPDA(blacklistTargetLicense, target)
+	addr, _, err := deriveBlacklistStatusPDA(verify.BlacklistTypeLicense, target)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clear := testBlacklistStatusEntry(t, blacklistTargetLicense, target, blacklistStatusClear)
+	clear := testBlacklistStatusEntry(t, verify.BlacklistTypeLicense, target, verify.BlacklistStatusClear)
 	cases := []struct {
 		name  string
 		setup func(*mockChainReader)
@@ -646,11 +684,11 @@ func TestVerifyBlacklistClearAcceptsOnlyTheCanonicalClearRecord(t *testing.T) {
 		{"clear", func(m *mockChainReader) { seedBlacklistStatus(m, addr.Base58(), encodeBlacklistStatusEntry(clear)) }, nil},
 		{"absent", func(*mockChainReader) {}, []string{"check=blacklist[license]", "clearance-absent", addr.Base58()}},
 		{"blocked", func(m *mockChainReader) {
-			seedBlacklistStatus(m, addr.Base58(), encodeBlacklistStatusEntry(testBlacklistStatusEntry(t, blacklistTargetLicense, target, blacklistStatusBlocked)))
+			seedBlacklistStatus(m, addr.Base58(), encodeBlacklistStatusEntry(testBlacklistStatusEntry(t, verify.BlacklistTypeLicense, target, verify.BlacklistStatusBlocked)))
 		}, []string{"check=blacklist[license]", "blacklisted", "Blocked"}},
 		{"another kind at the address", func(m *mockChainReader) {
 			entry := clear
-			entry.Kind = blacklistTargetAuthor
+			entry.Kind = verify.BlacklistTypeAuthor
 			seedBlacklistStatus(m, addr.Base58(), encodeBlacklistStatusEntry(entry))
 		}, []string{"check=blacklist[license]", "clearance-not-canonical", "Author"}},
 		{"another target at the address", func(m *mockChainReader) {
@@ -691,20 +729,20 @@ func TestVerifyBlacklistClearAcceptsOnlyTheCanonicalClearRecord(t *testing.T) {
 // clearanceMutation is one way a clearance can fail to be Clear.
 type clearanceMutation struct {
 	name  string
-	apply func(m *mockChainReader, kind blacklistTargetKind, target [32]byte)
+	apply func(m *mockChainReader, kind verify.BlacklistType, target [32]byte)
 	want  string
 }
 
 var clearanceMutations = []clearanceMutation{
-	{"absent", func(m *mockChainReader, kind blacklistTargetKind, target [32]byte) {
+	{"absent", func(m *mockChainReader, kind verify.BlacklistType, target [32]byte) {
 		addr, _, err := deriveBlacklistStatusPDA(kind, target)
 		if err != nil {
 			panic(err)
 		}
 		delete(m.rawAccounts, addr.Base58())
 	}, "clearance-absent"},
-	{"blocked", func(m *mockChainReader, kind blacklistTargetKind, target [32]byte) {
-		pinBlacklistStatus(m, kind, target, blacklistStatusBlocked)
+	{"blocked", func(m *mockChainReader, kind verify.BlacklistType, target [32]byte) {
+		pinBlacklistStatus(m, kind, target, verify.BlacklistStatusBlocked)
 	}, "blacklisted"},
 }
 
@@ -727,11 +765,11 @@ func TestPublishGateRefusesAnAppOrLicenceThatIsNotExplicitlyClear(t *testing.T) 
 	}
 	for _, target := range []struct {
 		label string
-		kind  blacklistTargetKind
+		kind  verify.BlacklistType
 		key   func(publishFixture) [32]byte
 	}{
-		{"app", blacklistTargetApp, func(f publishFixture) [32]byte { return f.appKey }},
-		{"license", blacklistTargetLicense, func(f publishFixture) [32]byte { return [32]byte(f.licenseMint) }},
+		{"app", verify.BlacklistTypeApp, func(f publishFixture) [32]byte { return f.appKey }},
+		{"license", verify.BlacklistTypeLicense, func(f publishFixture) [32]byte { return [32]byte(f.licenseMint) }},
 	} {
 		for _, mutation := range clearanceMutations {
 			t.Run(target.label+"/"+mutation.name, func(t *testing.T) {
@@ -745,15 +783,15 @@ func TestPublishGateRefusesAnAppOrLicenceThatIsNotExplicitlyClear(t *testing.T) 
 	t.Run("app/clear-only-at-the-master-mint", func(t *testing.T) {
 		// The legacy target: a Clear keyed by the master mint is not the app's.
 		m, f := setup()
-		clearanceMutations[0].apply(m, blacklistTargetApp, f.appKey)
-		pinBlacklistStatus(m, blacklistTargetApp, [32]byte(f.masterMint), blacklistStatusClear)
+		clearanceMutations[0].apply(m, verify.BlacklistTypeApp, f.appKey)
+		pinBlacklistStatus(m, verify.BlacklistTypeApp, [32]byte(f.masterMint), verify.BlacklistStatusClear)
 		requireRefusalNamed(t, VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, opPub), "check=blacklist[app]", "clearance-absent")
 	})
 	t.Run("app/clear-at-the-release-app-id-hash", func(t *testing.T) {
 		// SHA-256 of the appId text (ReleaseEntry.app_id) is not the target.
 		m, f := setup()
-		clearanceMutations[0].apply(m, blacklistTargetApp, f.appKey)
-		pinBlacklistStatus(m, blacklistTargetApp, f.appID, blacklistStatusClear)
+		clearanceMutations[0].apply(m, verify.BlacklistTypeApp, f.appKey)
+		pinBlacklistStatus(m, verify.BlacklistTypeApp, f.appID, verify.BlacklistStatusClear)
 		requireRefusalNamed(t, VerifyPublish(context.Background(), m, withReleaseTrust(cfg, m), f.spk, f.metadata, f.rel, opPub), "check=blacklist[app]", "clearance-absent")
 	})
 	t.Run("app/release-app-id-is-another-app", func(t *testing.T) {
@@ -783,7 +821,7 @@ func TestServeGateRefusesAnAppThatIsNotExplicitlyClear(t *testing.T) {
 	for _, mutation := range clearanceMutations {
 		t.Run(mutation.name, func(t *testing.T) {
 			m, f := setup()
-			mutation.apply(m, blacklistTargetApp, f.appKey)
+			mutation.apply(m, verify.BlacklistTypeApp, f.appKey)
 			requireRefusalNamed(t, VerifyServeHash(context.Background(), m, cfg, f.rel.AppHash, f.appIDText, f.rel), "check=blacklist[app]", mutation.want)
 		})
 	}
@@ -823,11 +861,11 @@ func TestStageGateRefusesAnAppOrLicenceThatIsNotExplicitlyClear(t *testing.T) {
 	}
 	for _, target := range []struct {
 		label string
-		kind  blacklistTargetKind
+		kind  verify.BlacklistType
 		key   func(publishFixture) [32]byte
 	}{
-		{"app", blacklistTargetApp, func(f publishFixture) [32]byte { return f.appKey }},
-		{"license", blacklistTargetLicense, func(f publishFixture) [32]byte { return [32]byte(f.licenseMint) }},
+		{"app", verify.BlacklistTypeApp, func(f publishFixture) [32]byte { return f.appKey }},
+		{"license", verify.BlacklistTypeLicense, func(f publishFixture) [32]byte { return [32]byte(f.licenseMint) }},
 	} {
 		for _, mutation := range clearanceMutations {
 			t.Run(target.label+"/"+mutation.name, func(t *testing.T) {
@@ -842,55 +880,147 @@ func TestStageGateRefusesAnAppOrLicenceThatIsNotExplicitlyClear(t *testing.T) {
 
 // ── the legacy account is gone ─────────────────────────────────────────────
 
-// legacyBlacklistReader matches every way Store code could reach the legacy
-// ["blacklist", target] account: the vendored derivations, seed and type, and
-// the vendored readers of its presence. It matches comments too: nothing in the
-// Store names the account except to say it is gone.
-var legacyBlacklistReader = regexp.MustCompile(`\bBlacklistEntry\b|\bDeriveBlacklistEntry\b|\bSeedBlacklist\b|\bFetchBlacklistEntry\b|\bReadBlacklistEntryType\b|\bBlacklistFromPDARead\b|\bReadBlacklist\b|\bverify\.BlacklistType`)
+// legacyBlacklistReaderNames are the names through which Go code could reach
+// the legacy ["blacklist", target] account: Melusina's derivation, seed, record
+// type and readers of its presence (deleted from Melusina at 66d89fcc, so the
+// vendored modules no longer export them), and the reader names used before the
+// explicit record. Each is matched as a whole word, in comments too: nothing
+// names the account except to say it is gone. verify.BlacklistType is not
+// here: it now names the kind of the explicit record the Store decides with.
+var legacyBlacklistReaderNames = []string{
+	"BlacklistEntry",
+	"DeriveBlacklistEntry",
+	"SeedBlacklist",
+	"FetchBlacklistEntry",
+	"ReadBlacklistEntryType",
+	"BlacklistFromPDARead",
+	"ReadBlacklist",
+}
 
-// TestNoStoreSourceReadsTheLegacyBlacklistAccount scans every Go file of this
-// module outside vendor/, tests included, for a reader of the legacy account.
-// The vendored Melusina modules still export one; the Store must not call it.
-func TestNoStoreSourceReadsTheLegacyBlacklistAccount(t *testing.T) {
-	scanned := 0
-	err := filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
+var legacyBlacklistReader = regexp.MustCompile(`\b(` + strings.Join(legacyBlacklistReaderNames, "|") + `)\b`)
+
+// legacyBlacklistPlantDir holds the scan's positive control: a Go file whose
+// lines between "// plant:begin" and "// plant:end" each reach the legacy
+// account through a name the scan forbids. It is under testdata/, so no build
+// compiles it and the module scan skips it.
+const legacyBlacklistPlantDir = "testdata/legacy-blacklist-plant"
+
+// legacyBlacklistHit is one name the scan found: where, and which name.
+type legacyBlacklistHit struct {
+	at   string // path:line
+	name string
+	text string
+}
+
+// scanForLegacyBlacklistReaders reads every .go file under root that skip
+// does not leave out and returns each legacy name it finds, with the files it
+// read.
+func scanForLegacyBlacklistReaders(root string, skip func(path string, d os.DirEntry) bool) ([]legacyBlacklistHit, []string, error) {
+	var hits []legacyBlacklistHit
+	var scanned []string
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() {
-			if path == "vendor" || path == "testdata" || strings.HasPrefix(d.Name(), ".") && path != "." {
+		if skip(path, d) {
+			if d.IsDir() {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if !strings.HasSuffix(path, ".go") || path == "blacklist_status_test.go" {
+		if d.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
 		}
 		raw, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
-		scanned++
+		scanned = append(scanned, filepath.ToSlash(path))
 		for i, line := range strings.Split(string(raw), "\n") {
-			if legacyBlacklistReader.MatchString(line) {
-				t.Errorf("legacy-blacklist-reader: %s:%d reads the legacy [\"blacklist\", target] account: %s", path, i+1, strings.TrimSpace(line))
+			for _, match := range legacyBlacklistReader.FindAllStringSubmatch(line, -1) {
+				hits = append(hits, legacyBlacklistHit{at: fmt.Sprintf("%s:%d", filepath.ToSlash(path), i+1), name: match[1], text: strings.TrimSpace(line)})
 			}
 		}
 		return nil
 	})
+	return hits, scanned, err
+}
+
+// TestNoStoreSourceReadsTheLegacyBlacklistAccount scans every Go file of this
+// module, tests and the vendored Melusina modules included, for a name of the
+// legacy account's readers. Its positive control is planted: the same scan run
+// over legacyBlacklistPlantDir must report every planted line, and every
+// forbidden name must be among them. Remove the plant or a planted line, or
+// narrow the pattern, and the control fails by name.
+func TestNoStoreSourceReadsTheLegacyBlacklistAccount(t *testing.T) {
+	hits, scanned, err := scanForLegacyBlacklistReaders(".", func(path string, d os.DirEntry) bool {
+		if d.IsDir() {
+			return path == "testdata" || strings.HasPrefix(d.Name(), ".") && path != "."
+		}
+		// This file names the readers in order to scan for them.
+		return path == "blacklist_status_test.go"
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if scanned < 100 {
-		t.Fatalf("scanned only %d Go files; the walk is not covering the module", scanned)
+	for _, hit := range hits {
+		t.Errorf("legacy-blacklist-reader: %s names %s, a reader of the legacy [\"blacklist\", target] account: %s", hit.at, hit.name, hit.text)
 	}
-	// Positive control: the pattern finds the vendored reader it guards against.
-	vendored, err := os.ReadFile(filepath.Join("vendor", "github.com", "hrbrlife", "melusina-identity-gate", "verify", "rpc.go"))
-	if err != nil {
-		t.Fatal(err)
+	if len(scanned) < 100 {
+		t.Fatalf("legacy-blacklist-scan-incomplete: scanned only %d Go files; the walk is not covering the module", len(scanned))
 	}
-	if !legacyBlacklistReader.Match(vendored) {
-		t.Fatal("the legacy-reader pattern no longer matches the vendored FetchBlacklistEntry, so the scan proves nothing")
+	// The walk reaches the vendored reader the Store decides with, so a
+	// re-vendor that brought a legacy reader back would be scanned too.
+	vendoredReader := "vendor/github.com/hrbrlife/melusina-identity-gate/verify/blacklist_status.go"
+	if !slices.Contains(scanned, vendoredReader) {
+		t.Fatalf("legacy-blacklist-scan-incomplete: the scan did not read %s", vendoredReader)
+	}
+
+	// Positive control: the plant.
+	plantHits, plantFiles, err := scanForLegacyBlacklistReaders(legacyBlacklistPlantDir, func(string, os.DirEntry) bool { return false })
+	if err != nil || len(plantFiles) == 0 {
+		t.Fatalf("legacy-blacklist-plant-missing: %s holds no Go file the scan reads (%v); without the plant the scan is never shown to find anything", legacyBlacklistPlantDir, err)
+	}
+	planted := map[string]string{}
+	for _, file := range plantFiles {
+		raw, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		inside := false
+		for i, line := range strings.Split(string(raw), "\n") {
+			switch strings.TrimSpace(line) {
+			case "// plant:begin":
+				inside = true
+			case "// plant:end":
+				inside = false
+			default:
+				if inside && strings.TrimSpace(line) != "" {
+					planted[fmt.Sprintf("%s:%d", file, i+1)] = strings.TrimSpace(line)
+				}
+			}
+		}
+	}
+	if len(planted) == 0 {
+		t.Fatalf("legacy-blacklist-plant-missing: %s plants no line between // plant:begin and // plant:end", legacyBlacklistPlantDir)
+	}
+	reported := map[string]bool{}
+	named := map[string]bool{}
+	for _, hit := range plantHits {
+		reported[hit.at] = true
+		if planted[hit.at] != "" {
+			named[hit.name] = true
+		}
+	}
+	for at, text := range planted {
+		if !reported[at] {
+			t.Errorf("legacy-blacklist-plant-not-found: the scan does not report the reader planted at %s: %s", at, text)
+		}
+	}
+	for _, name := range legacyBlacklistReaderNames {
+		if !named[name] {
+			t.Errorf("legacy-blacklist-plant-missing: no planted line names %s, so the scan is never shown to find it", name)
+		}
 	}
 }
 
@@ -900,9 +1030,9 @@ type clearanceCountingReader struct {
 	reads int
 }
 
-func (c *clearanceCountingReader) FetchBlacklistStatus(context.Context, string) (blacklistStatusEntry, error) {
+func (c *clearanceCountingReader) FetchBlacklistStatusAccount(context.Context, string) (*verify.Account, error) {
 	c.reads++
-	return blacklistStatusEntry{}, errors.New("live clearance read")
+	return nil, errors.New("live clearance read")
 }
 
 // TestCatalogPrimeReadsAppClearancesWithTheirOwner runs the catalog prime over
@@ -913,21 +1043,23 @@ func (c *clearanceCountingReader) FetchBlacklistStatus(context.Context, string) 
 func TestCatalogPrimeReadsAppClearancesWithTheirOwner(t *testing.T) {
 	cfg, candidates, perRow := primeTestFixture(t, 3)
 	var clearances []string
+	var keys [][32]byte
 	records := map[string][]byte{}
 	for i := range candidates {
 		text := testAppIDText(fmt.Sprintf("primed row %d", i))
 		candidates[i].app.metadata = []byte(`{"appId":"` + text + `"}`)
-		key, err := decodeSandstormAppIDKey(text)
+		key, err := primitives.DecodeSandstormAppID(text)
 		if err != nil {
 			t.Fatal(err)
 		}
-		addr, _, err := deriveBlacklistStatusPDA(blacklistTargetApp, key)
+		addr, _, err := deriveBlacklistStatusPDA(verify.BlacklistTypeApp, key)
 		if err != nil {
 			t.Fatal(err)
 		}
 		clearances = append(clearances, addr.Base58())
+		keys = append(keys, key)
 		seed := newMockChainReader()
-		pinBlacklistStatus(seed, blacklistTargetApp, key, blacklistStatusClear)
+		pinBlacklistStatus(seed, verify.BlacklistTypeApp, key, verify.BlacklistStatusClear)
 		for address, data := range seed.rawAccounts {
 			if address != addr.Base58() {
 				t.Fatal("pinBlacklistStatus seeded another address")
@@ -963,16 +1095,19 @@ func TestCatalogPrimeReadsAppClearancesWithTheirOwner(t *testing.T) {
 	if len(snap) != len(perRow)+len(clearances) {
 		t.Fatalf("primed %d addresses, want %d (ReleaseEntry, listing and App clearance per row)", len(snap), len(perRow)+len(clearances))
 	}
-	entry, err := primed.FetchBlacklistStatus(context.Background(), clearances[0])
-	if err != nil || entry.Status != blacklistStatusClear || entry.Kind != blacklistTargetApp || entry.PDA != clearances[0] {
-		t.Fatalf("primed registry-owned Clear = %+v, %v", entry, err)
+	account, err := primed.FetchBlacklistStatusAccount(context.Background(), clearances[0])
+	if err != nil || account == nil || account.Owner != programID.Base58() || !bytes.Equal(account.Data, records[clearances[0]]) {
+		t.Fatalf("primed registry-owned clearance = %+v, %v", account, err)
 	}
-	if _, err := primed.FetchBlacklistStatus(context.Background(), clearances[1]); !errors.Is(err, errBlacklistStatusForeignOwner) {
-		t.Fatalf("primed foreign-owned clearance = %v, want %v", err, errBlacklistStatusForeignOwner)
+	if account, err := primed.FetchBlacklistStatusAccount(context.Background(), clearances[2]); err != nil || account != nil {
+		t.Fatalf("primed absent clearance = %+v, %v; want nil, nil", account, err)
 	}
-	if _, err := primed.FetchBlacklistStatus(context.Background(), clearances[2]); !errors.Is(err, verify.ErrPDANotFound) {
-		t.Fatalf("primed absent clearance = %v, want ErrPDANotFound", err)
+	// The gate decides over the primed answers exactly as over live ones.
+	if err := verifyBlacklistClear(context.Background(), primed, verify.BlacklistTypeApp, keys[0], "app"); err != nil {
+		t.Fatalf("primed registry-owned Clear refused: %v", err)
 	}
+	requireRefusalNamed(t, verifyBlacklistClear(context.Background(), primed, verify.BlacklistTypeApp, keys[1], "app"), "check=blacklist[app]", "not owned by the license registry")
+	requireRefusalNamed(t, verifyBlacklistClear(context.Background(), primed, verify.BlacklistTypeApp, keys[2], "app"), "check=blacklist[app]", "clearance-absent")
 	if live.reads != 0 {
 		t.Fatalf("%d clearance reads reached the live reader despite being primed", live.reads)
 	}

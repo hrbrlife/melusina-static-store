@@ -280,7 +280,7 @@ func TestVerifyPublish_Reject(t *testing.T) {
 		{
 			name: "blacklist_app_blocked",
 			mutate: func(m *mockChainReader, f *publishFixture) {
-				pinBlacklistStatus(m, blacklistTargetApp, f.appKey, blacklistStatusBlocked)
+				pinBlacklistStatus(m, verify.BlacklistTypeApp, f.appKey, verify.BlacklistStatusBlocked)
 			},
 			wantCheck: "check=blacklist[app]: blacklisted",
 		},
@@ -294,7 +294,7 @@ func TestVerifyPublish_Reject(t *testing.T) {
 		{
 			name: "blacklist_license_blocked",
 			mutate: func(m *mockChainReader, f *publishFixture) {
-				pinBlacklistStatus(m, blacklistTargetLicense, [32]byte(f.licenseMint), blacklistStatusBlocked)
+				pinBlacklistStatus(m, verify.BlacklistTypeLicense, [32]byte(f.licenseMint), verify.BlacklistStatusBlocked)
 			},
 			wantCheck: "check=blacklist[license]: blacklisted",
 		},

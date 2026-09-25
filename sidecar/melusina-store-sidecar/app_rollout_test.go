@@ -474,11 +474,11 @@ func TestServeGate_PreviousReleaseRequiresWindowAndActiveChainEntry(t *testing.T
 		registeredAt: old.rel.SignedAtUnix,
 	}
 	pinRolloutListingActive(t, m, cfg, old)
-	rolloutAppKey, err := decodeSandstormAppIDKey(rolloutAppID)
+	rolloutAppKey, err := primitives.DecodeSandstormAppID(rolloutAppID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pinBlacklistStatus(m, blacklistTargetApp, rolloutAppKey, blacklistStatusClear)
+	pinBlacklistStatus(m, verify.BlacklistTypeApp, rolloutAppKey, verify.BlacklistStatusClear)
 	gate := newServeGate(cfg, m, http.FileServer(http.Dir(cfg.DistDir)))
 	clock := now.Add(time.Minute)
 	gate.now = func() time.Time { return clock }

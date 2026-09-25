@@ -41,7 +41,7 @@
         "scripts/mel-release-provider.py",
         "sidecar/melusina-store-sidecar/scripts/mel-release-provider.sh"
       ],
-      "reason": "The generic Squads vault executor the provider's stale-release revoke runs, as scripts/squads-vault-exec.js in a checkout of the deployer at the named commit. That copy is the one canonical copy: it holds every check of every earlier copy, and adds the reduced-mode refusal, which it loads from lib/reduced-mode-guard.cjs beside it. Its Squads SDK resolves from node_modules beside it. Any other copy, guard or SDK tree is refused."
+      "reason": "The generic Squads vault executor the provider's stale-release revoke runs, as scripts/squads-vault-exec.js in a checkout of the deployer at the named commit. That copy is the one canonical copy: it holds every check of every earlier copy, and adds the reduced-mode refusal, which it loads from lib/reduced-mode-guard.cjs beside it. Its Squads SDK resolves from node_modules beside it. Any other copy, guard or SDK tree is refused by its sha256. Both providers run it under sidecar/melusina-store-sidecar/scripts/node-module-confinement.cjs with NODE_OPTIONS and NODE_PATH cleared, admitting only the executor and those two companions: a module the SDK tree lacks is refused as not found, never loaded from an ancestor node_modules, NODE_PATH, a global folder such as /usr/share/nodejs, or the sibling license104 trees the executor searches itself when a module does not resolve."
     },
     "MEL_RELEASE_PEARL_TOOL": {
       "kind": "file",
@@ -60,7 +60,7 @@
         "scripts/default-bazaar-release.sh",
         "scripts/mel-release-provider.py"
       ],
-      "reason": "The node_modules directory holding @solana/web3.js and @sqds/multisig for the Store's own Squads helper. Name it and pin its tree digest with MEL_RELEASE_SQUADS_NODE_MODULES_SHA256."
+      "reason": "The node_modules directory holding @solana/web3.js and @sqds/multisig for the Store's own Squads helper. Name it and pin its tree digest with MEL_RELEASE_SQUADS_NODE_MODULES_SHA256. The helper runs under node-module-confinement.cjs admitting only this tree, so a module it lacks is refused as not found, never loaded from outside it."
     },
     "MEL_RELEASE_NODE_MODULES": {
       "kind": "tree",
@@ -68,7 +68,7 @@
       "consumers": [
         "sidecar/melusina-store-sidecar/scripts/mel-release-provider.sh"
       ],
-      "reason": "The shell provider's name for the Squads SDK node_modules directory. Name it and pin its tree digest with MEL_RELEASE_NODE_MODULES_SHA256."
+      "reason": "The shell provider's name for the Squads SDK node_modules directory. Name it and pin its tree digest with MEL_RELEASE_NODE_MODULES_SHA256. The helper runs under node-module-confinement.cjs admitting only this tree, so a module it lacks is refused as not found, never loaded from outside it."
     },
     "MEL_RELEASE_REGISTER_EXECUTOR": {
       "kind": "file",

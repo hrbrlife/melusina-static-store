@@ -88,6 +88,9 @@ DuplicateKeySafeLoader.add_constructor(
 
 ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "sidecar" / "melusina-store-sidecar"
+# Preloaded wherever Node runs a Squads helper or the Squads vault executor:
+# a CommonJS module that resolves outside the pinned inputs is refused.
+NODE_CONFINEMENT = MODULE / "scripts" / "node-module-confinement.cjs"
 NAMEDCOIN_APP_ID = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
 NAMEDCOIN_MSB_DEVNET_PROFILE = "namedcoin-msb-devnet"
 CLAUDE_MELUSINA_APP_ID = "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"
@@ -2901,6 +2904,31 @@ def generic_executor_env() -> dict[str, str]:
     }
 
 
+def confined_node(name: str, resolved: Path, script: Path, *args: str) -> tuple[list[str], dict[str, str]]:
+    """The command and environment for Node to run SCRIPT confined.
+
+    node-module-confinement.cjs admits Node's builtins, SCRIPT and the module
+    roots of the resolved input NAME at RESOLVED (scripts/release-inputs.py
+    node-roots); any other CommonJS resolution -- an ancestor node_modules,
+    NODE_PATH, a global folder such as /usr/share/nodejs, or a fallback the
+    script adds -- is refused as not found. NODE_OPTIONS and NODE_PATH are
+    emptied, so nothing is preloaded before the confinement.
+    """
+    try:
+        roots = release_inputs.node_module_roots(name, resolved)
+    except release_inputs.InputRefused as exc:
+        raise ProviderError(str(exc)) from None
+    return ([node_bin(), "--require", str(NODE_CONFINEMENT), str(script), *args],
+            {"MEL_RELEASE_NODE_MODULE_ROOTS": json.dumps(roots), "NODE_OPTIONS": "", "NODE_PATH": ""})
+
+
+def run_register_helper(args: list[str], helper_env: dict[str, str]) -> str:
+    """Run the Store's Squads helper, confined to the SDK tree it was handed."""
+    command, confinement = confined_node("MEL_RELEASE_SQUADS_NODE_MODULES", Path(helper_env["MEL_RELEASE_NODE_MODULES"]),
+                                         register_executor(), *args)
+    return run(command, extra_env={**helper_env, **confinement})
+
+
 def register_executor() -> Path:
     # Unset, this repository's helper; any other file must carry its pin.
     return release_input("MEL_RELEASE_REGISTER_EXECUTOR")
@@ -2932,7 +2960,7 @@ def last_json(raw: str) -> dict[str, Any]:
 def live_quorum_policy() -> dict[str, Any]:
     """Read and validate the current governed policy without signing."""
     authority = require_shared_squads_authority()
-    raw = run([node_bin(), str(register_executor()), "policy"], extra_env=policy_executor_env())
+    raw = run_register_helper(["policy"], policy_executor_env())
     result = last_json(raw)
     multisig = result.get("multisig")
     vault = result.get("vault")
@@ -3003,7 +3031,7 @@ def next_index(multisig: str, vault: str) -> int:
     authority = require_shared_squads_authority()
     if multisig != authority["multisig"] or vault != authority["vault"]:
         raise ProviderError("next-index authority does not match the catalog-pinned shared authority")
-    raw = run([node_bin(), str(register_executor()), "next-index"], extra_env=register_executor_env()).strip()
+    raw = run_register_helper(["next-index"], register_executor_env()).strip()
     try:
         index = int(raw)
     except ValueError as exc:
@@ -3232,7 +3260,7 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
             raise ProviderError("prepared ceremony state lacks register_release_entry instruction")
         register_path = state_path.with_name("register-release-entry.ix.json")
         write_json(register_path, register_ix)
-        raw = run([node_bin(), str(register_executor()), "propose", str(state_path)], extra_env=register_executor_env())
+        raw = run_register_helper(["propose", str(state_path)], register_executor_env())
         result = last_json(raw)
         if result.get("status") == "ForeignTransactionIndex":
             foreign_indices.append(int(state["transactionIndex"]))
@@ -3333,8 +3361,7 @@ def reject_register(app_id: str, app_hash: str, release_hash: str, version: str,
             state.get("multisigPda") != authority["multisig"] or
             state.get("licenseSquadsVault") != authority["vault"]):
         raise ProviderError("rejection ceremony state does not bind the catalog-pinned shared authority")
-    raw = run([node_bin(), str(register_executor()), "reject-proposed", str(context["statePath"])],
-              extra_env=register_executor_env())
+    raw = run_register_helper(["reject-proposed", str(context["statePath"])], register_executor_env())
     result = last_json(raw)
     if (result.get("status") != "Rejected" or result.get("transactionPda") != transaction_pda or
             result.get("proposalPda") != state.get("proposalPda") or
@@ -3481,7 +3508,9 @@ def revoke(pda: str, receipt_out: Path) -> None:
             {"pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "isSigner": False, "isWritable": False},
         ], "data": discriminator,
     })
-    result = last_json(run([node_bin(), str(executor), str(ix_path), "--multisig", authority["multisig"], "--vault", authority["vault"]], extra_env=generic_executor_env()))
+    command, confinement = confined_node("MEL_RELEASE_SQUADS_EXECUTOR", executor, executor, str(ix_path),
+                                         "--multisig", authority["multisig"], "--vault", authority["vault"])
+    result = last_json(run(command, extra_env={**generic_executor_env(), **confinement}))
     if result.get("status") != "executed":
         raise ProviderError("stale ReleaseEntry revoke did not execute")
     write_json(receipt_out, {"schema": "melusina-revoke-release-receipt-v1", "releaseEntryPda": pda, "status": "Revoked", "transactionSignature": result.get("signature", "")})

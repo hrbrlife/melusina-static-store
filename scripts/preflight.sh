@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # preflight.sh — gate `make publish` against the regression mode that
-# bit us on 2026-04-25 (see ../POSTMORTEM.md). Walks six checks:
+# bit us on 2026-04-25 (see POSTMORTEM.md at the repository root). Walks six checks:
 #
 #   1. live-catalog diff against the just-built dist-publish/apps/index.json
 #      — abort if any appId disappears (set MELUSINA_PUBLISH_SHRINK_OK=1

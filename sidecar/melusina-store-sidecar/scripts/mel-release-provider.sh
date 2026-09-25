@@ -23,8 +23,11 @@
 # Nothing outside this repository is read by default. The Squads vault
 # executor (only the canonical copy pinned in scripts/release-inputs.json),
 # the Pearl tool and the Squads SDK node_modules are named by their variables
-# and resolved by scripts/release-inputs.py, which checks each sha256 pin
-# before use and refuses a missing input by name (release-input-missing:NAME).
+# and resolved by scripts/release-inputs.py, which checks each sha256 pin and
+# refuses a missing input by name (release-input-missing:NAME). Each is used
+# through the path the resolver printed, never the variable, and Node runs
+# the executor and the helper under node-module-confinement.cjs, so a module
+# that resolves outside the pinned inputs is refused as not found.
 
 set -euo pipefail
 umask 077
@@ -34,6 +37,7 @@ readonly NODE_HELPER="$PROVIDER_ROOT/scripts/mel-release-squads-register.mjs"
 readonly APPHASH_CMD="$PROVIDER_ROOT/cmd/apphash"
 readonly ACTIVE_CMD="$PROVIDER_ROOT/cmd/list-active-releases"
 readonly RELEASE_INPUTS="$(cd "$PROVIDER_ROOT/../.." && pwd -P)/scripts/release-inputs.py"
+readonly NODE_CONFINEMENT="$PROVIDER_ROOT/scripts/node-module-confinement.cjs"
 
 die() { echo "mel-release-provider: $*" >&2; exit 2; }
 need() {
@@ -46,6 +50,16 @@ need_dir() { local n="$1" p; need "$n"; p="$(printenv "$n")"; [[ -d "$p" && ! -L
 # An input from outside this repository: printed on success; on refusal the
 # named release-input-* line is printed and the caller exits.
 resolve_input() { python3 "$RELEASE_INPUTS" resolve "$1"; }
+# node_confined NAME PATH SCRIPT ARGS...: Node runs SCRIPT with only its
+# builtins, SCRIPT itself and the module roots of the resolved input NAME at
+# PATH; NODE_OPTIONS and NODE_PATH are cleared so nothing loads before the
+# confinement.
+node_confined() {
+  local name="$1" resolved="$2" roots
+  shift 2
+  roots="$(python3 "$RELEASE_INPUTS" node-roots "$name" "$resolved")" || exit 2
+  env -u NODE_OPTIONS -u NODE_PATH MEL_RELEASE_NODE_MODULE_ROOTS="$roots" node --require "$NODE_CONFINEMENT" "$@"
+}
 json_get() { python3 - "$1" "$2" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -364,7 +378,7 @@ PY
   done
   result="$(SQUADS_MULTISIG="$MEL_RELEASE_SQUADS_MULTISIG" SQUADS_VAULT="$MEL_RELEASE_SQUADS_VAULT" \
     SQUADS_PROGRAM_ID="$MEL_RELEASE_SQUADS_PROGRAM_ID" MELUSINA_RPC_PRIMARY="$MEL_RELEASE_RPC_URL" \
-    node "$executor" "$ix" --multisig "$MEL_RELEASE_SQUADS_MULTISIG" --vault "$MEL_RELEASE_SQUADS_VAULT" "${member_args[@]}")"
+    node_confined MEL_RELEASE_SQUADS_EXECUTOR "$executor" "$executor" "$ix" --multisig "$MEL_RELEASE_SQUADS_MULTISIG" --vault "$MEL_RELEASE_SQUADS_VAULT" "${member_args[@]}")"
   sig="$(python3 - "$result" <<'PY'
 import json, sys
 for line in reversed(sys.argv[1].splitlines()):
@@ -440,8 +454,8 @@ need_ceremony_env() {
   need MEL_RELEASE_LICENSE_MINT; need MEL_RELEASE_MASTER_NFT_MINT; need MEL_RELEASE_SQUADS_MULTISIG; need MEL_RELEASE_SQUADS_VAULT
   need MEL_RELEASE_SQUADS_THRESHOLD; need MEL_RELEASE_SQUADS_MEMBER_COUNT; need MEL_RELEASE_SQUADS_PROGRAM_ID
   need_file MEL_RELEASE_AUTHOR_KEYPAIR; need_file MEL_RELEASE_MEMBER_KEYPAIR_1; need MEL_RELEASE_RPC_URL
-  resolve_input MEL_RELEASE_PEARL_TOOL >/dev/null || exit 2
-  [[ -x "$MEL_RELEASE_PEARL_TOOL" ]] || die "MEL_RELEASE_PEARL_TOOL must name an executable file"
+  RESOLVED_PEARL_TOOL="$(resolve_input MEL_RELEASE_PEARL_TOOL)" || exit 2
+  [[ -x "$RESOLVED_PEARL_TOOL" ]] || die "MEL_RELEASE_PEARL_TOOL must name an executable file"
   [[ "$MEL_RELEASE_SQUADS_THRESHOLD" =~ ^[1-9][0-9]*$ ]] || die "MEL_RELEASE_SQUADS_THRESHOLD must be positive integer"
   [[ "$MEL_RELEASE_SQUADS_MEMBER_COUNT" =~ ^[1-9][0-9]*$ ]] || die "MEL_RELEASE_SQUADS_MEMBER_COUNT must be positive integer"
   (( MEL_RELEASE_SQUADS_MEMBER_COUNT >= MEL_RELEASE_SQUADS_THRESHOLD )) || die "Squads member count is below threshold"
@@ -450,7 +464,10 @@ need_ceremony_env() {
     [[ -n "$(printenv "MEL_RELEASE_MEMBER_KEYPAIR_$i" 2>/dev/null || true)" ]] && ((available+=1))
   done
   (( available >= MEL_RELEASE_SQUADS_THRESHOLD )) || die "only $available member keypairs configured for threshold $MEL_RELEASE_SQUADS_THRESHOLD"
-  resolve_input MEL_RELEASE_NODE_MODULES >/dev/null || exit 2
+  # The helper reads MEL_RELEASE_NODE_MODULES itself, so it is handed the
+  # resolved path.
+  MEL_RELEASE_NODE_MODULES="$(resolve_input MEL_RELEASE_NODE_MODULES)" || exit 2
+  export MEL_RELEASE_NODE_MODULES
   [[ -f "$MEL_RELEASE_NODE_MODULES/@solana/web3.js/package.json" ]] || die "MEL_RELEASE_NODE_MODULES must contain @solana/web3.js"
   [[ -f "$MEL_RELEASE_NODE_MODULES/@sqds/multisig/package.json" ]] || die "MEL_RELEASE_NODE_MODULES must contain @sqds/multisig"
   [[ -f "$NODE_HELPER" && ! -L "$NODE_HELPER" ]] || die "provider node helper missing"
@@ -465,7 +482,7 @@ propose_register() {
   mkdir -p "$state"
   exec {lockfd}>"$MEL_RELEASE_STATE_DIR/locks/squads-${MEL_RELEASE_SQUADS_MULTISIG}.lock"
   flock -w "${MEL_RELEASE_LOCK_WAIT_SECS:-600}" "$lockfd" || die "timed out waiting for this Squads multisig ceremony lock"
-  index="$(node "$NODE_HELPER" next-index)"
+  index="$(node_confined MEL_RELEASE_NODE_MODULES "$MEL_RELEASE_NODE_MODULES" "$NODE_HELPER" next-index)"
   [[ "$index" =~ ^[0-9]+$ ]] || die "Squads next transaction index is malformed"
   python3 - "$material_release" "$MEL_NEW_APP_HASH" "$MEL_RELEASE_HASH" "$MEL_NEW_VERSION" "$MEL_RELEASE_NONCE" "$MEL_RELEASE_MASTER_NFT_MINT" <<'PY'
 import json, os, sys
@@ -476,14 +493,14 @@ doc={"$schema":"melusina-release-v1","appHash":apphash,"releaseHash":rhash,"vers
 with open(out,"w",encoding="utf-8") as f: json.dump(doc,f,sort_keys=True);f.write("\n")
 os.chmod(out,0o600)
 PY
-  "$MEL_RELEASE_PEARL_TOOL" propose-release --dry-run --app-dir "$state/material" --release-json "$material_release" \
+  "$RESOLVED_PEARL_TOOL" propose-release --dry-run --app-dir "$state/material" --release-json "$material_release" \
     --license-mint "$MEL_RELEASE_LICENSE_MINT" --master-mint "$MEL_RELEASE_MASTER_NFT_MINT" \
     --version "$MEL_NEW_VERSION" --app-id "$MEL_APP_ID" --state-out "$ceremony" \
     --program-id "$MEL_PROGRAM_ID" -Squads-program-id "$MEL_RELEASE_SQUADS_PROGRAM_ID" \
     --multisig "$MEL_RELEASE_SQUADS_MULTISIG" --vault "$MEL_RELEASE_SQUADS_VAULT" \
     --quorum-threshold "$MEL_RELEASE_SQUADS_THRESHOLD" --quorum-member-count "$MEL_RELEASE_SQUADS_MEMBER_COUNT" \
     --author-keypair "$MEL_RELEASE_AUTHOR_KEYPAIR" --transaction-index "$index"
-  node "$NODE_HELPER" propose "$ceremony" >"$state/proposal-result.json"
+  node_confined MEL_RELEASE_NODE_MODULES "$MEL_RELEASE_NODE_MODULES" "$NODE_HELPER" propose "$ceremony" >"$state/proposal-result.json"
   python3 - "$ceremony" "$material_release" "$MEL_RELEASE_JSON_OUT" "$MEL_PROPOSE_RECEIPT_OUT" "$MEL_RELEASE_SQUADS_MULTISIG" "$MEL_RELEASE_SQUADS_VAULT" <<'PY'
 import json, os, shutil, sys
 state_path, release_path, out_release, out_receipt, multisig, vault = sys.argv[1:]
@@ -535,15 +552,15 @@ PY
 finalize_release() {
   need MEL_APP_ID; need MEL_NEW_APP_HASH; need MEL_RELEASE_HASH; need MEL_NEW_VERSION; need MEL_RELEASE_NONCE
   need MEL_FINAL_RELEASE_JSON_OUT; need MEL_RELEASE_RPC_URL; need MEL_PROGRAM_ID
-  resolve_input MEL_RELEASE_PEARL_TOOL >/dev/null || exit 2
-  [[ -x "$MEL_RELEASE_PEARL_TOOL" ]] || die "MEL_RELEASE_PEARL_TOOL must name an executable file"
-  local state ceremony release
+  local pearl_tool state ceremony release
+  pearl_tool="$(resolve_input MEL_RELEASE_PEARL_TOOL)" || exit 2
+  [[ -x "$pearl_tool" ]] || die "MEL_RELEASE_PEARL_TOOL must name an executable file"
   state="$(app_dir_for)"; ceremony="$state/ceremony-state.json"; release="$state/release.json"
   [[ -f "$ceremony" && -f "$release" ]] || die "no persisted release candidate for this app"
   [[ "$(json_get "$ceremony" appHash)" = "$MEL_NEW_APP_HASH" ]] || die "MEL_NEW_APP_HASH does not bind the persisted candidate"
   [[ "$(json_get "$ceremony" releaseHash)" = "$MEL_RELEASE_HASH" ]] || die "MEL_RELEASE_HASH does not bind the persisted candidate"
-  "$MEL_RELEASE_PEARL_TOOL" finalize-release --app-dir "$state/material" --release-json "$release" --state "$ceremony" --rpc-url "$MEL_RELEASE_RPC_URL" --program-id "$MEL_PROGRAM_ID"
-  "$MEL_RELEASE_PEARL_TOOL" verify-release --spk "$state/material/app.spk" --metadata "$state/material/metadata.json" --release-json "$release" --app-slug "$MEL_APP_ID"
+  "$pearl_tool" finalize-release --app-dir "$state/material" --release-json "$release" --state "$ceremony" --rpc-url "$MEL_RELEASE_RPC_URL" --program-id "$MEL_PROGRAM_ID"
+  "$pearl_tool" verify-release --spk "$state/material/app.spk" --metadata "$state/material/metadata.json" --release-json "$release" --app-slug "$MEL_APP_ID"
   write_json "$MEL_FINAL_RELEASE_JSON_OUT" <"$release"
 }
 

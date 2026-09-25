@@ -8,6 +8,12 @@ variable its consumers read. This module is the one place that resolves such a
 name, and it refuses by name:
 
   release-input-missing:NAME            the variable is unset or empty
+  release-input-whitespace:NAME         the value (or a list item, or the pin) has
+                                        leading or trailing whitespace. Consumers
+                                        use the value exactly as written, so it is
+                                        refused, never trimmed: a trimmed check
+                                        would vouch for a path the consumer does
+                                        not run.
   release-input-not-absolute:NAME       the value is not an absolute clean path
   release-input-not-regular-file:NAME   a file input is absent, a symlink or not a file
   release-input-not-directory:NAME      a directory input is absent, a symlink or not a directory
@@ -21,6 +27,10 @@ name, and it refuses by name:
   release-input-undeclared:NAME         the name is not in release-inputs.json
   release-input-toolchain-missing:go    no go on PATH
   release-input-toolchain-mismatch:go   go reports another version than the pin
+
+A resolved value is the environment value itself, byte for byte: nothing is
+trimmed or normalized, so a consumer that uses the variable after a check uses
+the path that was checked.
 
 Pins:
   repository  The Store names the one canonical copy: release-inputs.json
@@ -47,6 +57,9 @@ Usage:
   release-inputs.py check-toolchain go   compare `go env GOVERSION` to the pin
   release-inputs.py digest PATH          sha256 of a file, tree digest of a directory
   release-inputs.py digest-git GIT_DIR TREEISH   the same, from git objects
+  release-inputs.py node-roots NAME PATH  the module roots, as a JSON array, that
+                                        node-module-confinement.cjs admits when
+                                        Node runs the resolved input at PATH
 """
 
 from __future__ import annotations
@@ -216,8 +229,15 @@ def _require_kind(name: str, kind: str, path: Path) -> None:
         raise InputRefused("not-directory", name, f"{path} exists and is not a real non-symlink directory")
 
 
+def _refuse_whitespace(name: str, value: str, what: str) -> None:
+    if value != value.strip():
+        raise InputRefused("whitespace", name,
+                           f"{what} {value!r} has leading or trailing whitespace; it is refused, not trimmed")
+
+
 def _operator_pin(name: str, environ: Mapping[str, str]) -> str:
-    pin = environ.get(f"{name}_SHA256", "").strip()
+    pin = environ.get(f"{name}_SHA256", "")
+    _refuse_whitespace(name, pin, f"{name}_SHA256")
     if not pin:
         raise InputRefused("sha256-missing", name,
                            f"pin it: {name}_SHA256=$(scripts/release-inputs.py digest <path>)")
@@ -235,11 +255,12 @@ def resolve(name: str, environ: Mapping[str, str] | None = None,
     if spec is None:
         raise InputRefused("undeclared", name, "not declared in scripts/release-inputs.json")
     kind, pin = spec["kind"], spec.get("pin", "none")
-    value = environ.get(name, "").strip()
+    value = environ.get(name, "")
     if kind == "retired":
         if value:
             raise InputRefused("retired", name, spec["reason"])
         return None
+    _refuse_whitespace(name, value, name)
     default = spec.get("repositoryDefault")
     if not value and default:
         # A default inside this repository is not an external read.
@@ -249,7 +270,8 @@ def resolve(name: str, environ: Mapping[str, str] | None = None,
     if kind == "file-list":
         paths = []
         for item in value.split(","):
-            path = _absolute_clean(name, item.strip())
+            _refuse_whitespace(name, item, f"{name} item")
+            path = _absolute_clean(name, item)
             _require_kind(name, "file", path)
             paths.append(path)
         return paths
@@ -280,6 +302,28 @@ def resolve(name: str, environ: Mapping[str, str] | None = None,
                 raise InputRefused("companion-sha256-mismatch", name,
                                    f"{companion_path} has {companion_digest}; pinned {companion['sha256']}")
     return path
+
+
+def node_module_roots(name: str, path: Path, manifest: dict | None = None) -> list[str]:
+    """What Node may load when it runs the resolved input at PATH.
+
+    node-module-confinement.cjs refuses, as not found, every CommonJS module
+    that resolves outside these roots and the main script: for a
+    repository-pinned file, its pinned companions (the SDK tree beside it
+    included); for a tree, the tree. Everything else Node would consult for a
+    module the pinned tree lacks -- an ancestor node_modules, NODE_PATH, the
+    global folders (a distribution's /usr/share/nodejs among them), or a
+    fallback the script adds itself -- is outside them.
+    """
+    manifest = load_manifest() if manifest is None else manifest
+    spec = manifest["inputs"].get(name)
+    if spec is None:
+        raise InputRefused("undeclared", name, "not declared in scripts/release-inputs.json")
+    if spec["kind"] == "tree":
+        return [str(path)]
+    if spec["kind"] == "file" and spec.get("pin") == "repository":
+        return [str(path.parent / relative) for relative in sorted(spec.get("companions", {}))]
+    raise InputRefused("undeclared", name, "not a Node-loaded input (a tree or a repository-pinned file)")
 
 
 def check(names: list[str], environ: Mapping[str, str] | None = None,
@@ -344,6 +388,9 @@ def main(argv: list[str]) -> int:
             return 0
         if command == "digest" and len(arguments) == 1:
             print(digest(Path(arguments[0])))
+            return 0
+        if command == "node-roots" and len(arguments) == 2:
+            print(json.dumps(node_module_roots(arguments[0], Path(arguments[1]))))
             return 0
         if command == "digest-git" and len(arguments) == 2:
             print(git_digest(arguments[0], arguments[1]))

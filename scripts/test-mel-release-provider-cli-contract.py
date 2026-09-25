@@ -324,7 +324,7 @@ def test_propose_uses_only_supported_flags():
         for unsupported in ("--artifact-spk", "--artifact-metadata"):
             assert unsupported not in proposal, proposal
         helper = captured[1]
-        assert helper[1:] == [str(executor), "propose", str(state)], helper
+        assert helper[1:] == ["--require", str(provider.NODE_CONFINEMENT), str(executor), "propose", str(state)], helper
         receipt = json.loads(receipt_out.read_text())
         assert receipt["recovery"] == {
             "recoveredVaultTransaction": True,
@@ -470,7 +470,7 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
         finally:
             provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy = old_run, old_ctx, old_rewrite, old_index, old_policy
             restore_env(old)
-        assert captured == [[TEST_NODE_BIN, str(executor), "propose", str(state_path)]], captured
+        assert captured == [[TEST_NODE_BIN, "--require", str(provider.NODE_CONFINEMENT), str(executor), "propose", str(state_path)]], captured
         assert json.loads(out_receipt.read_text())["recovery"]["recoveredVaultTransaction"] is True
 
 
@@ -1137,12 +1137,18 @@ def test_release_helper_owns_the_index_and_approve_executes_nothing():
         old_run = provider.run
         old = with_env(common)
         try:
-            provider.run = lambda args, **_: captured.append(args) or "1724\n"
+            provider.run = lambda args, **kwargs: captured.append((args, kwargs["extra_env"])) or "1724\n"
             assert provider.next_index(TEST_SQUADS_MULTISIG, TEST_SQUADS_VAULT) == 1724
         finally:
             provider.run = old_run
             restore_env(old)
-        assert captured == [[TEST_NODE_BIN, str(executor), "next-index"]], captured
+        assert [args for args, _ in captured] == [[TEST_NODE_BIN, "--require", str(provider.NODE_CONFINEMENT), str(executor), "next-index"]], captured
+        # The helper runs confined to the pinned SDK tree it is handed, with
+        # nothing preloaded before the confinement.
+        helper_env = captured[0][1]
+        assert json.loads(helper_env["MEL_RELEASE_NODE_MODULE_ROOTS"]) == [helper_env["MEL_RELEASE_NODE_MODULES"]], helper_env
+        assert helper_env["NODE_OPTIONS"] == "" and helper_env["NODE_PATH"] == "", helper_env
+        assert provider.NODE_CONFINEMENT.is_file(), provider.NODE_CONFINEMENT
 
         app_hash = "b" * 64
         version = "1.2.3"

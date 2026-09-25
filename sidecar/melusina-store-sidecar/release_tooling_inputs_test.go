@@ -292,6 +292,7 @@ func TestReleaseToolingNamesNoPathOutsideTheRepository(t *testing.T) {
 		"scripts/manifest-merge.sh", "scripts/release-inputs.py", "scripts/release-inputs.json",
 		"sidecar/melusina-store-sidecar/scripts/mel-release-provider.sh",
 		"sidecar/melusina-store-sidecar/scripts/mel-release-catalog-provider.sh",
+		"sidecar/melusina-store-sidecar/scripts/node-module-confinement.cjs",
 	} {
 		found := false
 		for _, file := range files {
@@ -749,6 +750,20 @@ func TestReleaseToolingEntryPointsRefuseMissingInputsByName(t *testing.T) {
 			runReleaseTool(t, hermeticReleaseEnv(t, "MELUSINA_BUNDLE_TARBALL="+filepath.Join(t.TempDir(), "sandstorm-7.tar.xz")), root, "", "bash", script("build-store.sh"), "--dry-run"),
 			"release-input-not-regular-file:MELUSINA_BUNDLE_TARBALL", "release-input-missing:MELUSINA_BUNDLE_UPDATE_TOOL",
 			"release-input-missing:MELUSINA_BUNDLE_UPDATE_KEYRING")
+		// Each named with a trailing space, beside pins of the unspaced files:
+		// refused by name, never trimmed into the pinned files.
+		bundle := t.TempDir()
+		var spaced []string
+		for name, file := range map[string]string{
+			"MELUSINA_BUNDLE_TARBALL": "sandstorm-7.tar.xz", "MELUSINA_BUNDLE_UPDATE_TOOL": "update-tool", "MELUSINA_BUNDLE_UPDATE_KEYRING": "keyring",
+		} {
+			path := writeReleaseFixture(t, filepath.Join(bundle, file), "fixture\n", 0o755)
+			spaced = append(spaced, name+"="+path+" ", name+"_SHA256="+releaseDigest(t, path))
+		}
+		requireRefusals(t, "bundle inputs named with a trailing space",
+			runReleaseTool(t, hermeticReleaseEnv(t, spaced...), root, "", "bash", script("build-store.sh"), "--dry-run"),
+			"release-input-whitespace:MELUSINA_BUNDLE_TARBALL", "release-input-whitespace:MELUSINA_BUNDLE_UPDATE_TOOL",
+			"release-input-whitespace:MELUSINA_BUNDLE_UPDATE_KEYRING")
 	})
 
 	t.Run("deployer-manifest", func(t *testing.T) {

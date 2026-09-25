@@ -499,7 +499,6 @@ func TestStoreEnrollmentSuccessorDigestDomainIsPinned(t *testing.T) {
 		ownerPolicyDigestDomain,
 		policySuccessionDigestDomain,
 		networkAccessDigestDomain,
-		draftDigestDomain,
 	} {
 		if other == want {
 			t.Fatalf("successor digest domain %q is shared with another document", want)

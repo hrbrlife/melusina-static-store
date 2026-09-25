@@ -75,7 +75,6 @@ func TestProfileDigestIsDomainSeparated(t *testing.T) {
 		ownerPolicyDigestDomain,
 		policySuccessionDigestDomain,
 		networkAccessDigestDomain,
-		draftDigestDomain,
 	}
 	seen := map[string]bool{}
 	for _, domain := range domains {

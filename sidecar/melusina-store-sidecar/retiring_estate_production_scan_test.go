@@ -49,9 +49,14 @@ func storeProductionForbiddenValues(t *testing.T) map[string]string {
 	rootDomain := "melusina-os.org"
 	rootDomainHash := sha256.Sum256([]byte(rootDomain))
 	for field, value := range map[string]string{
-		// The retiring estate's root Store domain (the Shell pins its hash as
-		// ROOT_STORE_DOMAIN_HASH) and the root_store_url default the Store
-		// compiled until 45e5a31.
+		// The retiring estate's registrable domain. It was the root_store_url
+		// default the Store compiled until 45e5a31. Its hash was the licence
+		// registry's ROOT_STORE_DOMAIN_HASH only until contracts ba2e327
+		// ("store: bind root authority to Bazaar origin"). Since then the
+		// registry pins sha256("bazaar.melusina-os.org") (constants.rs
+		// ROOT_STORE_DOMAIN_HASH, 1bdcbe62...6592), which is forbidden as
+		// retiring/store.rootDomainSha256, projected from the paype-devnet
+		// profile vector. Both values stay forbidden.
 		retiringRootDomainField:          rootDomain,
 		"retiring/root-domain-sha256":    hex.EncodeToString(rootDomainHash[:]),
 		"retiring/tenant-host-dev":       "dev.paype.cc",

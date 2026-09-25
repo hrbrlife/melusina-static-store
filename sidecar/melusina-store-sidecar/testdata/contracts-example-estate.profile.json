@@ -1,0 +1,203 @@
+{
+  "schema": "melusina.estate-profile/v1",
+  "estate": "example-estate",
+  "network": {
+    "name": "example-private-cluster",
+    "genesisHash": "DszkBgTZVoPkk9tDyXH85k4xs7HSjzxaCoLnPnuZNu6L",
+    "licenseRegistryFeature": "mainnet"
+  },
+  "programs": {
+    "license_registry": "3mRUgjX9UKEYx1pBXJfVidXn3XNv6pnHZMEqc9UmpE7L",
+    "witness_verifier": "E8EWx96zQCDCxsPa58FHc2RaDWGvqmxGLvWRXMvDQFNw",
+    "level2_registry": "8Hy1CE6BDzwJMgqwVW1XAXNAfUM885hgLqtnQAjoPHDv",
+    "level3_registry": "1VGvWku43Gmx4eCRcsnKkYoxz3bukZRcyDLEtBxsCUn",
+    "level4_registry": "7XGgCzYMPqoBRBCyKR9T9sicPYeyinzBVcLe7wKCZ19b"
+  },
+  "hierarchy": {
+    "include": false
+  },
+  "masterNftMint": "BWj4bbKtZKUoWGmvToaY15zKBEJC3KiVzpAcEvo1ZYpv",
+  "resellerNftMint": "49sxG4jqjq76SNBSfhWdozy34TujULM7Ck8Wm5PJ3YvL",
+  "rootStoreDomain": "bazaar.estate.example",
+  "rootStoreOperator": "6PxNmZ2xYc3UcN3mS3cET9Wt7C25AJpse7FivGz67gYC",
+  "rootStoreBoxKey": "E3vj5pQNDuQofPC1Hq5aDmVu1owefJ4PnwgxogsUuAt1",
+  "rootStoreId": "estate-example-root-store",
+  "squads": {
+    "programId": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+    "core": {
+      "createKey": "GGLa1QEDAtLpWSfnJusLXaWRmYLaxGCPTSPW4tWjyNac",
+      "threshold": 3,
+      "timeLockSeconds": 0,
+      "members": [
+        {
+          "role": "publisher",
+          "publicKey": "dCSbM15t2gUmDc5t7eDBS5AYV2KPohn7tGU1MgutspZ",
+          "permissions": [
+            "initiate",
+            "vote",
+            "execute"
+          ]
+        },
+        {
+          "role": "reviewer-1",
+          "publicKey": "Hr2cjPtF61hHnLxrTYcQpnN1n5BVrYS2A7ybEZjJZwPp",
+          "permissions": [
+            "initiate",
+            "vote",
+            "execute"
+          ]
+        },
+        {
+          "role": "reviewer-2",
+          "publicKey": "HwxC94LBD6rEB42bDiMDqggjUsJA77aVMpJUr6t19usG",
+          "permissions": [
+            "initiate",
+            "vote",
+            "execute"
+          ]
+        },
+        {
+          "role": "witness",
+          "publicKey": "DSD5TDphZaVh1WVf1hKh3Xm7LBBCe3WQS1YG2LDGjLdD",
+          "permissions": [
+            "initiate",
+            "vote",
+            "execute"
+          ]
+        }
+      ],
+      "configAuthority": null,
+      "rentCollector": null
+    }
+  },
+  "upgradeAuthority": {
+    "kind": "governance-vault",
+    "publicKey": "BaTPhfQKzdJATTDrHeVJ3mM4hFyhqtxhuQT7aFEGbhje"
+  },
+  "initRegistryAuthority": {
+    "kind": "governance-vault",
+    "publicKey": "BaTPhfQKzdJATTDrHeVJ3mM4hFyhqtxhuQT7aFEGbhje",
+    "acknowledgePermanentDomainClaimRelease": true
+  },
+  "ceremony": {
+    "programDeployer": "GePDfrwrTFApTKBW39gwP7vHPMLJqvcYveHhj2EDxVLF",
+    "minimumCoreVaultLamports": "20000000000",
+    "bootstrapFundingLamports": "21000000000",
+    "coreApprovalRoles": [
+      "publisher",
+      "reviewer-1",
+      "reviewer-2"
+    ],
+    "reseller": {
+      "authority": "3LTyNL98UKczNJdsW6W5A3G5PyyV2sNCbpcQUdHqVJvZ",
+      "name": "Example Reseller",
+      "territory": "EXAMPLE",
+      "issuanceLimit": 2,
+      "category": null,
+      "licensePriceLamports": "1000000"
+    },
+    "rootStoreLicense": {
+      "mint": "BeSunPxiNitjYE6UKbwV7663NGEokx6GsCWYYYKDdiNB",
+      "unlockThreshold": 2,
+      "tlsCertificateSha256": "08a409daf5875f51e89be3beef2ee7a5397ed7c91c492683173fd2702f259e26",
+      "installUrl": "https://bazaar.estate.example/install",
+      "sandstormVersion": "example-1.0.0",
+      "trustBundleUri": "https://bazaar.estate.example/.well-known/melusina/trust-bundle.json",
+      "authzIdentity": "3DCwusDTZsT4rq1SLHShY3QszEqc3K26qaDhsH9M5B3U",
+      "allowedTierMask": 3,
+      "maxListings": 1024
+    },
+    "sidecar": {
+      "author": "3DCwusDTZsT4rq1SLHShY3QszEqc3K26qaDhsH9M5B3U",
+      "binarySha256": "b51174465ec1a2e8f3adfc9755fe71c6985eb1579689fa190ed9e486bc9de187",
+      "version": "example-1.0.0",
+      "sanList": [
+        "store.sidecar.host"
+      ],
+      "requiredPermissions": "0"
+    },
+    "programBinaries": {
+      "sourceCommit": "740282abfde0bcd1c84e2a7d58dd866a0b8d11fa",
+      "license_registry": {
+        "sha256": "87c41948c1e4f7ef7bcc7223955478ce409947c19d7487ee12e4e6c4c46f392f",
+        "sizeBytes": 73
+      },
+      "witness_verifier": {
+        "sha256": "1df142a80a2794e7d1ad1474c1db820cd9c48d9b51905b19f3253743b1916bcd",
+        "sizeBytes": 73
+      }
+    },
+    "tenant": {
+      "domain": "tenant.estate.example",
+      "licenseNftMint": "9hQ1NUWSiSHgvgmirdeotbAN2txRFHrq7TkcRiNwf6dD",
+      "squads": {
+        "createKey": "CNRGGdtbXpSR4Ew2T7CkxN9M51um4VR3X5WYGQ99xfGW",
+        "threshold": 2,
+        "timeLockSeconds": 0,
+        "configAuthority": null,
+        "rentCollector": null,
+        "members": [
+          {
+            "role": "tenant-operator",
+            "publicKey": "ES29qXWnRd5LvmYCSRhVnWH5YNqShDmLiqJ76nPqXJjn",
+            "permissions": [
+              "initiate",
+              "vote",
+              "execute"
+            ]
+          },
+          {
+            "role": "tenant-reviewer-1",
+            "publicKey": "7HnUkAD1epiWcJGztXW8czMw8PhHCPuPaVWWKJZ8XWkp",
+            "permissions": [
+              "initiate",
+              "vote",
+              "execute"
+            ]
+          },
+          {
+            "role": "tenant-reviewer-2",
+            "publicKey": "9qoyX29jaHKvYY7uHQWmSMFCnfhdvD7rWLJj6TUKpzAn",
+            "permissions": [
+              "initiate",
+              "vote",
+              "execute"
+            ]
+          },
+          {
+            "role": "tenant-witness",
+            "publicKey": "GJ6TB4hWXnNpjmNaxjQpzETtBrDYaeJW9r7HxQr3U2fy",
+            "permissions": [
+              "initiate",
+              "vote",
+              "execute"
+            ]
+          }
+        ]
+      },
+      "unlockThreshold": 2,
+      "tlsCertificateSha256": "282bb4f28f1389ff12ef529dbb43b13fb48a5462bcbd9759f96fdb0c868870fb",
+      "installUrl": "https://tenant.estate.example/install",
+      "sandstormVersion": "example-1.0.0",
+      "trustBundleUri": "https://tenant.estate.example/.well-known/melusina/trust-bundle.json",
+      "authzIdentity": "G3yRB3WxhLDszdH4WuLjMfT8zmXojgQw6S1Fiq4YXudU",
+      "licenseRoot": {
+        "apiVersion": "installer.melusina.org/v1alpha1",
+        "kind": "TenantLicenceRoot",
+        "licenseMint": "9hQ1NUWSiSHgvgmirdeotbAN2txRFHrq7TkcRiNwf6dD",
+        "capsuleKind": "license_root_secret_v1",
+        "threshold": 2,
+        "cosigners": [
+          "ES29qXWnRd5LvmYCSRhVnWH5YNqShDmLiqJ76nPqXJjn",
+          "7HnUkAD1epiWcJGztXW8czMw8PhHCPuPaVWWKJZ8XWkp",
+          "9qoyX29jaHKvYY7uHQWmSMFCnfhdvD7rWLJj6TUKpzAn",
+          "GJ6TB4hWXnNpjmNaxjQpzETtBrDYaeJW9r7HxQr3U2fy"
+        ],
+        "payloadBase64": "AgTHkMDUg60FZCfdF2cpbWyP/dYynp3KNoMx5Na+RdsORV1y1kfcep4xG9Lp1YzoVz2jrHedY1YmwAtfl1MPk9Vhg159CNmxjNO0+MdBzwYvRHev9snoGjrtOpHpLggbbpPjQFdnIHGdZmxjblMS+8Wt8boinDQayDfUp7rhlOLnMGoAAAABG+hi5aEczIAVqMboGyEGOxgOxfwGUIVkqxQHYNnyrcZiPEZVNXyNRs/MrxJkVWa2352sqcosnoTCI/8aoSLdUewr6cVuTI8oSMQtQgMQf0QjRuJSWoLcP3Nhpa2xhu7hyYDiiQPuQeGBagAAAAK14TMtjP3XKk4+Op7iU6HD5bUBM4QsOtZvjrdHdSdMrn3Tte8BoNunNvssDlHV5XkHgsn9DH8GNzJqXWdmponnYANcnj6LIdiyRnOXwXeWJdodPXNKv7kVj7wB8mIGRm5VEj/7cPsJPS9qAAAAA5RwbLvbQxTyzfrKYBTKmGG8E+cS331Btc7VkmQwpsAyTTjfpRnaHyqnMMiqKvqQePTmndr/xTpLYp0R+fBiaHD5Mxdmmv06p0R8amAXXbYi+2zQnguic/A+bhaxy1yXTFIfEss/oM598GoAAAAEmifC2peB69xtvmKBv2ALlPZ3auy76y9hJ9Gur0QQoL4LM4z+iSj8B2+5+6vtJDqhqwPn2I8Nz6zbu7nRmMm+1gggIx2DR+8xdQTE8lfqXI3d2DGelx2PNrOUjCuRViCyaFQQjQyHto1k",
+        "payloadSha256": "sha256:0ccd214e08843d9be7aace6128c13292b082623c1708d01c183a6c3ef06be09f",
+        "payloadSize": 570,
+        "authzIdentityPublicKey": "G3yRB3WxhLDszdH4WuLjMfT8zmXojgQw6S1Fiq4YXudU"
+      }
+    }
+  }
+}

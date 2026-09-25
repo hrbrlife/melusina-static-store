@@ -132,15 +132,28 @@ func TestStrictDecodeRefusesExcessNesting(t *testing.T) {
 	requireRefusal(t, err, RefusalJSONTooDeep+":$.estateId.a.b.c.d.e.f.g")
 }
 
+// The draft is the ceremony profile's schema, whatever else the document
+// carries: a profile relabelled with it is refused as a draft at decode and at
+// validation. The invented draft kind no producer ever emitted is not a draft;
+// it is an unsupported document like any other.
 func TestStrictDecodeRefusesADraftAsADraft(t *testing.T) {
-	raw := marshalProfile(t, newEstateProfile(t))
-	draft := mutateJSON(t, raw, `"kind":"estate-profile",`, `"kind":"`+DraftKind+`",`)
+	// contracts scripts/estate/estate-profile.schema.json schema const.
+	if ceremonySchema := "melusina.estate-profile/v1"; DraftSchema != ceremonySchema {
+		t.Fatalf("the draft is %q, not the chain-foundation ceremony profile's schema %q", DraftSchema, ceremonySchema)
+	}
+	profile := newEstateProfile(t)
+	raw := marshalProfile(t, profile)
+	draft := mutateJSON(t, raw, `"schema":"`+ProfileSchema+`"`, `"schema":"`+DraftSchema+`"`)
 	_, err := DecodeProfile(draft)
 	requireRefusal(t, err, RefusalDraftNotEnrollable)
 
-	draft = mutateJSON(t, raw, `"schema":"`+ProfileSchema+`"`, `"schema":"`+DraftSchema+`"`)
-	_, err = DecodeProfile(draft)
-	requireRefusal(t, err, RefusalDraftNotEnrollable)
+	relabelled := profile
+	relabelled.Schema = DraftSchema
+	requireRefusal(t, ValidateProfile(relabelled), RefusalDraftNotEnrollable)
+
+	invented := mutateJSON(t, raw, `"kind":"estate-profile",`, `"kind":"estate-profile-draft",`)
+	_, err = DecodeProfile(invented)
+	requireRefusal(t, err, RefusalSchemaUnsupported)
 }
 
 func TestStrictDecodeRefusesAnUnknownSchema(t *testing.T) {

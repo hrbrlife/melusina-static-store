@@ -13,18 +13,19 @@ import (
 	"testing"
 )
 
-// vectorsPath is the one gate every copy of this package shares. The deployer,
-// the Store and authz each carry byte-identical sources, and each is held to
-// these vectors: same preimages, same digests, same refusal names. The file
-// also records the SHA-256 of this package's own Go sources, so a copy that
-// has drifted from the others is a failing test and not a surprise in
-// production (design decision 12).
+// vectorsPath is the one gate every copy of this package shares. The deployer
+// and the Store each carry a copy of these sources, and each is held to these
+// vectors: same preimages, same digests, same refusal names. The file also
+// records the SHA-256 of this package's own Go sources, so a copy that has
+// drifted from its own record is a failing test and not a surprise in
+// production (design decision 12). One copy's record says nothing about
+// another's; peer_copies_test.go compares this copy with the Store's.
 const vectorsPath = "../../testdata/estate-profile-vectors.json"
 
 // updateVectors rewrites the committed file from the fixtures. It is the only
 // way the file is ever produced; running the suite without it re-derives every
 // recorded value and compares.
-var updateVectors = flag.Bool("update-vectors", false, "rewrite testdata/estate-profile-vectors.json and testdata/provider-install-authorization-vectors.json from the fixtures")
+var updateVectors = flag.Bool("update-vectors", false, "rewrite testdata/estate-profile-vectors.json, testdata/provider-install-authorization-vectors.json and testdata/store-host-authorization-vectors.json from the fixtures")
 
 const vectorsSchema = "melusina.estate.profile-vectors.v1"
 
@@ -37,6 +38,7 @@ type vectorsDocument struct {
 	Accept     []acceptVector     `json:"acceptVectors"`
 	Guard      []guardVector      `json:"guardVectors"`
 	Projection []projectionVector `json:"projectionVectors"`
+	Enrollment []enrollmentVector `json:"storeEnrollmentVectors"`
 }
 
 type profileVector struct {
@@ -88,6 +90,22 @@ type projectionVector struct {
 	Declared            map[string]string `json:"declared,omitempty"`
 	ObservedGenesisHash string            `json:"observedGenesisHash,omitempty"`
 	Refusal             string            `json:"refusal"`
+}
+
+// enrollmentVector is one owner-signed root-Store enrollment document of
+// either kind, with the canonical preimage and digest its owners signed.
+// The vectors form one Store's chain - its initial enrollment, then each
+// successor naming the one before it - so a second implementation can
+// reproduce every anchor, predecessor and recall from the file alone.
+type enrollmentVector struct {
+	Name             string          `json:"name"`
+	Description      string          `json:"description"`
+	Profile          string          `json:"profile"`
+	Schema           string          `json:"schema"`
+	DigestDomain     string          `json:"digestDomain"`
+	Document         json.RawMessage `json:"document"`
+	PreimageHex      string          `json:"preimageHex"`
+	EnrollmentSHA256 string          `json:"enrollmentSha256"`
 }
 
 func consumerStateNamed(t *testing.T, name string) ConsumerState {
@@ -159,7 +177,8 @@ func buildVectors(t *testing.T) vectorsDocument {
 			"Key material is derived from fixed labels: seed = sha256(\"melusina-estate-profile-vector-key:\" + label), key = Ed25519 from that seed. No private key is stored here and none of it has authority anywhere.",
 			"A placeholder address is base58(sha256(\"MELUSINA_ILLUSTRATIVE_PLACEHOLDER_V1:\" + label)); a placeholder digest is that sha256 in hex. It is canonically valid and deliberately fictitious.",
 			"preimageHex is the canonical digest preimage: W(domain) then every field in declaration order, top-level signatures excluded. profileSha256 is its SHA-256. A second implementation must reproduce both byte for byte.",
-			"goSources is the SHA-256 of every non-test Go file of the package the vectors gate. The deployer, the Store and authz carry byte-identical copies; a copy that drifts fails its own suite.",
+			"goSources is the SHA-256 of every non-test Go file of the package the vectors gate. The deployer and the Store each carry a copy; a copy that drifts from its own record fails its own suite, and comparing two copies' records is a separate peer check.",
+			"storeEnrollmentVectors are one root Store's enrollment chain under new-estate-revision-1: the initial StoreEnrollmentV1, then StoreEnrollmentSuccessorV1 documents each superseding and recalling the one before. preimageHex is W(digestDomain) then every field in declaration order, signatures excluded; enrollmentSha256 is its SHA-256 and is what the owners signed.",
 			"The paype-devnet vector is ILLUSTRATIVE. Its public values are read from tracked sources and read-only devnet readback; every field named in illustrativeFields is a placeholder and is not a measurement of the live estate.",
 		},
 		GoSources: packageGoSources(t),
@@ -185,6 +204,11 @@ func buildVectors(t *testing.T) vectorsDocument {
 			name:        "new-estate-revision-2-recalling-revision-1",
 			description: "The same migration, additionally recalling revision 1's digest. A consumer still pinned at revision 1 halts mutation by name against this profile and migrates out of it with no wipe.",
 			profile:     recalling,
+		},
+		{
+			name:        "new-estate-revision-1-longest-store-id",
+			description: "The rehearsal estate at revision 1 with the longest storeId a profile may state, 52 characters, so the Store's state namespace store-<storeId>-g999 is exactly 63 characters, the RemoteBak limit.",
+			profile:     withStoreID(t, longestStoreID),
 		},
 		{
 			name:         "paype-devnet-revision-1",
@@ -296,8 +320,23 @@ func buildVectors(t *testing.T) vectorsDocument {
 		},
 		{
 			Name: "draft-not-enrollable", Stage: "decode", Refusal: RefusalDraftNotEnrollable,
-			Description: "The unsigned chain-foundation input is refused as a draft, not as a list of unknown fields.",
-			Document:    string(mutateJSON(t, raw, `"kind":"estate-profile",`, `"kind":"`+DraftKind+`",`)),
+			Description: "The unsigned chain-foundation input is the contracts repository's ceremony profile (schema melusina.estate-profile/v1); this document is its example, scripts/estate/examples/example-estate.profile.json, byte for byte. It is refused as a draft, not as an unsupported schema or a list of unknown fields.",
+			Document:    string(contractsCeremonyProfile(t)),
+		},
+		{
+			Name: "store-release-threshold-one", Stage: "decode", Refusal: RefusalFieldMalformed + ":roles.store-release.threshold",
+			Description: "The owners signed a profile whose Store release multisig is 1 of 3. An enrolled Store refuses a release authority below two and requires its configured threshold to equal this role exactly, so the profile is refused before an estate is founded on a root Store that can never be configured.",
+			Document:    string(marshalProfile(t, storeReleaseThresholdOne(t))),
+		},
+		{
+			Name: "store-release-single-key", Stage: "decode", Refusal: RefusalFieldMalformed + ":roles.store-release.kind",
+			Description: "The owners signed a profile whose Store release role is one key. A key is threshold one by definition, and an enrolled Store refuses a release role that is not a Squads multisig.",
+			Document:    string(marshalProfile(t, storeReleaseSingleKey(t))),
+		},
+		{
+			Name: "store-id-53-characters", Stage: "decode", Refusal: RefusalFieldMalformed + ":store.storeId",
+			Description: "The owners signed a profile whose storeId is 53 characters. The Store names its state backup namespace store-<storeId>-g<N> and a namespace is at most 63 characters, so this Store could not be backed up past generation 99; the profile refuses it at signing, not the Store at its first backup.",
+			Document:    string(marshalProfile(t, withStoreID(t, longestStoreID+"x"))),
 		},
 		{
 			Name: "trailing-data", Stage: "decode", Refusal: RefusalJSONTrailingData,
@@ -456,7 +495,62 @@ func buildVectors(t *testing.T) vectorsDocument {
 			Description: "The protocol constant refuses mainnet on the observed side too, before any estate comparison.",
 		},
 	}
+	document.Enrollment = buildEnrollmentVectors(t, rehearsal)
 	return document
+}
+
+// buildEnrollmentVectors produces one Store's enrollment chain from the
+// fixtures: the initial enrollment, a successor for a rebuilt executable, and
+// a successor for a renewed certificate under a new binding key version.
+func buildEnrollmentVectors(t *testing.T, profile EstateProfileV1) []enrollmentVector {
+	t.Helper()
+	initial := newStoreEnrollment(t, profile)
+	initialDigest, err := StoreEnrollmentSHA256(initial)
+	if err != nil {
+		t.Fatalf("initial enrollment digest: %v", err)
+	}
+	rebuilt := newStoreEnrollmentSuccessor(t, profile, StoreEnrollmentHeld{Initial: initial}, nil)
+	renewed := newStoreEnrollmentSuccessor(t, profile, StoreEnrollmentHeld{Initial: initial, Current: &rebuilt, Recalled: []string{initialDigest}}, func(value *StoreEnrollmentSuccessorV1) {
+		value.BinarySHA256 = rebuilt.BinarySHA256
+		value.BindingKeyVersion = 2
+		value.SidecarIdentityPDA = vectorAddress("rehearsal/store/sidecar-identity-pda/v2")
+		value.TLSCertFingerprint = vectorDigest("rehearsal/store/tls-cert/renewed")
+	})
+	vector := func(name, description, schema, domain string, document any, preimage []byte) enrollmentVector {
+		raw, err := json.Marshal(document)
+		if err != nil {
+			t.Fatalf("%s: marshal: %v", name, err)
+		}
+		sum := sha256.Sum256(preimage)
+		return enrollmentVector{
+			Name: name, Description: description, Profile: "new-estate-revision-1",
+			Schema: schema, DigestDomain: domain, Document: raw,
+			PreimageHex: hex.EncodeToString(preimage), EnrollmentSHA256: hex.EncodeToString(sum[:]),
+		}
+	}
+	initialPreimage, err := StoreEnrollmentPreimage(initial)
+	if err != nil {
+		t.Fatalf("initial enrollment preimage: %v", err)
+	}
+	rebuiltPreimage, err := StoreEnrollmentSuccessorPreimage(rebuilt)
+	if err != nil {
+		t.Fatalf("rebuilt successor preimage: %v", err)
+	}
+	renewedPreimage, err := StoreEnrollmentSuccessorPreimage(renewed)
+	if err != nil {
+		t.Fatalf("renewed successor preimage: %v", err)
+	}
+	return []enrollmentVector{
+		vector("root-store-initial-enrollment",
+			"The root Store's initial enrollment, sequence 1, signed by owners a and b of the 2-of-3 policy. It anchors every successor below.",
+			StoreEnrollmentSchema, storeEnrollmentDigestDomain, initial, initialPreimage),
+		vector("root-store-successor-rebuilt-binary",
+			"Sequence 2 for a rebuilt executable: only binarySha256 changes. It names the initial enrollment as its predecessor and recalls it.",
+			StoreEnrollmentSuccessorSchema, storeEnrollmentSuccessorDigestDomain, rebuilt, rebuiltPreimage),
+		vector("root-store-successor-renewed-certificate",
+			"Sequence 3 for a renewed certificate: binding key version 2 selects a new SidecarIdentityEntry PDA pinning the new TLS leaf; the executable is sequence 2's. It supersedes and recalls sequence 2.",
+			StoreEnrollmentSuccessorSchema, storeEnrollmentSuccessorDigestDomain, renewed, renewedPreimage),
+	}
 }
 
 func marshalVectors(t *testing.T, document vectorsDocument) []byte {
@@ -625,7 +719,7 @@ func TestVectorsDecodeControls(t *testing.T) {
 			}
 		})
 	}
-	for _, want := range []string{"duplicate-key", "unknown-field", "mainnet-genesis", "changed-threshold-without-succession", "final-program-with-authority", "governed-program-stated-final", "governed-program-without-authority"} {
+	for _, want := range []string{"duplicate-key", "unknown-field", "mainnet-genesis", "changed-threshold-without-succession", "final-program-with-authority", "governed-program-stated-final", "governed-program-without-authority", "store-release-threshold-one", "store-release-single-key", "draft-not-enrollable", "store-id-53-characters"} {
 		if !hasVector(document.Decode, want) {
 			t.Fatalf("the named control %q is not in %s", want, vectorsPath)
 		}
@@ -724,6 +818,93 @@ func TestVectorsProjectionControls(t *testing.T) {
 		if !named[want] {
 			t.Fatalf("the named control %q is not in %s", want, vectorsPath)
 		}
+	}
+}
+
+// TestVectorsStoreEnrollmentsRecomputeFromTheirOwnBytes is the enrollment
+// half of the cross-implementation gate. Each document strictly decodes as its
+// own kind and only as its own kind, reproduces the recorded preimage (which
+// begins with its own digest domain) and digest, verifies under its profile's
+// owners, and - for a successor - advances the Store from the vectors before
+// it, anchored to the initial enrollment and recalling its predecessor.
+func TestVectorsStoreEnrollmentsRecomputeFromTheirOwnBytes(t *testing.T) {
+	document := loadVectors(t)
+	var initial *StoreEnrollmentV1
+	var initialDigest string
+	var current *StoreEnrollmentSuccessorV1
+	var currentDigest string
+	recalledSoFar := []string{}
+	successors := 0
+	for index, vector := range document.Enrollment {
+		profile := vectorProfile(t, document, vector.Profile)
+		var domain binaryWriter
+		domain.bytes([]byte(vector.DigestDomain))
+		preimage, err := hex.DecodeString(vector.PreimageHex)
+		if err != nil || !bytes.HasPrefix(preimage, domain.Bytes()) {
+			t.Fatalf("%s: the recorded preimage does not begin with W(%q)", vector.Name, vector.DigestDomain)
+		}
+		if sum := sha256.Sum256(preimage); hex.EncodeToString(sum[:]) != vector.EnrollmentSHA256 {
+			t.Fatalf("%s: the recorded digest is not the SHA-256 of the recorded preimage", vector.Name)
+		}
+		switch vector.Schema {
+		case StoreEnrollmentSchema:
+			if index != 0 || vector.DigestDomain != storeEnrollmentDigestDomain {
+				t.Fatalf("%s: the initial enrollment must open the chain under %q", vector.Name, storeEnrollmentDigestDomain)
+			}
+			value, err := DecodeStoreEnrollment(vector.Document)
+			if err != nil {
+				t.Fatalf("%s: the vector must strictly decode: %v", vector.Name, err)
+			}
+			_, err = DecodeStoreEnrollmentSuccessor(vector.Document)
+			requireRefusal(t, err, RefusalStoreEnrollmentSuccessorSchemaUnsupported)
+			got, err := StoreEnrollmentPreimage(value)
+			if err != nil || hex.EncodeToString(got) != vector.PreimageHex {
+				t.Fatalf("%s: the canonical preimage differs from the recorded one (%v)", vector.Name, err)
+			}
+			digest, err := VerifyStoreEnrollmentAuthorization(profile, value)
+			if err != nil || digest != vector.EnrollmentSHA256 {
+				t.Fatalf("%s: owner authorization %q, %v; recorded %s", vector.Name, digest, err, vector.EnrollmentSHA256)
+			}
+			initial, initialDigest = &value, digest
+			currentDigest = digest
+		case StoreEnrollmentSuccessorSchema:
+			if initial == nil || vector.DigestDomain != storeEnrollmentSuccessorDigestDomain {
+				t.Fatalf("%s: a successor must follow the initial enrollment under %q", vector.Name, storeEnrollmentSuccessorDigestDomain)
+			}
+			value, err := DecodeStoreEnrollmentSuccessor(vector.Document)
+			if err != nil {
+				t.Fatalf("%s: the vector must strictly decode: %v", vector.Name, err)
+			}
+			_, err = DecodeStoreEnrollment(vector.Document)
+			requireRefusal(t, err, RefusalStoreEnrollmentSchemaUnsupported)
+			got, err := StoreEnrollmentSuccessorPreimage(value)
+			if err != nil || hex.EncodeToString(got) != vector.PreimageHex {
+				t.Fatalf("%s: the canonical preimage differs from the recorded one (%v)", vector.Name, err)
+			}
+			digest, err := VerifyStoreEnrollmentSuccessorAuthorization(profile, value)
+			if err != nil || digest != vector.EnrollmentSHA256 {
+				t.Fatalf("%s: owner authorization %q, %v; recorded %s", vector.Name, digest, err, vector.EnrollmentSHA256)
+			}
+			if value.InitialEnrollmentSHA256 != initialDigest || value.PredecessorEnrollmentSHA256 != currentDigest {
+				t.Fatalf("%s: anchored to %s after %s, want %s after %s", vector.Name, value.InitialEnrollmentSHA256, value.PredecessorEnrollmentSHA256, initialDigest, currentDigest)
+			}
+			held := StoreEnrollmentHeld{Initial: *initial, Current: current, Recalled: append([]string(nil), recalledSoFar...)}
+			if err := RequireStoreEnrollmentSuccessorAdvance(held, value); err != nil {
+				t.Fatalf("%s: does not advance the Store from the vectors before it: %v", vector.Name, err)
+			}
+			// Replayed once accepted, it is not forward.
+			requireRefusal(t, RequireStoreEnrollmentSuccessorAdvance(StoreEnrollmentHeld{Initial: *initial, Current: &value}, value), RefusalStoreEnrollmentSuccessorNotForward)
+			for _, recall := range value.Recalls {
+				recalledSoFar = append(recalledSoFar, recall.SHA256)
+			}
+			current, currentDigest = &value, digest
+			successors++
+		default:
+			t.Fatalf("%s: unknown enrollment schema %q", vector.Name, vector.Schema)
+		}
+	}
+	if initial == nil || successors < 2 {
+		t.Fatalf("%s must carry an initial enrollment and at least two successors, has %d successors", vectorsPath, successors)
 	}
 }
 

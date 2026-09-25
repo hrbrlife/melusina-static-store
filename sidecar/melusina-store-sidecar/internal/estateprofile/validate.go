@@ -9,10 +9,15 @@ import (
 )
 
 var (
-	policyIDPattern   = regexp.MustCompile(`^policy\.[a-z][a-z0-9.-]{1,95}\.v1$`)
-	keyIDPattern      = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
-	labelPattern      = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
-	storeIDPattern    = regexp.MustCompile(`^[a-z][a-z0-9-]{1,63}$`)
+	policyIDPattern = regexp.MustCompile(`^policy\.[a-z][a-z0-9.-]{1,95}\.v1$`)
+	keyIDPattern    = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
+	labelPattern    = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
+	// storeIDPattern bounds a storeId at MaxStoreIDLength characters, so the
+	// Store's state namespace "store-" + storeId + "-g" + N still fits a
+	// 63-character RemoteBak namespace name at generation 999:
+	// 6 + 52 + 2 + 3 = 63. A longer id would be signed into the profile and
+	// then refused at the Store's first state backup.
+	storeIDPattern    = regexp.MustCompile(`^[a-z][a-z0-9-]{1,51}$`)
 	rootDomainPattern = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$`)
 	reasonPattern     = regexp.MustCompile(`^[ -~]{1,200}$`)
 
@@ -31,7 +36,7 @@ const squadsPermissionVote = 2
 // genesis. It accepts an unsigned profile, because owners compute the digest
 // before they sign it. It proves neither identity nor authority.
 func ValidateProfile(profile EstateProfileV1) error {
-	if profile.Kind == DraftKind || profile.Schema == DraftSchema {
+	if profile.Schema == DraftSchema {
 		return refuse(RefusalDraftNotEnrollable)
 	}
 	if profile.Schema != ProfileSchema || profile.Kind != ProfileKind {
@@ -335,6 +340,11 @@ func validateRoles(roles []AuthorityRoleV1) error {
 		if !validAddress(role.Vault) {
 			return refuseSubject(RefusalFieldMalformed, field+".vault")
 		}
+		// The Store release authority is a multisig: a single key is
+		// threshold one by definition, below StoreReleaseMinThreshold.
+		if role.Role == AuthorityRoleStoreRelease && role.Kind != AuthorityKindSquads {
+			return refuseSubject(RefusalFieldMalformed, field+".kind")
+		}
 		switch role.Kind {
 		case AuthorityKindSquads:
 			if !validAddress(role.Multisig) || role.Multisig == role.Vault {
@@ -357,6 +367,9 @@ func validateRoles(roles []AuthorityRoleV1) error {
 			}
 			// Squads itself refuses a threshold no set of voters can reach.
 			if role.Threshold == 0 || role.Threshold > voters {
+				return refuseSubject(RefusalFieldMalformed, field+".threshold")
+			}
+			if role.Role == AuthorityRoleStoreRelease && role.Threshold < StoreReleaseMinThreshold {
 				return refuseSubject(RefusalFieldMalformed, field+".threshold")
 			}
 			if !validAddressOrDefault(role.ConfigAuthority) {

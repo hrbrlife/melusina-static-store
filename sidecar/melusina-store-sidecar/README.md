@@ -534,10 +534,22 @@ binary or certificate the `SidecarIdentityEntry` does not pin:
    ```
 
 3. The owners review, sign and assemble it out of process into
-   `store-enrollment-successor.json`. **NOT POSSIBLE YET:** the deployer's
+   `store-enrollment-successor.json` with the deployer's
    `store-enrollment-review`, `store-enrollment-owner-sign` and
-   `assemble-store-enrollment` accept only `StoreEnrollmentV1` today. Do not
-   hand-author or hand-sign a successor.
+   `assemble-store-enrollment`, which accept a successor since deployer
+   `c5196544`. Follow the day-two section of
+   [`STORE_ENROLLMENT_CEREMONY.md`](https://github.com/melusina-os/melusina-os-deployer/blob/b23823962d5abd9e4b1ac1ab83d82362634afdcb/deploy-ui/docs/STORE_ENROLLMENT_CEREMONY.md#day-two-an-owner-signed-successor)
+   there. Each command also takes `-initial`, the Store's completed initial
+   `StoreEnrollmentV1`. When the Store already runs under a successor, it
+   also takes `-predecessor`, that completed `StoreEnrollmentSuccessorV1`.
+   The review prints the sequence, the anchor, the predecessor, the signed
+   recalls, and the four binding values both as held and as requested. The
+   owners' sign and assemble steps reproduce the `storeEnrollmentVectors` in
+   `testdata/estate-profile-vectors.json` byte for byte; that file is pinned
+   to the deployer's bytes. `TestDeployerEnrollmentChainAdvancesTheStoreState`
+   applies those exact documents through this Store's successor state
+   machine. No successor has yet been applied to a running Store on a real
+   host. Do not hand-author or hand-sign a successor.
 4. Stop the Store, then apply it with the new executable. It takes the Store's
    `writer.lock` (so it refuses while a Store is serving), verifies owner
    authority, sequence and recall before any chain read, then the local facts

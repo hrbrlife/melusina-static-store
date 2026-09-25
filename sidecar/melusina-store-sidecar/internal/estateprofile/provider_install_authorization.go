@@ -13,8 +13,10 @@ import (
 // estate profile's current OwnerPolicy threshold signs it; no operator key
 // and no Store key can stand in for it. It binds the exact profile it was
 // signed under, the host by its measured machine identity, the exact typed
-// substrate Spec, the exact provider suite that host must be running, and the
-// escrow recipients every provider key minted on that host is sealed to.
+// substrate Spec, the exact provider suite that host must be running, the
+// escrow recipients every provider key minted on that host is sealed to, and
+// the reviewed provider edge profile both the Spec and the provider-hook
+// configuration are rendered from, with the exact bytes of that configuration.
 //
 // It is short-lived and names one host: an authorization for another host,
 // Spec, suite, estate or profile revision is refused, and once it expires the
@@ -53,22 +55,27 @@ const (
 // lowercase hex: the host's machine-id digest as the substrate Spec pins it,
 // the Spec's own digest, and the provider suite manifest digest without its
 // "sha256:" prefix. RecoveryRecipients are x25519 recipient strings, sorted.
+// EdgeProfileSHA256 is the digest of the ProviderEdgeProfileV1 the Spec and
+// the configuration are rendered from, and ProviderConfigSHA256 the SHA-256 of
+// the exact provider-hook configuration bytes rendered from it, both bare hex.
 type ProviderInstallAuthorizationV1 struct {
-	Schema              string        `json:"schema"`
-	Kind                string        `json:"kind"`
-	Purpose             string        `json:"purpose"`
-	EstateID            string        `json:"estateId"`
-	ProfileSHA256       string        `json:"profileSha256"`
-	ProfileRevision     uint64        `json:"profileRevision"`
-	HostMachineIDHash   string        `json:"hostMachineIdHash"`
-	Class               string        `json:"class"`
-	SpecSHA256          string        `json:"specSha256"`
-	SuiteManifestSHA256 string        `json:"suiteManifestSha256"`
-	RecoveryRecipients  []string      `json:"recoveryRecipients"`
-	IssuedAt            string        `json:"issuedAt"`
-	ExpiresAt           string        `json:"expiresAt"`
-	AuthorizationNonce  string        `json:"authorizationNonce"`
-	Signatures          []SignatureV1 `json:"signatures"`
+	Schema               string        `json:"schema"`
+	Kind                 string        `json:"kind"`
+	Purpose              string        `json:"purpose"`
+	EstateID             string        `json:"estateId"`
+	ProfileSHA256        string        `json:"profileSha256"`
+	ProfileRevision      uint64        `json:"profileRevision"`
+	HostMachineIDHash    string        `json:"hostMachineIdHash"`
+	Class                string        `json:"class"`
+	SpecSHA256           string        `json:"specSha256"`
+	SuiteManifestSHA256  string        `json:"suiteManifestSha256"`
+	RecoveryRecipients   []string      `json:"recoveryRecipients"`
+	IssuedAt             string        `json:"issuedAt"`
+	ExpiresAt            string        `json:"expiresAt"`
+	AuthorizationNonce   string        `json:"authorizationNonce"`
+	EdgeProfileSHA256    string        `json:"edgeProfileSha256"`
+	ProviderConfigSHA256 string        `json:"providerConfigSha256"`
+	Signatures           []SignatureV1 `json:"signatures"`
 }
 
 // DecodeProviderInstallAuthorization strictly decodes one authorization. An
@@ -108,6 +115,8 @@ func ValidateProviderInstallAuthorization(value ProviderInstallAuthorizationV1) 
 		{"specSha256", value.SpecSHA256},
 		{"suiteManifestSha256", value.SuiteManifestSHA256},
 		{"authorizationNonce", value.AuthorizationNonce},
+		{"edgeProfileSha256", value.EdgeProfileSHA256},
+		{"providerConfigSha256", value.ProviderConfigSHA256},
 	} {
 		if !validDigest(field.value) {
 			return refuseSubject(RefusalProviderInstallAuthorizationFieldMalformed, field.name)
@@ -210,6 +219,8 @@ func providerInstallAuthorizationPreimage(value ProviderInstallAuthorizationV1) 
 	writer.time(issuedAt)
 	writer.time(expiresAt)
 	writer.string(value.AuthorizationNonce)
+	writer.string(value.EdgeProfileSHA256)
+	writer.string(value.ProviderConfigSHA256)
 	return writer.Bytes()
 }
 

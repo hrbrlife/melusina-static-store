@@ -3,13 +3,14 @@ package estateprofile
 import "crypto/ed25519"
 
 // DecodeProfile strictly decodes one EstateProfileV1 and validates its shape.
-// A draft is refused as a draft. The result is structurally valid and NOT yet
-// trusted: only VerifyProfile establishes identity and authority.
+// A draft - the chain-foundation ceremony profile - is refused as a draft
+// before any of its fields are read. The result is structurally valid and NOT
+// yet trusted: only VerifyProfile establishes identity and authority.
 func DecodeProfile(raw []byte) (EstateProfileV1, error) {
 	var profile EstateProfileV1
 	err := decodeStrict(raw, MaxProfileJSONBytes, &profile, func(tree any) error {
 		schema, kind := peekStrictJSONKind(tree)
-		if schema == DraftSchema || kind == DraftKind {
+		if schema == DraftSchema {
 			return refuse(RefusalDraftNotEnrollable)
 		}
 		if schema != ProfileSchema || kind != ProfileKind {
@@ -82,6 +83,25 @@ func verifiedPolicyChain(profile EstateProfileV1) ([]string, error) {
 		return nil, refuse(RefusalSuccessorUnauthorized)
 	}
 	return chain, nil
+}
+
+// VerifyOwnerThreshold is the owner-threshold check for an estate document
+// that another package owns and digests, such as the recovery kit
+// (internal/recoverykit). policy must be a structurally valid owner policy
+// (at least OwnerPolicyMinThreshold of at least OwnerPolicyMinSigners
+// canonical keys), digest a lowercase nonzero hex SHA-256, and signatures a
+// sorted, duplicate-free set of at least the threshold, EVERY one a valid
+// signature by its policy member over the digest's 64 ASCII characters. It
+// decides nothing about which policy is current: the caller passes the
+// ownerPolicy of a profile VerifyProfile accepted.
+func VerifyOwnerThreshold(policy OwnerPolicyV1, digest string, signatures []SignatureV1) error {
+	if err := validateOwnerPolicy(policy, "ownerPolicy"); err != nil {
+		return err
+	}
+	if !validDigest(digest) {
+		return refuseSubject(RefusalFieldMalformed, "digest")
+	}
+	return verifyThresholdSignatures(policy, digest, signatures)
 }
 
 // verifyThresholdSignatures requires a sorted, duplicate-free subset of the

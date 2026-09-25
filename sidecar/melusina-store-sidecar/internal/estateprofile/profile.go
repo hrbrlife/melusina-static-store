@@ -17,10 +17,14 @@ const (
 	ProfileSchema = "melusina.estate.profile.v1"
 	ProfileKind   = "estate-profile"
 
-	// DraftSchema and DraftKind name the unsigned chain-foundation input. No
-	// consumer accepts it: DecodeProfile and VerifyProfile refuse it by name.
-	DraftSchema = "melusina.estate.profile-draft.v1"
-	DraftKind   = "estate-profile-draft"
+	// DraftSchema names the estate's draft: the unsigned chain-foundation
+	// input, which is the contracts repository's ceremony profile
+	// (scripts/estate/estate-profile.schema.json) and nothing else. The chain
+	// foundation runs from it before any EstateProfileV1 exists. It carries no
+	// kind field, so its schema alone identifies it. No consumer accepts it as
+	// a profile: DecodeProfile and ValidateProfile refuse it by its own name,
+	// estate-profile-draft-not-enrollable, never as an unsupported schema.
+	DraftSchema = FoundationCeremonyProfileSchema
 
 	// NetworkAccessSchema and NetworkAccessKind name the separately
 	// owner-signed private-origin exception list.
@@ -54,12 +58,29 @@ const (
 	MaxRoleMembers          = 64
 	MaxNetworkOrigins       = 32
 
+	// StoreReleaseMinThreshold is the least threshold roles.store-release may
+	// state, and that role is always a Squads multisig. An enrolled Store
+	// refuses a release authority below two, or one that is not a multisig,
+	// and requires its configured threshold to equal this role's exactly, so
+	// a profile that stated less could never configure its own root Store and
+	// would cost its owners a new revision to correct.
+	StoreReleaseMinThreshold = 2
+
+	// MaxStoreIDLength is the longest storeId a profile may state. The
+	// Store's state backup names its RemoteBak namespace
+	// "store-<storeId>-g<N>" (Store internal/storerecovery/namespace.go
+	// StateNamespace), and a namespace name is at most 63 characters, so 52
+	// is the longest id whose namespace fits through generation 999 - the
+	// same horizon as a tenant's installId of at most 58. The storeId is
+	// fixed in the signed profile, so the bound is checked here, at signing,
+	// and not first at the Store's backup.
+	MaxStoreIDLength = 52
+
 	profileDigestDomain          = "MELUSINA_ESTATE_PROFILE_V1\n"
 	estateIDDomain               = "MELUSINA_ESTATE_ID_V1\n"
 	ownerPolicyDigestDomain      = "MELUSINA_ESTATE_OWNER_POLICY_V1\n"
 	policySuccessionDigestDomain = "MELUSINA_ESTATE_POLICY_SUCCESSION_V1\n"
 	networkAccessDigestDomain    = "MELUSINA_ESTATE_NETWORK_ACCESS_V1\n"
-	draftDigestDomain            = "MELUSINA_ESTATE_PROFILE_DRAFT_V1\n"
 )
 
 // Closed role vocabularies. A value outside these lists is refused; the lists

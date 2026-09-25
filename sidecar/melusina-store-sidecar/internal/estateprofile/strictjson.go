@@ -56,6 +56,16 @@ func decodeStrict(raw []byte, limit int, destination any, precheck func(tree any
 	return nil
 }
 
+// DecodeStrictDocument decodes one owner-reviewed estate document that another
+// package owns, such as the provider edge profile, under exactly this
+// package's strict JSON rules and refusal names: no duplicate, unknown,
+// aliased or missing key, no null, no value of another JSON type, no unsafe
+// integer and no trailing data. destination is a pointer to a struct whose
+// fields are structs, slices, strings, bools and unsigned integers only.
+func DecodeStrictDocument(raw []byte, limit int, destination any) error {
+	return decodeStrict(raw, limit, destination, func(any) error { return nil })
+}
+
 // parseStrictJSONTree walks the token stream once, refusing duplicate keys
 // before any map could silently keep the last one.
 func parseStrictJSONTree(raw []byte) (any, error) {

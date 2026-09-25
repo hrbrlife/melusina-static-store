@@ -114,9 +114,16 @@ fi
 # --- 3. Deployer manifest ----------------------------------------------------
 section "3. Deployer manifest"
 
-DEPLOYER_MANIFEST="${MELUSINA_DEPLOYER_MANIFEST:-/home/user/Desktop/Melusina/deployer/config/approval-manifests/global-apps-2026-04-23.json}"
+# Named, never defaulted, and read only once its sha256 pin checks out.
+DEPLOYER_MANIFEST="${MELUSINA_DEPLOYER_MANIFEST:-}"
 
-if [[ -f "$DEPLOYER_MANIFEST" ]]; then
+if [[ -z "$DEPLOYER_MANIFEST" ]]; then
+  warn "MELUSINA_DEPLOYER_MANIFEST is unset"
+  warn "preflight Gate 2 will be skipped — name the manifest and pin MELUSINA_DEPLOYER_MANIFEST_SHA256 to run it"
+elif ! MANIFEST_REFUSAL="$(python3 "$ROOT/scripts/release-inputs.py" check MELUSINA_DEPLOYER_MANIFEST 2>&1)"; then
+  fail "$MANIFEST_REFUSAL"
+  REQUIRED_FAIL=$((REQUIRED_FAIL+1))
+else
   if N=$(python3 -c "import json,sys; m=json.load(open(sys.argv[1])); print(len(m.get('apps', m if isinstance(m,list) else [])))" "$DEPLOYER_MANIFEST" 2>/dev/null); then
     DEFERRED=$(python3 -c "import json,sys; m=json.load(open(sys.argv[1])); apps=m.get('apps',m if isinstance(m,list) else []); print(sum(1 for a in apps if a.get('deferred_in_catalog')))" "$DEPLOYER_MANIFEST" 2>/dev/null || echo "?")
     PENDING=$(python3 -c "import json,sys; m=json.load(open(sys.argv[1])); apps=m.get('apps',m if isinstance(m,list) else []); print(sum(1 for a in apps if a.get('pending_reseat')))" "$DEPLOYER_MANIFEST" 2>/dev/null || echo "?")
@@ -126,9 +133,6 @@ if [[ -f "$DEPLOYER_MANIFEST" ]]; then
     fail "manifest at $DEPLOYER_MANIFEST is not valid JSON"
     REQUIRED_FAIL=$((REQUIRED_FAIL+1))
   fi
-else
-  warn "manifest not found at $DEPLOYER_MANIFEST"
-  warn "preflight Gate 2 will be skipped — set MELUSINA_DEPLOYER_MANIFEST to override"
 fi
 
 # --- 4. gh-pages reachable ---------------------------------------------------

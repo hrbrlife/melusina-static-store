@@ -19,6 +19,12 @@
 # `revoke` runs revoke_release_entry for a stale entry as a Squads vault
 # transaction that the executor creates, approves and executes with the
 # MEL_RELEASE_MEMBER_KEYPAIR_* files, until that revoke moves to the runner.
+#
+# Nothing outside this repository is read by default. The Squads vault
+# executor (only the canonical copy pinned in scripts/release-inputs.json),
+# the Pearl tool and the Squads SDK node_modules are named by their variables
+# and resolved by scripts/release-inputs.py, which checks each sha256 pin
+# before use and refuses a missing input by name (release-input-missing:NAME).
 
 set -euo pipefail
 umask 077
@@ -27,6 +33,7 @@ readonly PROVIDER_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 readonly NODE_HELPER="$PROVIDER_ROOT/scripts/mel-release-squads-register.mjs"
 readonly APPHASH_CMD="$PROVIDER_ROOT/cmd/apphash"
 readonly ACTIVE_CMD="$PROVIDER_ROOT/cmd/list-active-releases"
+readonly RELEASE_INPUTS="$(cd "$PROVIDER_ROOT/../.." && pwd -P)/scripts/release-inputs.py"
 
 die() { echo "mel-release-provider: $*" >&2; exit 2; }
 need() {
@@ -36,7 +43,9 @@ need() {
 }
 need_file() { local n="$1" p; need "$n"; p="$(printenv "$n")"; [[ -f "$p" && ! -L "$p" ]] || die "$n must name a regular non-symlink file"; }
 need_dir() { local n="$1" p; need "$n"; p="$(printenv "$n")"; [[ -d "$p" && ! -L "$p" ]] || die "$n must name a real non-symlink directory"; }
-need_executable() { local n="$1" p; need_file "$n"; p="$(printenv "$n")"; [[ -x "$p" ]] || die "$n must name an executable file"; }
+# An input from outside this repository: printed on success; on refusal the
+# named release-input-* line is printed and the caller exits.
+resolve_input() { python3 "$RELEASE_INPUTS" resolve "$1"; }
 json_get() { python3 - "$1" "$2" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -296,6 +305,9 @@ revoke() {
   # This is intentionally a separate governed ceremony per exact stale PDA.
   # It runs only after mel-release has proved the new release is both Active
   # and served; no catalog or release identity is inferred here.
+  local executor
+  # Resolved before any chain read: a revoke that cannot run is refused first.
+  executor="$(resolve_input MEL_RELEASE_SQUADS_EXECUTOR)" || exit 2
   need MEL_PDA; need MEL_REVOKE_RECEIPT_OUT; need MEL_PROGRAM_ID
   # A stale-PDA revoke is intentionally app-selector-free.  It needs the
   # master-holder vault and quorum, but not the source tree, appId, or author
@@ -303,7 +315,7 @@ revoke() {
   need MEL_RELEASE_MASTER_NFT_MINT; need MEL_RELEASE_SQUADS_MULTISIG; need MEL_RELEASE_SQUADS_VAULT
   need MEL_RELEASE_SQUADS_THRESHOLD; need MEL_RELEASE_SQUADS_PROGRAM_ID; need MEL_RELEASE_RPC_URL
   [[ "$MEL_RELEASE_SQUADS_THRESHOLD" =~ ^[1-9][0-9]*$ ]] || die "MEL_RELEASE_SQUADS_THRESHOLD must be positive integer"
-  local before master_ata executor ix result sig i
+  local before master_ata ix result sig i
   local -a member_args=()
   before="$(release_status)"
   if [[ "$(python3 - "$before" <<'PY'
@@ -325,8 +337,6 @@ PY
   command -v spl-token >/dev/null 2>&1 || die "spl-token is required to derive master NFT custody ATA"
   master_ata="$(spl-token address --owner "$MEL_RELEASE_SQUADS_VAULT" --token "$MEL_RELEASE_MASTER_NFT_MINT" --verbose | awk -F': ' '/^Associated token address:/{print $2}')"
   [[ "$master_ata" =~ ^[1-9A-HJ-NP-Za-km-z]{32,44}$ ]] || die "ceremony masterNftAta is malformed"
-  executor="${MEL_RELEASE_SQUADS_EXECUTOR:-/home/user/Desktop/Melusina/deployer/scripts/squads-vault-exec.js}"
-  [[ -f "$executor" && ! -L "$executor" ]] || die "MEL_RELEASE_SQUADS_EXECUTOR must be a regular file"
   ix="$(mktemp "${TMPDIR:-/tmp}/mel-release-revoke.XXXXXXXX.ix.json")"
   chmod 600 "$ix"
   python3 - "$ix" "$MEL_PROGRAM_ID" "$MEL_PDA" "$MEL_RELEASE_SQUADS_VAULT" "$MEL_RELEASE_MASTER_NFT_MINT" "$master_ata" <<'PY'
@@ -430,7 +440,8 @@ need_ceremony_env() {
   need MEL_RELEASE_LICENSE_MINT; need MEL_RELEASE_MASTER_NFT_MINT; need MEL_RELEASE_SQUADS_MULTISIG; need MEL_RELEASE_SQUADS_VAULT
   need MEL_RELEASE_SQUADS_THRESHOLD; need MEL_RELEASE_SQUADS_MEMBER_COUNT; need MEL_RELEASE_SQUADS_PROGRAM_ID
   need_file MEL_RELEASE_AUTHOR_KEYPAIR; need_file MEL_RELEASE_MEMBER_KEYPAIR_1; need MEL_RELEASE_RPC_URL
-  need_executable MEL_RELEASE_PEARL_TOOL
+  resolve_input MEL_RELEASE_PEARL_TOOL >/dev/null || exit 2
+  [[ -x "$MEL_RELEASE_PEARL_TOOL" ]] || die "MEL_RELEASE_PEARL_TOOL must name an executable file"
   [[ "$MEL_RELEASE_SQUADS_THRESHOLD" =~ ^[1-9][0-9]*$ ]] || die "MEL_RELEASE_SQUADS_THRESHOLD must be positive integer"
   [[ "$MEL_RELEASE_SQUADS_MEMBER_COUNT" =~ ^[1-9][0-9]*$ ]] || die "MEL_RELEASE_SQUADS_MEMBER_COUNT must be positive integer"
   (( MEL_RELEASE_SQUADS_MEMBER_COUNT >= MEL_RELEASE_SQUADS_THRESHOLD )) || die "Squads member count is below threshold"
@@ -439,7 +450,7 @@ need_ceremony_env() {
     [[ -n "$(printenv "MEL_RELEASE_MEMBER_KEYPAIR_$i" 2>/dev/null || true)" ]] && ((available+=1))
   done
   (( available >= MEL_RELEASE_SQUADS_THRESHOLD )) || die "only $available member keypairs configured for threshold $MEL_RELEASE_SQUADS_THRESHOLD"
-  need_dir MEL_RELEASE_NODE_MODULES
+  resolve_input MEL_RELEASE_NODE_MODULES >/dev/null || exit 2
   [[ -f "$MEL_RELEASE_NODE_MODULES/@solana/web3.js/package.json" ]] || die "MEL_RELEASE_NODE_MODULES must contain @solana/web3.js"
   [[ -f "$MEL_RELEASE_NODE_MODULES/@sqds/multisig/package.json" ]] || die "MEL_RELEASE_NODE_MODULES must contain @sqds/multisig"
   [[ -f "$NODE_HELPER" && ! -L "$NODE_HELPER" ]] || die "provider node helper missing"
@@ -524,7 +535,8 @@ PY
 finalize_release() {
   need MEL_APP_ID; need MEL_NEW_APP_HASH; need MEL_RELEASE_HASH; need MEL_NEW_VERSION; need MEL_RELEASE_NONCE
   need MEL_FINAL_RELEASE_JSON_OUT; need MEL_RELEASE_RPC_URL; need MEL_PROGRAM_ID
-  need_executable MEL_RELEASE_PEARL_TOOL
+  resolve_input MEL_RELEASE_PEARL_TOOL >/dev/null || exit 2
+  [[ -x "$MEL_RELEASE_PEARL_TOOL" ]] || die "MEL_RELEASE_PEARL_TOOL must name an executable file"
   local state ceremony release
   state="$(app_dir_for)"; ceremony="$state/ceremony-state.json"; release="$state/release.json"
   [[ -f "$ceremony" && -f "$release" ]] || die "no persisted release candidate for this app"

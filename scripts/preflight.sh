@@ -39,7 +39,13 @@ cd "$ROOT"
 # --- Configuration -----------------------------------------------------------
 LIVE_CATALOG_URL="${MELUSINA_LIVE_CATALOG_URL:-https://bazaar.melusina-os.org/apps/index.json}"
 LOCAL_BUILD="dist-publish/apps/index.json"
-DEPLOYER_MANIFEST="${MELUSINA_DEPLOYER_MANIFEST:-/home/user/Desktop/Melusina/deployer/config/approval-manifests/global-apps-2026-04-23.json}"
+# The deployer approval manifest is named, never defaulted: Gate 2 runs only
+# when MELUSINA_DEPLOYER_MANIFEST names it, and only after
+# scripts/release-inputs.py has checked MELUSINA_DEPLOYER_MANIFEST_SHA256.
+DEPLOYER_MANIFEST="${MELUSINA_DEPLOYER_MANIFEST:-}"
+if [[ -n "$DEPLOYER_MANIFEST" ]]; then
+  python3 "$ROOT/scripts/release-inputs.py" check MELUSINA_DEPLOYER_MANIFEST || exit 1
+fi
 PACKAGES_DIR="packages"
 
 # --- Colors / log helpers ----------------------------------------------------
@@ -112,8 +118,8 @@ else
 fi
 
 # --- 2. Manifest cross-check -------------------------------------------------
-info "Gate 2/6: manifest cross-check (vs $DEPLOYER_MANIFEST)"
-if [[ -f "$DEPLOYER_MANIFEST" ]]; then
+info "Gate 2/6: manifest cross-check (vs ${DEPLOYER_MANIFEST:-no manifest named})"
+if [[ -n "$DEPLOYER_MANIFEST" ]]; then
   set +e
   python3 - "$DEPLOYER_MANIFEST" "$PACKAGES_DIR" <<'PY'
 import json, os, sys, hashlib
@@ -213,7 +219,7 @@ PY
     ok "All manifest .spk hashes match local"
   fi
 else
-  warn "Deployer manifest not found at $DEPLOYER_MANIFEST — skipping cross-check"
+  warn "MELUSINA_DEPLOYER_MANIFEST is unset — skipping the manifest cross-check"
 fi
 
 # --- 3. Authoritative-host gate ----------------------------------------------

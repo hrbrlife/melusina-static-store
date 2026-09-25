@@ -1,0 +1,203 @@
+{
+  "schema": "melusina-store-release-inputs-v1",
+  "description": "Every input the Store's release and generation tooling reads from outside this repository, by the environment variable its consumers read. scripts/release-inputs.py resolves them and refuses by name; nothing here has a default outside the repository.",
+  "toolchains": {
+    "go": {
+      "version": "go1.25.0",
+      "consumers": [
+        "scripts/build-store-generation-release.sh",
+        "scripts/build-store-release.sh"
+      ],
+      "reason": "The release builders compile with GOTOOLCHAIN=local, so the local go decides the bytes. Two operators reproduce one release only with one toolchain; the builders refuse any other go before they build."
+    }
+  },
+  "inputs": {
+    "MEL_RELEASE_SQUADS_EXECUTOR": {
+      "kind": "file",
+      "pin": "repository",
+      "sha256": "76b8b754d659ce60dff02ff9cf64d0b8926d283fa59f6b92b4d11d24a32ce733",
+      "companions": {
+        "lib/reduced-mode-guard.cjs": {
+          "kind": "file",
+          "sha256": "694418fd06572b2b1535da555fef49ead4036ee6a6ec10c931d5825594ae074d"
+        },
+        "node_modules": {
+          "kind": "tree",
+          "sha256": "8011d07957b9f474d475e1cc5cc17a3bd90bdb2bce09808ebab9e4cc2da0d8dc"
+        }
+      },
+      "source": {
+        "repository": "https://github.com/melusina-os/melusina-os-deployer",
+        "commit": "b23823962d5abd9e4b1ac1ab83d82362634afdcb",
+        "path": "scripts/squads-vault-exec.js",
+        "gitObjects": {
+          "scripts/squads-vault-exec.js": "279726206d11c23f2144e8165f972aacfab1bc70",
+          "scripts/lib/reduced-mode-guard.cjs": "0ab5d5a7f663b7ff18d7497dbf86744a84ce24f3",
+          "scripts/node_modules": "5a2ee36af720044bc6838aa312ef3eb217ecff9a"
+        }
+      },
+      "consumers": [
+        "scripts/default-bazaar-release.sh",
+        "scripts/mel-release-provider.py",
+        "sidecar/melusina-store-sidecar/scripts/mel-release-provider.sh"
+      ],
+      "reason": "The generic Squads vault executor the provider's stale-release revoke runs, as scripts/squads-vault-exec.js in a checkout of the deployer at the named commit. That copy is the one canonical copy: it holds every check of every earlier copy, and adds the reduced-mode refusal, which it loads from lib/reduced-mode-guard.cjs beside it. Its Squads SDK resolves from node_modules beside it. Any other copy, guard or SDK tree is refused."
+    },
+    "MEL_RELEASE_PEARL_TOOL": {
+      "kind": "file",
+      "pin": "operator",
+      "consumers": [
+        "scripts/default-bazaar-release.sh",
+        "scripts/mel-release-provider.py",
+        "sidecar/melusina-store-sidecar/scripts/mel-release-provider.sh"
+      ],
+      "reason": "The melusina-pearl-tool binary that prepares and finalizes a candidate RELEASE.json. Name it and pin it with MEL_RELEASE_PEARL_TOOL_SHA256."
+    },
+    "MEL_RELEASE_SQUADS_NODE_MODULES": {
+      "kind": "tree",
+      "pin": "operator",
+      "consumers": [
+        "scripts/default-bazaar-release.sh",
+        "scripts/mel-release-provider.py"
+      ],
+      "reason": "The node_modules directory holding @solana/web3.js and @sqds/multisig for the Store's own Squads helper. Name it and pin its tree digest with MEL_RELEASE_SQUADS_NODE_MODULES_SHA256."
+    },
+    "MEL_RELEASE_NODE_MODULES": {
+      "kind": "tree",
+      "pin": "operator",
+      "consumers": [
+        "sidecar/melusina-store-sidecar/scripts/mel-release-provider.sh"
+      ],
+      "reason": "The shell provider's name for the Squads SDK node_modules directory. Name it and pin its tree digest with MEL_RELEASE_NODE_MODULES_SHA256."
+    },
+    "MEL_RELEASE_REGISTER_EXECUTOR": {
+      "kind": "file",
+      "pin": "operator",
+      "repositoryDefault": "sidecar/melusina-store-sidecar/scripts/mel-release-squads-register.mjs",
+      "consumers": [
+        "scripts/mel-release-provider.py"
+      ],
+      "reason": "The Store's Squads helper. Unset, it is this repository's copy; any other file must be pinned with MEL_RELEASE_REGISTER_EXECUTOR_SHA256."
+    },
+    "MEL_RELEASE_RUNTIME_ENV": {
+      "kind": "file",
+      "pin": "operator",
+      "consumers": [
+        "scripts/default-bazaar-release.sh"
+      ],
+      "reason": "The runtime module the default-Bazaar wrapper sources, which names the operator's identity files. It is executed, so pin it with MEL_RELEASE_RUNTIME_ENV_SHA256."
+    },
+    "MEL_RELEASE_STATE_DIR": {
+      "kind": "path",
+      "pin": "none",
+      "consumers": [
+        "scripts/default-bazaar-release.sh"
+      ],
+      "reason": "The release state directory mel-release writes, fresh or already stamped for this estate's profile and Store (mel-release refuses any other). It is state, not a content input."
+    },
+    "MEL_RELEASE_SOURCE_ROOT": {
+      "kind": "directory",
+      "pin": "none",
+      "consumers": [
+        "scripts/default-bazaar-release.sh"
+      ],
+      "reason": "The directory of clean app checkouts; the catalog adapter checks each one against the catalog's source_commit, so it is not content-pinned here."
+    },
+    "MEL_RELEASE_STORE_PUBKEY": {
+      "kind": "file",
+      "pin": "none",
+      "consumers": [
+        "scripts/default-bazaar-release.sh"
+      ],
+      "reason": "The Store's public identity file, named by the runtime module. Its contents are checked against the expected identity and, by mel-release, against the estate profile's store.operatorKey."
+    },
+    "MEL_RELEASE_PUBLISHER_KEY": {
+      "kind": "file",
+      "pin": "none",
+      "consumers": [
+        "scripts/default-bazaar-release.sh"
+      ],
+      "reason": "The governed publisher's signing key, named by the runtime module. A credential: named, never defaulted, not content-pinned."
+    },
+    "MEL_RELEASE_AUTHOR_KEYPAIR": {
+      "kind": "file",
+      "pin": "none",
+      "consumers": [
+        "scripts/default-bazaar-release.sh"
+      ],
+      "reason": "The release author keypair. A credential: named, never defaulted, not content-pinned."
+    },
+    "MEL_RELEASE_SQUADS_MEMBERS": {
+      "kind": "file-list",
+      "pin": "none",
+      "consumers": [
+        "scripts/default-bazaar-release.sh"
+      ],
+      "reason": "Comma-separated absolute paths of the Squads member keypairs. Credentials: named, never defaulted; the Squads program decides whether each is a member."
+    },
+    "RELEASE_JSON_STUB": {
+      "kind": "file",
+      "pin": "operator",
+      "consumers": [
+        "scripts/stage-into-catalog.sh"
+      ],
+      "reason": "The spkmodule release-json-stub that writes an offline RELEASE.json. It is executed, so pin it with RELEASE_JSON_STUB_SHA256."
+    },
+    "MELUSINA_DEPLOYER_MANIFEST": {
+      "kind": "file",
+      "pin": "operator",
+      "consumers": [
+        "scripts/doctor.sh",
+        "scripts/manifest-merge.sh",
+        "scripts/preflight.sh"
+      ],
+      "reason": "The deployer approval manifest that preflight gate 2 and doctor read and manifest-merge edits. Pin it with MELUSINA_DEPLOYER_MANIFEST_SHA256; manifest-merge prints the new digest after an edit."
+    },
+    "MELUSINA_BUNDLE_TARBALL": {
+      "kind": "file",
+      "pin": "operator",
+      "consumers": [
+        "build-store.sh"
+      ],
+      "reason": "The Sandstorm bundle sandstorm-<build>.tar.xz that build-store.sh signs into update/. Setting it requests the bundle update; pin it with MELUSINA_BUNDLE_TARBALL_SHA256."
+    },
+    "MELUSINA_BUNDLE_UPDATE_TOOL": {
+      "kind": "file",
+      "pin": "operator",
+      "consumers": [
+        "build-store.sh"
+      ],
+      "reason": "The Sandstorm update-tool that signs the bundle. Pin it with MELUSINA_BUNDLE_UPDATE_TOOL_SHA256."
+    },
+    "MELUSINA_BUNDLE_UPDATE_KEYRING": {
+      "kind": "file",
+      "pin": "operator",
+      "consumers": [
+        "build-store.sh"
+      ],
+      "reason": "The update keyring the update-tool signs with. Pin it with MELUSINA_BUNDLE_UPDATE_KEYRING_SHA256."
+    },
+    "MELUSINA_BUNDLE_INSTALL_SH": {
+      "kind": "file",
+      "pin": "operator",
+      "consumers": [
+        "build-store.sh"
+      ],
+      "reason": "Optional: an install.sh to publish beside the bundle. Unset, the live update/install.sh is preserved. Pin it with MELUSINA_BUNDLE_INSTALL_SH_SHA256."
+    },
+    "SANDSTORM_SRC": {
+      "kind": "retired",
+      "consumers": [
+        "build-store.sh"
+      ],
+      "reason": "build-store.sh no longer scans a Sandstorm checkout (it defaulted to a Sandstorm working tree beside this repository). Name each bundle input: MELUSINA_BUNDLE_TARBALL, MELUSINA_BUNDLE_UPDATE_TOOL, MELUSINA_BUNDLE_UPDATE_KEYRING and optionally MELUSINA_BUNDLE_INSTALL_SH, each with its _SHA256 pin."
+    },
+    "DEPLOY_UI_SRC": {
+      "kind": "retired",
+      "consumers": [
+        "build-store.sh"
+      ],
+      "reason": "build-store.sh no longer compiles deploy-ui from a Melusina working tree into releases/. Installer releases are published by their own governed ceremony; build-store.sh only carries the live releases/ tree across."
+    }
+  }
+}

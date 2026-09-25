@@ -67,6 +67,27 @@ app_hash="$(apphash -spk "$spk" -metadata "$metadata")"
 printf '{"appHash":"%s","marker":"preserve-these-bytes"}\n' "$app_hash" > "$output"
 SH
 chmod +x "$TMP/bin/spk" "$TMP/bin/apphash" "$TMP/bin/release-json-stub"
+# The stub is an explicit input pinned by sha256; nothing searches for it.
+export RELEASE_JSON_STUB_SHA256="$(sha256sum "$TMP/bin/release-json-stub" | awk '{print $1}')"
+
+for refusal in missing sha256-missing sha256-mismatch; do
+  case "$refusal" in
+    missing) stub_env=(env -u RELEASE_JSON_STUB -u RELEASE_JSON_STUB_SHA256) ;;
+    sha256-missing) stub_env=(env -u RELEASE_JSON_STUB_SHA256 RELEASE_JSON_STUB="$TMP/bin/release-json-stub") ;;
+    sha256-mismatch) stub_env=(env RELEASE_JSON_STUB="$TMP/bin/release-json-stub" RELEASE_JSON_STUB_SHA256="$(printf '0%.0s' {1..64})") ;;
+  esac
+  if PATH="$TMP/bin:$PATH" "${stub_env[@]}" "$ROOT/scripts/stage-into-catalog.sh" "$TMP/wrong.spk" "$TMP/catalog" \
+      >"$TMP/stub-refusal" 2>&1; then
+    echo "stage ran without a resolvable release-json-stub ($refusal)" >&2
+    exit 1
+  fi
+  grep -Fq "release-input-$refusal:RELEASE_JSON_STUB" "$TMP/stub-refusal" || {
+    cat "$TMP/stub-refusal" >&2
+    echo "stage did not refuse release-input-$refusal:RELEASE_JSON_STUB" >&2
+    exit 1
+  }
+done
+echo "ok  stage refuses an unnamed or unpinned release-json-stub by name"
 
 set +e
 PATH="$TMP/bin:$PATH" RELEASE_JSON_STUB="$TMP/bin/release-json-stub" \

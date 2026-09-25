@@ -23,25 +23,23 @@
 # Bazaar's; mel-release refuses each one that the profile does not repeat, so
 # this wrapper runs only with a signed profile for that estate. mel-release also
 # refuses a state directory that is not stamped for the profile's estate and
-# Store; DEFAULT_STATE_DIR holds release state written before that stamp
-# existed, so it is refused too and a run needs a fresh MEL_RELEASE_STATE_DIR.
+# Store, so a run names a fresh or already-stamped MEL_RELEASE_STATE_DIR.
+#
+# This wrapper reads nothing outside this repository by default. Every other
+# input -- the runtime module, the state directory, the key files, the Squads
+# SDK node_modules, the Squads vault executor and the Pearl tool -- is named by
+# its variable and resolved by scripts/release-inputs.py, which refuses a
+# missing input by name (release-input-missing:NAME) and checks each pinned
+# input's sha256 before use. scripts/release-inputs.json declares each one.
 set -euo pipefail
 umask 077
 
 readonly ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-readonly DEFAULT_RUNTIME_ENV="/home/user/Desktop/Melusina/deployer/state/default-bazaar-release.env"
-readonly DEFAULT_STATE_DIR="/home/user/Desktop/Melusina/deployer/state/mel-release-default-bazaar"
-readonly DEFAULT_WALLETS="/home/user/Desktop/Melusina/test-wallets/core-app-team"
-# Sibling of MEL_RELEASE_SQUADS_EXECUTOR below, which is the canonical
-# deployer. The previous default pointed into
-# worktrees/deployer-shell-tenant-license-deployment-20260819, whose
-# scripts/node_modules was never installed (the worktree itself still exists,
-# which is why this reads as a live path), so every release run died on
-# "MEL_RELEASE_SQUADS_NODE_MODULES is not a real directory" before doing
-# anything. Keep the executor and its node_modules in the same tree.
-readonly DEFAULT_NODE_MODULES="/home/user/Desktop/Melusina/deployer/scripts/node_modules"
+readonly RELEASE_INPUTS="$ROOT/scripts/release-inputs.py"
 
 die() { printf 'default-bazaar-release: %s\n' "$*" >&2; exit 2; }
+# Resolve named inputs; every refusal is printed by name before the exit.
+release_inputs() { python3 "$RELEASE_INPUTS" "$@" || exit 2; }
 
 pin() {
   local name="$1" want="$2" got=""
@@ -60,7 +58,7 @@ pin() {
 # or pass any of them into its child process. This branch uses only catalog,
 # source, public Store/chain bindings, and a private state directory.
 if [[ "${1:-}" = preflight ]]; then
-  : "${MEL_RELEASE_SOURCE_ROOT:?MEL_RELEASE_SOURCE_ROOT is required}"
+  release_inputs check MEL_RELEASE_SOURCE_ROOT MEL_RELEASE_STATE_DIR
   [[ "$MEL_RELEASE_SOURCE_ROOT" = /* && "$MEL_RELEASE_SOURCE_ROOT" != *'/../'* && -d "$MEL_RELEASE_SOURCE_ROOT" && ! -L "$MEL_RELEASE_SOURCE_ROOT" ]] || die 'MEL_RELEASE_SOURCE_ROOT must be a canonical non-symlink directory'
   pin MEL_RELEASE_STORE_URL 'https://bazaar.melusina-os.org'
   pin MEL_RELEASE_BUNDLE_ORIGIN 'https://bazaar.melusina-os.org'
@@ -71,7 +69,7 @@ if [[ "${1:-}" = preflight ]]; then
   pin MEL_RELEASE_MASTER_NFT_MINT 'B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe'
   export MEL_RELEASE_CONFIG="$ROOT/fleet/bazaar-catalog.yaml"
   export MEL_RELEASE_SIGNER_PROVIDER="$ROOT/sidecar/melusina-store-sidecar/scripts/mel-release-catalog-provider.sh"
-  export MEL_RELEASE_STATE_DIR="${MEL_RELEASE_STATE_DIR:-$DEFAULT_STATE_DIR}"
+  export MEL_RELEASE_STATE_DIR
   unset MEL_RELEASE_STORE_PUBKEY MEL_RELEASE_STORE_LICENSE_MINT MEL_RELEASE_LICENSE_MINT \
     MEL_RELEASE_PUBLISHER_KEY MEL_RELEASE_AUTHOR_KEYPAIR MEL_RELEASE_SQUADS_MEMBERS \
     MEL_RELEASE_SQUADS_NODE_MODULES MEL_RELEASE_SQUADS_EXECUTOR MEL_RELEASE_PEARL_TOOL
@@ -79,9 +77,9 @@ if [[ "${1:-}" = preflight ]]; then
   exec go run ./cmd/mel-release "$@"
 fi
 
-runtime_env="${MEL_RELEASE_RUNTIME_ENV:-$DEFAULT_RUNTIME_ENV}"
-[[ "$runtime_env" = /* && "$runtime_env" != *'/../'* ]] || die 'MEL_RELEASE_RUNTIME_ENV must be an absolute clean path'
-[[ -f "$runtime_env" && ! -L "$runtime_env" ]] || die "runtime module is not a regular file: $runtime_env"
+# The runtime module is executed, so it is resolved against its sha256 pin
+# (MEL_RELEASE_RUNTIME_ENV_SHA256) before it is sourced.
+runtime_env="$(release_inputs resolve MEL_RELEASE_RUNTIME_ENV)"
 # shellcheck disable=SC1090
 source "$runtime_env"
 
@@ -103,19 +101,14 @@ pin MEL_RELEASE_SQUADS_MEMBER_COUNT '4'
 
 export MEL_RELEASE_CONFIG="$ROOT/fleet/bazaar-catalog.yaml"
 export MEL_RELEASE_SIGNER_PROVIDER="$ROOT/sidecar/melusina-store-sidecar/scripts/mel-release-catalog-provider.sh"
-export MEL_RELEASE_STATE_DIR="${MEL_RELEASE_STATE_DIR:-$DEFAULT_STATE_DIR}"
-export MEL_RELEASE_AUTHOR_KEYPAIR="${MEL_RELEASE_AUTHOR_KEYPAIR:-$DEFAULT_WALLETS/publisher.json}"
-export MEL_RELEASE_SQUADS_MEMBERS="${MEL_RELEASE_SQUADS_MEMBERS:-$DEFAULT_WALLETS/publisher.json,$DEFAULT_WALLETS/reviewer-1.json,$DEFAULT_WALLETS/reviewer-2.json}"
-export MEL_RELEASE_SQUADS_NODE_MODULES="${MEL_RELEASE_SQUADS_NODE_MODULES:-$DEFAULT_NODE_MODULES}"
-export MEL_RELEASE_SQUADS_EXECUTOR="${MEL_RELEASE_SQUADS_EXECUTOR:-/home/user/Desktop/Melusina/deployer/scripts/squads-vault-exec.js}"
-export MEL_RELEASE_PEARL_TOOL="${MEL_RELEASE_PEARL_TOOL:-/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool}"
 
-: "${MEL_RELEASE_STORE_PUBKEY:?runtime module must set MEL_RELEASE_STORE_PUBKEY}"
-: "${MEL_RELEASE_PUBLISHER_KEY:?runtime module must set MEL_RELEASE_PUBLISHER_KEY}"
-for required in "$MEL_RELEASE_STORE_PUBKEY" "$MEL_RELEASE_PUBLISHER_KEY" "$MEL_RELEASE_AUTHOR_KEYPAIR" "$MEL_RELEASE_SQUADS_EXECUTOR" "$MEL_RELEASE_PEARL_TOOL"; do
-  [[ -f "$required" && ! -L "$required" ]] || die "required release input is not a regular file: $required"
-done
-[[ -d "$MEL_RELEASE_SQUADS_NODE_MODULES" && ! -L "$MEL_RELEASE_SQUADS_NODE_MODULES" ]] || die 'MEL_RELEASE_SQUADS_NODE_MODULES is not a real directory'
+# Every input from outside this repository, from the caller or the runtime
+# module; each missing or unpinned one is refused by name, all at once.
+release_inputs check MEL_RELEASE_STORE_PUBKEY MEL_RELEASE_PUBLISHER_KEY MEL_RELEASE_STATE_DIR \
+  MEL_RELEASE_AUTHOR_KEYPAIR MEL_RELEASE_SQUADS_MEMBERS MEL_RELEASE_SQUADS_NODE_MODULES \
+  MEL_RELEASE_SQUADS_EXECUTOR MEL_RELEASE_PEARL_TOOL
+export MEL_RELEASE_STATE_DIR MEL_RELEASE_AUTHOR_KEYPAIR MEL_RELEASE_SQUADS_MEMBERS \
+  MEL_RELEASE_SQUADS_NODE_MODULES MEL_RELEASE_SQUADS_EXECUTOR MEL_RELEASE_PEARL_TOOL
 
 python3 - "$MEL_RELEASE_STORE_PUBKEY" <<'PY'
 import json
@@ -162,7 +155,7 @@ case "${1:-}" in
 esac
 
 if [[ "$need_source_root" = yes ]]; then
-  : "${MEL_RELEASE_SOURCE_ROOT:?MEL_RELEASE_SOURCE_ROOT is required}"
+  release_inputs check MEL_RELEASE_SOURCE_ROOT
   [[ "$MEL_RELEASE_SOURCE_ROOT" = /* && "$MEL_RELEASE_SOURCE_ROOT" != *'/../'* && -d "$MEL_RELEASE_SOURCE_ROOT" && ! -L "$MEL_RELEASE_SOURCE_ROOT" ]] || die 'MEL_RELEASE_SOURCE_ROOT must be a canonical non-symlink directory'
 fi
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # manifest-merge.sh — idempotently merge a `make approval-manifest-entry`
-# JSON entry into the deployer's approval-manifest at
-# Melusina/deployer/config/approval-manifests/global-apps-*.json.
+# JSON entry into a deployer approval manifest (the deployer repository's
+# config/approval-manifests/global-apps-*.json), named by the operator.
 #
 # Replaces hand-editing the manifest. The entry is the JSON that
 # spkmodule's `make approval-manifest-entry` target prints — usually
@@ -21,12 +21,17 @@
 #   manifest-merge.sh [--manifest PATH] --entry FILE
 #   make -C <app> approval-manifest-entry | manifest-merge.sh --manifest /path/to/manifest.json --stdin
 #
+# The manifest is named by --manifest or MELUSINA_DEPLOYER_MANIFEST (there is
+# no default) and must match MELUSINA_DEPLOYER_MANIFEST_SHA256 before it is
+# edited; a missing or mismatched one is refused by name. The new digest is
+# printed after the edit so the next reader can pin it.
+#
 # Output: prints what changed; exits 0 on success, 2 on bad input, 1 on
 # write failure.
 #
 set -euo pipefail
 
-MANIFEST="${MELUSINA_DEPLOYER_MANIFEST:-/home/user/Desktop/Melusina/deployer/config/approval-manifests/global-apps-2026-04-23.json}"
+MANIFEST="${MELUSINA_DEPLOYER_MANIFEST:-}"
 ENTRY_FILE=""
 USE_STDIN=0
 
@@ -43,7 +48,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -f "$MANIFEST" ]] || { echo "FATAL: manifest not found: $MANIFEST" >&2; exit 2; }
+MELUSINA_DEPLOYER_MANIFEST="$MANIFEST" \
+  python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/release-inputs.py" check MELUSINA_DEPLOYER_MANIFEST || exit 2
 
 # Read the entry from --entry FILE or stdin.
 if [[ "$USE_STDIN" -eq 1 ]]; then
@@ -135,3 +141,4 @@ os.replace(tmp, manifest_path)
 print(f"  [manifest-merge] {action}")
 print(f"  [manifest-merge] wrote {manifest_path} ({len(apps)} entries)")
 PY
+echo "  [manifest-merge] MELUSINA_DEPLOYER_MANIFEST_SHA256=$(sha256sum "$MANIFEST" | awk '{print $1}')"

@@ -20,6 +20,11 @@ done
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]] || {
   echo "--version must be an explicit semver-like release version" >&2; exit 2; }
 [[ -n "$OUT_DIR" ]] || { echo "--out-dir is required" >&2; exit 2; }
+# The local go decides the release bytes (GOTOOLCHAIN=local below), so it is a
+# named input: scripts/release-inputs.json pins its version, and any other go
+# is refused by name (release-input-toolchain-mismatch:go) before anything is
+# built or written.
+python3 "$ROOT/scripts/release-inputs.py" check-toolchain go || exit 2
 OUT_DIR="$(realpath -ms -- "$OUT_DIR")"
 OUT_PARENT="$(dirname "$OUT_DIR")"
 [[ ! -L "$OUT_PARENT" ]] || { echo "output parent must not be a symlink" >&2; exit 2; }
@@ -97,8 +102,8 @@ BUILD_TMPDIR="$TMP/tmp"
 mkdir -p "$BUILD_TMPDIR"
 # Where the two detached worktrees sit does not change what they compile. Both
 # builds pass -mod=vendor, so Go compiles the sidecar's committed vendor/ tree
-# and never reads the ../../../Melusina/shared directories named by go.mod's
-# replace lines: a checkout with no Melusina sibling builds the same bytes.
+# and never reads the Melusina monorepo directories that go.mod's replace lines
+# name: a checkout with no Melusina sibling builds the same bytes.
 # vendor/ is an export of one Melusina main commit, named in
 # sidecar/melusina-store-sidecar/testdata/melusina-vendor/vendor.provenance.json
 # and checked file by file by vendor_provenance_test.go. The replace paths do

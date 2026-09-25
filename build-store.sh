@@ -70,15 +70,16 @@ MEL_BAZAAR_COHORT_DIR="${MEL_BAZAAR_COHORT_DIR:-}"
 MEL_BAZAAR_RELEASE_MANIFEST="${MEL_BAZAAR_RELEASE_MANIFEST:-}"
 COHORT_MODE=false
 
-# Melusina binary update hosting
-SANDSTORM_SRC="${SANDSTORM_SRC:-../sandstorm}"
+# Melusina binary update hosting. This script reads nothing outside this
+# repository by default: the Sandstorm bundle update is built only when its
+# inputs are named (MELUSINA_BUNDLE_TARBALL, MELUSINA_BUNDLE_UPDATE_TOOL,
+# MELUSINA_BUNDLE_UPDATE_KEYRING, optionally MELUSINA_BUNDLE_INSTALL_SH), each
+# checked against its _SHA256 pin by scripts/release-inputs.py. The retired
+# SANDSTORM_SRC (a sibling checkout scanned for them) and DEPLOY_UI_SRC (a
+# Melusina working tree compiled into releases/) are refused by name.
+RELEASE_INPUTS="$SCRIPT_DIR/scripts/release-inputs.py"
 UPDATE_OUT="$OUTPUT_DIR/update"
-
-# deploy-ui binary releases
-DEPLOY_UI_SRC="../Melusina/deployer/deploy-ui"
 RELEASES_OUT="$OUTPUT_DIR/releases"
-UPDATE_KEYRING="$SANDSTORM_SRC/keys/melusina-update-keyring"
-UPDATE_TOOL="$SANDSTORM_SRC/tmp/sandstorm/update-tool"
 
 # --- Parse flags --------------------------------------------------------------
 AGGREGATE_ONLY=false
@@ -98,6 +99,21 @@ for arg in "$@"; do
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
+
+# Named inputs from outside this repository are resolved before any work, so
+# a missing, unpinned or retired one is refused by name, all at once.
+python3 "$RELEASE_INPUTS" check-retired SANDSTORM_SRC DEPLOY_UI_SRC || exit 2
+BUNDLE_UPDATE=false
+if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" != "1" && -n "${MELUSINA_BUNDLE_TARBALL:-}" ]]; then
+  bundle_inputs=(MELUSINA_BUNDLE_TARBALL MELUSINA_BUNDLE_UPDATE_TOOL MELUSINA_BUNDLE_UPDATE_KEYRING)
+  [[ -z "${MELUSINA_BUNDLE_INSTALL_SH:-}" ]] || bundle_inputs+=(MELUSINA_BUNDLE_INSTALL_SH)
+  python3 "$RELEASE_INPUTS" check "${bundle_inputs[@]}" || exit 2
+  [[ "$(basename "$MELUSINA_BUNDLE_TARBALL")" =~ ^sandstorm-[0-9]+\.tar\.xz$ ]] || {
+    echo "MELUSINA_BUNDLE_TARBALL must be named sandstorm-<build>.tar.xz: $MELUSINA_BUNDLE_TARBALL" >&2; exit 2; }
+  [[ -x "$MELUSINA_BUNDLE_UPDATE_TOOL" ]] || {
+    echo "MELUSINA_BUNDLE_UPDATE_TOOL is not executable: $MELUSINA_BUNDLE_UPDATE_TOOL" >&2; exit 2; }
+  BUNDLE_UPDATE=true
+fi
 
 # Set explicit TMPDIR for reproducibility. Dry runs use the system temp area so
 # validation does not create repo-local artifacts.
@@ -1430,11 +1446,11 @@ info "Packaging Melusina binary update..."
 SANDSTORM_TARBALL=""
 SANDSTORM_BUILD_NUM=""
 
-# Documented opt-out: when the publisher knows there is no signed-tarball path
-# available (keyring not yet provisioned, dev-host without keys), set
-# MELUSINA_SKIP_BUNDLE_UPDATE=1 to skip the entire bundle-update block.
-# Catalog still ships; clients see no Sandstorm self-update this round.
-# Default remains fail-hard via the pre-flight check below.
+# The bundle update runs only when MELUSINA_BUNDLE_TARBALL names a bundle; its
+# inputs were resolved and checked against their sha256 pins before Step 0.
+# MELUSINA_SKIP_BUNDLE_UPDATE=1 skips the block even then and refreshes the
+# live update/ payload below. Catalog still ships; clients see no Sandstorm
+# self-update this round.
 if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" == "1" ]]; then
   warn "MELUSINA_SKIP_BUNDLE_UPDATE=1 — skipping Sandstorm bundle-update build; preserving live update/ files"
 
@@ -1473,17 +1489,11 @@ if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" == "1" ]]; then
       warn "Could not fetch live update/$sig_name — apply will leave publish-branch sig absent"
     fi
   fi
-elif [[ -d "$SANDSTORM_SRC" ]]; then
-  # Prefer the max-compression tarball (sandstorm-N.tar.xz, not -fast).
-  # Numeric sort so sandstorm-10.tar.xz beats sandstorm-2.tar.xz.
-  SANDSTORM_TARBALL="$(
-    find "$SANDSTORM_SRC" -maxdepth 1 -type f -name 'sandstorm-[0-9]*.tar.xz' \
-      ! -name '*-fast.tar.xz' -printf '%f\n' 2>/dev/null \
-      | sed 's/sandstorm-\([0-9]*\)\.tar\.xz/\1 &/' \
-      | sort -k1,1 -n \
-      | awk 'END{print $2}'
-  )"
-  [[ -n "$SANDSTORM_TARBALL" ]] && SANDSTORM_TARBALL="$SANDSTORM_SRC/$SANDSTORM_TARBALL"
+elif $BUNDLE_UPDATE; then
+  # The named, pinned bundle resolved before Step 0; nothing is searched for.
+  SANDSTORM_TARBALL="$MELUSINA_BUNDLE_TARBALL"
+  UPDATE_TOOL="$MELUSINA_BUNDLE_UPDATE_TOOL"
+  UPDATE_KEYRING="$MELUSINA_BUNDLE_UPDATE_KEYRING"
 
   if [[ -n "$SANDSTORM_TARBALL" ]]; then
     # Extract build number from filename: sandstorm-0.tar.xz → 0
@@ -1505,7 +1515,7 @@ elif [[ -d "$SANDSTORM_SRC" ]]; then
       else
         fail "Bundle-update regression: local build=$SANDSTORM_BUILD_NUM < live build=$LIVE_BUILD"
         fail "Publishing would silently downgrade every client's Sandstorm binary on next self-update poll."
-        fail "Either restore the newer tarball in $SANDSTORM_SRC/ (Melusina agent's lane), set"
+        fail "Either name the newer bundle in MELUSINA_BUNDLE_TARBALL (with its _SHA256 pin), set"
         fail "MELUSINA_SKIP_BUNDLE_UPDATE=1 to ship catalog without touching /update/, or set"
         fail "MELUSINA_ALLOW_BUNDLE_REGRESSION=1 if the downgrade is intentional."
         exit 1
@@ -1569,9 +1579,9 @@ PARTS_EOF
     done
     ok "Channel files written (dev=$SANDSTORM_BUILD_NUM, stable=$SANDSTORM_BUILD_NUM)"
 
-    # Copy install.sh if present
-    if [[ -f "$SANDSTORM_SRC/install.sh" ]]; then
-      cp "$SANDSTORM_SRC/install.sh" "$UPDATE_OUT/install.sh"
+    # Copy install.sh only when it is named; otherwise the live one is kept.
+    if [[ -n "${MELUSINA_BUNDLE_INSTALL_SH:-}" ]]; then
+      cp "$MELUSINA_BUNDLE_INSTALL_SH" "$UPDATE_OUT/install.sh"
       ok "Copied install.sh to $UPDATE_OUT/"
     fi
 
@@ -1603,52 +1613,23 @@ MANIFEST_EOF
     else
       warn "gh CLI not found — manually upload $SANDSTORM_TARBALL to release $SANDSTORM_RELEASES_TAG"
     fi
-  else
-    warn "No sandstorm tarball found in $SANDSTORM_SRC/"
   fi
 else
-  warn "Melusina source dir not found: $SANDSTORM_SRC"
-  warn "Skipping binary update packaging"
+  info "No bundle update requested (MELUSINA_BUNDLE_TARBALL unset); live update/ artifacts are carried across"
 fi
 
-# --- Step 7: deploy-ui binary releases ---------------------------------------
-info "Building deploy-ui release binaries..."
-
-if [[ -f "$DEPLOY_UI_SRC/Makefile" ]]; then
-  DEPLOY_UI_VERSION="$(git -C "$DEPLOY_UI_SRC/../.." describe --tags --always 2>/dev/null || echo dev)"
-  info "Version: $DEPLOY_UI_VERSION"
-
-  # Cross-compile via the deploy-ui Makefile
-  make -C "$DEPLOY_UI_SRC" release VERSION="$DEPLOY_UI_VERSION" RELEASE_DIR="$(pwd)/$RELEASES_OUT" 2>&1 | tail -10
-
-  if [[ -d "$RELEASES_OUT/$DEPLOY_UI_VERSION" ]]; then
-    # Write the latest pointer
-    echo -n "$DEPLOY_UI_VERSION" > "$RELEASES_OUT/latest"
-
-    # Write a manifest for programmatic access
-    cat > "$RELEASES_OUT/manifest.json" <<DEPLOY_MANIFEST_EOF
-{
-  "version": "$DEPLOY_UI_VERSION",
-  "platforms": ["linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64"],
-  "base_url": "$BASE_URL/releases/$DEPLOY_UI_VERSION",
-  "checksums": "$BASE_URL/releases/$DEPLOY_UI_VERSION/checksums.sha256",
-  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-}
-DEPLOY_MANIFEST_EOF
-    ok "deploy-ui $DEPLOY_UI_VERSION: $(ls "$RELEASES_OUT/$DEPLOY_UI_VERSION/" | grep -v checksums | wc -l) binaries"
-  else
-    warn "deploy-ui release build produced no output"
-  fi
-else
-  warn "deploy-ui Makefile not found at $DEPLOY_UI_SRC — skipping release build"
-fi
+# --- Step 7: deploy-ui binary releases (retired) ----------------------------
+# This step used to compile deploy-ui from a Melusina deployer working tree
+# beside this repository and publish it as releases/latest.
+# Installer releases are published by their own governed ceremony; this
+# script builds none and only carries the live releases/ tree across below.
 
 # --- Step 6.6/7.5: Preserve live update/ + releases/ artifacts not rebuilt ----
 # The root store's update/shell-release.json (deployer-provisioned descriptor,
 # HT15) and the witnessed /releases/<class>/ artifacts are owned by their OWN
 # ceremonies (InstallerReleaseEntry + deployer staging) — an aggregate run must
-# carry them across the atomic flip, never delete them. No-clobber: anything
-# this run DID rebuild (deploy-ui, bundle-update) wins over the live copy.
+# carry them across the atomic flip, never delete them. No-clobber: a bundle
+# update this run DID rebuild wins over the live copy.
 if [[ -d "$FINAL_DIR/update" ]]; then
   cp -an "$FINAL_DIR/update/." "$UPDATE_OUT/" 2>/dev/null || true
   ok "Preserved live update/ artifacts not rebuilt this run"

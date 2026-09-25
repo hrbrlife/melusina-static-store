@@ -15,6 +15,12 @@
 #
 # Exit 0 on success; 1 on any per-pair failure (continues processing the rest).
 #
+# Required env (unless PRESERVE_EXISTING_RELEASE=1):
+#   RELEASE_JSON_STUB, RELEASE_JSON_STUB_SHA256
+#                         The spkmodule release-json-stub and its sha256
+#                         (scripts/release-inputs.py digest <stub>). Nothing
+#                         outside this repository is searched for it.
+#
 # Optional env:
 #   SOURCE_METADATA_PATH  Committed product metadata for a single staged app.
 #                         When explicit, this is the authoritative product
@@ -38,25 +44,13 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PRESERVE_EXISTING_RELEASE="${PRESERVE_EXISTING_RELEASE:-0}"
 [[ "$PRESERVE_EXISTING_RELEASE" == "0" || "$PRESERVE_EXISTING_RELEASE" == "1" ]] \
   || { echo "FATAL: PRESERVE_EXISTING_RELEASE must be 0 or 1" >&2; exit 2; }
-STUB="${RELEASE_JSON_STUB:-}"
-if [[ "$PRESERVE_EXISTING_RELEASE" == "0" && -z "$STUB" ]]; then
-  # Probe canonical spkmodule copies on this host. Any reachable copy works
-  # — release-json-stub is a pure script in the shared spkmodule component.
-  for cand in \
-    /home/user/Desktop/welcome-pearl/spkmodule/bin/release-json-stub \
-    /home/user/Desktop/_killlist_staging/melusina-spkmodule-component/bin/release-json-stub \
-    /home/user/Desktop/melusina_botmother/spkmodule/bin/release-json-stub \
-    /home/user/Desktop/ccash_wholesale/spkmodule/bin/release-json-stub \
-    /home/user/Desktop/ccash_domain_template/spkmodule/bin/release-json-stub; do
-    if [[ -x "$cand" ]]; then STUB="$cand"; break; fi
-  done
-  # Recursive fallback: scan /home/user/Desktop for any spkmodule checkout
-  if [[ -z "$STUB" ]]; then
-    STUB="$(find /home/user/Desktop -maxdepth 5 -path '*/spkmodule/bin/release-json-stub' -executable -type f 2>/dev/null | head -1)"
-  fi
-fi
+STUB=""
 if [[ "$PRESERVE_EXISTING_RELEASE" == "0" ]]; then
-  [[ -n "$STUB" && -x "$STUB" ]] || { echo "FATAL: release-json-stub not found/executable. Tried env RELEASE_JSON_STUB, 5 canonical spkmodule paths, and recursive scan of /home/user/Desktop. Set RELEASE_JSON_STUB to override." >&2; exit 2; }
+  # The spkmodule release-json-stub is named, never searched for: an
+  # explicit RELEASE_JSON_STUB, checked against RELEASE_JSON_STUB_SHA256 by
+  # scripts/release-inputs.py, which refuses a missing one by name.
+  STUB="$(python3 "$ROOT/scripts/release-inputs.py" resolve RELEASE_JSON_STUB)" || exit 2
+  [[ -x "$STUB" ]] || { echo "FATAL: RELEASE_JSON_STUB is not executable: $STUB" >&2; exit 2; }
 fi
 
 # Pre-flight: spk CLI required for extracting package metadata

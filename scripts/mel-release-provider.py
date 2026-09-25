@@ -41,6 +41,7 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -222,6 +223,38 @@ PKGDEF_ID_ASSIGNMENT_RE = re.compile(r'\bid\s*=\s*"(?P<value>(?:\\.|[^"\\])*)"')
 
 class ProviderError(RuntimeError):
     pass
+
+
+def _load_release_inputs():
+    # Loaded by path: this module is itself loaded by path from the catalog
+    # adapter, where the scripts directory is not on sys.path.
+    spec = importlib.util.spec_from_file_location(
+        "melusina_store_release_inputs", Path(__file__).resolve().with_name("release-inputs.py"))
+    if spec is None or spec.loader is None:
+        raise ProviderError("cannot load scripts/release-inputs.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+release_inputs = _load_release_inputs()
+
+
+def release_input(name: str) -> Path:
+    """Resolve one input from outside this repository, or refuse it by name.
+
+    Nothing the provider reads from outside the repository has a default: the
+    Squads SDK node_modules, the Pearl tool and the Squads vault executor are
+    each named by their variable and checked against the sha256 pin
+    scripts/release-inputs.json declares for them, before every use.
+    """
+    try:
+        resolved = release_inputs.resolve(name)
+    except release_inputs.InputRefused as exc:
+        raise ProviderError(str(exc)) from None
+    if not isinstance(resolved, Path):
+        raise ProviderError(f"release-input-undeclared:{name}: not a single-path input")
+    return resolved
 
 
 class PkgdefClaim:
@@ -466,7 +499,7 @@ def _looks_like_terminal_output(text: str) -> bool:
 # The Squads/web3.js helpers are native-heavy and are NOT safe on every Node
 # major. Measured on this workstation:
 #
-#   /home/user/.local/bin/node v26.8.1   next-index -> 1942, then SIGSEGV (139)
+#   a user-local node  v26.8.1   next-index -> 1942, then SIGSEGV (139)
 #                                        propose    -> "free(): invalid size"
 #   /usr/bin/node              v20.19.2  next-index -> 1942, rc=0, clean
 #
@@ -2856,10 +2889,7 @@ def policy_executor_env() -> dict[str, str]:
         "MEL_RELEASE_SQUADS_MULTISIG": authority["multisig"],
         "MEL_RELEASE_SQUADS_VAULT": authority["vault"],
         "MEL_RELEASE_SQUADS_PROGRAM_ID": authority["programId"],
-        "MEL_RELEASE_NODE_MODULES": env(
-            "MEL_RELEASE_SQUADS_NODE_MODULES",
-            default="/home/user/Desktop/Melusina/melusina_solana_dev-license104/frontend-vite/node_modules",
-        ),
+        "MEL_RELEASE_NODE_MODULES": str(release_input("MEL_RELEASE_SQUADS_NODE_MODULES")),
     }
 
 
@@ -2872,18 +2902,18 @@ def generic_executor_env() -> dict[str, str]:
 
 
 def register_executor() -> Path:
-    default = MODULE / "scripts" / "mel-release-squads-register.mjs"
-    path = clean_abs(env("MEL_RELEASE_REGISTER_EXECUTOR", default=str(default)), "MEL_RELEASE_REGISTER_EXECUTOR")
-    if not path.is_file() or path.is_symlink():
-        raise ProviderError(f"MEL_RELEASE_REGISTER_EXECUTOR is not a regular file: {path}")
-    return path
+    # Unset, this repository's helper; any other file must carry its pin.
+    return release_input("MEL_RELEASE_REGISTER_EXECUTOR")
 
 
 def generic_executor() -> Path:
-    path = clean_abs(env("MEL_RELEASE_SQUADS_EXECUTOR", required=True), "MEL_RELEASE_SQUADS_EXECUTOR")
-    if not path.is_file() or path.is_symlink():
-        raise ProviderError(f"MEL_RELEASE_SQUADS_EXECUTOR is not a regular file: {path}")
-    return path
+    # Only the canonical deployer copy, its reduced-mode guard and its SDK
+    # tree, each as pinned in scripts/release-inputs.json.
+    return release_input("MEL_RELEASE_SQUADS_EXECUTOR")
+
+
+def pearl_tool() -> Path:
+    return release_input("MEL_RELEASE_PEARL_TOOL")
 
 
 def last_json(raw: str) -> dict[str, Any]:
@@ -3059,7 +3089,7 @@ def prepare_or_reuse_ceremony_state(
         return state_path
 
     transaction_index = next_index(multisig, vault)
-    pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
+    pearl = pearl_tool()
     run([
         str(pearl), "propose-release", "--dry-run", "--app-dir", str(pearl_artifact_dir(context)),
         "--app-id", app_id, "--release-json", str(release_path), "--license-mint", env("MEL_RELEASE_LICENSE_MINT", required=True),
@@ -3157,7 +3187,7 @@ def release_entry_account(pda: str) -> None:
 
 
 def finalize_release(context: dict[str, Any]) -> None:
-    pearl = clean_abs(env("MEL_RELEASE_PEARL_TOOL", default="/home/user/Desktop/melusina-attestdeployer-tool/melusina-pearl-tool"), "MEL_RELEASE_PEARL_TOOL")
+    pearl = pearl_tool()
     run([
         str(pearl), "finalize-release", "--app-dir", str(pearl_artifact_dir(context)), "--state", str(context["statePath"]), "--release-json", str(context["releasePath"]),
         "--rpc-url", env("MEL_RELEASE_RPC_URL", required=True),
@@ -3413,6 +3443,9 @@ def release_status(pda: str) -> None:
 
 def revoke(pda: str, receipt_out: Path) -> None:
     authority = require_shared_squads_authority()
+    # Resolve the executor before any chain read, so a revoke that cannot run
+    # is refused by name before it does anything.
+    executor = generic_executor()
     status_doc_path = state_root("_revoke") / (hashlib.sha256(pda.encode()).hexdigest() + ".json")
     # Read first; an already revoked entry is a durable idempotent success.
     try:
@@ -3448,7 +3481,7 @@ def revoke(pda: str, receipt_out: Path) -> None:
             {"pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "isSigner": False, "isWritable": False},
         ], "data": discriminator,
     })
-    result = last_json(run([node_bin(), str(generic_executor()), str(ix_path), "--multisig", authority["multisig"], "--vault", authority["vault"]], extra_env=generic_executor_env()))
+    result = last_json(run([node_bin(), str(executor), str(ix_path), "--multisig", authority["multisig"], "--vault", authority["vault"]], extra_env=generic_executor_env()))
     if result.get("status") != "executed":
         raise ProviderError("stale ReleaseEntry revoke did not execute")
     write_json(receipt_out, {"schema": "melusina-revoke-release-receipt-v1", "releaseEntryPda": pda, "status": "Revoked", "transactionSignature": result.get("signature", "")})

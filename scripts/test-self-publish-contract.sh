@@ -12,10 +12,11 @@ for retired in \
   scripts/_quarantine/welcome-pearl-ceremony.sh scripts/rollback-all.sh \
   scripts/_quarantine/pearl-ceremony.sh \
   scripts/rollback-app.sh scripts/_rollback.py scripts/admin-server.py \
+  scripts/build-from-source.sh \
   batch-reanchor.sh; do
   [[ ! -e "$ROOT/$retired" ]] || { echo "retired writer remains: $retired" >&2; exit 1; }
 done
-! grep -qE 'publish-app-full\.sh|publish-apps\.sh|publish-sealed' "$ROOT/Makefile"
+! grep -qE 'publish-app-full\.sh|publish-apps\.sh|publish-sealed|build-from-source' "$ROOT/Makefile"
 ! grep -qE 'git (add|commit|pull|push|update-ref|tag)([[:space:]]|$$)' "$ROOT/Makefile"
 ! grep -qE 'parallel-safe|no-central-tzar|sync-catalog\.sh|revoke-release|SKIP_STEPS|new-release-authorized|AUTHORIZED CHAIN CEREMONY|pearl-app-ceremony' "$DRIVER"
 

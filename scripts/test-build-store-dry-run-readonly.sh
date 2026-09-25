@@ -15,6 +15,8 @@ trap cleanup EXIT
 mkdir -p "$APP" "$TMP/scripts"
 cp "$ROOT/build-store.sh" "$TMP/build-store.sh"
 cp "$ROOT/scripts/make-placeholder-icon.py" "$TMP/scripts/make-placeholder-icon.py"
+# build-store.sh resolves its named external inputs before any work.
+cp "$ROOT/scripts/release-inputs.py" "$ROOT/scripts/release-inputs.json" "$TMP/scripts/"
 
 printf '%s\n' '{"appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","name":"Demo","version":"1.0.0","versionNumber":1,"packageId":"0123456789abcdef0123456789abcdef","shortDescription":"Dry-run icon fixture","categories":["Productivity"],"isOpenSource":true,"webLink":"https://example.invalid","codeLink":"https://example.invalid/source","upstreamAuthor":"Example","createdAt":1,"author":{"name":"Example"}}' > "$APP/metadata.json"
 printf '%s\n' '{"schemaVersion":1}' > "$APP/RELEASE.json"

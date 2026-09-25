@@ -62,6 +62,29 @@ def restore_env(old):
     os.environ.update(old)
 
 
+def pinned_input(name, path):
+    """NAME and its NAME_SHA256 pin: the provider resolves every input from
+    outside the repository through scripts/release-inputs.py, which refuses an
+    unpinned one by name."""
+    path = Path(path)
+    return {name: str(path), f"{name}_SHA256": provider.release_inputs.digest(path)}
+
+
+def fake_pearl_tool(root):
+    tool = Path(root) / "melusina-pearl-tool"
+    tool.write_text("#!/bin/sh\nexit 0\n")
+    tool.chmod(0o755)
+    return tool
+
+
+def fake_squads_node_modules(root):
+    modules = Path(root) / "squads-sdk" / "node_modules"
+    for package in ("@solana/web3.js", "@sqds/multisig"):
+        (modules / package).mkdir(parents=True, exist_ok=True)
+        (modules / package / "package.json").write_text("{}\n")
+    return modules
+
+
 def test_provider_helpers_rebuild_from_current_source_not_ignored_module_bin():
     # An ignored MODULE/bin executable must never select the release helper.
     with tempfile.TemporaryDirectory() as tmp:
@@ -125,7 +148,7 @@ def test_finalize_uses_only_supported_flags():
         captured = []
         old_run = provider.run
         old = with_env({
-            "MEL_RELEASE_PEARL_TOOL": "/tmp/melusina-pearl-tool",
+            **pinned_input("MEL_RELEASE_PEARL_TOOL", fake_pearl_tool(root)),
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         })
         try:
@@ -167,9 +190,9 @@ def test_stage_refuses_stale_live_quorum_before_store_mutation():
         old_run, old_context, old_rewrite = provider.run, provider.require_context, provider.rewrite_release
         old = with_env({
             "MEL_RELEASE_CONFIG": str(config),
-            "MEL_RELEASE_REGISTER_EXECUTOR": str(executor),
+            **pinned_input("MEL_RELEASE_REGISTER_EXECUTOR", executor),
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
-            "MEL_RELEASE_SQUADS_NODE_MODULES": str(root),
+            **pinned_input("MEL_RELEASE_SQUADS_NODE_MODULES", fake_squads_node_modules(root)),
             # This reflects the real failure mode: local configuration says
             # 2-of-4 while the governed authority is now 3-of-4.
             "MEL_RELEASE_SQUADS_THRESHOLD": "2",
@@ -257,14 +280,14 @@ def test_propose_uses_only_supported_flags():
         old_run, old_ctx, old_rewrite, old_index, old_policy = provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy
         old = with_env({
             "MEL_RELEASE_CONFIG": str(config),
-            "MEL_RELEASE_PEARL_TOOL": "/tmp/melusina-pearl-tool",
+            **pinned_input("MEL_RELEASE_PEARL_TOOL", fake_pearl_tool(root)),
             "MEL_RELEASE_LICENSE_MINT": "license",
             "MEL_RELEASE_MASTER_NFT_MINT": "master",
             "MEL_PROGRAM_ID": "program",
             "MEL_RELEASE_AUTHOR_KEYPAIR": "/tmp/author.json",
-            "MEL_RELEASE_REGISTER_EXECUTOR": str(executor),
+            **pinned_input("MEL_RELEASE_REGISTER_EXECUTOR", executor),
             "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members),
-            "MEL_RELEASE_SQUADS_NODE_MODULES": str(root),
+            **pinned_input("MEL_RELEASE_SQUADS_NODE_MODULES", fake_squads_node_modules(root)),
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
             "MEL_RELEASE_SQUADS_THRESHOLD": "3",
             "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
@@ -429,8 +452,8 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
             "MEL_RELEASE_CONFIG": str(config),
             "MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_PROGRAM_ID": "program",
             "MEL_RELEASE_SQUADS_THRESHOLD": "3", "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
-            "MEL_RELEASE_REGISTER_EXECUTOR": str(executor), "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members),
-            "MEL_RELEASE_SQUADS_NODE_MODULES": str(root), "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
+            **pinned_input("MEL_RELEASE_REGISTER_EXECUTOR", executor), "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members),
+            **pinned_input("MEL_RELEASE_SQUADS_NODE_MODULES", fake_squads_node_modules(root)), "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         })
         try:
             provider.require_context = lambda _: context
@@ -495,9 +518,9 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
             "MEL_RELEASE_CONFIG": str(config),
             "MEL_RELEASE_MASTER_NFT_MINT": "master", "MEL_PROGRAM_ID": "program",
             "MEL_RELEASE_SQUADS_THRESHOLD": "3", "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
-            "MEL_RELEASE_PEARL_TOOL": "/tmp/melusina-pearl-tool", "MEL_RELEASE_LICENSE_MINT": "license",
-            "MEL_RELEASE_AUTHOR_KEYPAIR": "/tmp/author.json", "MEL_RELEASE_REGISTER_EXECUTOR": str(executor),
-            "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members), "MEL_RELEASE_SQUADS_NODE_MODULES": str(root),
+            **pinned_input("MEL_RELEASE_PEARL_TOOL", fake_pearl_tool(root)), "MEL_RELEASE_LICENSE_MINT": "license",
+            "MEL_RELEASE_AUTHOR_KEYPAIR": "/tmp/author.json", **pinned_input("MEL_RELEASE_REGISTER_EXECUTOR", executor),
+            "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members), **pinned_input("MEL_RELEASE_SQUADS_NODE_MODULES", fake_squads_node_modules(root)),
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         })
         try:
@@ -508,7 +531,7 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
 
             def fake_run(args, **_):
                 captured.append(args)
-                if args[0] == "/tmp/melusina-pearl-tool":
+                if args[0] == str(root / "melusina-pearl-tool"):
                     state_path.write_text(json.dumps(new_state) + "\n")
                     return ""
                 node_calls = [item for item in captured if item[0] == TEST_NODE_BIN]
@@ -1103,9 +1126,9 @@ def test_release_helper_owns_the_index_and_approve_executes_nothing():
             members.append(str(member))
         common = {
             "MEL_RELEASE_CONFIG": str(config),
-            "MEL_RELEASE_REGISTER_EXECUTOR": str(executor),
+            **pinned_input("MEL_RELEASE_REGISTER_EXECUTOR", executor),
             "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members),
-            "MEL_RELEASE_SQUADS_NODE_MODULES": str(root),
+            **pinned_input("MEL_RELEASE_SQUADS_NODE_MODULES", fake_squads_node_modules(root)),
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
             "MEL_RELEASE_SQUADS_THRESHOLD": "3",
         }

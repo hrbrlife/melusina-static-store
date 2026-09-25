@@ -249,7 +249,7 @@ func TestPublishAdmissionAgreesWithTheDaemonOnItsCommittedReceipts(t *testing.T)
 			}
 			meta.PDA = "vector-release-entry"
 			rel := ReleaseJSON{ReleaseHash: c.ReleaseHash, Version: "1.0.0"}
-			if err := admitReleaseEntryForPublish(enrolled, appHash, meta, rel, c.AppID); err != nil {
+			if err := admitReleaseEntry(enrolled, appHash, meta, rel, c.AppID); err != nil {
 				t.Fatalf("positive control: the Store refuses the release the daemon Allows: %v", err)
 			}
 			// What the Store then signs is exactly the receipt part of the
@@ -272,13 +272,13 @@ func TestPublishAdmissionAgreesWithTheDaemonOnItsCommittedReceipts(t *testing.T)
 			flipped[0] ^= 1
 			mutated := rel
 			mutated.ReleaseHash = hex.EncodeToString(flipped)
-			requireAdmissionRefusal(t, admitReleaseEntryForPublish(enrolled, appHash, meta, mutated, c.AppID), releaseentry.ErrReleaseHashMismatch)
+			requireAdmissionRefusal(t, admitReleaseEntry(enrolled, appHash, meta, mutated, c.AppID), releaseentry.ErrReleaseHashMismatch)
 			// An entry of another of the daemon's apps (release-appid-mismatch).
 			other := v.Cases[(index+1)%len(v.Cases)].AppID
 			if other == c.AppID {
 				t.Fatal("the vector's cases share an appId")
 			}
-			requireAdmissionRefusal(t, admitReleaseEntryForPublish(enrolled, appHash, meta, rel, other), releaseentry.ErrAppIDMismatch)
+			requireAdmissionRefusal(t, admitReleaseEntry(enrolled, appHash, meta, rel, other), releaseentry.ErrAppIDMismatch)
 		})
 	}
 }

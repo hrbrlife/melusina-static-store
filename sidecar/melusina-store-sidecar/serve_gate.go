@@ -81,7 +81,7 @@ type serveGate struct {
 	mu             sync.RWMutex
 	apps           map[string]servedApp // packageId(lowerhex) -> anchored app
 	appsLoadedAt   time.Time
-	verdict        map[string]time.Time // appHash(lowerhex) -> last on-chain-Active time
+	verdict        map[string]time.Time // releaseVerdictKey(appHash, release claim) -> last admitted time
 	releaseVerdict map[string]time.Time // sha256(lowerhex) -> last InstallerRelease Active time
 
 	rebuildMu sync.Mutex // serializes resolve-index rebuilds
@@ -833,9 +833,12 @@ func (g *serveGate) gateSignedSidecarGeneration(ctx context.Context, class, name
 // gate returns nil iff an SPK whose served bytes recompute to appHash may be
 // served. A fresh cache avoids re-fetching the global ReleaseEntry and app
 // clearance facts, but it NEVER caches StoreReleaseListing visibility: an
-// explicit exact DELIST must take effect on the next request. appID is the
-// served release's Sandstorm appId (its metadata.json, inside appHash). The
-// caller guarantees g.cr != nil.
+// explicit exact DELIST must take effect on the next request. A cached verdict
+// is a verdict about one exact release claim (releaseVerdictKey), so a served
+// RELEASE.json naming another release hash, version or master mint for the
+// same bytes is admitted afresh (admitReleaseEntry) before it is served. appID
+// is the served release's Sandstorm appId (its metadata.json, inside appHash).
+// The caller guarantees g.cr != nil.
 func (g *serveGate) gate(ctx context.Context, appHash string, appID string, rel ReleaseJSON) error {
 	return g.gateWith(ctx, g.cr, appHash, appID, rel)
 }
@@ -845,14 +848,33 @@ func (g *serveGate) gate(ctx context.Context, appHash string, appID string, rel 
 // account once per app row; every other caller keeps g.cr and is unchanged.
 func (g *serveGate) gateWith(ctx context.Context, cr chainReader, appHash string, appID string, rel ReleaseJSON) error {
 	h := strings.ToLower(strings.TrimSpace(appHash))
-	if g.verdictFresh(h) {
+	key := releaseVerdictKey(h, rel)
+	if g.verdictFresh(key) {
 		return verifyCurrentStoreReleaseListing(ctx, cr, g.cfg, h, rel)
 	}
 	if err := VerifyServeHash(ctx, cr, g.cfg, h, appID, rel); err != nil {
 		return err
 	}
-	g.recordVerdict(h)
+	g.recordVerdict(key)
 	return nil
+}
+
+// releaseVerdictKey keys the serve verdict cache by the served bytes' app hash
+// AND the release claim the admission binds against the ReleaseEntry: the
+// master mint that seeds the entry's address, the release hash and the
+// version, each normalized as the admission compares it. The appId is inside
+// the app hash (metadata.json). The served quorum and vault claims are
+// re-checked on every cached serve (verifyCurrentStoreReleaseListing). Keyed
+// by the app hash alone, a verdict for one RELEASE.json let a replacement
+// naming a release hash the entry does not attest be served, and its pointer
+// re-signed, until the cache expired.
+func releaseVerdictKey(appHash string, rel ReleaseJSON) string {
+	return strings.Join([]string{
+		appHash,
+		strings.TrimSpace(rel.MasterNftMint),
+		strings.ToLower(strings.TrimSpace(rel.ReleaseHash)),
+		strings.TrimSpace(rel.Version),
+	}, "\x00")
 }
 
 func (g *serveGate) gateInstallerRelease(ctx context.Context, installerHash [32]byte) (string, error) {
@@ -867,12 +889,12 @@ func (g *serveGate) gateInstallerRelease(ctx context.Context, installerHash [32]
 	return h, nil
 }
 
-func (g *serveGate) verdictFresh(appHash string) bool {
+func (g *serveGate) verdictFresh(key string) bool {
 	if g.verifyTTL <= 0 {
 		return false // caching disabled => always re-verify on chain
 	}
 	g.mu.RLock()
-	at, ok := g.verdict[appHash]
+	at, ok := g.verdict[key]
 	g.mu.RUnlock()
 	if !ok {
 		return false
@@ -880,9 +902,9 @@ func (g *serveGate) verdictFresh(appHash string) bool {
 	return g.now().Sub(at) < g.verifyTTL
 }
 
-func (g *serveGate) recordVerdict(appHash string) {
+func (g *serveGate) recordVerdict(key string) {
 	g.mu.Lock()
-	g.verdict[appHash] = g.now()
+	g.verdict[key] = g.now()
 	g.mu.Unlock()
 }
 

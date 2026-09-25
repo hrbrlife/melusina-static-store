@@ -352,22 +352,87 @@ func openDistRegularNoFollow(path string) (*os.File, int64, error) {
 	return f, info.Size(), nil
 }
 
-// verifyKeyBearingSidecarComponentOnChain re-verifies a sidecar_identity
-// (key-bearing) component. The store re-derives the SidecarIdentityEntry PDA
-// itself from the signed key version (1 or higher; 0 is refused, never read as
-// 1), refuses a component whose identityPda is not that address (as the tenant
-// update controller does), fetches only the derived address, requires it
-// Active, and requires its on-chain binary_hash to equal the served artifact
-// sha256; it then requires the full five-fact cascade.
-func (s *publishService) verifyKeyBearingSidecarComponentOnChain(ctx context.Context, c componentrelease.ComponentRelease) error {
-	sidecarID := strings.TrimSpace(c.Chain.SidecarID)
-	if err := primitives.ValidateSidecarID(sidecarID); err != nil {
-		return fmt.Errorf("component %s: bad sidecarId: %w", c.ComponentID, err)
+// sidecarComponentChainPins is what a signed sidecar component names about the
+// chain, once the Store has pinned it: its sidecar id, licence and master mints.
+type sidecarComponentChainPins struct {
+	sidecarID   string
+	licenseMint primitives.Pubkey
+	masterMint  primitives.Pubkey
+}
+
+// pinSidecarComponentChain is the part of the sidecar gate both rules share
+// before any chain read, in the tenant update controller's order (chaingate.go:
+// gate's program pin, then requireSidecarMintPins). The component's
+// chain.program must be this Store's licence registry, refused by
+// componentrelease.ErrChainProgramNotPinned as the controller refuses it, and
+// its sidecar id and both mints must parse. The master mint is pinned later,
+// against the master the component's LicenseEntry names (the cascade's
+// componentMaster rule): unlike a tenant controller, the Store holds no one
+// tenant's master in its configuration.
+func pinSidecarComponentChain(c componentrelease.ComponentRelease) (sidecarComponentChainPins, error) {
+	var pins sidecarComponentChainPins
+	if program := licenseRegistryProgramID().Base58(); strings.TrimSpace(c.Chain.Program) != program {
+		return pins, fmt.Errorf("component %s: %w: chain.program %q != this store's licence registry %s", c.ComponentID, componentrelease.ErrChainProgramNotPinned, c.Chain.Program, program)
 	}
-	licenseMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(c.Chain.LicenseNftMint))
+	pins.sidecarID = strings.TrimSpace(c.Chain.SidecarID)
+	if err := primitives.ValidateSidecarID(pins.sidecarID); err != nil {
+		return pins, fmt.Errorf("component %s: bad sidecarId: %w", c.ComponentID, err)
+	}
+	var err error
+	pins.licenseMint, err = primitives.PubkeyFromBase58(strings.TrimSpace(c.Chain.LicenseNftMint))
 	if err != nil {
-		return fmt.Errorf("component %s: bad licenseNftMint: %w", c.ComponentID, err)
+		return pins, fmt.Errorf("component %s: bad licenseNftMint: %w", c.ComponentID, err)
 	}
+	pins.masterMint, err = primitives.PubkeyFromBase58(strings.TrimSpace(c.Chain.MasterNftMint))
+	if err != nil {
+		return pins, fmt.Errorf("component %s: bad masterNftMint: %w", c.ComponentID, err)
+	}
+	return pins, nil
+}
+
+// requireDerivedSidecarApprovalPDAs refuses a component whose Global or Local
+// approval address is not the one the seeds derive: the Global approval from
+// the component's master mint, the Local approval from its licence mint, both
+// under this Store's licence registry. The tenant update controller refuses
+// the same component the same way before any read (chaingate.go
+// deriveSidecarApprovalPDAs, assertDerivedPDA); the cascade then reads the
+// derived addresses, never the component's.
+func requireDerivedSidecarApprovalPDAs(c componentrelease.ComponentRelease, pins sidecarComponentChainPins) error {
+	globalPDA, _, err := primitives.DeriveGlobalSidecar(pins.masterMint, pins.sidecarID, licenseRegistryProgramID())
+	if err != nil {
+		return fmt.Errorf("component %s: derive GlobalSidecarApproval PDA: %w", c.ComponentID, err)
+	}
+	if claimed := strings.TrimSpace(c.Chain.GlobalApprovalPDA); claimed != globalPDA.Base58() {
+		return fmt.Errorf("component %s: GlobalSidecarApproval PDA mismatch: component names %s, seed-derives %s", c.ComponentID, claimed, globalPDA.Base58())
+	}
+	localPDA, _, err := primitives.DeriveLocalSidecar(pins.licenseMint, pins.sidecarID, licenseRegistryProgramID())
+	if err != nil {
+		return fmt.Errorf("component %s: derive LocalSidecarApproval PDA: %w", c.ComponentID, err)
+	}
+	if claimed := strings.TrimSpace(c.Chain.LocalApprovalPDA); claimed != localPDA.Base58() {
+		return fmt.Errorf("component %s: LocalSidecarApproval PDA mismatch: component names %s, seed-derives %s", c.ComponentID, claimed, localPDA.Base58())
+	}
+	return nil
+}
+
+// verifyKeyBearingSidecarComponentOnChain re-verifies a sidecar_identity
+// (key-bearing) component, pinning every chain fact it names as the tenant
+// update controller does (chaingate.go gateSidecarCascade), so promote, serve
+// and apply agree on one signed component. Before any chain read it requires
+// the component's program to be this Store's licence registry, derives the
+// SidecarIdentityEntry PDA from the signed key version (1 or higher; 0 is
+// refused, never read as 1), and refuses a component whose identityPda, Global
+// approval or Local approval is not the seed-derived address. It then fetches
+// only the derived identity, requires it Active with its on-chain binary_hash
+// equal to the served artifact sha256, and requires the full five-fact
+// cascade with the component's master mint pinned to the one its LicenseEntry
+// names (componentrelease.ErrSidecarMasterMintNotPinned).
+func (s *publishService) verifyKeyBearingSidecarComponentOnChain(ctx context.Context, c componentrelease.ComponentRelease) error {
+	pins, err := pinSidecarComponentChain(c)
+	if err != nil {
+		return err
+	}
+	sidecarID, licenseMint := pins.sidecarID, pins.licenseMint
 	// The signed key version is the one derived with: 0 (an omitted keyVersion)
 	// is refused, never read as 1, because the tenant update controller derives
 	// with the signed value and would refuse what the Store promoted (seam audit
@@ -385,6 +450,9 @@ func (s *publishService) verifyKeyBearingSidecarComponentOnChain(ctx context.Con
 	// so the Store refuses it too, before any chain read.
 	if c.Chain.IdentityPDA != sidPDA.Base58() {
 		return fmt.Errorf("component %s: SidecarIdentityEntry PDA mismatch: component names %q, seed-derives %s (key version %d)", c.ComponentID, c.Chain.IdentityPDA, sidPDA.Base58(), keyVersion)
+	}
+	if err := requireDerivedSidecarApprovalPDAs(c, pins); err != nil {
+		return err
 	}
 	sid, err := s.cr.FetchSidecarIdentity(ctx, sidPDA.Base58())
 	if err != nil {
@@ -405,7 +473,11 @@ func (s *publishService) verifyKeyBearingSidecarComponentOnChain(ctx context.Con
 	// GlobalSidecarApproval (hash-bound), LocalSidecarApproval, ResellerSidecar-
 	// Approval and ResellerEntry all Active. Mirror the full cascade so a reseller/
 	// license/global/local revocation cannot leave the identity looking green.
-	if err := s.verifyFiveFactCascade(ctx, componentReleaseChainView{sidecarID: sidecarID, licenseMint: licenseMint}, artifactHash); err != nil {
+	// The component's master mint must be the one its LicenseEntry names: the
+	// cascade reads the Global approval derived from that master, which the
+	// component's globalApprovalPda was just required to be.
+	view := componentReleaseChainView{sidecarID: sidecarID, licenseMint: licenseMint, componentMaster: true, masterMint: pins.masterMint}
+	if err := s.verifyFiveFactCascade(ctx, view, artifactHash); err != nil {
 		return fmt.Errorf("component %s: sidecar authorization cascade: %w", c.ComponentID, err)
 	}
 	return s.verifyComponentServedBytes(c)
@@ -420,11 +492,12 @@ func (s *publishService) verifyKeyBearingSidecarComponentOnChain(ctx context.Con
 // approval must carry Some(pin), because the identity's binary_hash, the other
 // second pin, does not exist for this class.
 //
-// Every chain fact the signed component names is bound here, since there is no
-// identity account to anchor them: the program, the Global and Local approval
-// PDAs (each must be the seed-derived address), and the master mint (it must be
-// the one the LicenseEntry names, which is the one the cascade derives the
-// Global approval from).
+// Every chain fact the signed component names is bound here, with the same
+// pins as a key-bearing component (pinSidecarComponentChain,
+// requireDerivedSidecarApprovalPDAs): the program, the Global and Local
+// approval PDAs (each must be the seed-derived address), and the master mint
+// (it must be the one the LicenseEntry names, which is the one the cascade
+// derives the Global approval from).
 func (s *publishService) verifyKeylessSidecarComponentOnChain(ctx context.Context, c componentrelease.ComponentRelease) error {
 	if !componentrelease.IsKeylessSidecar(c) {
 		return fmt.Errorf("component %s: %w: class %q kind %q is not a keyless sidecar", c.ComponentID, componentrelease.ErrClassAuthorityMismatch, c.ComponentClass, c.Chain.Kind)
@@ -432,40 +505,18 @@ func (s *publishService) verifyKeylessSidecarComponentOnChain(ctx context.Contex
 	if c.Chain.IdentityPDA != "" || c.Chain.KeyVersion != 0 {
 		return fmt.Errorf("component %s: %w", c.ComponentID, componentrelease.ErrKeylessSidecarNamesIdentity)
 	}
-	if program := licenseRegistryProgramID().Base58(); strings.TrimSpace(c.Chain.Program) != program {
-		return fmt.Errorf("component %s: keyless sidecar chain.program %q != this store's licence registry %s", c.ComponentID, c.Chain.Program, program)
-	}
-	sidecarID := strings.TrimSpace(c.Chain.SidecarID)
-	if err := primitives.ValidateSidecarID(sidecarID); err != nil {
-		return fmt.Errorf("component %s: bad sidecarId: %w", c.ComponentID, err)
-	}
-	licenseMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(c.Chain.LicenseNftMint))
+	pins, err := pinSidecarComponentChain(c)
 	if err != nil {
-		return fmt.Errorf("component %s: bad licenseNftMint: %w", c.ComponentID, err)
+		return err
 	}
-	masterMint, err := primitives.PubkeyFromBase58(strings.TrimSpace(c.Chain.MasterNftMint))
-	if err != nil {
-		return fmt.Errorf("component %s: bad masterNftMint: %w", c.ComponentID, err)
-	}
-	globalPDA, _, err := primitives.DeriveGlobalSidecar(masterMint, sidecarID, licenseRegistryProgramID())
-	if err != nil {
-		return fmt.Errorf("component %s: derive GlobalSidecarApproval PDA: %w", c.ComponentID, err)
-	}
-	if claimed := strings.TrimSpace(c.Chain.GlobalApprovalPDA); claimed != globalPDA.Base58() {
-		return fmt.Errorf("component %s: GlobalSidecarApproval PDA mismatch: component names %s, seed-derives %s", c.ComponentID, claimed, globalPDA.Base58())
-	}
-	localPDA, _, err := primitives.DeriveLocalSidecar(licenseMint, sidecarID, licenseRegistryProgramID())
-	if err != nil {
-		return fmt.Errorf("component %s: derive LocalSidecarApproval PDA: %w", c.ComponentID, err)
-	}
-	if claimed := strings.TrimSpace(c.Chain.LocalApprovalPDA); claimed != localPDA.Base58() {
-		return fmt.Errorf("component %s: LocalSidecarApproval PDA mismatch: component names %s, seed-derives %s", c.ComponentID, claimed, localPDA.Base58())
+	if err := requireDerivedSidecarApprovalPDAs(c, pins); err != nil {
+		return err
 	}
 	artifactHash, err := hash32FromHex(c.SHA256)
 	if err != nil {
 		return fmt.Errorf("component %s: bad sha256: %w", c.ComponentID, err)
 	}
-	view := componentReleaseChainView{sidecarID: sidecarID, licenseMint: licenseMint, keyless: true, masterMint: masterMint}
+	view := componentReleaseChainView{sidecarID: pins.sidecarID, licenseMint: pins.licenseMint, keyless: true, masterMint: pins.masterMint}
 	if err := s.verifyFiveFactCascade(ctx, view, artifactHash); err != nil {
 		return fmt.Errorf("component %s: keyless sidecar authorization cascade: %w", c.ComponentID, err)
 	}

@@ -7,12 +7,10 @@ require (
 	github.com/hrbrlife/melusina-identity-gate v0.0.0-00010101000000-000000000000
 	github.com/melusina-os/melusina-artifact-vault v0.0.0
 	github.com/melusina-os/melusina-solana-primitives v0.0.0
+	golang.org/x/crypto v0.28.0
 )
 
-require (
-	filippo.io/edwards25519 v1.2.0 // indirect
-	golang.org/x/crypto v0.28.0 // indirect
-)
+require filippo.io/edwards25519 v1.2.0 // indirect
 
 // Local path replaces — shared/* is part of the Melusina monorepo, not
 // separately-versioned upstream modules. Same pattern as dns-sidecar.

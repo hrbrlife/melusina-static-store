@@ -322,6 +322,14 @@ func (s *publishService) verifySidecarClassComponentOnChain(ctx context.Context,
 	if c.ComponentClass != componentrelease.ClassSidecar {
 		return fmt.Errorf("component %s: %w: class %q is not the sidecar class, kind %q", c.ComponentID, componentrelease.ErrClassAuthorityMismatch, c.ComponentClass, c.Chain.Kind)
 	}
+	// An unknown kind is refused by its own name BEFORE the table lookup: the
+	// table cross-check below speaks about the two real sidecar classes, and a
+	// made-up kind deserves its precise refusal, not a class mismatch.
+	switch c.Chain.Kind {
+	case componentrelease.AuthoritySidecarIdentity, componentrelease.AuthoritySidecarCascade:
+	default:
+		return fmt.Errorf("component %s: %w: %q is not a sidecar rule", c.ComponentID, componentrelease.ErrUnknownAuthorityKind, c.Chain.Kind)
+	}
 	// The sidecar class table (K-CHN-33) is the estate-level declaration of
 	// each sidecar's class; the publisher's signed kind is cross-checked
 	// against it at promote AND serve time (this is the shared dispatcher for

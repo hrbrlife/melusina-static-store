@@ -50,8 +50,8 @@ const (
 
 // Key custody values.
 const (
-	CustodyNone               = "none"                  // cascade-only, no keys at the runtime
-	CustodySidecarHeldIdentit = "sidecar-held-identity" // the sidecar holds its leased identity keys
+	CustodyNone                = "none"                  // cascade-only, no keys at the runtime
+	CustodySidecarHeldIdentity = "sidecar-held-identity" // the sidecar holds its leased identity keys
 )
 
 // sidecarClassesDomain domain-separates this message from every other signed
@@ -60,18 +60,18 @@ var sidecarClassesDomain = []byte("melusina-sidecar-classes-v1\x00")
 
 // Row is one sidecar's declared class.
 type Row struct {
-	ID          string `json:"id"`                    // sidecar / component id, e.g. "swaprail"
-	Class       string `json:"class"`                 // sidecar_cascade | sidecar_identity
-	KeyCustody  string `json:"keyCustody"`            // none | sidecar-held-identity
-	DeclaredAt  string `json:"declaredAt"`            // RFC3339 UTC, when the operator declared it
-	Source      string `json:"source"`                // provenance, e.g. "registry.go+repos@<sha>" (G-2 record)
+	ID         string `json:"id"`         // sidecar / component id, e.g. "swaprail"
+	Class      string `json:"class"`      // sidecar_cascade | sidecar_identity
+	KeyCustody string `json:"keyCustody"` // none | sidecar-held-identity
+	DeclaredAt string `json:"declaredAt"` // RFC3339 UTC, when the operator declared it
+	Source     string `json:"source"`     // provenance, e.g. "registry.go+repos@<sha>" (G-2 record)
 }
 
 // Table is the signed document body.
 type Table struct {
 	Schema            string `json:"schema"`
-	StoreID           string `json:"storeId"`           // destination: the consumer pins its own
-	OperatorPubkey    string `json:"operatorPubkey"`    // base58 ed25519 signer; consumer pins its own authorized key
+	StoreID           string `json:"storeId"`        // destination: the consumer pins its own
+	OperatorPubkey    string `json:"operatorPubkey"` // base58 ed25519 signer; consumer pins its own authorized key
 	SignedAtUnix      int64  `json:"signedAtUnix"`
 	Rows              []Row  `json:"rows"`
 	OperatorSignature string `json:"operatorSignature"` // base58 detached ed25519 over the canonical message
@@ -221,8 +221,8 @@ func (doc Table) validateUnsigned() error {
 				return fmt.Errorf("sidecar class table row %q: a sidecar_cascade (keyless) sidecar holds no keys; keyCustody must be %q", row.ID, CustodyNone)
 			}
 		case ClassIdentity:
-			if row.KeyCustody != CustodySidecarHeldIdentit {
-				return fmt.Errorf("sidecar class table row %q: a sidecar_identity (key-bearing) sidecar must declare keyCustody %q", row.ID, CustodySidecarHeldIdentit)
+			if row.KeyCustody != CustodySidecarHeldIdentity {
+				return fmt.Errorf("sidecar class table row %q: a sidecar_identity (key-bearing) sidecar must declare keyCustody %q", row.ID, CustodySidecarHeldIdentity)
 			}
 		default:
 			return fmt.Errorf("sidecar class table row %q declares unknown class %q (known: sidecar_cascade, sidecar_identity)", row.ID, row.Class)

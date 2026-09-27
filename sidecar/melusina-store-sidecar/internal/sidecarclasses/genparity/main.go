@@ -4,9 +4,16 @@
 // bytes. Run from the store module root:
 //
 //	go run ./internal/sidecarclasses/genparity > vectors.json
+//
+// Every identity value below is a DETERMINISTIC REHEARSAL placeholder derived
+// in-process (ed25519 keys expanded to base58) — the retiring estate's
+// program ids, domains and store id are never embedded, so the tool compiles
+// clean under the retiring-estate source and built-byte scans. These vectors
+// never touch a chain.
 package main
 
 import (
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -14,24 +21,38 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/sidecarclasses"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-func main() {
-	var signSeed, boxSeed [32]byte
-	for i := range signSeed {
-		signSeed[i] = byte(0xA0 + i)
-		boxSeed[i] = byte(0xB0 + i)
+// vectorKey derives the deterministic key the vector contract pins (the
+// deployer's parity test re-derives the signing seed itself).
+func vectorKey(b byte) ed25519.PrivateKey {
+	var seed [32]byte
+	for i := range seed {
+		seed[i] = b + byte(i)
 	}
+	return ed25519.NewKeyFromSeed(seed[:])
+}
+
+// vectorAddress expands a deterministic key into the base58 pubkey address
+// the identity Ref fields carry — a real curve point, invented here, never
+// copied from any estate.
+func vectorAddress(b byte) string {
+	pub := vectorKey(b).Public().(ed25519.PublicKey)
+	return primitives.EncodeBase58(pub)
+}
+
+func main() {
 	ref := identity.Ref{
 		Kind: identity.KindSidecar, ChainID: "solana:devnet",
-		ProgramID: "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
-		// Deterministic stand-in 32-byte base58 mint for vector generation
-		// ONLY — these vectors never touch a chain.
-		LicenseMint: "So11111111111111111111111111111111111111112",
-		Domain:      "bazaar.melusina-os.org", PDA: "11111111111111111111111111111111",
+		ProgramID: vectorAddress(0xC0),
+		// Deterministic stand-in addresses for vector generation ONLY —
+		// these vectors never touch a chain.
+		LicenseMint: vectorAddress(0xD0),
+		Domain:      "genparity.rehearsal.invalid", PDA: "11111111111111111111111111111111",
 		SidecarID: "parity", KeyVersion: 1,
 	}
-	op, err := identity.NewPrivate(ref, signSeed, boxSeed)
+	op, err := identity.NewPrivate(ref, [32]byte(vectorKey(0xA0)), [32]byte(vectorKey(0xB0)))
 	if err != nil {
 		panic(err)
 	}
@@ -40,11 +61,11 @@ func main() {
 		panic(err)
 	}
 	doc, err := sidecarclasses.Sign(op, sidecarclasses.Table{
-		StoreID:      "melusina-os-root-store",
+		StoreID:      "genparity-rehearsal-store",
 		SignedAtUnix: 1789000000,
 		Rows: []sidecarclasses.Row{
 			{ID: "mermail", Class: sidecarclasses.ClassCascade, KeyCustody: sidecarclasses.CustodyNone, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+chaingate.go:262"},
-			{ID: "swaprail", Class: sidecarclasses.ClassIdentity, KeyCustody: sidecarclasses.CustodySidecarHeldIdentit, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+repos"},
+			{ID: "swaprail", Class: sidecarclasses.ClassIdentity, KeyCustody: sidecarclasses.CustodySidecarHeldIdentity, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+repos"},
 		},
 	})
 	if err != nil {

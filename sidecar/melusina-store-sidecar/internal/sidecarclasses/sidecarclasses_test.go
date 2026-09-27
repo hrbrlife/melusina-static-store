@@ -39,7 +39,7 @@ func testOperator(t *testing.T, sidecarID string) *identity.Private {
 func fixtureRows() []Row {
 	return []Row{
 		{ID: "mermail", Class: ClassCascade, KeyCustody: CustodyNone, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+chaingate.go:262"},
-		{ID: "swaprail", Class: ClassIdentity, KeyCustody: CustodySidecarHeldIdentit, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+repos"},
+		{ID: "swaprail", Class: ClassIdentity, KeyCustody: CustodySidecarHeldIdentity, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+repos"},
 	}
 }
 
@@ -73,7 +73,7 @@ func TestSignAndVerifyRoundTrip(t *testing.T) {
 	if class, ok := doc.ClassFor("mermail"); !ok || class != ClassCascade {
 		t.Fatalf("mermail class: %q %v", class, ok)
 	}
-	if custody, ok := doc.CustodyFor("swaprail"); !ok || custody != CustodySidecarHeldIdentit {
+	if custody, ok := doc.CustodyFor("swaprail"); !ok || custody != CustodySidecarHeldIdentity {
 		t.Fatalf("swaprail custody: %q %v", custody, ok)
 	}
 }
@@ -87,7 +87,7 @@ func TestSignatureBinding(t *testing.T) {
 	mutated := doc
 	mutated.Rows = append([]Row(nil), doc.Rows...)
 	mutated.Rows[0].Class = ClassIdentity
-	mutated.Rows[0].KeyCustody = CustodySidecarHeldIdentit
+	mutated.Rows[0].KeyCustody = CustodySidecarHeldIdentity
 	if err := Verify(pub, "melusina-os-root-store", mutated); err == nil || !strings.Contains(err.Error(), "signature invalid") {
 		t.Fatalf("mutated table accepted: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestRowValidation(t *testing.T) {
 		want string
 	}{
 		{"unknown class", Row{ID: "x", Class: "sidecar_keyless", KeyCustody: CustodyNone, DeclaredAt: "t", Source: "s"}, "unknown class"},
-		{"cascade with keys", Row{ID: "x", Class: ClassCascade, KeyCustody: CustodySidecarHeldIdentit, DeclaredAt: "t", Source: "s"}, "holds no keys"},
+		{"cascade with keys", Row{ID: "x", Class: ClassCascade, KeyCustody: CustodySidecarHeldIdentity, DeclaredAt: "t", Source: "s"}, "holds no keys"},
 		{"identity without keys", Row{ID: "x", Class: ClassIdentity, KeyCustody: CustodyNone, DeclaredAt: "t", Source: "s"}, "must declare keyCustody"},
 		{"no source", Row{ID: "x", Class: ClassCascade, KeyCustody: CustodyNone, DeclaredAt: "t"}, "derivation source"},
 		{"duplicate", Row{ID: "mermail", Class: ClassCascade, KeyCustody: CustodyNone, DeclaredAt: "t", Source: "s"}, "more than once"},

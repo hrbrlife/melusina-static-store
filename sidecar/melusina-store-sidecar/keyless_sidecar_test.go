@@ -26,11 +26,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/sidecarclasses"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -283,6 +285,12 @@ func deleteResellerSidecarApproval(t *testing.T, f *keylessFixture) {
 // no SidecarIdentityEntry exists ("fetch SidecarIdentityEntry").
 func TestKeyBearingSidecarStillRequiresItsIdentity(t *testing.T) {
 	f := newKeylessFixture(t)
+	// K-CHN-33: these claims declare sidecar_identity, so the signed table
+	// must declare mermail key-bearing for this test (the fixture's cascade
+	// declaration is the KEYLESS class's contract; the class is what relaxes
+	// the identity, and here it is deliberately flipped to the key-bearing
+	// class). Re-sign with the identity declaration, as host_apply_plan does.
+	f.svc.cfg.SidecarClasses = resignSidecarClassFixture(t, map[string]string{"mermail": sidecarclasses.ClassIdentity})
 	f.m.sidecarErr = nil // absent, not an RPC error: verify.ErrPDANotFound
 	// The component names the seed-derived identity address (the promote gate
 	// refuses any other), so the refusal below is the account's absence.
@@ -311,6 +319,9 @@ func TestKeyBearingSidecarStillRequiresItsIdentity(t *testing.T) {
 // promotes on its identity.
 func TestKeyBearingSidecarLocalPinStaysOptional(t *testing.T) {
 	f := newKeylessFixture(t)
+	// K-CHN-33: the key-bearing claims below need mermail declared
+	// sidecar_identity in the signed table; re-sign for this test's class.
+	f.svc.cfg.SidecarClasses = resignSidecarClassFixture(t, map[string]string{"mermail": sidecarclasses.ClassIdentity})
 	f.m.sidecarErr = nil
 	f.m.rawAccounts[f.localPDA] = mkLocalAccount(f.sidecarID, f.license)
 	sidPDA, _, err := primitives.DeriveSidecarIdentity(f.license, f.sidecarID, 1, programID)
@@ -325,7 +336,9 @@ func TestKeyBearingSidecarLocalPinStaysOptional(t *testing.T) {
 	if err := f.svc.verifyComponentReleaseOnChain(context.Background(), c); err != nil {
 		t.Fatalf("key-bearing-local-pin-now-required: a key-bearing sidecar with a None Local pin was refused: %v", err)
 	}
-	// The same chain state refuses the keyless declaration, by name.
+	// The same chain state refuses the keyless declaration, by name. The
+	// table goes back to declaring mermail cascade for this half.
+	f.svc.cfg.SidecarClasses = resignSidecarClassFixture(t, map[string]string{"mermail": sidecarclasses.ClassCascade})
 	if err := f.svc.verifyComponentReleaseOnChain(context.Background(), f.component); !errors.Is(err, errKeylessSidecarLocalPinAbsent) {
 		t.Fatalf("keyless-sidecar-local-pin-absent-accepted: err=%v", err)
 	}
@@ -373,6 +386,10 @@ func TestServeGate_KeylessSidecar(t *testing.T) {
 	if err := persistDesiredGeneration(cfg.DistDir, raw); err != nil {
 		t.Fatal(err)
 	}
+	// K-CHN-33: the serve gate cross-checks the component's signed kind
+	// against the signed class table; install the same derived fixture the
+	// promote fixture used for f.component (mermail, cascade).
+	cfg.SidecarClasses = f.cfg.SidecarClasses
 	g := newServeGate(cfg, f.m, http.FileServer(http.Dir(cfg.DistDir)), op)
 	path := "/releases/sidecar/" + f.component.ArtifactName
 
@@ -747,4 +764,34 @@ func TestKeylessSidecarCascadeOverContractsCommittedBytes(t *testing.T) {
 			}
 		})
 	}
+}
+
+// resignSidecarClassFixture re-signs the derived fixture table with the given
+// per-id class overrides (everything else keeps sidecarClassFixtureClasses).
+// Key-bearing vs keyless suites share the components; the class is the thing
+// under test, so each suite declares the class its claims carry.
+func resignSidecarClassFixture(t *testing.T, classOverrides map[string]string) sidecarclasses.Table {
+	t.Helper()
+	ids := make([]string, 0, len(sidecarClassFixtureClasses))
+	for id := range sidecarClassFixtureClasses {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	table := sidecarClassFixtureTableForIDs(t, ids...)
+	for i := range table.Rows {
+		if class, ok := classOverrides[table.Rows[i].ID]; ok {
+			table.Rows[i].Class = class
+			if class == sidecarclasses.ClassCascade {
+				table.Rows[i].KeyCustody = sidecarclasses.CustodyNone
+			} else {
+				table.Rows[i].KeyCustody = sidecarclasses.CustodySidecarHeldIdentity
+			}
+		}
+	}
+	op := newTestIdentity(t, "store", testLicenseMint, "bazaar.melusina-os.org")
+	doc, err := sidecarclasses.Sign(op, table)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return doc
 }

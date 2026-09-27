@@ -23,6 +23,7 @@ var releaseToolPackages = []string{"./cmd/mel-release", "./cmd/submit"}
 
 const (
 	catalogLedgerPath       = "../../fleet/bazaar-catalog.yaml"
+	catalogSnapshotPath     = "../../fleet/retiring-bazaar-snapshot.yaml"
 	legacySchemaURLFile     = "internal/runtimecontract/schema_url_legacy.go"
 	releaseToolsStandard    = "standard"
 	releaseToolsEstateBuild = "estate-bootstrap"
@@ -53,13 +54,51 @@ func releaseToolScripts(t *testing.T) []string {
 
 // releaseToolForbiddenValues is the retiring estate's profile-derived forbid
 // set, widened by the Store, catalog index digest and release authority the
-// checked-in catalog ledger itself records. The retiring profile vector marks
-// its store-release multisig and vault illustrative, so the real Bazaar
+// checked-in fleet records. The catalog ledger is membership only; its
+// Store origin and index digest come from the retiring Bazaar's snapshot file
+// (fleet/retiring-bazaar-snapshot.yaml), derived rather than hand-copied — a
+// snapshot file missing either fails closed here. The retiring profile vector
+// marks its store-release multisig and vault illustrative, so the real Bazaar
 // authority comes from the ledger rather than a hand-written list; whichever
 // estate the ledger names, the tools must not compile it.
 func releaseToolForbiddenValues(t *testing.T) map[string]string {
 	t.Helper()
 	values := retiringEstateValues(t)
+	snapshot := map[string]string{}
+	snapshotFile, err := os.Open(catalogSnapshotPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer snapshotFile.Close()
+	snapshotScanner := bufio.NewScanner(snapshotFile)
+	for snapshotScanner.Scan() {
+		line := snapshotScanner.Text()
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		key, value, _ := strings.Cut(trimmed, ":")
+		snapshot[key] = strings.TrimSpace(value)
+	}
+	if err := snapshotScanner.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot["schema"] != "melusina-retiring-bazaar-snapshot/v1" {
+		t.Fatalf("%s has schema %q; the scan cannot derive the retiring snapshot facts from it",
+			catalogSnapshotPath, snapshot["schema"])
+	}
+	origin := strings.TrimPrefix(snapshot["snapshot_origin"], "https://")
+	digest := snapshot["snapshot_index_sha256"]
+	observed := snapshot["observed_live_app_count"]
+	if origin == "" || origin == snapshot["snapshot_origin"] {
+		t.Fatalf("%s has no snapshot_origin; the scan would silently lose the retiring Store", catalogSnapshotPath)
+	}
+	if len(digest) != 64 {
+		t.Fatalf("%s has no snapshot_index_sha256; the scan would silently lose the retiring index digest", catalogSnapshotPath)
+	}
+	if observed == "" {
+		t.Fatalf("%s has no observed_live_app_count; the snapshot record is incomplete", catalogSnapshotPath)
+	}
 	file, err := os.Open(catalogLedgerPath)
 	if err != nil {
 		t.Fatal(err)
@@ -92,12 +131,24 @@ func releaseToolForbiddenValues(t *testing.T) map[string]string {
 	if err := scanner.Err(); err != nil {
 		t.Fatal(err)
 	}
-	if len(ledger) != 5 {
+	// The membership ledger carries no origin or index digest; those come from
+	// the snapshot file above. Only the three authority values are ledger-
+	// derived, and none may be empty.
+	if len(ledger) != 3 {
 		t.Fatalf("catalog ledger yielded %v; the scan would silently lose width", ledger)
 	}
 	for field, value := range ledger {
 		if value == "" {
 			t.Fatalf("catalog ledger %s is empty", field)
+		}
+		values[field] = value
+	}
+	for field, value := range map[string]string{
+		"catalog-ledger/catalog_origin":      origin,
+		"catalog-ledger/catalog_index_sha256": digest,
+	} {
+		if existing, ok := values[field]; ok && existing != value {
+			t.Fatalf("forbid field %s defined twice", field)
 		}
 		values[field] = value
 	}

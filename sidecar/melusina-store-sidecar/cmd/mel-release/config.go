@@ -238,6 +238,12 @@ func (c *Config) bindCatalog(catalog *Catalog) error {
 	if catalog == nil || !wellFormedSquadsAuthority(catalog.ReleaseSquadsAuthority) {
 		return errors.New("Bazaar catalog lacks a valid shared Squads authority")
 	}
+	// The manifest must be a complete release catalog: a membership-only
+	// ledger (no catalog_origin / expected_live_app_count) cannot drive a
+	// release even when a profile happens to be bound.
+	if err := catalog.ValidateForRelease(c.ConfigPath); err != nil {
+		return err
+	}
 	if c.estate.StoreOrigin == "" || !wellFormedSquadsAuthority(c.estate.Squads) {
 		return errors.New("no estate profile is bound; refusing to trust a catalog on its own")
 	}

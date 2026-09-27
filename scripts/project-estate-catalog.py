@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Project the seed catalogue manifest for a new estate's root Store.
 
-fleet/bazaar-catalog.yaml is the catalog membership ledger, and it is also the
-snapshot of the retiring default Bazaar: its catalog_origin, its
-expected_live_app_count and its release_squads_authority are that estate's.
-mel-release refuses a manifest whose Store or release authority is not the
-bound estate profile's, and one whose app count is not its population, so a
-new estate cannot publish its seed catalogue from the ledger. This command
+fleet/bazaar-catalog.yaml is the catalog membership ledger: the apps, their
+cohort closure and their release defaults and source-selection receipts are
+its, and membership is the only thing it records. The retiring default
+Bazaar's snapshot facts are a separate record, fleet/retiring-bazaar-snapshot.yaml,
+and the estate scans refuse them as release-catalog values.
+mel-release refuses a release manifest whose Store or release authority is not
+the bound estate profile's, and one whose app count is not its population, so
+a new estate cannot publish its seed catalogue from the ledger. This command
 projects the manifest it publishes from instead:
 
     scripts/project-estate-catalog.py \\
@@ -32,13 +34,13 @@ projects the manifest it publishes from instead:
 Before anything is written the projection is parsed back and compared with
 the ledger entry by entry, validated by the release provider's own catalog
 validation for the profile's Store, and searched by the provider's estate scan
-(text and parsed values) for every value of the retiring estate: the Store's
-forbid set and the given ledger's own Store, index digest and release
-authority. Each copied selection receipt is scanned the same way, with no
-exception. A cohort entry or receipt that carries a retiring value is refused
-by field and place; this command never rewrites one. The output directory must
-not exist; it receives bazaar-catalog.yaml and prepublish-selections/, or
-nothing.
+(text and parsed values) for every value of the retiring estate: the Store's forbid set, the retiring
+Bazaar's snapshot facts (fleet/retiring-bazaar-snapshot.yaml) and the given
+ledger's own release authority. Each copied selection receipt is scanned the
+same way, with no exception. A cohort entry or receipt that carries a retiring
+value is refused by field and place; this command never rewrites one. The
+output directory must not exist; it receives bazaar-catalog.yaml and
+prepublish-selections/, or nothing.
 
 The ledger itself is never edited.
 """
@@ -277,8 +279,10 @@ def read_ledger(path: Path, provider: Any) -> tuple[bytes, str, dict[str, Any]]:
     if not isinstance(document, dict):
         raise ProjectionError("ledger-unusable", f"{path} is not a mapping")
     try:
-        # The ledger is checked as the complete catalog of the Store it names.
-        provider.validate_catalog_document(document, document.get("catalog_origin"))
+        # The ledger is membership: no catalog_origin to bind (its snapshot
+        # facts are fleet/retiring-bazaar-snapshot.yaml's) and a derived
+        # membership count.
+        provider.validate_catalog_document(document, document.get("catalog_origin"), release_catalog=False)
     except provider.ProviderError as exc:
         raise ProjectionError("ledger-unusable", f"{path}: {exc}") from exc
     return raw, text, document

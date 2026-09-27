@@ -101,6 +101,7 @@ CLAUDE_MELUSINA_PACKAGED_RUNTIME_PROFILE = "claude-melusina-packaged-runtime"
 # an unreviewed archive through the release environment.
 CLAUDE_MELUSINA_RUNTIME_PIN = "tools/claude-runtime.sha256"
 BAZAAR_CATALOG_SCHEMA = "melusina-bazaar-catalog/v1"
+RETIRING_SNAPSHOT_SCHEMA = "melusina-retiring-bazaar-snapshot/v1"
 DEV_PUBLISH_BRANCH = "dev-publish"
 PREPUBLISH_BRANCH = "feat1-prepublish"
 DEFAULT_SOURCE_BASELINE_BRANCH = "main"
@@ -641,11 +642,14 @@ def catalog_config() -> dict[str, Any]:
 #   run that Go derivation, so it reads the derivation's committed rendering;
 #   TestRetiringEstateValuesFileIsTheStoreForbidSet fails by name when the two
 #   differ.
-# - the catalog ledger a scan is given (by default fleet/bazaar-catalog.yaml,
-#   the snapshot of the retiring default Bazaar): its catalog_origin host and
-#   parent domain, catalog_index_sha256 and release_squads_authority. A
-#   projection from another ledger file is also scanned for that file's values.
-ESTATE_SCAN_REFERENCE = ROOT / "fleet" / "bazaar-catalog.yaml"
+# - fleet/retiring-bazaar-snapshot.yaml is the retiring Bazaar's snapshot, a
+#   record kept as evidence: its snapshot_origin host and parent domain,
+#   snapshot_index_sha256 and observed population. The catalog ledger itself
+#   (fleet/bazaar-catalog.yaml) is membership only and carries none of these.
+#   A projection scanned against another ledger file is also scanned for that
+#   file's own values.
+ESTATE_SCAN_SNAPSHOT_REFERENCE = ROOT / "fleet" / "retiring-bazaar-snapshot.yaml"
+CATALOG_LEDGER = ROOT / "fleet" / "bazaar-catalog.yaml"
 ESTATE_SCAN_VALUES = ROOT / "fleet" / "retiring-estate-values.json"
 ESTATE_SCAN_VALUES_SCHEMA = "melusina-retiring-estate-values/v1"
 ESTATE_SCAN_REPORT_SCHEMA = "melusina-release-catalog-estate-scan/v2"
@@ -727,19 +731,14 @@ def _store_retiring_values() -> list[dict[str, str]]:
     return [{"field": field, "value": value} for field, value in sorted(values.items())]
 
 
-def _ledger_retiring_values(path: Path) -> list[dict[str, str]]:
-    """The Store, index digest and release authority a catalog ledger records.
+def _ledger_origin_values(origin: Any, path: Path) -> list[dict[str, str]]:
+    """The bare-https Store origin's host and parent domain, by field.
 
-    A ledger that lacks its origin or release authority is refused rather than
-    scanned for fewer values.
+    A malformed origin is refused rather than skipped, so a value cannot
+    escape the scan by being miswritten. An absent origin contributes nothing:
+    the membership ledger carries no origin (its facts are the snapshot
+    file's); a published manifest's origin is bound, not scanned, here.
     """
-    try:
-        _, ledger = load_catalog_text(path)
-    except ProviderError as exc:
-        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path}: {exc}") from exc
-    if ledger.get("schema") != BAZAAR_CATALOG_SCHEMA:
-        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has an unsupported schema")
-    origin = ledger.get("catalog_origin")
     host = ""
     if isinstance(origin, str):
         try:
@@ -755,6 +754,53 @@ def _ledger_retiring_values(path: Path) -> list[dict[str, str]]:
     values = [{"field": "ledger/catalog_origin.host", "value": host}]
     if len(labels) >= 3:
         values.append({"field": "ledger/catalog_origin.parent-domain", "value": ".".join(labels[1:])})
+    return values
+
+
+def _snapshot_retiring_values(path: Path | None = None) -> list[dict[str, str]]:
+    """The retiring Bazaar's snapshot facts, from the retiring-snapshot file.
+
+    The file is evidence, not a release approval; a scan needs its origin and
+    index digest, and one that lacks either is refused rather than silently
+    scanned for fewer values (no fail-open).
+    """
+    path = ESTATE_SCAN_SNAPSHOT_REFERENCE if path is None else path
+    try:
+        _, snapshot = load_catalog_text(path)
+    except ProviderError as exc:
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path}: {exc}") from exc
+    if snapshot.get("schema") != RETIRING_SNAPSHOT_SCHEMA:
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has an unsupported schema")
+    values = _ledger_origin_values(snapshot.get("snapshot_origin"), path)
+    index_digest = snapshot.get("snapshot_index_sha256")
+    if not isinstance(index_digest, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", index_digest):
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has a malformed snapshot_index_sha256")
+    values.append({"field": "ledger/catalog_index_sha256", "value": index_digest.lower()})
+    observed = snapshot.get("observed_live_app_count")
+    if isinstance(observed, bool) or not isinstance(observed, int) or observed < 1:
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has no positive observed_live_app_count")
+    return values
+
+
+def _ledger_retiring_values(path: Path) -> list[dict[str, str]]:
+    """The values a catalog ledger itself records: its release authority and,
+    when it carries them, its Store origin and index digest.
+
+    The checked-in membership ledger carries only the authority (its snapshot
+    facts are fleet/retiring-bazaar-snapshot.yaml's); a ledger that still names
+    an origin or index digest is scanned for them all the same. A ledger that
+    lacks its release authority is refused rather than scanned for fewer
+    values.
+    """
+    try:
+        _, ledger = load_catalog_text(path)
+    except ProviderError as exc:
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path}: {exc}") from exc
+    if ledger.get("schema") != BAZAAR_CATALOG_SCHEMA:
+        raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has an unsupported schema")
+    values: list[dict[str, str]] = []
+    if ledger.get("catalog_origin") is not None:
+        values.extend(_ledger_origin_values(ledger.get("catalog_origin"), path))
     authority = ledger.get("release_squads_authority")
     if not isinstance(authority, dict):
         raise ProviderError(f"{ESTATE_SCAN_REFERENCE_REFUSAL}: {path} has no release_squads_authority")
@@ -774,14 +820,21 @@ def _ledger_retiring_values(path: Path) -> list[dict[str, str]]:
 
 
 def retiring_estate_values(reference: Path | None = None) -> list[dict[str, str]]:
-    """The retiring estate's forbid set: the Store's, then the reference ledger's.
+    """The retiring estate's forbid set.
 
-    Each item is a field name and its value. Every value is matched the same
-    way (ESTATE_SCAN_MATCHING); a field name says where the value came from.
+    Three sources, each named by its field: the Store's forbid-set rendering,
+    the retiring Bazaar's snapshot file (origin host and parent domain, index
+    digest — refused closed when either is missing), and the checked-in
+    membership ledger's release authority. A caller scanning against another
+    ledger file (a projection's reference) is also scanned for that ledger's
+    own recorded values.
     """
-    return _store_retiring_values() + _ledger_retiring_values(
-        ESTATE_SCAN_REFERENCE if reference is None else reference
+    values = _store_retiring_values() + _snapshot_retiring_values() + _ledger_retiring_values(
+        CATALOG_LEDGER
     )
+    if reference is not None:
+        values = values + _ledger_retiring_values(reference)
+    return values
 
 
 def _dotted(path: tuple[Any, ...]) -> str:
@@ -888,8 +941,7 @@ def estate_scan(text: str, document: Any, reference: Path | None = None, *,
     report names every field and exception it checked, so "clean" is
     observable rather than assumed.
     """
-    path = ESTATE_SCAN_REFERENCE if reference is None else reference
-    values = retiring_estate_values(path)
+    values = retiring_estate_values(reference)
     by_field = {item["field"]: item["value"] for item in values}
     applied = _applied_exceptions(text, document, exceptions, by_field)
     scanned = text
@@ -930,7 +982,7 @@ def estate_scan(text: str, document: Any, reference: Path | None = None, *,
         detail = "; ".join(f"{field} at {', '.join(places)}" for field, places in sorted(found.items()))
         raise ProviderError(
             f"{ESTATE_SCAN_REFUSAL}: {detail}; this document carries the retiring estate recorded by "
-            f"{ESTATE_SCAN_VALUES.name} and {path.name}; project a manifest for the bound estate with "
+            f"{ESTATE_SCAN_VALUES.name} and {ESTATE_SCAN_SNAPSHOT_REFERENCE.name}; project a manifest for the bound estate with "
             "scripts/project-estate-catalog.py"
         )
     applied_names = {exception["name"] for exception in applied}
@@ -947,7 +999,7 @@ def estate_scan(text: str, document: Any, reference: Path | None = None, *,
         "status": "clean",
         "catalogSha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
         "valuesSha256": hex_sha(ESTATE_SCAN_VALUES),
-        "referenceSha256": hex_sha(path),
+        "referenceSha256": hex_sha(CATALOG_LEDGER if reference is None else reference),
         "valueCount": len(values),
         "matching": ESTATE_SCAN_MATCHING,
         "fields": dispositions,
@@ -974,20 +1026,28 @@ def estate_scan_receipt(text: str, reference: Path | None = None) -> tuple[dict[
     return receipt, estate_scan(text, receipt, reference, exceptions=())
 
 
-def validate_catalog_document(value: dict[str, Any], bound_origin: Any) -> dict[str, Any]:
+def validate_catalog_document(value: dict[str, Any], bound_origin: Any, *,
+                              release_catalog: bool = True) -> dict[str, Any]:
     """Validate one parsed catalog manifest for the Store it is bound to.
 
     ``bound_origin`` is the bound Store origin, or a callable returning it; the
     callable form keeps the schema refusal ahead of an unset origin.
+
+    ``release_catalog=False`` reads a membership ledger: it carries no
+    catalog_origin (its snapshot facts are fleet/retiring-bazaar-snapshot.yaml's)
+    and its expected_live_app_count is derived membership, so neither is
+    required of it and nothing is bound to it.
     """
     if value.get("schema") != BAZAAR_CATALOG_SCHEMA:
         raise ProviderError("bazaar-catalog.yaml has an unsupported schema")
-    if value.get("catalog_origin") != (bound_origin() if callable(bound_origin) else bound_origin):
-        raise ProviderError("bazaar-catalog.yaml catalog_origin must be the bound Store origin MEL_RELEASE_STORE_URL")
+    if release_catalog:
+        if value.get("catalog_origin") != (bound_origin() if callable(bound_origin) else bound_origin):
+            raise ProviderError("bazaar-catalog.yaml catalog_origin must be the bound Store origin MEL_RELEASE_STORE_URL")
     parse_shared_squads_authority(value)
     expected_count = value.get("expected_live_app_count")
-    if not isinstance(expected_count, int) or expected_count < 1:
-        raise ProviderError("bazaar-catalog.yaml must declare a positive expected_live_app_count")
+    if release_catalog or expected_count is not None:
+        if not isinstance(expected_count, int) or expected_count < 1:
+            raise ProviderError("bazaar-catalog.yaml must declare a positive expected_live_app_count")
     if value.get("default_release_state") not in {"hold", "ready"}:
         raise ProviderError("bazaar-catalog.yaml has an invalid default_release_state")
     default_source_selection_state = value.get(
@@ -1092,7 +1152,8 @@ def validate_catalog_document(value: dict[str, Any], bound_origin: Any) -> dict[
                     f"Bazaar catalog app {spec['appId']} has an invalid source_selection_receipt"
                 )
             app_ids.append(spec["appId"])
-    if len(app_ids) != expected_count or len(set(app_ids)) != expected_count:
+    if expected_count is not None and (
+            len(app_ids) != expected_count or len(set(app_ids)) != expected_count):
         raise ProviderError("bazaar-catalog.yaml does not match its complete live app population")
     return value
 

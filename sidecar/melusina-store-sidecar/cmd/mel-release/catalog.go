@@ -256,14 +256,22 @@ func LoadCatalog(path string) (*Catalog, error) {
 	if catalog.Schema != bazaarCatalogSchema {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s has schema %q, want %q", path, catalog.Schema, bazaarCatalogSchema)
 	}
-	// The manifest's Store is checked against the estate profile when the
-	// catalog is bound; here it must at least be a bare https origin.
-	if err := assertBareHTTPS(catalog.Origin); err != nil || strings.HasSuffix(catalog.Origin, "/") {
-		return nil, fmt.Errorf("Bazaar catalog manifest %s has catalog_origin %q; want a bare https origin with no trailing slash", path, catalog.Origin)
+	// catalog_origin and expected_live_app_count are estate-snapshot/release
+	// facts a published manifest carries but the checked-in membership ledger
+	// (fleet/bazaar-catalog.yaml) no longer does: its snapshot facts live in
+	// fleet/retiring-bazaar-snapshot.yaml and its count is the membership the
+	// release path derives. They are therefore parsed when present but not
+	// required here; validateForRelease enforces them on a published manifest
+	// before it can drive a release.
+	if catalog.Origin != "" {
+		// The manifest's Store is checked against the estate profile when the
+		// catalog is bound; here it must at least be a bare https origin.
+		if err := assertBareHTTPS(catalog.Origin); err != nil || strings.HasSuffix(catalog.Origin, "/") {
+			return nil, fmt.Errorf("Bazaar catalog manifest %s has catalog_origin %q; want a bare https origin with no trailing slash", path, catalog.Origin)
+		}
 	}
-	if catalog.ExpectedLiveAppCount < 1 {
-		return nil, fmt.Errorf("Bazaar catalog manifest %s has no expected_live_app_count", path)
-	}
+	// expected_live_app_count < 1 was refused by the parser above, so zero
+	// here means the manifest declares no count — the membership-ledger shape.
 	if !validReleaseState(catalog.DefaultReleaseState) {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s has invalid default_release_state %q", path, catalog.DefaultReleaseState)
 	}
@@ -279,7 +287,7 @@ func LoadCatalog(path string) (*Catalog, error) {
 	if !validSourceSelectionState(catalog.DefaultSourceSelectionState) {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s has invalid default_source_selection_state %q", path, catalog.DefaultSourceSelectionState)
 	}
-	if len(catalog.Apps) != catalog.ExpectedLiveAppCount {
+	if catalog.ExpectedLiveAppCount != 0 && len(catalog.Apps) != catalog.ExpectedLiveAppCount {
 		return nil, fmt.Errorf("Bazaar catalog manifest %s names %d apps, want expected_live_app_count %d", path, len(catalog.Apps), catalog.ExpectedLiveAppCount)
 	}
 	// Fail closed on a malformed identity.
@@ -371,6 +379,26 @@ func (c *Catalog) Select(selector string) (App, error) {
 	default:
 		return App{}, fmt.Errorf("selector %q is ambiguous across %d apps — use the immutable appId", selector, len(hits))
 	}
+}
+
+// ValidateForRelease enforces the estate-snapshot/release facts on a manifest
+// that is about to drive a release: it must name a bare https Store origin and
+// a positive expected_live_app_count that equals the apps it declares. The
+// checked-in membership ledger carries neither (its snapshot facts are
+// fleet/retiring-bazaar-snapshot.yaml's; its count is derived membership), so
+// this runs from Config.bindCatalog on a published manifest only — never from
+// LoadCatalog.
+func (c *Catalog) ValidateForRelease(path string) error {
+	if c.Origin == "" {
+		return fmt.Errorf("Bazaar catalog manifest %s has no catalog_origin; a release catalog must name the Store it publishes to", path)
+	}
+	if c.ExpectedLiveAppCount < 1 {
+		return fmt.Errorf("Bazaar catalog manifest %s has no positive expected_live_app_count; a release catalog must declare its population", path)
+	}
+	if len(c.Apps) != c.ExpectedLiveAppCount {
+		return fmt.Errorf("Bazaar catalog manifest %s names %d apps, want expected_live_app_count %d", path, len(c.Apps), c.ExpectedLiveAppCount)
+	}
+	return nil
 }
 
 // RequireReleaseReady prevents a complete catalog snapshot from becoming a

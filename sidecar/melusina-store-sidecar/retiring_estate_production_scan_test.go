@@ -689,6 +689,33 @@ func componentShippedSources(t *testing.T, root string) ([]string, []string) {
 	return shipped, stripped
 }
 
+// legacy-store-config-template-present: the named control that fails the
+// production source scan when store.config.template.json is reintroduced
+// under legacy/ — any repository path ending in legacy/store.config.template.json,
+// tracked, staged or untracked. The same artefact is allowed only at its
+// declared retiring path (deploy/store-generation/store.config.template.json,
+// retiringEstatePaths above, left verbatim); this forbid-rule never allows it
+// anywhere else.
+func TestLegacyStoreConfigTemplateAbsentFromLegacyDir(t *testing.T) {
+	root := repoRoot(t)
+	keep := func(rel string) bool {
+		return rel == "legacy/store.config.template.json" ||
+			strings.HasSuffix(rel, "/legacy/store.config.template.json")
+	}
+	var found []string
+	for _, file := range repositoryFiles(t, root, keep) {
+		found = append(found, file.rel)
+	}
+	if len(found) == 0 {
+		return
+	}
+	sort.Strings(found)
+	t.Fatalf("legacy-store-config-template-present: %s must not exist under legacy/; "+
+		"the retiring Store's update-path config template lives only at its declared "+
+		"retiring path deploy/store-generation/store.config.template.json",
+		strings.Join(found, ", "))
+}
+
 // The declared retiring-estate paths are separate from what the new estate's
 // Store component ships: each declared path in the generation tree is one the
 // bootstrap builder strips, and no declared path is shipped. The shipped files are production source

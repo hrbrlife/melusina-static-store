@@ -101,6 +101,10 @@ const (
 	AuthorityRoleReseller         = "reseller"
 	AuthorityRoleProgramUpgrade   = "program-upgrade"
 	AuthorityRoleRootInstallAdmin = "root-install-admin"
+	// The estate runner is a non-voting seat (WL-111 / S-21): it may
+	// initiate and execute Squads proposals but must never vote, and it
+	// is never a threshold member.
+	AuthorityRoleRunner = "estate-runner"
 
 	AuthorityKindSquads = "squads"
 	AuthorityKindKey    = "key"

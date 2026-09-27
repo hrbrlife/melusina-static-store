@@ -39,6 +39,10 @@ const (
 	RefusalChainIDDiffersFromProfile = "boot-identity-chain-id-differs-from-profile"
 	RefusalProfileUnusable           = "boot-identity-profile-unusable"
 	RefusalProfileLabelNotChainRef   = "boot-identity-profile-label-not-a-chain-reference"
+	// RefusalProgramDiffersFromProfile: with -profile, the licence-registry
+	// programme the key is salted by must be the verified profile's own, so a
+	// verified profile never lends its chain to another estate's programme.
+	RefusalProgramDiffersFromProfile = "boot-identity-program-differs-from-profile"
 )
 
 // chainReferencePattern is a CAIP-2 chain reference ([-_a-zA-Z0-9]{1,32}).
@@ -152,7 +156,7 @@ func parseOptions(args []string) (options, error) {
 	if fs.NArg() != 0 {
 		return options{}, fmt.Errorf("unexpected positional args: %v", fs.Args())
 	}
-	chainID, err := resolveChainID(opts.chainID, opts.profilePath)
+	chainID, err := resolveChainID(opts.chainID, opts.profilePath, opts.programID)
 	if err != nil {
 		return options{}, err
 	}
@@ -164,7 +168,7 @@ func parseOptions(args []string) (options, error) {
 // verified profile's solana:<network.label> when -profile is given (and
 // -chain-id, if also given, must equal it), else the stated -chain-id. With
 // neither it refuses by name: there is no default chain.
-func resolveChainID(stated, profilePath string) (string, error) {
+func resolveChainID(stated, profilePath, programID string) (string, error) {
 	stated = strings.TrimSpace(stated)
 	if strings.TrimSpace(profilePath) == "" {
 		if stated == "" {
@@ -172,9 +176,12 @@ func resolveChainID(stated, profilePath string) (string, error) {
 		}
 		return stated, nil
 	}
-	derived, err := chainIDFromProfile(profilePath)
+	derived, profileProgram, err := chainIDFromProfile(profilePath)
 	if err != nil {
 		return "", err
+	}
+	if programID = strings.TrimSpace(programID); programID != "" && programID != profileProgram {
+		return "", fmt.Errorf("%s: -program-id %q, estate profile license-registry programme is %q", RefusalProgramDiffersFromProfile, programID, profileProgram)
 	}
 	if stated != "" && stated != derived {
 		return "", fmt.Errorf("%s: -chain-id %q, estate profile network is %q", RefusalChainIDDiffersFromProfile, stated, derived)
@@ -187,37 +194,43 @@ func resolveChainID(stated, profilePath string) (string, error) {
 // signed; it is the same convention the estate runbook states for -chain-id
 // ("solana:<your network name>"), and the retiring estate's profile yields
 // exactly the chain id its Store was prepared under.
-func chainIDFromProfile(path string) (string, error) {
+func chainIDFromProfile(path string) (string, string, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
-		return "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+		return "", "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
 	}
 	if !info.Mode().IsRegular() {
-		return "", fmt.Errorf("%s: -profile must be a regular file, not a symlink or device", RefusalProfileUnusable)
+		return "", "", fmt.Errorf("%s: -profile must be a regular file, not a symlink or device", RefusalProfileUnusable)
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+		return "", "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
 	}
 	defer file.Close()
 	raw, err := io.ReadAll(io.LimitReader(file, int64(maxProfileBytes)+1))
 	if err != nil {
-		return "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+		return "", "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
 	}
 	if len(raw) > maxProfileBytes {
-		return "", fmt.Errorf("%s: -profile exceeds %d bytes", RefusalProfileUnusable, maxProfileBytes)
+		return "", "", fmt.Errorf("%s: -profile exceeds %d bytes", RefusalProfileUnusable, maxProfileBytes)
 	}
 	profile, err := estateprofile.DecodeProfile(raw)
 	if err != nil {
-		return "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+		return "", "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
 	}
 	if _, err := estateprofile.VerifyProfile(profile); err != nil {
-		return "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+		return "", "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
 	}
 	if !chainReferencePattern.MatchString(profile.Network.Label) {
-		return "", fmt.Errorf("%s: network.label %q", RefusalProfileLabelNotChainRef, profile.Network.Label)
+		return "", "", fmt.Errorf("%s: network.label %q", RefusalProfileLabelNotChainRef, profile.Network.Label)
 	}
-	return "solana:" + profile.Network.Label, nil
+	program := ""
+	for _, entry := range profile.Programs {
+		if entry.Role == estateprofile.ProgramRoleLicenseRegistry {
+			program = entry.ProgramID
+		}
+	}
+	return "solana:" + profile.Network.Label, program, nil
 }
 
 func validateOptions(opts options) error {

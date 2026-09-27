@@ -114,8 +114,9 @@ func TestProfileSuppliesTheChainID(t *testing.T) {
 	} {
 		dir := t.TempDir()
 		profile := writeVectorProfile(t, dir, vector)
+		program := vectorLicenseRegistry(t, vector)
 		var out bytes.Buffer
-		if err := run(append(prepArgs(t, dir), "-profile", profile), &out); err != nil {
+		if err := run(append(prepArgs(t, dir), "-profile", profile, "-program-id", program), &out); err != nil {
 			t.Fatalf("%s: run: %v", vector, err)
 		}
 		requireReportChain(t, out.Bytes(), want)
@@ -123,12 +124,12 @@ func TestProfileSuppliesTheChainID(t *testing.T) {
 		// A -chain-id equal to the profile's is accepted; one that differs is
 		// refused by name before any shard exists.
 		out.Reset()
-		if err := run(append(prepArgs(t, t.TempDir()), "-profile", profile, "-chain-id", want), &out); err != nil {
+		if err := run(append(prepArgs(t, t.TempDir()), "-profile", profile, "-program-id", program, "-chain-id", want), &out); err != nil {
 			t.Fatalf("%s: matching -chain-id refused: %v", vector, err)
 		}
 		other := t.TempDir()
 		out.Reset()
-		err := run(append(prepArgs(t, other), "-profile", profile, "-chain-id", testChainID), &out)
+		err := run(append(prepArgs(t, other), "-profile", profile, "-program-id", program, "-chain-id", testChainID), &out)
 		if err == nil || !strings.HasPrefix(err.Error(), RefusalChainIDDiffersFromProfile+":") {
 			t.Fatalf("%s: differing -chain-id: error = %v, want %s", vector, err, RefusalChainIDDiffersFromProfile)
 		}
@@ -179,5 +180,58 @@ func requireReportChain(t *testing.T, raw []byte, want string) {
 		if got != want {
 			t.Fatalf("%s = %q, want %q", field, got, want)
 		}
+	}
+}
+
+// vectorLicenseRegistry returns the licence-registry programme a committed
+// profile vector names.
+func vectorLicenseRegistry(t *testing.T, name string) string {
+	t.Helper()
+	raw, err := os.ReadFile(estateProfileVectorsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Profiles []struct {
+			Name    string `json:"name"`
+			Profile struct {
+				Programs []struct {
+					Role      string `json:"role"`
+					ProgramID string `json:"programId"`
+				} `json:"programs"`
+			} `json:"profile"`
+		} `json:"profiles"`
+	}
+	if err := json.Unmarshal(raw, &document); err != nil {
+		t.Fatal(err)
+	}
+	for _, vector := range document.Profiles {
+		if vector.Name == name {
+			for _, program := range vector.Profile.Programs {
+				if program.Role == "license-registry" {
+					return program.ProgramID
+				}
+			}
+		}
+	}
+	t.Fatalf("profile vector %q names no license-registry programme", name)
+	return ""
+}
+
+// TestProfileRefusesAnotherEstatesProgramme: a verified profile lends its
+// chain only to its own licence-registry programme. The building estate's
+// profile with the retiring estate's programme is refused by name before any
+// shard exists (it once produced a hybrid identity: one estate's programme,
+// mint and domain under the other's chain).
+func TestProfileRefusesAnotherEstatesProgramme(t *testing.T) {
+	dir := t.TempDir()
+	profile := writeVectorProfile(t, dir, "new-estate-revision-1")
+	var out bytes.Buffer
+	err := run(append(prepArgs(t, dir), "-profile", profile, "-program-id", vectorLicenseRegistry(t, "paype-devnet-revision-1")), &out)
+	if err == nil || !strings.HasPrefix(err.Error(), RefusalProgramDiffersFromProfile+":") {
+		t.Fatalf("error = %v, want %s", err, RefusalProgramDiffersFromProfile)
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "shards")); !os.IsNotExist(statErr) {
+		t.Fatal("refused run touched the shard directory")
 	}
 }

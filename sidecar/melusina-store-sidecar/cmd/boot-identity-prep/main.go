@@ -43,6 +43,13 @@ const (
 	// programme the key is salted by must be the verified profile's own, so a
 	// verified profile never lends its chain to another estate's programme.
 	RefusalProgramDiffersFromProfile = "boot-identity-program-differs-from-profile"
+	// RefusalMintDiffersFromProfile and RefusalDomainDiffersFromProfile
+	// (K-CHN-13): the licence mint the PDA is seeded by and the Store domain
+	// the report hashes are the verified profile's own; a flag that
+	// disagrees names the profile's value and refuses before anything is
+	// created or derived.
+	RefusalMintDiffersFromProfile  = "boot-identity-mint-differs-from-profile"
+	RefusalDomainDiffersFromProfile = "boot-identity-domain-differs-from-profile"
 )
 
 // chainReferencePattern is a CAIP-2 chain reference ([-_a-zA-Z0-9]{1,32}).
@@ -161,6 +168,16 @@ func parseOptions(args []string) (options, error) {
 		return options{}, err
 	}
 	opts.chainID = chainID
+	// K-CHN-13: with -profile, the licence mint and the Store domain bind to
+	// the verified profile the same way the chain and the programme do; the
+	// profile's values are the ones the report carries.
+	if strings.TrimSpace(opts.profilePath) != "" {
+		mint, domain, err := bindProfileFacts(opts.profilePath, opts.licenseMint, opts.domain)
+		if err != nil {
+			return options{}, err
+		}
+		opts.licenseMint, opts.domain = mint, domain
+	}
 	return opts, validateOptions(opts)
 }
 
@@ -176,12 +193,13 @@ func resolveChainID(stated, profilePath, programID string) (string, error) {
 		}
 		return stated, nil
 	}
-	derived, profileProgram, err := chainIDFromProfile(profilePath)
+
+	derived, facts, err := chainIDFromProfile(profilePath)
 	if err != nil {
 		return "", err
 	}
-	if programID = strings.TrimSpace(programID); programID != "" && programID != profileProgram {
-		return "", fmt.Errorf("%s: -program-id %q, estate profile license-registry programme is %q", RefusalProgramDiffersFromProfile, programID, profileProgram)
+	if programID = strings.TrimSpace(programID); programID != "" && programID != facts.program {
+		return "", fmt.Errorf("%s: -program-id %q, estate profile license-registry programme is %q", RefusalProgramDiffersFromProfile, programID, facts.program)
 	}
 	if stated != "" && stated != derived {
 		return "", fmt.Errorf("%s: -chain-id %q, estate profile network is %q", RefusalChainIDDiffersFromProfile, stated, derived)
@@ -189,40 +207,59 @@ func resolveChainID(stated, profilePath, programID string) (string, error) {
 	return derived, nil
 }
 
+// bindProfileFacts (K-CHN-13) is the mint and domain half of the profile
+// binding: with -profile, each stated flag must equal the verified profile's
+// field, and the caller uses the profile's values. The preparer's operator
+// key is seeded by the mint and the report hashes the domain, so a mixed
+// estate identity is refused here rather than derived.
+func bindProfileFacts(profilePath, licenseMint, domain string) (mint, storeDomain string, err error) {
+	_, facts, err := chainIDFromProfile(profilePath)
+	if err != nil {
+		return "", "", err
+	}
+	if licenseMint = strings.TrimSpace(licenseMint); licenseMint != "" && licenseMint != facts.masterMint {
+		return "", "", fmt.Errorf("%s: -license-mint %q, estate profile anchors.masterMint is %q", RefusalMintDiffersFromProfile, licenseMint, facts.masterMint)
+	}
+	if domain = strings.TrimSpace(domain); domain != "" && domain != facts.rootDomain {
+		return "", "", fmt.Errorf("%s: -domain %q, estate profile store.rootDomain is %q", RefusalDomainDiffersFromProfile, domain, facts.rootDomain)
+	}
+	return facts.masterMint, facts.rootDomain, nil
+}
+
 // chainIDFromProfile reads and verifies an owner-signed EstateProfileV1 and
 // returns solana:<network.label>. The label is the network name the owners
 // signed; it is the same convention the estate runbook states for -chain-id
 // ("solana:<your network name>"), and the retiring estate's profile yields
 // exactly the chain id its Store was prepared under.
-func chainIDFromProfile(path string) (string, string, error) {
+func chainIDFromProfile(path string) (string, profileFacts, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
-		return "", "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+		return "", profileFacts{}, fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
 	}
 	if !info.Mode().IsRegular() {
-		return "", "", fmt.Errorf("%s: -profile must be a regular file, not a symlink or device", RefusalProfileUnusable)
+		return "", profileFacts{}, fmt.Errorf("%s: -profile must be a regular file, not a symlink or device", RefusalProfileUnusable)
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return "", "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+		return "", profileFacts{}, fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
 	}
 	defer file.Close()
 	raw, err := io.ReadAll(io.LimitReader(file, int64(maxProfileBytes)+1))
 	if err != nil {
-		return "", "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+		return "", profileFacts{}, fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
 	}
 	if len(raw) > maxProfileBytes {
-		return "", "", fmt.Errorf("%s: -profile exceeds %d bytes", RefusalProfileUnusable, maxProfileBytes)
+		return "", profileFacts{}, fmt.Errorf("%s: -profile exceeds %d bytes", RefusalProfileUnusable, maxProfileBytes)
 	}
 	profile, err := estateprofile.DecodeProfile(raw)
 	if err != nil {
-		return "", "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+		return "", profileFacts{}, fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
 	}
 	if _, err := estateprofile.VerifyProfile(profile); err != nil {
-		return "", "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+		return "", profileFacts{}, fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
 	}
 	if !chainReferencePattern.MatchString(profile.Network.Label) {
-		return "", "", fmt.Errorf("%s: network.label %q", RefusalProfileLabelNotChainRef, profile.Network.Label)
+		return "", profileFacts{}, fmt.Errorf("%s: network.label %q", RefusalProfileLabelNotChainRef, profile.Network.Label)
 	}
 	program := ""
 	for _, entry := range profile.Programs {
@@ -230,7 +267,16 @@ func chainIDFromProfile(path string) (string, string, error) {
 			program = entry.ProgramID
 		}
 	}
-	return "solana:" + profile.Network.Label, program, nil
+	return "solana:" + profile.Network.Label, profileFacts{program: program, masterMint: profile.Anchors.MasterMint, rootDomain: profile.Store.RootDomain}, nil
+}
+
+// profileFacts are the estate facts the profile is the only source of
+// (K-CHN-13): the chain, the programme the key is salted by, the licence
+// mint the PDA is seeded by and the Store domain the report hashes.
+type profileFacts struct {
+	program    string
+	masterMint string
+	rootDomain string
 }
 
 func validateOptions(opts options) error {

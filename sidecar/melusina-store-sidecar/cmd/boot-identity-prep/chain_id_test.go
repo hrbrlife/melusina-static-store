@@ -115,8 +115,12 @@ func TestProfileSuppliesTheChainID(t *testing.T) {
 		dir := t.TempDir()
 		profile := writeVectorProfile(t, dir, vector)
 		program := vectorLicenseRegistry(t, vector)
+		mint, domain := vectorMintAndDomain(t, vector)
+		// K-CHN-13: the mint and domain bind to the profile, so the argv
+		// carries the vector's own values.
+		args := replaceFlags(prepArgs(t, dir), map[string]string{"-license-mint": mint, "-domain": domain})
 		var out bytes.Buffer
-		if err := run(append(prepArgs(t, dir), "-profile", profile, "-program-id", program), &out); err != nil {
+		if err := run(append(args, "-profile", profile, "-program-id", program), &out); err != nil {
 			t.Fatalf("%s: run: %v", vector, err)
 		}
 		requireReportChain(t, out.Bytes(), want)
@@ -124,12 +128,12 @@ func TestProfileSuppliesTheChainID(t *testing.T) {
 		// A -chain-id equal to the profile's is accepted; one that differs is
 		// refused by name before any shard exists.
 		out.Reset()
-		if err := run(append(prepArgs(t, t.TempDir()), "-profile", profile, "-program-id", program, "-chain-id", want), &out); err != nil {
+		if err := run(append(replaceFlags(prepArgs(t, t.TempDir()), map[string]string{"-license-mint": mint, "-domain": domain}), "-profile", profile, "-program-id", program, "-chain-id", want), &out); err != nil {
 			t.Fatalf("%s: matching -chain-id refused: %v", vector, err)
 		}
 		other := t.TempDir()
 		out.Reset()
-		err := run(append(prepArgs(t, other), "-profile", profile, "-program-id", program, "-chain-id", testChainID), &out)
+		err := run(append(replaceFlags(prepArgs(t, other), map[string]string{"-license-mint": mint, "-domain": domain}), "-profile", profile, "-program-id", program, "-chain-id", testChainID), &out)
 		if err == nil || !strings.HasPrefix(err.Error(), RefusalChainIDDiffersFromProfile+":") {
 			t.Fatalf("%s: differing -chain-id: error = %v, want %s", vector, err, RefusalChainIDDiffersFromProfile)
 		}
@@ -234,4 +238,52 @@ func TestProfileRefusesAnotherEstatesProgramme(t *testing.T) {
 	if _, statErr := os.Stat(filepath.Join(dir, "shards")); !os.IsNotExist(statErr) {
 		t.Fatal("refused run touched the shard directory")
 	}
+}
+
+// vectorMintAndDomain returns the committed vector's licence mint and Store
+// domain: with -profile they bind to the profile (K-CHN-13).
+func vectorMintAndDomain(t *testing.T, name string) (string, string) {
+	t.Helper()
+	var document struct {
+		Profiles []struct {
+			Name    string          `json:"name"`
+			Profile json.RawMessage `json:"profile"`
+		} `json:"profiles"`
+	}
+	raw, err := os.ReadFile(estateProfileVectorsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &document); err != nil {
+		t.Fatal(err)
+	}
+	for _, vector := range document.Profiles {
+		if vector.Name == name {
+			var profile struct {
+				Anchors struct {
+					MasterMint string `json:"masterMint"`
+				} `json:"anchors"`
+				Store struct {
+					RootDomain string `json:"rootDomain"`
+				} `json:"store"`
+			}
+			if err := json.Unmarshal(vector.Profile, &profile); err != nil {
+				t.Fatal(err)
+			}
+			return profile.Anchors.MasterMint, profile.Store.RootDomain
+		}
+	}
+	t.Fatalf("no profile vector %q", name)
+	return "", ""
+}
+
+// replaceFlags rewrites flag values in place, keeping order.
+func replaceFlags(args []string, values map[string]string) []string {
+	out := append([]string{}, args...)
+	for index := 0; index+1 < len(out); index++ {
+		if value, ok := values[out[index]]; ok {
+			out[index+1] = value
+		}
+	}
+	return out
 }

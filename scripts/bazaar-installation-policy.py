@@ -51,16 +51,29 @@ def bare_https_origin(value: Any) -> bool:
 
 
 def load(path: Path, *, source_repositories: bool = False, catalog_origin: str | None = None) -> dict[str, Any]:
+    """Render one manifest's per-app install policy.
+
+    A release manifest (a published projection) carries catalog_origin; the
+    checked-in membership ledger does not (its snapshot facts are
+    fleet/retiring-bazaar-snapshot.yaml's) and is read for its membership
+    only. Either way the render is Store-agnostic.
+    """
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
         fail(f"read {path}: {exc}")
     if not isinstance(raw, dict):
         fail("catalog must be a mapping")
-    if raw.get("schema") != SCHEMA or not bare_https_origin(raw.get("catalog_origin")):
-        fail("catalog is not a Store catalog manifest with a bare https catalog_origin")
-    if catalog_origin is not None and raw.get("catalog_origin") != catalog_origin:
-        fail(f"catalog_origin is {raw.get('catalog_origin')!r}, not the required {catalog_origin!r}")
+    if raw.get("schema") != SCHEMA:
+        fail("catalog is not a Store catalog manifest")
+    origin = raw.get("catalog_origin")
+    if origin is not None:
+        if not bare_https_origin(origin):
+            fail("catalog is not a Store catalog manifest with a bare https catalog_origin")
+        if catalog_origin is not None and origin != catalog_origin:
+            fail(f"catalog_origin is {origin!r}, not the required {catalog_origin!r}")
+    elif catalog_origin is not None:
+        fail(f"the catalog names no catalog_origin, not the required {catalog_origin!r}")
     if raw.get("installation_policy_version") != VERSION:
         fail(f"installation_policy_version must be {VERSION}")
     expected = raw.get("expected_live_app_count")

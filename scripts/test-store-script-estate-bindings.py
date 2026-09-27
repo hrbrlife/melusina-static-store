@@ -37,10 +37,26 @@ def expect_refusal(result: subprocess.CompletedProcess, text: str, subject: str)
 
 
 def ledger_with_origin(tmp: Path, origin: str) -> Path:
+    """A copy of the ledger naming `origin`: since K-CHN-38 the checked-in
+    membership ledger carries no catalog_origin, so one is added — the shape
+    of a published manifest for that Store."""
     lines = LEDGER.read_text(encoding="utf-8").splitlines(keepends=True)
-    replaced = [f"catalog_origin: {origin}\n" if line.startswith("catalog_origin:") else line for line in lines]
-    if replaced == lines:
-        raise AssertionError("ledger has no catalog_origin line to replace")
+    anchor = "default_release_state: hold\n"
+    if anchor not in lines:
+        raise AssertionError("ledger has no default_release_state anchor to insert before")
+    replaced: list[str] = []
+    inserted = False
+    for line in lines:
+        if line.startswith("catalog_origin:"):
+            replaced.append(f"catalog_origin: {origin}\n")
+            inserted = True
+        else:
+            replaced.append(line)
+            if line == anchor:
+                replaced.append(f"catalog_origin: {origin}\n")
+                inserted = True
+    if not inserted:
+        raise AssertionError("no catalog_origin inserted")
     path = tmp / f"ledger-{hashlib.sha256(origin.encode()).hexdigest()[:8]}.yaml"
     path.write_text("".join(replaced), encoding="utf-8")
     return path

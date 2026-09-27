@@ -227,6 +227,19 @@ func TestLoadCatalogRequiresABareHTTPSOrigin(t *testing.T) {
 			if err := os.WriteFile(path, []byte(strings.Replace(string(content), "catalog_origin: "+testStoreOrigin+"\n", line, 1)), 0o600); err != nil {
 				t.Fatal(err)
 			}
+			catalog, err := LoadCatalog(path)
+			if origin == "" {
+				// K-CHN-38: an absent catalog_origin is the membership-ledger
+				// shape; the loader accepts it and the publish/validate path
+				// refuses it by name.
+				if err != nil {
+					t.Fatalf("LoadCatalog refused a manifest with no catalog_origin: %v", err)
+				}
+				if err := catalog.ValidateForRelease(path); err == nil || !strings.Contains(err.Error(), "no catalog_origin") {
+					t.Fatalf("ValidateForRelease accepted a manifest with no catalog_origin: %v", err)
+				}
+				return
+			}
 			if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "catalog_origin") {
 				t.Fatalf("LoadCatalog accepted catalog_origin %q: %v", origin, err)
 			}
@@ -266,7 +279,10 @@ func TestLoadCatalogRealManifestHasOnlyEvidencedReadyApps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCatalog(real): %v", err)
 	}
-	if catalog.Schema != bazaarCatalogSchema || assertBareHTTPS(catalog.Origin) != nil {
+	// The membership ledger carries no catalog_origin: the retiring
+	// snapshot facts it used to hold live in fleet/retiring-bazaar-snapshot.yaml
+	// and its Store is checked only when a manifest is bound for release.
+	if catalog.Schema != bazaarCatalogSchema || catalog.Origin != "" {
 		t.Fatalf("real catalog identity = schema %q origin %q", catalog.Schema, catalog.Origin)
 	}
 	if len(catalog.Apps) != 35 || catalog.ExpectedLiveAppCount != 35 {
@@ -462,5 +478,25 @@ func TestLoadCatalogRejectsClaudePackagedRuntimeProfileForAnyOtherApp(t *testing
 		if _, err := LoadCatalog(path); err == nil || !strings.Contains(err.Error(), "only Claude-Melusina") {
 			t.Fatalf("%s declaring the Claude packaged-runtime profile: err = %v, want fail-closed Claude-Melusina refusal", name, err)
 		}
+	}
+}
+
+// The checked-in membership ledger parses after K-CHN-38: its header is
+// membership-only (no catalog_origin, no expected_live_app_count), so the
+// parser must accept it while ValidateForRelease — the publish/validate path —
+// refuses it as a release catalog.
+func TestLoadCatalogAcceptsTheMembershipLedger(t *testing.T) {
+	catalog, err := LoadCatalog("../../../../fleet/bazaar-catalog.yaml")
+	if err != nil {
+		t.Fatalf("the checked-in membership ledger does not parse: %v", err)
+	}
+	if catalog.Origin != "" || catalog.ExpectedLiveAppCount != len(catalog.Apps) {
+		t.Fatalf("the membership ledger carried snapshot facts or a count that is not its membership: origin %q count %d apps %d", catalog.Origin, catalog.ExpectedLiveAppCount, len(catalog.Apps))
+	}
+	if len(catalog.Apps) == 0 {
+		t.Fatal("the membership ledger parsed to no apps")
+	}
+	if err := (&Catalog{Schema: bazaarCatalogSchema, DefaultReleaseState: "hold", DefaultReconciliationState: "source-pinned"}).ValidateForRelease("fleet/bazaar-catalog.yaml"); err == nil || !strings.Contains(err.Error(), "no catalog_origin") {
+		t.Fatalf("ValidateForRelease accepted a membership-only manifest: %v", err)
 	}
 }

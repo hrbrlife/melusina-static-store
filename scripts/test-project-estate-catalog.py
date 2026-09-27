@@ -65,6 +65,13 @@ def load(name: str, path: Path):
 provider = load("provider", HERE / "mel-release-provider.py")
 projector = load("projector", PROJECTOR)
 
+SNAPSHOT = ROOT / "fleet" / "retiring-bazaar-snapshot.yaml"
+
+
+def snapshot_document() -> dict:
+    _, document = provider.load_catalog_text(SNAPSHOT)
+    return document
+
 _BIN_DIR: Path | None = None
 
 
@@ -108,7 +115,7 @@ def write_profile(directory: Path, profile: dict, name: str = "estate-profile.js
 
 def ledger_document() -> dict:
     _, document = provider.load_catalog_text(LEDGER)
-    return provider.validate_catalog_document(document, document["catalog_origin"])
+    return provider.validate_catalog_document(document, document.get("catalog_origin"), release_catalog=False)
 
 
 def forbid_values() -> dict:
@@ -214,8 +221,9 @@ def test_projection_is_the_cohort_under_the_profile_estate():
         raw = manifest.read_bytes()
         text, document = provider.load_catalog_text(manifest)
 
-        # The Store and release authority are the profile's, never the ledger's.
-        assert document["catalog_origin"] == origin != ledger["catalog_origin"], document["catalog_origin"]
+        # The Store and release authority are the profile's, never the
+        # ledger's or the retiring snapshot's.
+        assert document["catalog_origin"] == origin != snapshot_document()["snapshot_origin"], document["catalog_origin"]
         assert document["release_squads_authority"] == expected_authority(profile), document["release_squads_authority"]
         assert document["release_squads_authority"] != ledger["release_squads_authority"]
         for key in ("catalog_index_sha256", "catalog_observed_at"):
@@ -225,7 +233,6 @@ def test_projection_is_the_cohort_under_the_profile_estate():
         assert list(projected) != [] and set(projected) == set(cohort), sorted(set(projected) ^ set(cohort))
         written = sum(len(group["apps"]) for group in document["groups"].values())
         assert document["expected_live_app_count"] == len(cohort) == written, (document["expected_live_app_count"], written)
-        assert document["expected_live_app_count"] != ledger["expected_live_app_count"]
         assert document["scoped_cohorts"] == {MSB_COHORT: {"app_ids": cohort}}, document["scoped_cohorts"]
         # Every entry is the ledger's, and every hold with it.
         for app_id in cohort:
@@ -258,7 +265,18 @@ def test_projection_is_the_cohort_under_the_profile_estate():
         scan = report["estateScan"]
         assert scan["status"] == "clean", report
         assert scan["catalogSha256"] == hashlib.sha256(raw).hexdigest(), report
-        assert set(scan["fields"]) == set(forbid_values()) and scan["valueCount"] == len(forbid_values()), scan
+        assert set(scan["fields"]) == set(forbid_values()), scan
+        assert scan["valueCount"] == len(forbid_values()) + 3, scan
+        # valueCount exceeds the distinct field count by the reference
+        # ledger's three authority entries, which share field names with the
+        # checked-in ledger's (deduplicated in the report's fields map).
+        # The forbid set is wider than the Store file alone: it also holds the
+        # snapshot file's origin host, parent domain and index digest and the
+        # checked-in ledger's release authority.
+        assert {"ledger/catalog_origin.host", "ledger/catalog_origin.parent-domain",
+                "ledger/catalog_index_sha256", "ledger/release_squads_authority.multisig",
+                "ledger/release_squads_authority.vault",
+                "ledger/release_squads_authority.program_id"} <= set(scan["fields"]), sorted(scan["fields"])
         assert scan["fields"]["ledger/release_squads_authority.program_id"] == (
             "forbid-except:squads-v4-program@release_squads_authority.program_id"
         ), scan["fields"]
@@ -336,7 +354,7 @@ def test_mel_release_reads_the_projection_under_the_profile():
 
         refused = mel_release(LEDGER, profile_path, pin, state, trap, "--app", LOBBY_APP_ID)
         assert refused.returncode == 1, refused
-        assert "catalog_origin" in refused.stderr and "is not the estate profile's Store" in refused.stderr, refused.stderr
+        assert "no catalog_origin" in refused.stderr, refused.stderr
 
         # A typed count is what the projection replaces: the ledger's count
         # on the projected apps is refused by the Go loader too.
@@ -473,13 +491,14 @@ def test_projection_check_refuses_any_difference_from_the_ledger():
     released = text[:hold_at] + "        release_state: ready\n" + text[hold_at + len(hold):]
     count_line = f"expected_live_app_count: {len(app_ids)}\n"
     origin_line = f"catalog_origin: {binding['storeOrigin']}\n"
+    snapshot = snapshot_document()
     for name, mutated in (
         (f"projection-app-mismatch: {CYBERTELLER_APP_ID}", released),
         ("projection-mismatch: expected_live_app_count",
-         text.replace(count_line, f"expected_live_app_count: {ledger['expected_live_app_count']}\n")),
-        ("projection-mismatch: catalog_origin", text.replace(origin_line, f"catalog_origin: {ledger['catalog_origin']}\n")),
+         text.replace(count_line, f"expected_live_app_count: {snapshot['observed_live_app_count']}\n")),
+        ("projection-mismatch: catalog_origin", text.replace(origin_line, f"catalog_origin: {snapshot['snapshot_origin']}\n")),
         ("projection-mismatch: top-level keys differ",
-         text.replace(origin_line, origin_line + f"catalog_index_sha256: {ledger['catalog_index_sha256']}\n")),
+         text.replace(origin_line, origin_line + f"catalog_index_sha256: {snapshot['snapshot_index_sha256']}\n")),
         ("projection-estate-scan", text.replace("groups:\n", f"# was {ledger['release_squads_authority']['vault']}\ngroups:\n", 1)),
     ):
         assert mutated != text, name
@@ -552,20 +571,30 @@ def test_projection_scans_the_given_ledger_and_its_parsed_values():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         profile_path = write_profile(root, profile)
-        origin_line = f"catalog_origin: {ledger_document()['catalog_origin']}\n"
         lobby_line = f"        appId: {LOBBY_APP_ID}\n"
 
-        # Another ledger's own Store, in a note of a copied entry. The Store's
-        # forbid set does not hold it; only the given ledger does.
+        # Another ledger's own Store: the given ledger declares it as its
+        # catalog_origin (a published manifest for it), and the scan refuses
+        # the copied entries that carry it. The Store's forbid set does not
+        # hold the host; only the given ledger does.
         other = fixture_ledger(root / "other")
         host = "bazaar.other-retiring.invalid"
         assert host not in values.values()
-        ledger_text_with(other, origin_line, f"catalog_origin: https://{host}\n")
+        # Insert the other Store's origin at the top level (a real catalog
+        # field the given ledger declares), then the note in the entry.
+        text = other.read_text(encoding="utf-8")
+        anchor = "default_release_state: hold\n"
+        assert text.count(anchor) == 1, anchor
+        other.write_text(
+            text.replace(anchor, anchor + f"catalog_origin: https://{host}\n", 1),
+            encoding="utf-8",
+        )
         ledger_text_with(other, lobby_line, lobby_line + f"        # mirrored at {host}\n")
         result = run_projector(profile_path, pin, root / "seed-other", "--ledger", str(other))
         expect_refusal(result, "projection-estate-scan: estate-scan-retiring-value: ")
-        assert "ledger/catalog_origin.host at line " in result.stderr, result.stderr
-        # Positive control: the same ledger without the note projects.
+        assert "ledger/catalog_origin.host" in result.stderr, result.stderr
+        # The same ledger without the other Store's own facts projects.
+        ledger_text_with(other, f"catalog_origin: https://{host}\n", "")
         ledger_text_with(other, f"        # mirrored at {host}\n", "")
         result = run_projector(profile_path, pin, root / "seed-other-clean", "--ledger", str(other))
         assert result.returncode == 0, result.stderr

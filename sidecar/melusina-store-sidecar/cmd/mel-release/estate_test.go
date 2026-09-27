@@ -453,7 +453,7 @@ func TestBindCatalogRequiresTheEstateStoreAndAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	good := &Catalog{Origin: testStoreOrigin, ReleaseSquadsAuthority: testSquadsAuthority()}
+	good := &Catalog{Origin: testStoreOrigin, ExpectedLiveAppCount: 1, ReleaseSquadsAuthority: testSquadsAuthority(), Apps: []App{{Name: "app", AppID: "app", PublishSlug: "app", CatalogName: "App", LiveVersion: "1", CatalogDeveloper: "hrbrlife", CatalogRepo: "app", CatalogSlug: "app", SourceRepository: "https://github.com/hrbrlife/app", Role: "app"}}}
 	bound := cfg
 	if err := bound.bindCatalog(good); err != nil {
 		t.Fatalf("bindCatalog(estate catalog): %v", err)
@@ -465,13 +465,13 @@ func TestBindCatalogRequiresTheEstateStoreAndAuthority(t *testing.T) {
 	other := func(change func(*SquadsAuthority)) *Catalog {
 		authority := testSquadsAuthority()
 		change(&authority)
-		return &Catalog{Origin: testStoreOrigin, ReleaseSquadsAuthority: authority}
+		return &Catalog{Origin: testStoreOrigin, ExpectedLiveAppCount: 1, Apps: []App{{Name: "app", AppID: "app", PublishSlug: "app", CatalogName: "App", LiveVersion: "1", CatalogDeveloper: "hrbrlife", CatalogRepo: "app", CatalogSlug: "app", SourceRepository: "https://github.com/hrbrlife/app", Role: "app"}}, ReleaseSquadsAuthority: authority}
 	}
 	for name, tc := range map[string]struct {
 		catalog *Catalog
 		want    string
 	}{
-		"another Store":  {&Catalog{Origin: "https://store.example.test", ReleaseSquadsAuthority: testSquadsAuthority()}, "describes another Store"},
+		"another Store":  {&Catalog{Origin: "https://store.example.test", ExpectedLiveAppCount: 1, Apps: []App{{Name: "app", AppID: "app", PublishSlug: "app", CatalogName: "App", LiveVersion: "1", CatalogDeveloper: "hrbrlife", CatalogRepo: "app", CatalogSlug: "app", SourceRepository: "https://github.com/hrbrlife/app", Role: "app"}}, ReleaseSquadsAuthority: testSquadsAuthority()}, "describes another Store"},
 		"multisig":       {other(func(a *SquadsAuthority) { a.Multisig = testSquadsVault }), "roles.store-release authority"},
 		"vault":          {other(func(a *SquadsAuthority) { a.Vault = testSquadsMultisig }), "roles.store-release authority"},
 		"squads program": {other(func(a *SquadsAuthority) { a.ProgramID = testProgramID }), "roles.store-release authority"},
@@ -506,7 +506,7 @@ func TestExecProviderCarriesTheEstateBinding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := cfg.bindCatalog(&Catalog{Origin: testStoreOrigin, ReleaseSquadsAuthority: testSquadsAuthority()}); err != nil {
+	if err := cfg.bindCatalog(&Catalog{Origin: testStoreOrigin, ExpectedLiveAppCount: 1, ReleaseSquadsAuthority: testSquadsAuthority(), Apps: []App{{Name: "app", AppID: "app", PublishSlug: "app", CatalogName: "App", LiveVersion: "1", CatalogDeveloper: "hrbrlife", CatalogRepo: "app", CatalogSlug: "app", SourceRepository: "https://github.com/hrbrlife/app", Role: "app"}}}); err != nil {
 		t.Fatal(err)
 	}
 	env := newExecProvider(cfg).env

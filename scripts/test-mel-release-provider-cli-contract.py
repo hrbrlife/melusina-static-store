@@ -7,10 +7,12 @@ unknown flag after a real Squads proposal would strand an approval.
 """
 
 import contextlib
+import atexit
 import importlib.util
 import io
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -40,15 +42,17 @@ os.environ["MEL_RELEASE_STORE_URL"] = TEST_STORE_ORIGIN
 
 
 CHECKED_IN_LEDGER = HERE.parent / "fleet" / "bazaar-catalog.yaml"
+CHECKED_IN_SNAPSHOT = HERE.parent / "fleet" / "retiring-bazaar-snapshot.yaml"
 
 
 def checked_in_ledger_document():
-    """The checked-in ledger, validated as the complete catalog of the Store it
-    itself names. It is the retiring Bazaar's snapshot, so it is never a
-    release catalog: catalog_config refuses it by estate scan
-    (test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog)."""
+    """The checked-in ledger, validated as the membership record it is. It
+    carries no catalog_origin (its snapshot facts are
+    fleet/retiring-bazaar-snapshot.yaml's) and its expected_live_app_count is
+    the derived membership count, so it is never a release catalog:
+    catalog_config refuses any manifest without the bound Store origin."""
     _, document = provider.load_catalog_text(CHECKED_IN_LEDGER)
-    return provider.validate_catalog_document(document, document["catalog_origin"])
+    return provider.validate_catalog_document(document, None, release_catalog=False)
 
 
 def with_env(values):
@@ -793,10 +797,13 @@ def with_note(json_text, raw_value, key="note"):
 
 
 def test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog():
-    """Known-positive control: the retiring Bazaar's own snapshot is refused
-    as a release catalog, even bound to the Store it names, and by every
-    provider operation, not only by a caller that remembers to scan."""
+    """Known-positive control: the retiring Bazaar's snapshot facts are refused
+    as release-catalog values, and the membership ledger's own authority with
+    them, by every provider operation — not only by a caller that remembers to
+    scan. The ledger itself no longer carries the origin or index digest; the
+    forbid set derives them from fleet/retiring-bazaar-snapshot.yaml."""
     document = checked_in_ledger_document()
+    assert "catalog_origin" not in document, document.get("catalog_origin")
     values = retiring_values_by_field()
     store = store_forbid_set()
     ledger_fields = {field for field in values if field.startswith("ledger/")}
@@ -808,14 +815,15 @@ def test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog():
         "ledger/release_squads_authority.program_id",
         "ledger/catalog_index_sha256",
     }, values
-    # Each ledger value is the ledger's own, derived rather than restated.
-    assert values["ledger/catalog_origin.host"] == document["catalog_origin"].removeprefix("https://")
+    # Each snapshot-derived value is the snapshot file's own, read not restated.
+    _, snapshot = provider.load_catalog_text(CHECKED_IN_SNAPSHOT)
+    assert values["ledger/catalog_origin.host"] == snapshot["snapshot_origin"].removeprefix("https://")
+    assert values["ledger/catalog_index_sha256"] == snapshot["snapshot_index_sha256"]
     for key in ("multisig", "vault", "program_id"):
         assert values[f"ledger/release_squads_authority.{key}"] == document["release_squads_authority"][key]
-    assert values["ledger/catalog_index_sha256"] == document["catalog_index_sha256"]
     # The rest is exactly the Store's forbid set, not a narrower copy: the
     # retiring profile vector's values, the tenant hosts and the retiring
-    # facts the profile does not project, all recording the same ledger.
+    # facts the profile does not project, all recording the same estate.
     scanned_store = {field: value for field, value in values.items() if field not in ledger_fields}
     assert scanned_store == store, (
         "retiring-values-not-the-store-set",
@@ -840,15 +848,31 @@ def test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog():
         if spec["catalog_name"].lower() == tenant_host
     ]
     assert len(display) == 1, display
+    # A manifest-shaped document carrying the retiring estate's values: the
+    # snapshot facts and the membership ledger's authority, bound to the Store
+    # they name so the binding refusal cannot fire before the scan.
+    planted = dict(document)
+    planted["catalog_origin"] = snapshot["snapshot_origin"]
+    planted["catalog_index_sha256"] = snapshot["snapshot_index_sha256"]
+    planted["expected_live_app_count"] = sum(
+        len(group["apps"]) for group in document["groups"].values()
+    )
+    planted_dir = Path(tempfile.mkdtemp())
+    config = planted_dir / "bazaar-catalog.yaml"
+    config.write_text(provider.yaml.safe_dump(planted, sort_keys=False), encoding="utf-8")
+    atexit.register(shutil.rmtree, planted_dir, True)
     old = with_env({
-        "MEL_RELEASE_CONFIG": str(CHECKED_IN_LEDGER),
-        "MEL_RELEASE_STORE_URL": document["catalog_origin"],
+        "MEL_RELEASE_CONFIG": str(config),
+        "MEL_RELEASE_STORE_URL": snapshot["snapshot_origin"],
     })
     try:
-        # The Squads program is excepted at its declared field, so the ledger
-        # is refused for the rest and not for that one occurrence.
+        # The Squads program is excepted at its declared field, so the
+        # snapshot-carrying manifest is refused for the rest and not for that
+        # one occurrence.
         hits = expect_estate_scan_refusal(
-            [field for field in ledger_fields if field != "ledger/release_squads_authority.program_id"]
+            ["catalog-ledger/catalog_origin", "ledger/catalog_origin.host",
+             "ledger/catalog_origin.parent-domain", "ledger/catalog_index_sha256"]
+            + [f"ledger/release_squads_authority.{key}" for key in ("multisig", "vault")]
             + ["retiring/tenant-host-0", "retiring/store.rootDomain", "retiring/root-domain"],
             program_fields,
         )
@@ -869,7 +893,7 @@ def test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog():
                 except provider.ProviderError as exc:
                     assert str(exc).startswith("estate-scan-retiring-value: "), (op, exc)
                 else:
-                    raise AssertionError(f"provider {op} ran on the retiring ledger")
+                    raise AssertionError(f"provider {op} ran on the retiring estate's values")
         finally:
             provider.sys.argv = old_argv
     finally:
@@ -979,14 +1003,58 @@ def test_estate_scan_exceptions_are_named_exact_and_single_place():
 
 
 def test_estate_scan_refuses_an_unusable_reference_or_values_file():
+    snapshot = CHECKED_IN_SNAPSHOT.read_text(encoding="utf-8")
     ledger = CHECKED_IN_LEDGER.read_text(encoding="utf-8")
     text, document = "{}\n", {}
     with tempfile.TemporaryDirectory() as tmp:
         reference = Path(tmp) / "bazaar-catalog.yaml"
+        # The forbid set's snapshot facts fail closed: a snapshot file missing
+        # its origin, digest or population is refused, not scanned short.
+        snapshot_reference = Path(tmp) / "retiring-bazaar-snapshot.yaml"
+        old_snapshot_reference = provider.ESTATE_SCAN_SNAPSHOT_REFERENCE
+        provider.ESTATE_SCAN_SNAPSHOT_REFERENCE = snapshot_reference
+        try:
+            for label, mutated, expected in (
+                ("no snapshot_origin", snapshot.replace("snapshot_origin:", "snapshot_origin_note:", 1),
+                 "has no bare https catalog_origin"),
+                ("a non-https snapshot_origin", snapshot.replace("snapshot_origin: https://", "snapshot_origin: http://", 1),
+                 "has no bare https catalog_origin"),
+                ("no snapshot_index_sha256", snapshot.replace("snapshot_index_sha256:", "snapshot_index_sha256_note:", 1),
+                 "has a malformed snapshot_index_sha256"),
+                ("a short snapshot_index_sha256",
+                 snapshot.replace("snapshot_index_sha256: 1281a51b", "snapshot_index_sha256: 281a51b", 1),
+                 "has a malformed snapshot_index_sha256"),
+                ("no observed_live_app_count", snapshot.replace("observed_live_app_count:", "observed_live_app_count_note:", 1),
+                 "has no positive observed_live_app_count"),
+                ("another schema", snapshot.replace("melusina-retiring-bazaar-snapshot/v1", "melusina-retiring-bazaar-snapshot/v0", 1),
+                 "has an unsupported schema"),
+            ):
+                assert mutated != snapshot, label
+                snapshot_reference.write_text(mutated, encoding="utf-8")
+                try:
+                    provider.estate_scan(text, document)
+                except provider.ProviderError as exc:
+                    assert str(exc).startswith("estate-scan-reference-unusable: "), (label, exc)
+                    assert expected in str(exc), (label, exc)
+                else:
+                    raise AssertionError(f"estate scan ran with a snapshot file that has {label}")
+            snapshot_reference.unlink()
+            try:
+                provider.estate_scan(text, document)
+            except provider.ProviderError as exc:
+                assert str(exc).startswith("estate-scan-reference-unusable: "), exc
+            else:
+                raise AssertionError("estate scan ran with no snapshot file")
+            # Positive control: the real snapshot file, unmutated, scans.
+            snapshot_reference.write_text(snapshot, encoding="utf-8")
+            assert provider.estate_scan(text, document)["status"] == "clean"
+        finally:
+            provider.ESTATE_SCAN_SNAPSHOT_REFERENCE = old_snapshot_reference
+
+        # A projection's reference ledger must still carry its release
+        # authority; one missing it is refused rather than scanned short.
         for label, mutated in (
             ("no release_squads_authority", ledger.replace("release_squads_authority:", "retired_squads_authority:", 1)),
-            ("a non-https origin", ledger.replace("catalog_origin: https://", "catalog_origin: http://", 1)),
-            ("no catalog_origin", ledger.replace("catalog_origin:", "catalog_origin_note:", 1)),
         ):
             assert mutated != ledger, label
             reference.write_text(mutated, encoding="utf-8")
@@ -1052,7 +1120,13 @@ def test_estate_scan_refuses_an_unusable_reference_or_values_file():
             # Positive control: the committed bytes, copied, scan.
             values_file.write_text(committed, encoding="utf-8")
             report = provider.estate_scan(text, document, reference)
-            assert report["status"] == "clean" and report["valueCount"] == len(store["values"]) + 6, report
+            # Store forbid set (28) + the snapshot file's origin host and
+            # parent domain + its index digest (3) + the checked-in ledger's
+            # release authority (3 keys) + the reference ledger's own
+            # authority again (3, deduplicated as fields) = 37. A field
+            # defined twice would narrow the scan silently, so the width is
+            # exact.
+            assert report["status"] == "clean" and report["valueCount"] == 37, report
         finally:
             provider.ESTATE_SCAN_VALUES = old_values
 
@@ -2316,6 +2390,13 @@ def test_catalog_requires_a_canonical_source_repository():
             "default_release_state": "hold",
             "default_reconciliation_state": "source-pinned",
             "default_source_branch": "dev-publish",
+            "release_squads_authority": {
+                "multisig": TEST_SQUADS_MULTISIG,
+                "vault": TEST_SQUADS_VAULT,
+                "program_id": TEST_SQUADS_PROGRAM_ID,
+                "threshold": 3,
+                "member_count": 4,
+            },
             "groups": {"msb": {"apps": {"app": {"appId": "app-id"}}}},
         }
         config.write_text(json.dumps(base) + "\n", encoding="utf-8")
@@ -2489,8 +2570,10 @@ def checked_in_catalog_entries():
 
 def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     document, entries = checked_in_catalog_entries()
-    assert document["catalog_origin"] == "https://bazaar.melusina-os.org", document
-    assert document["expected_live_app_count"] == 35, document
+    # Membership only: the ledger names no Store and its count is the entries.
+    assert "catalog_origin" not in document, document.get("catalog_origin")
+    assert "catalog_index_sha256" not in document and "catalog_observed_at" not in document
+    assert document["expected_live_app_count"] == len(entries) == 35, document
     assert len(entries) == 35, entries
     assert document["default_release_state"] == "hold", document
     assert document["default_source_branch"] == "dev-publish", document

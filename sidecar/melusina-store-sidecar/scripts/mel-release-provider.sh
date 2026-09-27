@@ -500,17 +500,21 @@ PY
     --multisig "$MEL_RELEASE_SQUADS_MULTISIG" --vault "$MEL_RELEASE_SQUADS_VAULT" \
     --quorum-threshold "$MEL_RELEASE_SQUADS_THRESHOLD" --quorum-member-count "$MEL_RELEASE_SQUADS_MEMBER_COUNT" \
     --author-keypair "$MEL_RELEASE_AUTHOR_KEYPAIR" --transaction-index "$index"
-  node_confined MEL_RELEASE_NODE_MODULES "$MEL_RELEASE_NODE_MODULES" "$NODE_HELPER" propose "$ceremony" >"$state/proposal-result.json"
+  # K-CHN-09: the helper PROPOSES nothing — the one Squads proposal is the
+  # contracts executor's proposeVaultTransaction, sent by the estate runner.
+  # This provider keeps the prepared ceremony state (the release identity the
+  # proposal must bind) and records it; the propose op is gone.
+  [[ -f "$ceremony" ]] || die "the Pearl tool wrote no ceremony state"
   python3 - "$ceremony" "$material_release" "$MEL_RELEASE_JSON_OUT" "$MEL_PROPOSE_RECEIPT_OUT" "$MEL_RELEASE_SQUADS_MULTISIG" "$MEL_RELEASE_SQUADS_VAULT" <<'PY'
 import json, os, shutil, sys
 state_path, release_path, out_release, out_receipt, multisig, vault = sys.argv[1:]
-st=json.load(open(state_path,encoding="utf-8")); result=json.load(open(state_path.rsplit('/',1)[0]+"/proposal-result.json",encoding="utf-8"))
+st=json.load(open(state_path,encoding="utf-8"))
 doc=json.load(open(release_path,encoding="utf-8"))
 doc["releaseEntryPda"] = st["releaseEntryPda"]
 doc["licenseSquadsVault"] = st["licenseSquadsVault"]
 doc["authorSig"] = st["authorSig"]
 doc["quorumPolicy"] = st["quorumPolicy"]
-for path, value in ((out_release,doc),(out_receipt,{"schema":"melusina-register-proposal-receipt-v1","releaseEntryPda":st["releaseEntryPda"],"transactionPda":st["transactionPda"],"multisig":multisig,"vault":vault,"instruction":"register_release_entry","status":"Proposed","proposalPda":st["proposalPda"],"transactionIndex":st["transactionIndex"],"proposalCreateSignature":result["proposalCreateSignature"],"vaultTransactionCreateSignature":result["vaultTransactionCreateSignature"]})):
+for path, value in ((out_release,doc),(out_receipt,{"schema":"melusina-register-proposal-receipt-v1","releaseEntryPda":st["releaseEntryPda"],"transactionPda":st["transactionPda"],"multisig":multisig,"vault":vault,"instruction":"register_release_entry","status":"Prepared","transactionPda":st["transactionPda"],"proposalPda":st["proposalPda"],"transactionIndex":st["transactionIndex"]})):
     os.makedirs(os.path.dirname(path),exist_ok=True); tmp=path+".tmp"
     with open(tmp,"w",encoding="utf-8") as f: json.dump(value,f,sort_keys=True);f.write("\n")
     os.chmod(tmp,0o600);os.replace(tmp,path)

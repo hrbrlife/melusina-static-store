@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 // The Squads half of the publish-side release providers: the live quorum
-// policy read, the next transaction index, the UNEXECUTED register proposal,
-// and the shared-authority rejection of an invalid one. It approves and
-// executes nothing. A ReleaseEntry becomes Active only through the
+// policy read, the next transaction index, and the shared-authority rejection
+// of an invalid proposal. K-CHN-09: this script PROPOSES nothing — the
+// orphaned second propose path is deleted; the one governed proposal is the
+// contracts executor's proposeVaultTransaction (run by the estate runner, and
+// then approved from each voting member's own machine). This script approves
+// and executes nothing. A ReleaseEntry becomes Active only through the
 // owner-authorized runner (one governed vault transaction per entry), and
 // `mel-release approve` reads the registered entry back instead of executing a
 // proposal; its former approve-and-execute operation is gone with that rail.
@@ -20,8 +23,6 @@ import {
   ceremonyInnerInstructions,
   creationWitnessMatches,
   normalizeCreationWitness,
-  proposalCreationWitness,
-  proposalDisposition,
 } from "./mel-release-squads-recovery.mjs";
 
 function need(name) {
@@ -173,24 +174,6 @@ async function governedMemberKeys(connection,multisigPda,state) {
   return authority.members.map((member) => String(member.key));
 }
 
-async function verifiedCreationSignature(connection,pda,expected,label) {
-  const signatures=await connection.getSignaturesForAddress(pda,{limit:20},"confirmed");
-  for (const entry of signatures) {
-    if (entry.err) continue;
-    const transaction=await connection.getTransaction(entry.signature,{commitment:"confirmed",maxSupportedTransactionVersion:0});
-    if (transaction && creationWitnessMatches(normalizeCreationWitness(transaction),expected)) return entry.signature;
-  }
-  throw new Error(`${label} exists but no exact successful creation transaction signature was found`);
-}
-
-function vaultCreationWitness(state,creator,multisigPda,transactionPda) {
-  return {
-    creator:String(creator.publicKey), programId:String(multisig.PROGRAM_ID),
-    discriminator:Array.from(multisig.generated.vaultTransactionCreateInstructionDiscriminator),
-    accounts:[String(multisigPda),String(transactionPda),String(creator.publicKey),String(creator.publicKey),"11111111111111111111111111111111"],
-  };
-}
-
 function assertProposal(state,proposal,memberKeys) {
   assertProposalBinding(proposal,{
     multisig:state.multisigPda, transactionIndex:String(state.transactionIndex),
@@ -227,85 +210,6 @@ function rejectableProposalStatus(state, proposal, memberKeys) {
   return status;
 }
 
-function foreignTransactionIndex(state,disposition) {
-  // A ceremony state is prepared before the private Store stage.  Another
-  // governed publisher can legitimately consume its next Squads index between
-  // those two steps.  Report that exact, non-mutating collision to the Python
-  // rail so it can preserve the old state and prepare a fresh index.  Never
-  // treat a different VaultTransaction as a recoverable partial of this app.
-  process.stdout.write(JSON.stringify({
-    status:"ForeignTransactionIndex",
-    transactionPda:state.transactionPda,
-    proposalPda:state.proposalPda,
-    transactionIndex:state.transactionIndex,
-    disposition,
-  })+"\n");
-}
-
-async function propose(statePath) {
-  const state=readJSON(statePath), {connection,multisigPda}=context(state);
-  const appId=typeof state.appId === "string" ? state.appId : state.appID;
-  if (!appId) throw new Error("prepared ceremony state lacks appId");
-  const creator=members()[0];
-  const memberKeys=await governedMemberKeys(connection,multisigPda,state);
-  if (!memberKeys.includes(String(creator.publicKey))) throw new Error("proposal creator is not an on-chain Squads member");
-  const {transactionIndex,transactionPda,proposalPda}=statePDAs(state,multisigPda);
-  const expectedVault=expectedVaultBinding(state,creator,multisigPda);
-  const vaultInfo=await accountOrNull(connection,transactionPda,"VaultTransaction");
-  const proposalInfo=await accountOrNull(connection,proposalPda,"Proposal");
-  const disposition=proposalDisposition({vaultTransactionPresent:!!vaultInfo,proposalPresent:!!proposalInfo});
-  let vaultTransactionCreateSignature="", proposalCreateSignature="";
-  let recoveredVaultTransaction=false, alreadyProposed=false;
-
-  if (disposition === "create-vault-and-proposal") {
-    const message=new TransactionMessage({
-      payerKey:new PublicKey(state.licenseSquadsVault),
-      recentBlockhash:(await connection.getLatestBlockhash("confirmed")).blockhash,
-      instructions:ceremonyInnerInstructions(state).map(decodeIx),
-    });
-    vaultTransactionCreateSignature=await multisig.rpc.vaultTransactionCreate({connection,feePayer:creator,multisigPda,transactionIndex,creator:creator.publicKey,vaultIndex:0,ephemeralSigners:0,transactionMessage:message,memo:`Melusina ReleaseEntry ${appId}`});
-    await confirm(connection,vaultTransactionCreateSignature);
-    const createdVault=await accountOrNull(connection,transactionPda,"VaultTransaction");
-    if (!createdVault) throw new Error("VaultTransaction create confirmed but its account is absent");
-    assertVaultTransactionBinding(loadedVault(createdVault),expectedVault);
-    proposalCreateSignature=await multisig.rpc.proposalCreate({connection,feePayer:creator,creator,multisigPda,transactionIndex,isDraft:false});
-    await confirm(connection,proposalCreateSignature);
-    const createdProposal=await accountOrNull(connection,proposalPda,"Proposal");
-    if (!createdProposal) throw new Error("Proposal create confirmed but its account is absent");
-    assertProposal(state,loadedProposal(createdProposal),memberKeys);
-  } else if (disposition === "create-proposal-only") {
-    try {
-      assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
-    } catch (error) {
-      foreignTransactionIndex(state,disposition); return;
-    }
-    vaultTransactionCreateSignature=await verifiedCreationSignature(connection,transactionPda,vaultCreationWitness(state,creator,multisigPda,transactionPda),"VaultTransaction");
-    recoveredVaultTransaction=true;
-    // The only mutation in this exact partial state. Never recreate the
-    // transaction account merely because the original process crashed before
-    // ProposalCreate or before it wrote a local receipt.
-    proposalCreateSignature=await multisig.rpc.proposalCreate({connection,feePayer:creator,creator,multisigPda,transactionIndex,isDraft:false});
-    await confirm(connection,proposalCreateSignature);
-    const createdProposal=await accountOrNull(connection,proposalPda,"Proposal");
-    if (!createdProposal) throw new Error("Proposal create confirmed but its account is absent");
-    assertProposal(state,loadedProposal(createdProposal),memberKeys);
-  } else {
-    try {
-      assertVaultTransactionBinding(loadedVault(vaultInfo),expectedVault);
-    } catch (error) {
-      foreignTransactionIndex(state,disposition); return;
-    }
-    assertProposal(state,loadedProposal(proposalInfo),memberKeys);
-    vaultTransactionCreateSignature=await verifiedCreationSignature(connection,transactionPda,vaultCreationWitness(state,creator,multisigPda,transactionPda),"VaultTransaction");
-    proposalCreateSignature=await verifiedCreationSignature(connection,proposalPda,proposalCreationWitness({
-      creator:String(creator.publicKey), multisigPda:String(multisigPda), proposalPda:String(proposalPda),
-      programId:String(multisig.PROGRAM_ID), discriminator:multisig.generated.proposalCreateInstructionDiscriminator,
-    }),"Proposal");
-    recoveredVaultTransaction=true;
-    alreadyProposed=true;
-  }
-  process.stdout.write(JSON.stringify({transactionPda:state.transactionPda,proposalPda:state.proposalPda,transactionIndex:state.transactionIndex,vaultTransactionCreateSignature,proposalCreateSignature,recoveredVaultTransaction,alreadyProposed})+"\n");
-}
 async function rejectProposal(statePath) {
   const state=readJSON(statePath), {connection,multisigPda}=context(state);
   const appId=typeof state.appId === "string" ? state.appId : state.appID;
@@ -360,9 +264,8 @@ const [op, statePath] = process.argv.slice(2);
 try {
   if (op === "next-index" && !statePath) await nextIndex();
   else if (op === "policy" && !statePath) await policy();
-  else if (op === "propose" && statePath) await propose(statePath);
   else if (op === "reject-proposed" && statePath) await rejectProposal(statePath);
-  else throw new Error("usage: mel-release-squads-register.mjs {next-index|policy|propose <state>|reject-proposed <state>}");
+  else throw new Error("usage: mel-release-squads-register.mjs {next-index|policy|reject-proposed <state>}");
 } catch (err) {
   console.error(`mel-release-squads-register: ${formatTransactionFailure(err)}`);
   process.exit(1);

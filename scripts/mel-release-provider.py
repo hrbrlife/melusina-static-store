@@ -3135,37 +3135,6 @@ def prepare_or_reuse_ceremony_state(
     return state_path
 
 
-def archive_foreign_transaction_state(context: dict[str, Any], state: dict[str, Any], result: dict[str, Any]) -> Path:
-    """Preserve an occupied foreign Squads index before preparing a new one.
-
-    A stage is private and immutable, while a Squads transaction index is
-    shared by all governed publishers.  If another release consumes the
-    prepared index first, the original local state is evidence of that race,
-    not a partial transaction for this app.  Keep it under a deterministic
-    sibling name and only then allow the existing state path to be regenerated.
-    """
-    expected = {
-        "status": "ForeignTransactionIndex",
-        "transactionIndex": state.get("transactionIndex"),
-        "transactionPda": state.get("transactionPda"),
-        "proposalPda": state.get("proposalPda"),
-    }
-    mismatches = [name for name, value in expected.items() if result.get(name) != value]
-    if mismatches:
-        raise ProviderError("foreign Squads transaction report does not bind prepared ceremony state: " + ", ".join(mismatches))
-    index = state.get("transactionIndex")
-    if not isinstance(index, int) or index < 1:
-        raise ProviderError("prepared ceremony state has an invalid transactionIndex")
-    state_path = clean_abs(str(context["statePath"]), "provider statePath")
-    if state_path.is_symlink() or not state_path.is_file():
-        raise ProviderError("prepared ceremony state vanished before foreign-index archival")
-    archived = state_path.with_name(f"{state_path.stem}.foreign-index-{index}{state_path.suffix}")
-    if archived.exists() or archived.is_symlink():
-        raise ProviderError(f"foreign Squads ceremony evidence already exists: {archived}")
-    os.replace(state_path, archived)
-    return archived
-
-
 def read_account(pda: str, commitment: str) -> dict[str, Any] | None:
     """Read only: the raw getAccountInfo value at exactly pda, or None."""
     rpc = env("MEL_RELEASE_RPC_URL", required=True)
@@ -3224,9 +3193,17 @@ def finalize_release(context: dict[str, Any]) -> None:
 
 
 def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str, vault: str, release_out: Path, receipt_out: Path) -> None:
-    # Check before any rewrite, Pearl preparation, or Squads transaction work.
-    # A pre-existing staged candidate can then be resumed only under the live
-    # policy that will actually govern its ReleaseEntry proposal.
+    """Prepare one candidate's release ceremony state — and PROPOSE nothing.
+
+    K-CHN-09: the one Squads proposal is the contracts executor's
+    proposeVaultTransaction, sent by the estate runner and then approved from
+    each voting member's own machine. The provider's second propose path is
+    deleted. What remains is the local, off-chain half: validate the staged
+    candidate, rewrite its RELEASE.json with the prepared ReleaseEntry
+    identity, and record the PREPARED ceremony state (the release identity a
+    proposal must bind) as the receipt mel-release and the runner's own
+    preflight re-verify before anything is proposed on chain.
+    """
     authority = require_shared_squads_authority()
     assert_live_quorum_policy()
     context = require_context(app_id)
@@ -3244,54 +3221,28 @@ def propose(app_id: str, app_hash: str, version: str, nonce: str, multisig: str,
             release_path=original_release_path,
         )
     release_path = rewrite_release(context, app_id, app_hash, release_hash, version, nonce)
-    foreign_indices: list[int] = []
-    for _ in range(3):
-        state_path = prepare_or_reuse_ceremony_state(
-            context, app_id=app_id, app_hash=app_hash, release_hash=release_hash,
-            version=version, nonce=nonce, multisig=multisig, vault=vault,
-            release_path=release_path,
-        )
-        state = read_json(state_path)
-        if state.get("appHash") != app_hash or state.get("releaseHash") != hashlib.sha256((app_hash + version + nonce).encode()).hexdigest():
-            raise ProviderError("prepared release ceremony state does not bind the candidate")
-        write_json(release_path, {**read_json(release_path), "releaseEntryPda": state["releaseEntryPda"]})
-        register_ix = state.get("registerReleaseEntryInstruction")
-        if not isinstance(register_ix, dict):
-            raise ProviderError("prepared ceremony state lacks register_release_entry instruction")
-        register_path = state_path.with_name("register-release-entry.ix.json")
-        write_json(register_path, register_ix)
-        raw = run_register_helper(["propose", str(state_path)], register_executor_env())
-        result = last_json(raw)
-        if result.get("status") == "ForeignTransactionIndex":
-            foreign_indices.append(int(state["transactionIndex"]))
-            archive_foreign_transaction_state(context, state, result)
-            continue
-        if (result.get("transactionPda") != state.get("transactionPda") or
-                result.get("proposalPda") != state.get("proposalPda") or
-                result.get("transactionIndex") != state.get("transactionIndex") or
-                not result.get("vaultTransactionCreateSignature") or
-                not result.get("proposalCreateSignature") or
-                not isinstance(result.get("recoveredVaultTransaction"), bool) or
-                not isinstance(result.get("alreadyProposed"), bool) or
-                (result.get("alreadyProposed") and not result.get("recoveredVaultTransaction"))):
-            raise ProviderError("Squads proposal result does not bind prepared ceremony state")
-        shutil.copyfile(release_path, release_out)
-        write_json(receipt_out, {
-            "schema": "melusina-register-proposal-receipt-v1", "releaseEntryPda": state["releaseEntryPda"],
-            "transactionPda": state["transactionPda"], "multisig": multisig, "vault": vault,
-            "instruction": "register_release_entry", "status": "Proposed", "proposalPda": result.get("proposalPda", ""),
-            "transactionSignatures": {
-                "vaultTransactionCreate": result["vaultTransactionCreateSignature"],
-                "proposalCreate": result["proposalCreateSignature"],
-            },
-            "recovery": {
-                "recoveredVaultTransaction": result["recoveredVaultTransaction"],
-                "alreadyProposed": result["alreadyProposed"],
-                "repreparedForeignTransactionIndices": foreign_indices,
-            },
-        })
-        return
-    raise ProviderError("Squads transaction index stayed occupied after three fresh ceremony preparations")
+    state_path = prepare_or_reuse_ceremony_state(
+        context, app_id=app_id, app_hash=app_hash, release_hash=release_hash,
+        version=version, nonce=nonce, multisig=multisig, vault=vault,
+        release_path=release_path,
+    )
+    state = read_json(state_path)
+    if state.get("appHash") != app_hash or state.get("releaseHash") != hashlib.sha256((app_hash + version + nonce).encode()).hexdigest():
+        raise ProviderError("prepared release ceremony state does not bind the candidate")
+    write_json(release_path, {**read_json(release_path), "releaseEntryPda": state["releaseEntryPda"]})
+    register_ix = state.get("registerReleaseEntryInstruction")
+    if not isinstance(register_ix, dict):
+        raise ProviderError("prepared ceremony state lacks register_release_entry instruction")
+    register_path = state_path.with_name("register-release-entry.ix.json")
+    write_json(register_path, register_ix)
+    shutil.copyfile(release_path, release_out)
+    write_json(receipt_out, {
+        "schema": "melusina-register-proposal-receipt-v1", "releaseEntryPda": state["releaseEntryPda"],
+        "transactionPda": state["transactionPda"], "multisig": multisig, "vault": vault,
+        "instruction": "register_release_entry", "status": "Prepared", "proposalPda": state["proposalPda"],
+        "transactionIndex": state["transactionIndex"],
+    })
+
 
 
 def finalize_register(app_id: str, app_hash: str, release_hash: str, version: str, nonce: str,

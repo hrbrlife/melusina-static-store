@@ -243,8 +243,10 @@ func TestShellProviderRunsTheSquadsHelperConfinedToThePinnedSDK(t *testing.T) {
 			"MEL_RELEASE_NODE_MODULE_ROOTS=" + string(roots) + "\n" +
 			"NODE_OPTIONS=<unset>\nNODE_PATH=<unset>\n"
 	}
-	state := filepath.Join(f.dir, "state", "apps", "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510", "provider", "ceremony-state.json")
-	if got, want := readLog(t, f.nodeLog), invocation("next-index")+strings.Replace(invocation("propose"), " propose\n", " propose "+state+"\n", 1); got != want {
+	// K-CHN-09: the helper PROPOSES nothing — the one Squads proposal is the
+	// contracts executor's proposeVaultTransaction, sent by the estate runner.
+	// The provider runs the helper once, read-only, for the next index.
+	if got, want := readLog(t, f.nodeLog), invocation("next-index"); got != want {
 		t.Fatalf("the helper ran as\n%s\nwant\n%s", got, want)
 	}
 	for _, out := range []string{"release.json", "propose-receipt.json"} {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -204,8 +205,8 @@ func TestRunRefusesAnotherEstatesStateBeforeTheProvider(t *testing.T) {
 		"  multisig: "+testSquadsMultisig+"\n"+
 		"  vault: "+testSquadsVault+"\n"+
 		"  program_id: "+testSquadsProgramID+"\n"+
-		"  threshold: 2\n"+
-		"  member_count: 3\n"+
+		"  threshold: "+strconv.Itoa(testSquadsThreshold)+"\n"+
+		"  member_count: "+strconv.Itoa(testSquadsMembers)+"\n"+
 		"groups:\n"+
 		"  test:\n"+
 		"    apps:\n"+

@@ -19,15 +19,18 @@ import (
 // constants stand in for it in catalog fixtures;
 // TestEstateFixtureConstantsAreTheVector keeps them equal to the vector.
 const (
-	estateVectorsPath    = "../../testdata/estate-profile-vectors.json"
-	newEstateVector      = "new-estate-revision-1"
-	testStoreOrigin      = "https://bazaar.rehearsal.invalid"
-	testProgramID        = "7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD"
-	testSquadsMultisig   = "3D1TFuixe17WNQGBGUc1c8BKEAfspARX34Ak9yP77wkD"
-	testSquadsVault      = "QLCZ39GVSyJn89pN4HUe4yFrVXXu2NVKKdbxvfFNbn4"
+	estateVectorsPath = "../../testdata/estate-profile-vectors.json"
+	newEstateVector   = "new-estate-revision-1"
+	testStoreOrigin   = "https://bazaar.rehearsal.invalid"
+	testProgramID     = "7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD"
+	// K-CHN-09: the estateprofile re-sync made roles.store-release state the
+	// core authority exactly (K-CHN-03), so the release authority here is the
+	// core multisig at 3 of 4.
+	testSquadsMultisig   = "AUFQcMxjxDQE7RSSy4sHhuQWVyrdn7L6E2LvSLGkU4S7"
+	testSquadsVault      = "HVGqHHs1yTdhrBUT4JLepFAbS6wXKAZHNSqWxb2zWomG"
 	testSquadsProgramID  = "8bDkdukaQiH73C7Z6wdVgtXEJQwZsHD8f7iAnBGqBuLb"
-	testSquadsThreshold  = 2
-	testSquadsMembers    = 3
+	testSquadsThreshold  = 3
+	testSquadsMembers    = 4
 	testEstateMasterMint = "Arum4b6QykqtkcKpfxbHSU1TTiHjxVDCxL1EPg9ka7sz"
 )
 
@@ -475,9 +478,11 @@ func TestBindCatalogRequiresTheEstateStoreAndAuthority(t *testing.T) {
 		"multisig":       {other(func(a *SquadsAuthority) { a.Multisig = testSquadsVault }), "roles.store-release authority"},
 		"vault":          {other(func(a *SquadsAuthority) { a.Vault = testSquadsMultisig }), "roles.store-release authority"},
 		"squads program": {other(func(a *SquadsAuthority) { a.ProgramID = testProgramID }), "roles.store-release authority"},
-		"threshold":      {other(func(a *SquadsAuthority) { a.Threshold = 3 }), "roles.store-release authority"},
-		"member count":   {other(func(a *SquadsAuthority) { a.MemberCount = 4 }), "roles.store-release authority"},
-		"malformed":      {other(func(a *SquadsAuthority) { a.Vault = "" }), "valid shared Squads authority"},
+		// K-CHN-09: the re-synced vector's store-release authority is the core
+		// multisig at 3 of 4; the controls deviate from THAT.
+		"threshold":    {other(func(a *SquadsAuthority) { a.Threshold = 2 }), "roles.store-release authority"},
+		"member count": {other(func(a *SquadsAuthority) { a.MemberCount = 3 }), "roles.store-release authority"},
+		"malformed":    {other(func(a *SquadsAuthority) { a.Vault = "" }), "valid shared Squads authority"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			attempt := cfg

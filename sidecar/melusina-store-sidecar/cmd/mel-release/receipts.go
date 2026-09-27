@@ -174,8 +174,12 @@ func readProposalReceipt(path, releaseEntryPda string) (proposalReceipt, artifac
 	if err != nil {
 		return p, artifactRef{}, err
 	}
+	// K-CHN-09: the provider PROPOSES nothing — the one Squads proposal is the
+	// contracts executor's proposeVaultTransaction, sent by the estate runner.
+	// The provider's receipt is the PREPARED ceremony state (the release
+	// identity a proposal must bind), recorded before any proposal exists.
 	if p.Schema != proposalSchema || p.ReleaseEntryPDA != releaseEntryPda || p.TransactionPDA == "" ||
-		p.Instruction != "register_release_entry" || p.Status != "Proposed" {
+		p.Instruction != "register_release_entry" || p.Status != "Prepared" {
 		return p, artifactRef{}, errors.New("register-proposal receipt schema or binding mismatch")
 	}
 	return p, ref, nil

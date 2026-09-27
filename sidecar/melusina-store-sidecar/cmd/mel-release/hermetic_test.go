@@ -282,7 +282,7 @@ func main() {
 		writeJSON(env("MEL_PROPOSE_RECEIPT_OUT"), map[string]any{
 			"schema": "melusina-register-proposal-receipt-v1", "releaseEntryPda": v.PdaNew,
 			"transactionPda": fx.TransactionPda, "multisig": env("MEL_SQUADS_MULTISIG"),
-			"vault": env("MEL_SQUADS_VAULT"), "instruction": "register_release_entry", "status": "Proposed",
+			"vault": env("MEL_SQUADS_VAULT"), "instruction": "register_release_entry", "status": "Prepared",
 		})
 
 	case "release-entry-account":

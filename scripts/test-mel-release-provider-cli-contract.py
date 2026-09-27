@@ -286,7 +286,6 @@ def test_propose_uses_only_supported_flags():
             "MEL_PROGRAM_ID": "program",
             "MEL_RELEASE_AUTHOR_KEYPAIR": "/tmp/author.json",
             **pinned_input("MEL_RELEASE_REGISTER_EXECUTOR", executor),
-            "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members),
             **pinned_input("MEL_RELEASE_SQUADS_NODE_MODULES", fake_squads_node_modules(root)),
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
             "MEL_RELEASE_SQUADS_THRESHOLD": "3",
@@ -323,14 +322,16 @@ def test_propose_uses_only_supported_flags():
         assert app_dir != ceremony
         for unsupported in ("--artifact-spk", "--artifact-metadata"):
             assert unsupported not in proposal, proposal
-        helper = captured[1]
-        assert helper[1:] == ["--require", str(provider.NODE_CONFINEMENT), str(executor), "propose", str(state)], helper
+        # K-CHN-09: the helper PROPOSES nothing — exactly one process runs, the
+        # Pearl tool's dry-run. No Squads helper invocation may follow it.
+        assert len(captured) == 1, captured
         receipt = json.loads(receipt_out.read_text())
-        assert receipt["recovery"] == {
-            "recoveredVaultTransaction": True,
-            "alreadyProposed": False,
-            "repreparedForeignTransactionIndices": [],
-        }, receipt
+        assert receipt["schema"] == "melusina-register-proposal-receipt-v1", receipt
+        assert receipt["status"] == "Prepared", receipt
+        assert receipt["releaseEntryPda"] == "release-pda", receipt
+        assert receipt["transactionPda"] == "proposal-pda", receipt
+        assert "transactionSignatures" not in receipt, receipt
+        assert "recovery" not in receipt, receipt
 
 
 def test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state():
@@ -460,53 +461,49 @@ def test_propose_register_resumes_the_exact_state_without_advancing_index():
             provider.rewrite_release = lambda *_: release
             provider.next_index = lambda *_: (_ for _ in ()).throw(AssertionError("resume advanced the Squads index"))
             provider.assert_live_quorum_policy = lambda: {"threshold": 3, "memberCount": 4}
-            provider.run = lambda args, **_: captured.append(args) or json.dumps({
-                "transactionPda": "transaction", "proposalPda": "proposal", "transactionIndex": 1755,
-                "vaultTransactionCreateSignature": "recovered-create", "proposalCreateSignature": "proposal-create",
-                "recoveredVaultTransaction": True, "alreadyProposed": False,
-            })
+            # K-CHN-09: nothing invokes the helper on a resume — the propose
+            # path is gone. A "run" here means a real chain write happened.
+            provider.run = lambda args, **_: captured.append(args) or (_ for _ in ()).throw(
+                AssertionError("resume ran a process; the provider must only read local state"))
             out_release, out_receipt = root / "out-release.json", root / "out-receipt.json"
             provider.propose(app_id, app_hash, "1.2.3", nonce, TEST_SQUADS_MULTISIG, TEST_SQUADS_VAULT, out_release, out_receipt)
         finally:
             provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy = old_run, old_ctx, old_rewrite, old_index, old_policy
             restore_env(old)
-        assert captured == [[TEST_NODE_BIN, "--require", str(provider.NODE_CONFINEMENT), str(executor), "propose", str(state_path)]], captured
-        assert json.loads(out_receipt.read_text())["recovery"]["recoveredVaultTransaction"] is True
+        assert captured == [], captured
+        receipt = json.loads(out_receipt.read_text())
+        assert receipt["status"] == "Prepared", receipt
+        assert receipt["transactionPda"] == "transaction", receipt
+        assert receipt["transactionIndex"] == 1755, receipt
+        assert "transactionSignatures" not in receipt, receipt
 
 
-def test_propose_reprepares_after_a_foreign_transaction_index():
+def test_propose_prepares_exactly_one_ceremony_state():
+    """K-CHN-09: the foreign-index re-preparation loop is gone with the propose
+    path. A prepared state is validated and recorded once; nothing consumes a
+    chain index, so there is no race to re-prepare out of."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         app_id, app_hash, nonce = "app", "a" * 64, "nonce"
         version, release_hash = "1.2.3", provider.hashlib.sha256((app_hash + "1.2.3" + nonce).encode()).hexdigest()
         state_path = root / "ceremony-state.json"
-
-        def state(index, transaction, proposal):
-            return {
-                "$schema": "melusina-release-ceremony-v1", "appId": app_id,
-                "appHash": app_hash, "releaseHash": release_hash, "version": version, "releaseNonce": nonce,
-                "multisigPda": TEST_SQUADS_MULTISIG, "licenseSquadsVault": TEST_SQUADS_VAULT, "masterNftMint": "master", "programId": "program",
-                "transactionIndex": index, "transactionPda": transaction, "proposalPda": proposal, "releaseEntryPda": "release",
-                "registerReleaseEntryInstruction": {}, "ed25519Instruction": {},
-                "quorumPolicy": {"multisigPda": TEST_SQUADS_MULTISIG, "threshold": 3, "memberCount": 4},
-            }
-
-        old_state, new_state = state(1759, "old-transaction", "old-proposal"), state(1760, "new-transaction", "new-proposal")
-        state_path.write_text(json.dumps(old_state) + "\n")
+        prepared_state = {
+            "$schema": "melusina-release-ceremony-v1", "appId": app_id,
+            "appHash": app_hash, "releaseHash": release_hash, "version": version, "releaseNonce": nonce,
+            "multisigPda": TEST_SQUADS_MULTISIG, "licenseSquadsVault": TEST_SQUADS_VAULT, "masterNftMint": "master", "programId": "program",
+            "transactionIndex": 1759, "transactionPda": "transaction", "proposalPda": "proposal", "releaseEntryPda": "release",
+            "registerReleaseEntryInstruction": {}, "ed25519Instruction": {},
+            "quorumPolicy": {"multisigPda": TEST_SQUADS_MULTISIG, "threshold": 3, "memberCount": 4},
+        }
+        state_path.write_text(json.dumps(prepared_state) + "\n")
         release = root / "RELEASE.json"
         release.write_text("{}\n")
         for name, content in (("app.spk", b"spk"), ("metadata.json", b"{}\n"), ("RUNTIME-CONTRACT.json", b"{}\n")):
-            path = root / name
-            path.write_bytes(content)
+            (root / name).write_bytes(content)
         executor = root / "executor.mjs"
         executor.write_text("// test executor\n")
         config = root / "bazaar-catalog.yaml"
         write_catalog_config(config, {"app": {"appId": app_id, "source_path": "app"}})
-        members = []
-        for index in range(3):
-            member = root / f"member-{index}.json"
-            member.write_text("[]\n")
-            members.append(str(member))
         context = {
             "catalogDir": str(root), "ceremonyDir": str(root), "spkPath": str(root / "app.spk"),
             "metadataPath": str(root / "metadata.json"), "runtimeContractPath": str(root / "RUNTIME-CONTRACT.json"),
@@ -520,44 +517,27 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
             "MEL_RELEASE_SQUADS_THRESHOLD": "3", "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
             **pinned_input("MEL_RELEASE_PEARL_TOOL", fake_pearl_tool(root)), "MEL_RELEASE_LICENSE_MINT": "license",
             "MEL_RELEASE_AUTHOR_KEYPAIR": "/tmp/author.json", **pinned_input("MEL_RELEASE_REGISTER_EXECUTOR", executor),
-            "MEL_RELEASE_SQUADS_MEMBERS": ",".join(members), **pinned_input("MEL_RELEASE_SQUADS_NODE_MODULES", fake_squads_node_modules(root)),
+            "MEL_RELEASE_SQUADS_MEMBERS": "", **pinned_input("MEL_RELEASE_SQUADS_NODE_MODULES", fake_squads_node_modules(root)),
             "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
         })
         try:
             provider.require_context = lambda _: context
             provider.rewrite_release = lambda *_: release
-            provider.next_index = lambda *_: 1760
+            provider.next_index = lambda *_: (_ for _ in ()).throw(AssertionError("prepare advanced the Squads index"))
             provider.assert_live_quorum_policy = lambda: {"threshold": 3, "memberCount": 4}
-
-            def fake_run(args, **_):
-                captured.append(args)
-                if args[0] == str(root / "melusina-pearl-tool"):
-                    state_path.write_text(json.dumps(new_state) + "\n")
-                    return ""
-                node_calls = [item for item in captured if item[0] == TEST_NODE_BIN]
-                if len(node_calls) == 1:
-                    return json.dumps({
-                        "status": "ForeignTransactionIndex", "transactionPda": "old-transaction",
-                        "proposalPda": "old-proposal", "transactionIndex": 1759,
-                    })
-                return json.dumps({
-                    "transactionPda": "new-transaction", "proposalPda": "new-proposal", "transactionIndex": 1760,
-                    "vaultTransactionCreateSignature": "create", "proposalCreateSignature": "proposal",
-                    "recoveredVaultTransaction": False, "alreadyProposed": False,
-                })
-
-            provider.run = fake_run
+            provider.run = lambda args, **_: captured.append(args) or (_ for _ in ()).throw(
+                AssertionError("prepare ran a process; the provider must only read local state"))
             out_release, out_receipt = root / "out-release.json", root / "out-receipt.json"
             provider.propose(app_id, app_hash, version, nonce, TEST_SQUADS_MULTISIG, TEST_SQUADS_VAULT, out_release, out_receipt)
         finally:
             provider.run, provider.require_context, provider.rewrite_release, provider.next_index, provider.assert_live_quorum_policy = old_run, old_ctx, old_rewrite, old_index, old_policy
             restore_env(old)
-        archived = root / "ceremony-state.foreign-index-1759.json"
-        assert json.loads(archived.read_text()) == old_state
-        assert json.loads(state_path.read_text()) == new_state
+        assert captured == [], captured
+        # The prepared state is untouched: no foreign-index archival, no rewrite.
+        assert json.loads(state_path.read_text()) == prepared_state
         receipt = json.loads(out_receipt.read_text())
-        assert receipt["recovery"]["repreparedForeignTransactionIndices"] == [1759], receipt
-        assert [item[0] for item in captured].count("node") == 2, captured
+        assert receipt["status"] == "Prepared", receipt
+        assert receipt["transactionIndex"] == 1759, receipt
 
 
 def test_submit_binds_the_immutable_catalog_slot():
@@ -3529,6 +3509,7 @@ if __name__ == "__main__":
     test_propose_uses_only_supported_flags()
     test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state()
     test_propose_register_resumes_the_exact_state_without_advancing_index()
+    test_propose_prepares_exactly_one_ceremony_state()
     test_submit_binds_the_immutable_catalog_slot()
     test_submit_allows_only_explicit_multipart_transport()
     test_submit_socks_proxy_is_loopback_only_and_scoped()

@@ -310,7 +310,10 @@ func TestReleaseToolsHaveNoSelfExecutingSquadsPath(t *testing.T) {
 	for path, needle := range map[string]string{
 		filepath.Join("..", "..", "scripts", "mel-release-provider.sh"):             "release-entry-account",
 		filepath.Join("..", "..", "..", "..", "scripts", "mel-release-provider.py"): "release-entry-account",
-		filepath.Join("..", "..", "scripts", "mel-release-squads-register.mjs"):     "proposalCreate",
+		// K-CHN-09: the helper proposes nothing; the one Squads proposal is
+		// the contracts executor's proposeVaultTransaction. Its surviving
+		// mutation is the shared-authority rejection of an invalid one.
+		filepath.Join("..", "..", "scripts", "mel-release-squads-register.mjs"): "proposalReject",
 	} {
 		raw, err := os.ReadFile(path)
 		if err != nil {

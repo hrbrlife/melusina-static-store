@@ -35,6 +35,23 @@ const (
 	// program-must-be-governed.
 	RefusalProgramMustBeFinal    = "estate-profile-program-must-be-final"
 	RefusalProgramMustBeGoverned = "estate-profile-program-must-be-governed"
+	// K-CHN-03: the chain registers every app ReleaseEntry under the core
+	// vault, and the Store serves an app only from roles.store-release's
+	// vault, so a store-release authority that is not core's makes every app
+	// release unservable. Until the role is retired, roles.store-release
+	// must state core's authority exactly.
+	RefusalStoreReleaseNotCore = "estate-profile-store-release-not-core"
+
+	// K-CHN-06: the permanent reseller parameters. The issuance limit a
+	// reseller is activated with is written once (activate_reseller,
+	// instructions/resellers.rs:17,59,218) and no instruction ever rewrites
+	// it; the master edition's maxSupply is minted once and editions beyond
+	// it are impossible without re-founding. Both carry named refusals, and
+	// a floor at or below two is accepted only with the profile's signed
+	// acknowledgement (the twin: profile.mjs, refusal
+	// issuance-limit-below-floor; ceremony-run.mjs, max-supply-below-editions).
+	RefusalIssuanceLimitBelowFloor = "issuance-limit-below-floor"
+	RefusalMaxSupplyBelowEditions  = "max-supply-below-editions"
 
 	// Identity and authority.
 	RefusalIDNotSelfCertifying    = "estate-profile-id-not-self-certifying"

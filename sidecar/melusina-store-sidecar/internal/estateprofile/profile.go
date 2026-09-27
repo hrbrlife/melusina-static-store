@@ -66,6 +66,14 @@ const (
 	// would cost its owners a new revision to correct.
 	StoreReleaseMinThreshold = 2
 
+	// CoreMinThreshold is the least threshold roles.core may state
+	// (K-CHN-07). OD-04: the owners sign 2-of-4 and the core votes 3-of-4; a
+	// 1-of-N "core" multisig makes every threshold claim in the estate
+	// false. The contracts twin and the ceremony validator carry the same
+	// floor (profile.mjs CORE_MIN_THRESHOLD, estate-profile.mjs
+	// ESTATE_PROFILE_CORE_MIN_THRESHOLD).
+	CoreMinThreshold = 2
+
 	// MaxStoreIDLength is the longest storeId a profile may state. The
 	// Store's state backup names its RemoteBak namespace
 	// "store-<storeId>-g<N>" (Store internal/storerecovery/namespace.go
@@ -101,6 +109,10 @@ const (
 	AuthorityRoleReseller         = "reseller"
 	AuthorityRoleProgramUpgrade   = "program-upgrade"
 	AuthorityRoleRootInstallAdmin = "root-install-admin"
+	// The estate runner is a non-voting seat (WL-111 / S-21): it may
+	// initiate and execute Squads proposals but must never vote, and it
+	// is never a threshold member.
+	AuthorityRoleRunner = "estate-runner"
 
 	AuthorityKindSquads = "squads"
 	AuthorityKindKey    = "key"

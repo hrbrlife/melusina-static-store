@@ -16,7 +16,6 @@ import (
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
-	"github.com/hrbrlife/melusina-store-sidecar/internal/sidecarclasses"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/squadsproof"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 	"net/http"
@@ -134,18 +133,9 @@ func newHostApplyPlanFixture(t *testing.T) hostApplyPlanFixture {
 	cfg.PublicBaseURL = "https://bazaar.melusina-os.org"
 	cfg.PrivateStageDir = t.TempDir()
 	cfg.SidecarClasses = sidecarClassTableFixture(t)
-	// The host-apply fixture's sidecar component is fineract-v2; extend the
-	// signed table with its row so the class cross-check passes it.
-	cfg.SidecarClasses.Rows = append(cfg.SidecarClasses.Rows, sidecarclasses.Row{ID: "fineract-v2", Class: sidecarclasses.ClassIdentity, KeyCustody: sidecarclasses.CustodySidecarHeldIdentit, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+adapter_oci_stack.go"}, sidecarclasses.Row{ID: "fineract-sidecar", Class: sidecarclasses.ClassIdentity, KeyCustody: sidecarclasses.CustodySidecarHeldIdentit, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+adapter_oci_stack.go"})
-	// Re-sign the extended table so the fixture stays internally consistent.
-	{
-		fixtureOp := newTestIdentity(t, "store", testLicenseMint, "bazaar.melusina-os.org")
-		resigned, signErr := sidecarclasses.Sign(fixtureOp, cfg.SidecarClasses)
-		if signErr != nil {
-			t.Fatal(signErr)
-		}
-		cfg.SidecarClasses = resigned
-	}
+	// The host-apply fixture's sidecar component is fineract-v2; the derived
+	// fixture table already declares it (sidecarClassFixtureClasses), so no
+	// row is appended here — a duplicate row is a named refusal.
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 	cfg.StoreAuthority = op.Public().SignPubkeyB58
 	chain := newMockChainReader()

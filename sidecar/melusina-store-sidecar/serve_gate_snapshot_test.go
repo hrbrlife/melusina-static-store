@@ -64,6 +64,10 @@ func sidecarServeSetup(t *testing.T, body []byte) (*serveGate, string, string) {
 	cfg.DistDir = t.TempDir()
 	cfg.StoreID = "rrs-store"
 	cfg.PublicBaseURL = "https://bazaar.melusina-os.org:8443"
+	// K-CHN-33: the gate cross-checks the component's signed kind against the
+	// signed sidecar class table; the derived fixture covers every component
+	// id the suites drive (swaprail included).
+	cfg.SidecarClasses = sidecarClassTableFixture(t)
 
 	hash := sha256.Sum256(body)
 	name := "rrs-store-" + hex.EncodeToString(hash[:8]) + ".bin"

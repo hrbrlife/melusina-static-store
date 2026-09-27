@@ -775,6 +775,10 @@ func TestServeGate_SidecarRequiresCurrentSignedGenerationAndCascade(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
+	// K-CHN-33: the serve gate cross-checks the component's signed kind
+	// against the signed sidecar class table; the derived fixture covers
+	// swaprail (sidecar_identity).
+	cfg.SidecarClasses = sidecarClassTableFixture(t)
 	sidPDA, _, err := pda.SidecarIdentity(license, "swaprail", 1, programID)
 	if err != nil {
 		t.Fatal(err)

@@ -33,18 +33,18 @@ import (
 // `go test ./internal/estateprofile/ -update-vectors`, confirm that the
 // regenerated files still equal the deployer's, and re-pin the commit and
 // every hash here.
-const deployerCopyCommit = "3f46e4ffdfe85cd9f23d9b9a509f2052bdf0142f"
+const deployerCopyCommit = "793ebd423075fb3495587b4468e06f4a59c66de2"
 
 // deployerCopyTestdata is the SHA-256 of each testdata file the package's
 // tests read, as the deployer committed it at deployerCopyCommit
 // (deploy-ui/testdata/<name>). The deployer's own byte copy of the Store's
 // vectors (store-estate-profile-vectors.json) is not among them.
 var deployerCopyTestdata = map[string]string{
-	"estate-profile-vectors.json":                 "4c5744340f2bd0537112f689ac14ca2730085e984051e4ee5f93f68f09899cfb",
+	"estate-profile-vectors.json":                 "85020184646ca31494334374657cc359b97dc69372b5d6e247df0e595842392d",
 	"foundation-authorization-vectors.json":       "19dd047d8cab7c9926032bb0883177920af806ed2174818c937866ee75ffc9ad",
 	"provider-install-authorization-vectors.json": "016e2b1db5b4d8c21fcd1143975e3a3886b81dad7f1aceaf43fa5bb85377e06a",
 	"store-host-authorization-vectors.json":       "99b85dad81eabe6d9f61a86a1cc4f6a63160f7d2b67507ff86766b312ebb2045",
-	"contracts-example-estate.profile.json":       "f2aeafa2f04eab8785d6fad489d9a54effe7ecf5f6097188d669cbdb6f367e0f",
+	"contracts-example-estate.profile.json":       "b0e40393393d409cb3cd3ca8c836a276b79d65903c7ed9eb49278276094565c9",
 }
 
 // deployerCopyTests is the SHA-256 of every test file of the package at
@@ -61,7 +61,7 @@ var deployerCopyTests = map[string]string{
 	"store_enrollment_test.go":               "c0e2f1929545bf1d7cb6f9edc39e1eb2552b1e73a4a719792efdfe4308c01597",
 	"store_host_authorization_test.go":       "14cc6a99bfb14a5ae6fe9ebad4cb9477dfb5a1bc46cd4b951c6fbc702ba8e18d",
 	"strictjson_test.go":                     "ad4755613a3a9bc41fb7b596827417165a5b866a6342066baf7a558a188731d7",
-	"validate_test.go":                       "d21e8b43cbfebff287c609de4905b54200f96ab49eadc6c324c6afdd311fbe3b",
+	"validate_test.go":                       "f0b4cf86866fffbcd0f75852b7808b1db1da3eb50684141174756de877eb07a4",
 	"vectors_test.go":                        "89cad49b795152fc1c945477cfb6eafba6b55b25b85ae284d77f44dd199beb52",
 	"release_trust_test.go":	"0ae02ed9bc7258885ddc3eb76cfc0fe1479cf64701da9d37b6b38a96955e163c",
 	"verify_test.go":                         "34838f35b6b642919bc4207dc922aa5e78a795ed15975ee3cc5dea8175803a2b",

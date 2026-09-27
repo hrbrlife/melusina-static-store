@@ -96,7 +96,7 @@
       "name": "Example Reseller",
       "territory": "EXAMPLE",
       "issuanceLimit": 2,
-      "maxSupply": 32,
+      "maxSupply": 50,
       "issuanceAcknowledged": true,
       "category": null,
       "licensePriceLamports": "1000000"

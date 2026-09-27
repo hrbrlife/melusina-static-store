@@ -319,7 +319,7 @@ func refuseMatches(t *testing.T, profile EstateProfileV1, want string) error {
 // revision, fails by name; re-copy it with `git show <commit>:<path>`.
 const (
 	contractsCeremonyProfilePath   = "../../testdata/contracts-example-estate.profile.json"
-	contractsCeremonyProfileSHA256 = "f2aeafa2f04eab8785d6fad489d9a54effe7ecf5f6097188d669cbdb6f367e0f"
+	contractsCeremonyProfileSHA256 = "b0e40393393d409cb3cd3ca8c836a276b79d65903c7ed9eb49278276094565c9"
 )
 
 func contractsCeremonyProfile(t *testing.T) []byte {

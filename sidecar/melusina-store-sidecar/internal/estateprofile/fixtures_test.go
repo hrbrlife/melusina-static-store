@@ -185,9 +185,10 @@ func newEstateProfile(t *testing.T) EstateProfileV1 {
 				PermissionMasks: []uint32{},
 			},
 			{
+				// K-CHN-03: the Store release custodian is the core vault.
 				Role: AuthorityRoleStoreRelease, Kind: AuthorityKindSquads,
-				Multisig: vectorAddress("rehearsal/store-release/multisig"), Vault: vectorAddress("rehearsal/store-release/vault"),
-				Threshold: 2, MemberCount: 3, PermissionMasks: []uint32{7, 7, 7},
+				Multisig: vectorAddress("rehearsal/core/multisig"), Vault: vectorAddress("rehearsal/core/vault"),
+				Threshold: 3, MemberCount: 4, PermissionMasks: []uint32{7, 7, 7, 7},
 				ConfigAuthority: "11111111111111111111111111111111", TimeLockSeconds: 0,
 			},
 		},
@@ -311,8 +312,9 @@ func paypeDevnetProfile(t *testing.T) EstateProfileV1 {
 				Vault: paypeRootInstallAdmin, Threshold: 1, MemberCount: 1, PermissionMasks: []uint32{},
 			},
 			{
+				// K-CHN-03: the Store release custodian is the core vault.
 				Role: AuthorityRoleStoreRelease, Kind: AuthorityKindSquads,
-				Multisig: vectorAddress("paype/store-release/multisig"), Vault: vectorAddress("paype/store-release/vault"),
+				Multisig: paypeCoreMultisig, Vault: paypeCoreVault,
 				Threshold: 3, MemberCount: 4, PermissionMasks: []uint32{7, 7, 7, 7},
 				ConfigAuthority: "11111111111111111111111111111111", TimeLockSeconds: 0,
 			},
@@ -345,8 +347,6 @@ var paypeIllustrativeFields = []string{
 	"programs.*.idlSha256",
 	"programs.*.sourceCommit",
 	"releaseTrust",
-	"roles.store-release.multisig",
-	"roles.store-release.vault",
 	"signatures",
 }
 

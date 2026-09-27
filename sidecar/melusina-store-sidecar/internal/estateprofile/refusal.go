@@ -35,6 +35,16 @@ const (
 	// program-must-be-governed.
 	RefusalProgramMustBeFinal    = "estate-profile-program-must-be-final"
 	RefusalProgramMustBeGoverned = "estate-profile-program-must-be-governed"
+	// K-CHN-03: the chain registers every app ReleaseEntry under the core
+	// vault, and the Store serves an app only from roles.store-release's
+	// vault, so a store-release authority that is not core's makes every app
+	// release unservable. Until the role is retired, roles.store-release
+	// must state core's authority exactly.
+	// K-CHN-09: the core multisig's config authority is a standing key that
+	// can rewrite the core's own membership; only the all-zero sentinel
+	// verifies, and a set one is refused BY NAME.
+	RefusalCoreMultisigConfigAuthoritySet = "core-multisig-config-authority-set"
+	RefusalStoreReleaseNotCore            = "estate-profile-store-release-not-core"
 
 	// Identity and authority.
 	RefusalIDNotSelfCertifying    = "estate-profile-id-not-self-certifying"

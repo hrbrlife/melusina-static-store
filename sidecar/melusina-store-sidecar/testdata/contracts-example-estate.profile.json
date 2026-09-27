@@ -3,15 +3,11 @@
   "estate": "example-estate",
   "network": {
     "name": "example-private-cluster",
-    "genesisHash": "DszkBgTZVoPkk9tDyXH85k4xs7HSjzxaCoLnPnuZNu6L",
-    "licenseRegistryFeature": "mainnet"
+    "genesisHash": "DszkBgTZVoPkk9tDyXH85k4xs7HSjzxaCoLnPnuZNu6L"
   },
   "programs": {
     "license_registry": "3mRUgjX9UKEYx1pBXJfVidXn3XNv6pnHZMEqc9UmpE7L",
-    "witness_verifier": "E8EWx96zQCDCxsPa58FHc2RaDWGvqmxGLvWRXMvDQFNw",
-    "level2_registry": "8Hy1CE6BDzwJMgqwVW1XAXNAfUM885hgLqtnQAjoPHDv",
-    "level3_registry": "1VGvWku43Gmx4eCRcsnKkYoxz3bukZRcyDLEtBxsCUn",
-    "level4_registry": "7XGgCzYMPqoBRBCyKR9T9sicPYeyinzBVcLe7wKCZ19b"
+    "witness_verifier": "E8EWx96zQCDCxsPa58FHc2RaDWGvqmxGLvWRXMvDQFNw"
   },
   "hierarchy": {
     "include": false
@@ -78,6 +74,13 @@
     "kind": "governance-vault",
     "publicKey": "BaTPhfQKzdJATTDrHeVJ3mM4hFyhqtxhuQT7aFEGbhje",
     "acknowledgePermanentDomainClaimRelease": true
+  },
+  "releaseTrust": {
+    "publisherKeys": [
+      "db3fed4db0f6df4b0a55f6eda912ee319f8ab8331695ab35b879caa5bc6ee242",
+      "ee7a6ece31976f5d397fe4a5598bb6643cb078f76c2376af3a210330bb970d22"
+    ],
+    "threshold": 1
   },
   "ceremony": {
     "programDeployer": "GePDfrwrTFApTKBW39gwP7vHPMLJqvcYveHhj2EDxVLF",

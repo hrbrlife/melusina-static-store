@@ -192,7 +192,7 @@ func TestVerifySidecarComponentOnChain(t *testing.T) {
 			IdentityPDA:    sidPDA.Base58(),
 		},
 	}
-	cfg := Config{DistDir: dist, PublicBaseURL: "https://bazaar.melusina-os.org"}
+	cfg := Config{DistDir: dist, PublicBaseURL: "https://bazaar.melusina-os.org", SidecarClasses: sidecarClassTableFixture(t)}
 	svcWith := func(sid verify.SidecarIdentity, seed bool) *publishService {
 		m := newMockChainReader()
 		if seed {

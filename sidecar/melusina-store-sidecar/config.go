@@ -12,6 +12,7 @@ import (
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/sidecarclasses"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -184,6 +185,14 @@ type Config struct {
 	// empty; a first publish supplies its declared developer/repo/slug slot hint.
 	// Defaults to "." only for legacy/read-only compatibility.
 	CatalogRepoRoot string `json:"catalog_repo_root"`
+	// SidecarClasses is the signed sidecar class table (K-CHN-33): the
+	// operator-loaded, signature-verified declaration of every sidecar's class
+	// (sidecar_cascade | sidecar_identity). It is REQUIRED before any sidecar
+	// release is promoted or served: an empty table refuses every sidecar
+	// component with sidecar-row-missing:<id> — the class is never guessed.
+	// Load it with sidecarclasses.Sign/Verify at startup (the operator identity
+	// that signs the desired generation signs this too).
+	SidecarClasses sidecarclasses.Table `json:"-"`
 	// ServedSnapshotDir is the dedicated directory where a gated route
 	// (/packages/, /releases/<class>/) makes the private copy of an artifact
 	// it hashes and serves. It is an absolute path on the disk that holds the

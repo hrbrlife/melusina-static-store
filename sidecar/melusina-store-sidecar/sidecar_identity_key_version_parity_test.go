@@ -175,7 +175,7 @@ func newKeyVersionParityFixture(t *testing.T, vector keyVersionParityVector) key
 	m.rawAccounts[resellerPDA.Base58()] = mkResellerEntryAccount(reseller, master)
 	m.sidecarIdentity[registered] = mockSidecarIdentity{sid: verify.SidecarIdentity{Status: verify.AttestationStatusActive, BinaryHash: artifact}}
 	reader := &identityReadRecorder{mockChainReader: m}
-	cfg := Config{DistDir: dist, PublicBaseURL: origin}
+	cfg := Config{DistDir: dist, PublicBaseURL: origin, SidecarClasses: sidecarClassTableFixture(t)}
 	return keyVersionParityFixture{
 		svc: &publishService{cfg: cfg, cr: reader}, reader: reader, addresses: addresses, registered: registered,
 		component: componentrelease.ComponentRelease{

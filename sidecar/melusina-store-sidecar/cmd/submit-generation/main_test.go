@@ -189,6 +189,10 @@ func TestEnvelopeOutIsExactRouteBoundWireBodyAndDoesNotContactStore(t *testing.T
 	if body.Envelope.Payload.ChainEvidence.ProgramID != testProgramID {
 		t.Fatalf("chain evidence names program %q, want the supplied %q", body.Envelope.Payload.ChainEvidence.ProgramID, testProgramID)
 	}
+	// The envelope's chain is the publisher key's own (K-TEN-03): no fallback.
+	if body.Envelope.Payload.ChainEvidence.ChainID != testChainID {
+		t.Fatalf("chain evidence names chain %q, want the publisher key's %q", body.Envelope.Payload.ChainEvidence.ChainID, testChainID)
+	}
 	if !strings.Contains(stdout.String(), "SIGNED_GENERATION_ENVELOPE_OK") {
 		t.Fatalf("unexpected offline result: %s", stdout.String())
 	}

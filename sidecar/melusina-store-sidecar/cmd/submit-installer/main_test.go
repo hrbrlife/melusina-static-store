@@ -28,7 +28,7 @@ func testPrivate(t *testing.T, sidecarID string) (*identity.Private, [32]byte, [
 	}
 	private, err := identity.NewPrivate(identity.Ref{
 		Kind:        identity.KindSidecar,
-		ChainID:     "solana:devnet",
+		ChainID:     testChainID,
 		ProgramID:   testProgramID,
 		LicenseMint: "11111111111111111111111111111111",
 		Domain:      "publisher.example",
@@ -75,6 +75,10 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 			}
 			if signed.Payload.ChainEvidence.ProgramID != testProgramID {
 				t.Fatalf("chain evidence names program %q, want the supplied %q", signed.Payload.ChainEvidence.ProgramID, testProgramID)
+			}
+			// The envelope's chain is the publisher key's own (K-TEN-03).
+			if signed.Payload.ChainEvidence.ChainID != testChainID {
+				t.Fatalf("chain evidence names chain %q, want the publisher key's %q", signed.Payload.ChainEvidence.ChainID, testChainID)
 			}
 			if r.FormValue("class") != "deployer" || r.FormValue("name") != "deployer-test.tar.xz" {
 				t.Fatalf("bad target: %s/%s", r.FormValue("class"), r.FormValue("name"))
@@ -198,3 +202,7 @@ func TestRunStagesSidecarUntilGenerationPromotion(t *testing.T) {
 }
 
 func ptrPublic(value identity.Public) *identity.Public { return &value }
+
+// testChainID is a chain id no estate uses: the command has no default chain,
+// so the envelope's chain can only be the publisher key's own.
+const testChainID = "solana:submit-installer-test"

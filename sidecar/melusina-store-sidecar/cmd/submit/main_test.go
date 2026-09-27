@@ -271,6 +271,12 @@ func TestBuildEnvelope_BindsKindBodyAndRequest(t *testing.T) {
 	if sig.Payload.ChainEvidence.ProgramID != testProgramID {
 		t.Errorf("program_id = %s, want %s", sig.Payload.ChainEvidence.ProgramID, testProgramID)
 	}
+	// The envelope's chain is the publisher key's own; there is no compiled
+	// fallback chain (K-TEN-03). testChainID is no estate's chain, so a
+	// re-introduced constant fails here by value.
+	if sig.Payload.ChainEvidence.ChainID != pub.Public().Ref.ChainID || sig.Payload.ChainEvidence.ChainID != testChainID {
+		t.Errorf("chain_id = %q, want the publisher key's %q", sig.Payload.ChainEvidence.ChainID, testChainID)
+	}
 	if sig.Payload.ChainEvidence.ReleaseEntryPDA == "" {
 		t.Error("expected ReleaseEntryPDA chain evidence to be populated")
 	}

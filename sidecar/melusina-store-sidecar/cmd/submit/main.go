@@ -61,11 +61,6 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-// defaultChainID is the chain the envelope ChainEvidence is bound to when the
-// publisher key file does not pin one. The sidecar does not gate on chain_id
-// itself, but envelope.ChainEvidence.Validate requires a non-empty value.
-const defaultChainID = "solana:devnet"
-
 const (
 	appPromoteTarget           = "/publish"
 	appStageTarget             = "/publish/stage"
@@ -809,8 +804,14 @@ func buildEnvelope(src *identity.Private, dst identity.Public, target string, sp
 	spkSum := sha256.Sum256(spk)
 	relSum := sha256.Sum256(releaseBytes)
 
+	// The envelope's chain is the one the publisher key was minted under
+	// (keygen publisher -chain-id). There is no default chain: the key loader
+	// refuses a key without one (identity.Ref.Validate: chain_id is required),
+	// so no compiled fallback can name the retiring estate's cluster, as one
+	// here once did (K-TEN-03).
+	chainID := src.Public().Ref.ChainID
 	chain := envelope.ChainEvidence{
-		ChainID:      firstNonEmpty(src.Public().Ref.ChainID, defaultChainID),
+		ChainID:      chainID,
 		ProgramID:    programID,
 		VerifiedSlot: verifiedSlot,
 	}
@@ -1533,13 +1534,6 @@ func stdB64(b []byte) string {
 		return ""
 	}
 	return base64.StdEncoding.EncodeToString(b)
-}
-
-func firstNonEmpty(a, b string) string {
-	if strings.TrimSpace(a) != "" {
-		return a
-	}
-	return b
 }
 
 // hostFromURL extracts the bare host from a store base URL (no scheme/port/path)

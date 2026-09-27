@@ -267,7 +267,7 @@ type BootIdentityConfig struct {
 	// the Foundation sidecar cascade) are published under, e.g. "store". Required
 	// when ShardsDir is set. Must satisfy primitives.ValidateSidecarID.
 	SidecarID string `json:"sidecar_id"`
-	// ChainID is the attest identity-ref chain id, e.g. "solana:devnet". Required
+	// ChainID is the attest identity-ref chain id, solana:<network name>. Required
 	// when ShardsDir is set (it salts the derived key via the ref digest).
 	ChainID string `json:"chain_id"`
 	// KeyVersion is the SidecarIdentityEntry key_version seed. 0 => 1.

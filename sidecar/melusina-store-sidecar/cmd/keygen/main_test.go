@@ -19,6 +19,8 @@ const (
 	testProgramID   = "AYftHM3kVLbKa6KqTiahVDGALQiA5EyMmTxM2J6SP73f"
 	testLicenseMint = "G4Ps7fo3cud6NxSWoJS78fozqCWtCmAT9ZdoM3t4vHWb"
 	testPDA         = "7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD"
+	// testChainID is a chain no estate uses; keygen has no default chain.
+	testChainID = "solana:keygen-test"
 )
 
 func storePubkeyArgs() map[string]string {
@@ -31,6 +33,7 @@ func storePubkeyArgs() map[string]string {
 		"--program-id":      testProgramID,
 		"--pda":             testPDA,
 		"--sidecar-id":      "store",
+		"--chain-id":        testChainID,
 	}
 }
 
@@ -57,7 +60,7 @@ func TestStorePubkeyTakesEveryEstateFactFromFlags(t *testing.T) {
 		t.Fatal(err)
 	}
 	if pub.Ref.ProgramID != testProgramID || pub.Ref.LicenseMint != testLicenseMint || pub.Ref.PDA != testPDA ||
-		pub.Ref.SidecarID != "store" || pub.Ref.Domain != "store.example.org" || pub.SignPubkeyB58 != values["--sign-pubkey-b58"] {
+		pub.Ref.SidecarID != "store" || pub.Ref.Domain != "store.example.org" || pub.Ref.ChainID != testChainID || pub.SignPubkeyB58 != values["--sign-pubkey-b58"] {
 		t.Fatalf("identity does not carry exactly the supplied facts: %+v", pub)
 	}
 	for name := range values {
@@ -92,7 +95,7 @@ func TestPublisherTakesEveryEstateFactFromFlags(t *testing.T) {
 	if err := os.WriteFile(path, keypair, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	values := map[string]string{"--license-mint": testLicenseMint, "--domain": "store.example.org", "--program-id": testProgramID}
+	values := map[string]string{"--license-mint": testLicenseMint, "--domain": "store.example.org", "--program-id": testProgramID, "--chain-id": testChainID}
 	var out bytes.Buffer
 	if err := run(append(append([]string{"publisher"}, flagsOf(values, "")...), path), &out, new(bytes.Buffer)); err != nil {
 		t.Fatalf("complete flags refused: %v", err)
@@ -101,7 +104,7 @@ func TestPublisherTakesEveryEstateFactFromFlags(t *testing.T) {
 	if err := json.Unmarshal(out.Bytes(), &key); err != nil {
 		t.Fatal(err)
 	}
-	if key.Ref.ProgramID != testProgramID || key.Ref.LicenseMint != testLicenseMint || key.Ref.Domain != "store.example.org" {
+	if key.Ref.ProgramID != testProgramID || key.Ref.LicenseMint != testLicenseMint || key.Ref.Domain != "store.example.org" || key.Ref.ChainID != testChainID {
 		t.Fatalf("publisher ref does not carry exactly the supplied facts: %+v", key.Ref)
 	}
 	for name := range values {

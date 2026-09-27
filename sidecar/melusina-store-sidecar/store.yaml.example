@@ -75,7 +75,7 @@ boot_identity:
   # the Bazaar Control cutover).
   shards_dir: "/etc/melusina/store/shards"
   sidecar_id: "store"
-  chain_id: "solana:devnet"
+  chain_id: "<solana:network name, exactly as boot-identity-prep -chain-id or its -profile derived it>"
   key_version: 1
   # Optional: bind the SidecarIdentityEntry to a public edge certificate while
   # the sidecar still serves container-local TLS internally.

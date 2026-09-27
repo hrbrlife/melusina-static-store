@@ -61,7 +61,7 @@ func TestPublisherKeyBoundToAnotherRegistryIsRefused(t *testing.T) {
 		sign[i], box[i] = 0x51, 0x62
 	}
 	ref := identity.Ref{
-		Kind: identity.KindPearl, ChainID: defaultChainID, ProgramID: otherTestProgramID,
+		Kind: identity.KindPearl, ChainID: testChainID, ProgramID: otherTestProgramID,
 		LicenseMint: "publisher-license", Domain: "publisher.example", PDA: "publisher-pda",
 		PearlIDHash: strings.Repeat("a", 64), KeyVersion: 1,
 	}

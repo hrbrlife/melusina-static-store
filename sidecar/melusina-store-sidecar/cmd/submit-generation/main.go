@@ -32,7 +32,6 @@ import (
 const (
 	generationPromoteSchema = "melusina-generation-promote-v1"
 	generationPromoteTarget = "/publish/generation"
-	defaultChainID          = "solana:devnet"
 	maxRequestBytes         = 1 << 20
 	// systemProgramID is never a license registry.
 	systemProgramID = "11111111111111111111111111111111"
@@ -165,6 +164,12 @@ func run(args []string, stdout io.Writer) error {
 	if ttl < 5*time.Minute {
 		ttl = 5 * time.Minute
 	}
+	// The envelope's chain is the one the publisher key was minted under
+	// (keygen publisher -chain-id). There is no default chain: the key loader
+	// refuses a key without one (identity.Ref.Validate: chain_id is required),
+	// so no compiled fallback can name the retiring estate's cluster, as one
+	// here once did (K-TEN-03).
+	chainID := publisher.Public().Ref.ChainID
 	sum := sha256.Sum256(requestBytes)
 	signed, err := envelope.Sign(envelope.KindPublishRequest, publisher, destination, envelope.SignOptions{
 		Method:      http.MethodPost,
@@ -174,7 +179,7 @@ func run(args []string, stdout io.Writer) error {
 		RequestHash: hex.EncodeToString(sum[:]),
 		TTL:         ttl,
 		Chain: envelope.ChainEvidence{
-			ChainID:      firstNonEmpty(publisher.Public().Ref.ChainID, defaultChainID),
+			ChainID:      chainID,
 			ProgramID:    o.programID,
 			VerifiedSlot: o.verifiedSlot,
 		},
@@ -455,13 +460,6 @@ func validateProgramID(value string) error {
 		return fmt.Errorf("--program-id must be the canonical base58 license-registry program, not the System Program")
 	}
 	return nil
-}
-
-func firstNonEmpty(a, b string) string {
-	if strings.TrimSpace(a) != "" {
-		return a
-	}
-	return b
 }
 
 func storeURL(value string) (*url.URL, error) {

@@ -137,6 +137,12 @@ func run(args []string, stdout io.Writer) error {
 	if keyProgram := publisher.Public().Ref.ProgramID; keyProgram != "" && keyProgram != o.programID {
 		return fmt.Errorf("check=program_id: publisher key is bound to license-registry program %s, not --program-id %s", keyProgram, o.programID)
 	}
+	// The envelope's chain is the one the publisher key was minted under
+	// (keygen publisher -chain-id). There is no default chain: the key loader
+	// refuses a key without one (identity.Ref.Validate: chain_id is required),
+	// so no compiled fallback can name the retiring estate's cluster, as one
+	// here once did (K-TEN-03).
+	chainID := publisher.Public().Ref.ChainID
 	ttl := o.timeout + 2*time.Minute
 	if ttl < 5*time.Minute {
 		ttl = 5 * time.Minute
@@ -145,7 +151,7 @@ func run(args []string, stdout io.Writer) error {
 		RequestHash: hashHex,
 		TTL:         ttl,
 		Chain: envelope.ChainEvidence{
-			ChainID:      firstNonEmpty(publisher.Public().Ref.ChainID, "solana:devnet"),
+			ChainID:      chainID,
 			ProgramID:    o.programID,
 			VerifiedSlot: o.verifiedSlot,
 		},
@@ -339,11 +345,4 @@ func safeSegment(value string) bool {
 		}
 	}
 	return true
-}
-
-func firstNonEmpty(a, b string) string {
-	if strings.TrimSpace(a) != "" {
-		return a
-	}
-	return b
 }

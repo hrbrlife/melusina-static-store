@@ -148,7 +148,7 @@ func newTestIdentityUnder(t *testing.T, programID string) *identity.Private {
 	}
 	priv, err := identity.NewPrivate(identity.Ref{
 		Kind:        identity.KindSidecar,
-		ChainID:     defaultChainID,
+		ChainID:     testChainID,
 		ProgramID:   programID,
 		LicenseMint: randPubkeyB58(t),
 		Domain:      "publisher.example.org",

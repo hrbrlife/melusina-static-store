@@ -58,7 +58,6 @@ import (
 )
 
 const (
-	defaultChainID = "solana:devnet"
 	// systemProgramID is never a license registry.
 	systemProgramID = "11111111111111111111111111111111"
 	stageTarget     = "/publish/stage"
@@ -391,7 +390,7 @@ func runSign(args []string) error {
 	metadataPath := fs.String("metadata", "", "path to the exact-current metadata.json bytes (required)")
 	releaseEntryPDA := fs.String("release-entry-pda", "", "chain evidence: the app's on-chain ReleaseEntry PDA (base58) (required)")
 	verifiedSlot := fs.Uint64("verified-slot", 0, "chain evidence: verified_slot (a real finalized slot; must be > 0) (required)")
-	chainID := fs.String("chain-id", defaultChainID, "chain evidence chain_id")
+	chainID := fs.String("chain-id", "", "chain evidence chain_id: the Store config's boot_identity.chain_id (required; there is no default chain)")
 	programID := fs.String("program-id", "", "chain evidence program_id: the Store config's program_id (required; there is no default registry)")
 	nowUnix := fs.Int64("now-unix", 0, "issue time (unix seconds); 0 => now")
 	ttlSeconds := fs.Int64("ttl-seconds", 1200, "envelope TTL seconds (<= 1800; must cover the deadline)")
@@ -409,7 +408,7 @@ func runSign(args []string) error {
 		"--release": *releasePath, "--spk": *spkPath, "--metadata": *metadataPath,
 		"--release-entry-pda": *releaseEntryPDA, "--stage-nonce": *stageNonce,
 		"--promote-nonce": *promoteNonce, "--txid": *txid, "--wal-digest": *walDigest,
-		"--out-fixture": *outFixture, "--program-id": *programID,
+		"--out-fixture": *outFixture, "--program-id": *programID, "--chain-id": *chainID,
 	} {
 		if strings.TrimSpace(v) == "" {
 			return fmt.Errorf("%s is required", name)

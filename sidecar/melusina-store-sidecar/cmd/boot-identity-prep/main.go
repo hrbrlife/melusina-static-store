@@ -14,18 +14,42 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/hrbrlife/melusina-attest/derive"
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/rootstore"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 // The license-registry program has no default: it is a fact of the estate
 // whose Store is being prepared, and the derived operator key is salted by it.
-const defaultChainID = "solana:devnet"
+//
+// Nor has the chain id. The operator key is derived under it, so a default
+// becomes permanent: it once was the retiring estate's cluster, and a Store
+// prepared on any other network without -chain-id silently inherited it
+// (K-TEN-03). It is either stated (-chain-id) or taken
+// from the owner-signed estate profile (-profile); with neither, the preparer
+// refuses by name before it touches the shard directory.
+const (
+	RefusalChainIDRequired           = "boot-identity-chain-id-required"
+	RefusalChainIDDiffersFromProfile = "boot-identity-chain-id-differs-from-profile"
+	RefusalProfileUnusable           = "boot-identity-profile-unusable"
+	RefusalProfileLabelNotChainRef   = "boot-identity-profile-label-not-a-chain-reference"
+)
+
+// chainReferencePattern is a CAIP-2 chain reference ([-_a-zA-Z0-9]{1,32}).
+// An estate profile's network.label is a looser pattern (up to 64 characters,
+// dots allowed); a label that is not a valid chain reference is refused rather
+// than truncated or rewritten.
+var chainReferencePattern = regexp.MustCompile(`^[-_a-zA-Z0-9]{1,32}$`)
+
+// maxProfileBytes bounds the -profile read at the estateprofile package's own
+// bound for one profile document.
+const maxProfileBytes = estateprofile.MaxProfileJSONBytes
 
 type options struct {
 	shardsDir          string
@@ -33,6 +57,7 @@ type options struct {
 	domain             string
 	sidecarID          string
 	chainID            string
+	profilePath        string
 	programID          string
 	keyVersion         uint
 	operatorKeyVersion uint
@@ -112,7 +137,8 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&opts.licenseMint, "license-mint", "", "store operator License NFT mint")
 	fs.StringVar(&opts.domain, "domain", "", "store domain used for store_domain_hash")
 	fs.StringVar(&opts.sidecarID, "sidecar-id", rootstore.SidecarID, "sidecar_id seed for SidecarIdentityEntry (the root Store's protocol constant; an estate-enrolled Store refuses any other)")
-	fs.StringVar(&opts.chainID, "chain-id", defaultChainID, "attest identity chain id")
+	fs.StringVar(&opts.chainID, "chain-id", "", "attest identity chain id, solana:<network name>; required unless -profile is given (there is no default chain)")
+	fs.StringVar(&opts.profilePath, "profile", "", "owner-signed EstateProfileV1 JSON; the chain id is solana:<network.label> of the verified profile, and a -chain-id that differs is refused")
 	fs.StringVar(&opts.programID, "program-id", "", "the estate's license-registry program id (required)")
 	fs.UintVar(&opts.keyVersion, "key-version", 1, "SidecarIdentityEntry key_version seed")
 	fs.UintVar(&opts.operatorKeyVersion, "operator-key-version", 0, "stable operator identity key_version; 0 uses -key-version")
@@ -126,7 +152,72 @@ func parseOptions(args []string) (options, error) {
 	if fs.NArg() != 0 {
 		return options{}, fmt.Errorf("unexpected positional args: %v", fs.Args())
 	}
+	chainID, err := resolveChainID(opts.chainID, opts.profilePath)
+	if err != nil {
+		return options{}, err
+	}
+	opts.chainID = chainID
 	return opts, validateOptions(opts)
+}
+
+// resolveChainID returns the chain the operator key is derived under: the
+// verified profile's solana:<network.label> when -profile is given (and
+// -chain-id, if also given, must equal it), else the stated -chain-id. With
+// neither it refuses by name: there is no default chain.
+func resolveChainID(stated, profilePath string) (string, error) {
+	stated = strings.TrimSpace(stated)
+	if strings.TrimSpace(profilePath) == "" {
+		if stated == "" {
+			return "", fmt.Errorf("%s: state -chain-id solana:<network name> or pass the owner-signed estate profile with -profile; there is no default chain", RefusalChainIDRequired)
+		}
+		return stated, nil
+	}
+	derived, err := chainIDFromProfile(profilePath)
+	if err != nil {
+		return "", err
+	}
+	if stated != "" && stated != derived {
+		return "", fmt.Errorf("%s: -chain-id %q, estate profile network is %q", RefusalChainIDDiffersFromProfile, stated, derived)
+	}
+	return derived, nil
+}
+
+// chainIDFromProfile reads and verifies an owner-signed EstateProfileV1 and
+// returns solana:<network.label>. The label is the network name the owners
+// signed; it is the same convention the estate runbook states for -chain-id
+// ("solana:<your network name>"), and the retiring estate's profile yields
+// exactly the chain id its Store was prepared under.
+func chainIDFromProfile(path string) (string, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("%s: -profile must be a regular file, not a symlink or device", RefusalProfileUnusable)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+	}
+	defer file.Close()
+	raw, err := io.ReadAll(io.LimitReader(file, int64(maxProfileBytes)+1))
+	if err != nil {
+		return "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+	}
+	if len(raw) > maxProfileBytes {
+		return "", fmt.Errorf("%s: -profile exceeds %d bytes", RefusalProfileUnusable, maxProfileBytes)
+	}
+	profile, err := estateprofile.DecodeProfile(raw)
+	if err != nil {
+		return "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+	}
+	if _, err := estateprofile.VerifyProfile(profile); err != nil {
+		return "", fmt.Errorf("%s: %v", RefusalProfileUnusable, err)
+	}
+	if !chainReferencePattern.MatchString(profile.Network.Label) {
+		return "", fmt.Errorf("%s: network.label %q", RefusalProfileLabelNotChainRef, profile.Network.Label)
+	}
+	return "solana:" + profile.Network.Label, nil
 }
 
 func validateOptions(opts options) error {

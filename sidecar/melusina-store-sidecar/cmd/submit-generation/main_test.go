@@ -109,7 +109,7 @@ func TestEnvelopeOutIsExactRouteBoundWireBodyAndDoesNotContactStore(t *testing.T
 		storeBox[i] = 0x44
 	}
 	publisherRef := identity.Ref{
-		Kind: identity.KindPearl, ChainID: defaultChainID, ProgramID: testProgramID,
+		Kind: identity.KindPearl, ChainID: testChainID, ProgramID: testProgramID,
 		LicenseMint: "publisher-license", Domain: "publisher.example", PDA: "publisher-pda",
 		PearlIDHash: strings.Repeat("a", 64), KeyVersion: 1,
 	}
@@ -128,7 +128,7 @@ func TestEnvelopeOutIsExactRouteBoundWireBodyAndDoesNotContactStore(t *testing.T
 		t.Fatal(err)
 	}
 	storeRef := identity.Ref{
-		Kind: identity.KindSidecar, ChainID: defaultChainID, ProgramID: testProgramID,
+		Kind: identity.KindSidecar, ChainID: testChainID, ProgramID: testProgramID,
 		LicenseMint: "store-license", Domain: "store.example", PDA: "store-pda", SidecarID: "rrs-store", KeyVersion: 1,
 	}
 	store, err := identity.NewPrivate(storeRef, storeSign, storeBox)
@@ -241,3 +241,7 @@ func TestFetchAndVerifyGenerationPinsSignerAndStoreID(t *testing.T) {
 		t.Fatal("accepted generation for a foreign store ID")
 	}
 }
+
+// testChainID is a chain id no estate uses: the command has no default chain
+// and takes the envelope's chain from the publisher key.
+const testChainID = "solana:submit-test"

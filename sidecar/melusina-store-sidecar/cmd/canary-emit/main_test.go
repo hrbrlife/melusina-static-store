@@ -88,7 +88,7 @@ func TestSignRequiresTheOperatorsRegistry(t *testing.T) {
 	}
 	publisherFor := func(program string) string {
 		ref := identity.Ref{
-			Kind: identity.KindPearl, ChainID: "solana:devnet", ProgramID: program,
+			Kind: identity.KindPearl, ChainID: testChainID, ProgramID: program,
 			LicenseMint: testLicenseMint, Domain: "publisher.example", PDA: "publisher-pda",
 			PearlIDHash: strings.Repeat("c", 64), KeyVersion: 1,
 		}
@@ -107,13 +107,15 @@ func TestSignRequiresTheOperatorsRegistry(t *testing.T) {
 		args []string
 		want string
 	}{
-		"absent":           {args(operatorFor(testProgramID), publisherFor(testProgramID)), "--program-id is required"},
-		"malformed":        {args(operatorFor(testProgramID), publisherFor(testProgramID), "--program-id", "not-a-program"), "--program-id must be the canonical base58 license-registry program"},
-		"foreign operator": {args(operatorFor(otherTestProgramID), publisherFor(testProgramID), "--program-id", testProgramID), "check=program_id: operator identity is bound to license-registry program " + otherTestProgramID},
-		"foreign key":      {args(operatorFor(testProgramID), publisherFor(otherTestProgramID), "--program-id", testProgramID), "check=program_id: publisher key is bound to license-registry program " + otherTestProgramID},
+		"absent": {args(operatorFor(testProgramID), publisherFor(testProgramID), "--chain-id", testChainID), "--program-id is required"},
+		// There is no default chain: an omitted --chain-id is refused by name.
+		"absent chain":     {args(operatorFor(testProgramID), publisherFor(testProgramID), "--program-id", testProgramID), "--chain-id is required"},
+		"malformed":        {args(operatorFor(testProgramID), publisherFor(testProgramID), "--program-id", "not-a-program", "--chain-id", testChainID), "--program-id must be the canonical base58 license-registry program"},
+		"foreign operator": {args(operatorFor(otherTestProgramID), publisherFor(testProgramID), "--program-id", testProgramID, "--chain-id", testChainID), "check=program_id: operator identity is bound to license-registry program " + otherTestProgramID},
+		"foreign key":      {args(operatorFor(testProgramID), publisherFor(otherTestProgramID), "--program-id", testProgramID, "--chain-id", testChainID), "check=program_id: publisher key is bound to license-registry program " + otherTestProgramID},
 		// Positive control: with a matching registry the command gets past
 		// every registry check and fails only on the absent release bytes.
-		"matching": {args(operatorFor(testProgramID), publisherFor(testProgramID), "--program-id", testProgramID), "absent-RELEASE.json"},
+		"matching": {args(operatorFor(testProgramID), publisherFor(testProgramID), "--program-id", testProgramID, "--chain-id", testChainID), "absent-RELEASE.json"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := runSign(tc.args); err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -122,3 +124,6 @@ func TestSignRequiresTheOperatorsRegistry(t *testing.T) {
 		})
 	}
 }
+
+// testChainID is a chain no estate uses; canary-emit has no default chain.
+const testChainID = "solana:canary-test"

@@ -32,7 +32,7 @@ func TestRunGeneratesShardsAndOmitsSecretValues(t *testing.T) {
 
 	var out bytes.Buffer
 	err := run([]string{
-		"-shards-dir", shardsDir,
+		"-chain-id", testChainID, "-shards-dir", shardsDir,
 		"-license-mint", licenseMint,
 		"-domain", "melusina-os.org",
 		"-sidecar-id", "store",
@@ -99,7 +99,7 @@ func TestRunRequiresExplicitProgramID(t *testing.T) {
 	}
 	certPath, _ := writeTestCert(t, dir, "store.example.org")
 	base := []string{
-		"-shards-dir", shardsDir,
+		"-chain-id", testChainID, "-shards-dir", shardsDir,
 		"-license-mint", randPubkeyB58(t),
 		"-domain", "store.example.org",
 		"-sidecar-id", "store",
@@ -138,7 +138,7 @@ func TestRunReusesCompleteShardSet(t *testing.T) {
 	}
 	certPath, _ := writeTestCert(t, dir, "store.example.org")
 	args := []string{
-		"-shards-dir", shardsDir,
+		"-chain-id", testChainID, "-shards-dir", shardsDir,
 		"-license-mint", randPubkeyB58(t),
 		"-domain", "store.example.org",
 		"-sidecar-id", "store",
@@ -185,7 +185,7 @@ func TestRunSeparatesStableOperatorFromRotatedBinding(t *testing.T) {
 	licenseMint := randPubkeyB58(t)
 
 	base := []string{
-		"-shards-dir", shardsDir,
+		"-chain-id", testChainID, "-shards-dir", shardsDir,
 		"-license-mint", licenseMint,
 		"-sidecar-id", "store",
 		"-program-id", testProgramID,
@@ -248,7 +248,7 @@ func TestRunRejectsPartialShardSet(t *testing.T) {
 	certPath, _ := writeTestCert(t, dir, "store.example.org")
 	var out bytes.Buffer
 	err := run([]string{
-		"-shards-dir", shardsDir,
+		"-chain-id", testChainID, "-shards-dir", shardsDir,
 		"-license-mint", randPubkeyB58(t),
 		"-domain", "store.example.org",
 		"-sidecar-id", "store",

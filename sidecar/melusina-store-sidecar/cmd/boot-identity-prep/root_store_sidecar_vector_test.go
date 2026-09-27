@@ -56,7 +56,7 @@ func loadContractsNewEstateVector(t *testing.T) contractsNewEstateVector {
 func TestSidecarIDDefaultIsTheContractsRootStoreSidecarID(t *testing.T) {
 	vectors := loadContractsNewEstateVector(t)
 	opts, err := parseOptions([]string{
-		"-shards-dir", "unused", "-license-mint", randPubkeyB58(t), "-domain", "store.rehearsal.invalid",
+		"-chain-id", testChainID, "-shards-dir", "unused", "-license-mint", randPubkeyB58(t), "-domain", "store.rehearsal.invalid",
 		"-program-id", testProgramID, "-binary", "unused", "-tls-cert", "unused",
 	})
 	if err != nil {
@@ -80,7 +80,7 @@ func TestSidecarIDDefaultIsTheContractsRootStoreSidecarID(t *testing.T) {
 		for _, expected := range vector.Expected.SidecarIdentity {
 			var out bytes.Buffer
 			if err := run([]string{
-				"-shards-dir", filepath.Join(dir, "shards"),
+				"-chain-id", testChainID, "-shards-dir", filepath.Join(dir, "shards"),
 				"-license-mint", vector.Inputs.LicenseNFTMint,
 				"-domain", "store.rehearsal.invalid",
 				"-program-id", vector.Inputs.ProgramID,

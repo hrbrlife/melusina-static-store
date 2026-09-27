@@ -253,15 +253,20 @@ The helper command below generates or reuses the three shard files and prints
 the public `register_sidecar_identity` inputs without broadcasting any
 transaction or printing secret shard values. `-program-id` is required: the
 derived operator key is salted by the estate's license-registry program, and
-the helper compiles none of its own to fall back to:
+the helper compiles none of its own to fall back to. The chain the key is
+derived under has no default either: state it (`-chain-id solana:<network
+name>`) or pass the owner-signed estate profile (`-profile <profile.json>`),
+whose verified `network.label` gives `solana:<label>`; with neither the helper
+refuses `boot-identity-chain-id-required`, and a `-chain-id` that differs from
+the profile is refused `boot-identity-chain-id-differs-from-profile`:
 
 ```sh
 go run ./cmd/boot-identity-prep \
   -shards-dir /etc/melusina/store/shards \
   -license-mint <store-license-nft-mint> \
-  -domain melusina-os.org \
+  -domain <store-domain> \
   -sidecar-id store \
-  -chain-id solana:devnet \
+  -chain-id solana:<network-name> \
   -program-id <license-registry-program-id> \
   -binary ./melusina-store-sidecar \
   -tls-cert /etc/melusina/store/boot-identity-tls-cert.pem

@@ -66,7 +66,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		licenseMint := fs.String("license-mint", "", "identity.Ref.LicenseMint: the estate profile's anchors.masterMint (required)")
 		domain := fs.String("domain", "", "identity.Ref.Domain: the Store's serving domain, the estate profile's store.rootDomain (required)")
 		programID := fs.String("program-id", "", "identity.Ref.ProgramID: the estate profile's programs.license-registry.programId (required)")
-		chainID := fs.String("chain-id", "solana:devnet", "identity.Ref.ChainID")
+		chainID := fs.String("chain-id", "", "identity.Ref.ChainID: solana:<the estate's network name> (required; there is no default chain)")
 		pearlIDHash := fs.String("pearl-id-hash", "", "identity.Ref.PearlIDHash (required for Kind=pearl; defaults to sha256(label) if empty)")
 		label := fs.String("label", "core-app-team-publisher", "human label hashed into the default pearl-id-hash when -pearl-id-hash is empty")
 		if err := fs.Parse(args[1:]); err != nil {
@@ -75,7 +75,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		if fs.NArg() != 1 {
 			return errors.New("usage: keygen publisher <solana-keypair.json>")
 		}
-		if err := requireEstateFacts(map[string]string{"--license-mint": *licenseMint, "--domain": *domain, "--program-id": *programID}, *programID); err != nil {
+		if err := requireEstateFacts(map[string]string{"--license-mint": *licenseMint, "--domain": *domain, "--program-id": *programID, "--chain-id": *chainID}, *programID); err != nil {
 			return err
 		}
 		return doPublisher(fs.Arg(0), *licenseMint, *domain, *programID, *chainID, *pearlIDHash, *label, stdout)
@@ -89,7 +89,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		licenseMint := fs.String("license-mint", "", "store operator license_nft_mint (required)")
 		domain := fs.String("domain", "", "store serving domain (required)")
 		programID := fs.String("program-id", "", "license-registry program id: the estate profile's programs.license-registry.programId (required)")
-		chainID := fs.String("chain-id", "solana:devnet", "chain id")
+		chainID := fs.String("chain-id", "", "store operator identity chain id, exactly as the Store's boot_identity.chain_id (required; there is no default chain)")
 		pda := fs.String("pda", "", "active SidecarIdentityEntry PDA base58 (required)")
 		sidecarID := fs.String("sidecar-id", "", "active store sidecar_id (required)")
 		keyVersion := fs.Uint("key-version", 1, "SidecarIdentityEntry key_version")
@@ -99,7 +99,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		if err := requireEstateFacts(map[string]string{
 			"--sign-pubkey-b58": *signPubkeyB58, "--box-pubkey-b58": *boxPubkeyB58,
 			"--license-mint": *licenseMint, "--domain": *domain, "--program-id": *programID,
-			"--pda": *pda, "--sidecar-id": *sidecarID,
+			"--pda": *pda, "--sidecar-id": *sidecarID, "--chain-id": *chainID,
 		}, *programID); err != nil {
 			return err
 		}

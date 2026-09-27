@@ -18,9 +18,17 @@ const (
 	otherTestProgramID = "AuJTDa1HUfxzQG7apn8Hd3cjR6Kih9mwYQ3TcgbRsnH7" // "store-test-fixture: another license registry"
 )
 
+// testChainID is a chain no estate uses: the command has no default chain and
+// signs under the one the publisher key was minted with.
+const testChainID = "solana:bootstrap-test"
+
 // writeIdentities writes a publisher key bound to publisherProgram and the
 // store operator's public identity, returning their paths.
 func writeIdentities(t *testing.T, publisherProgram string) (string, string) {
+	return writeIdentitiesOnChain(t, publisherProgram, testChainID)
+}
+
+func writeIdentitiesOnChain(t *testing.T, publisherProgram, chainID string) (string, string) {
 	t.Helper()
 	dir := t.TempDir()
 	var sign, box [32]byte
@@ -28,7 +36,7 @@ func writeIdentities(t *testing.T, publisherProgram string) (string, string) {
 		sign[i], box[i] = 0x13, 0x24
 	}
 	ref := identity.Ref{
-		Kind: identity.KindPearl, ChainID: "solana:devnet", ProgramID: publisherProgram,
+		Kind: identity.KindPearl, ChainID: chainID, ProgramID: publisherProgram,
 		LicenseMint: "publisher-license", Domain: "publisher.example", PDA: "publisher-pda",
 		PearlIDHash: strings.Repeat("b", 64), KeyVersion: 1,
 	}
@@ -41,7 +49,7 @@ func writeIdentities(t *testing.T, publisherProgram string) (string, string) {
 		t.Fatal(err)
 	}
 	operator, err := identity.NewPrivate(identity.Ref{
-		Kind: identity.KindSidecar, ChainID: "solana:devnet", ProgramID: testProgramID,
+		Kind: identity.KindSidecar, ChainID: testChainID, ProgramID: testProgramID,
 		LicenseMint: "store-license", Domain: "store.example", PDA: "store-pda", SidecarID: "store", KeyVersion: 1,
 	}, box, sign)
 	if err != nil {
@@ -85,6 +93,9 @@ func TestBootstrapEnvelopeNamesTheSuppliedRegistry(t *testing.T) {
 	if got := body.Envelope.Payload.ChainEvidence.ProgramID; got != testProgramID {
 		t.Fatalf("chain evidence names program %q, want the supplied %q", got, testProgramID)
 	}
+	if got := body.Envelope.Payload.ChainEvidence.ChainID; got != testChainID {
+		t.Fatalf("chain evidence names chain %q, want the publisher key's %q", got, testChainID)
+	}
 	if !strings.Contains(out.String(), "SIGNED_LEGACY_MANIFEST_BOOTSTRAP_OK") {
 		t.Fatalf("unexpected output %q", out.String())
 	}
@@ -107,5 +118,20 @@ func TestBootstrapRefusesAMissingOrForeignRegistry(t *testing.T) {
 				t.Fatalf("error = %v, want %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// A publisher key that pins no chain is refused: there is no default chain
+// for the envelope to fall back to, and no envelope is written.
+func TestBootstrapRefusesAKeyWithoutAChain(t *testing.T) {
+	publisherPath, operatorPath := writeIdentitiesOnChain(t, testProgramID, "")
+	envelopePath := filepath.Join(t.TempDir(), "signed.json")
+	var out strings.Builder
+	err := run(append(bootstrapArgs(publisherPath, operatorPath, envelopePath), "--program-id", testProgramID), &out)
+	if err == nil || !strings.Contains(err.Error(), "chain_id is required") {
+		t.Fatalf("error = %v, want the publisher key refused for its absent chain_id", err)
+	}
+	if _, statErr := os.Stat(envelopePath); !os.IsNotExist(statErr) {
+		t.Fatalf("a refused request wrote an envelope: %v", statErr)
 	}
 }

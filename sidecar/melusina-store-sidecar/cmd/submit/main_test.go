@@ -60,7 +60,7 @@ func newTestIdentity(t *testing.T, sidecarID, licenseMint, domain string) *ident
 	}
 	ref := identity.Ref{
 		Kind:        identity.KindSidecar,
-		ChainID:     defaultChainID,
+		ChainID:     testChainID,
 		ProgramID:   testProgramID,
 		LicenseMint: licenseMint,
 		Domain:      domain,
@@ -697,7 +697,7 @@ func TestRunControlRequestWritesExactCandidateWithoutStoreConnection(t *testing.
 	spkPath := write("app.spk", spk)
 	metadataPath := write("metadata.json", metadata)
 	releasePath := write("RELEASE.json", releaseBytes)
-	pubRef := identity.Ref{Kind: identity.KindSidecar, ChainID: defaultChainID, ProgramID: testProgramID, LicenseMint: randPubkeyB58(t), Domain: "publisher.example.org", PDA: "11111111111111111111111111111111", SidecarID: "publisher", KeyVersion: 1}
+	pubRef := identity.Ref{Kind: identity.KindSidecar, ChainID: testChainID, ProgramID: testProgramID, LicenseMint: randPubkeyB58(t), Domain: "publisher.example.org", PDA: "11111111111111111111111111111111", SidecarID: "publisher", KeyVersion: 1}
 	publisherKey := writePublisherKey(t, pubRef)
 	operator := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
 	opBytes, err := json.Marshal(operator.Public())
@@ -1031,7 +1031,7 @@ func writePublisherKey(t *testing.T, ref identity.Ref) (path string) {
 func TestLoadPublisherKey_FileAndEnv(t *testing.T) {
 	ref := identity.Ref{
 		Kind:        identity.KindSidecar,
-		ChainID:     defaultChainID,
+		ChainID:     testChainID,
 		ProgramID:   testProgramID,
 		LicenseMint: randPubkeyB58(t),
 		Domain:      "publisher.example.org",
@@ -1278,3 +1278,7 @@ func TestE2E_StoreRejectionSurfacesCheck(t *testing.T) {
 		t.Fatalf("rejection body %q does not name the failing check", string(body))
 	}
 }
+
+// testChainID is a chain id no estate uses: the command has no default chain
+// and takes the envelope's chain from the publisher key.
+const testChainID = "solana:submit-test"

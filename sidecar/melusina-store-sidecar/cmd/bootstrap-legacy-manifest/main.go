@@ -108,6 +108,12 @@ func run(args []string, out io.Writer) error {
 	if err := json.Unmarshal(opRaw, &operator); err != nil || operator.Validate() != nil {
 		return errors.New("store public key is not a valid identity.Public document")
 	}
+	// The envelope's chain is the one the publisher key was minted under
+	// (keygen publisher -chain-id). There is no default chain: the key loader
+	// refuses a key without one (identity.Ref.Validate: chain_id is required),
+	// so no compiled fallback can name the retiring estate's cluster, as one
+	// here once did (K-TEN-03).
+	chainID := publisher.Public().Ref.ChainID
 	request, err := json.Marshal(bootstrapRequest{Schema: bootstrapSchema, Generation: *generation})
 	if err != nil {
 		return err
@@ -117,7 +123,7 @@ func run(args []string, out io.Writer) error {
 		Method: http.MethodPost, Target: bootstrapTarget, Body: request,
 		BodyHash: hex.EncodeToString(sum[:]), RequestHash: hex.EncodeToString(sum[:]),
 		TTL:   5 * time.Minute,
-		Chain: envelope.ChainEvidence{ChainID: "solana:devnet", ProgramID: *programID, VerifiedSlot: *verifiedSlot},
+		Chain: envelope.ChainEvidence{ChainID: chainID, ProgramID: *programID, VerifiedSlot: *verifiedSlot},
 	})
 	if err != nil {
 		return fmt.Errorf("sign bootstrap envelope: %w", err)

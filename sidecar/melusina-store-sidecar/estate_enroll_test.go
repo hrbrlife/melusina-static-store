@@ -309,10 +309,11 @@ func TestVerifyConfiguredStoreEnrollmentRefusesAValidButForeignReleaseQuorum(t *
 		"estate_enrollment_state_path": statePath,
 		"rpc_url":                      "https://primary.example/rpc",
 		"release_squads_authority": map[string]any{
-			"multisig":     f.declaration.ReleaseSquadsAuthority.Multisig,
-			"vault":        f.declaration.ReleaseSquadsAuthority.Vault,
-			"program_id":   f.declaration.ReleaseSquadsAuthority.ProgramID,
-			"threshold":    3,
+			"multisig":   f.declaration.ReleaseSquadsAuthority.Multisig,
+			"vault":      f.declaration.ReleaseSquadsAuthority.Vault,
+			"program_id": f.declaration.ReleaseSquadsAuthority.ProgramID,
+			// A valid 2 of 3 the profile (core's 3 of 4, K-CHN-03) never authorized.
+			"threshold":    2,
 			"member_count": 3,
 		},
 	}

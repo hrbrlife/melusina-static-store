@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"testing"
 )
@@ -36,7 +37,7 @@ func withRole(t *testing.T, profile EstateProfileV1, role string, edit func(*Aut
 }
 
 // storeReleaseThresholdOne is the rehearsal profile with its Store release
-// multisig at 1 of 3, signed by a threshold of its owners anyway.
+// multisig at 1 of 4, signed by a threshold of its owners anyway.
 func storeReleaseThresholdOne(t *testing.T) EstateProfileV1 {
 	t.Helper()
 	profile := withRole(t, newEstateProfile(t), AuthorityRoleStoreRelease, func(role *AuthorityRoleV1) { role.Threshold = 1 })
@@ -56,23 +57,103 @@ func storeReleaseSingleKey(t *testing.T) EstateProfileV1 {
 	return signUnchecked(t, profile, "owner-a", "owner-b")
 }
 
+// storeReleaseSeparateMultisig is the rehearsal profile with its Store
+// release role as its own well-formed 2-of-3 Squads multisig - every per-role
+// rule passes - owner-signed: what a founder declaring a separate
+// store-release multisig would sign (K-CHN-03).
+func storeReleaseSeparateMultisig(t *testing.T) EstateProfileV1 {
+	t.Helper()
+	profile := withRole(t, newEstateProfile(t), AuthorityRoleStoreRelease, func(role *AuthorityRoleV1) {
+		*role = AuthorityRoleV1{
+			Role: AuthorityRoleStoreRelease, Kind: AuthorityKindSquads,
+			Multisig: vectorAddress("rehearsal/store-release/multisig"), Vault: vectorAddress("rehearsal/store-release/vault"),
+			Threshold: 2, MemberCount: 3, PermissionMasks: []uint32{7, 7, 7},
+			ConfigAuthority: "11111111111111111111111111111111",
+		}
+	})
+	return signUnchecked(t, profile, "owner-a", "owner-b")
+}
+
+// K-CHN-03: the licence registry creates every app ReleaseEntry under the
+// core vault and the Store serves an app only from roles.store-release's
+// vault, so roles.store-release is core's authority by rule. The positive
+// control is the fixture, whose store-release role is core's in every field;
+// the negative controls change one field each, and a separate multisig, and
+// every one is refused by the one name, by decode, verify and digest alike.
+func TestValidateRequiresStoreReleaseToBeCore(t *testing.T) {
+	accepted := newEstateProfile(t)
+	core, release := accepted.Roles[0], accepted.Roles[2]
+	if core.Role != AuthorityRoleCore || release.Role != AuthorityRoleStoreRelease || release.Multisig != core.Multisig || release.Vault != core.Vault {
+		t.Fatalf("the fixture's store-release role is not core's authority: core %+v, store-release %+v", core, release)
+	}
+	if _, err := DecodeProfile(marshalProfile(t, accepted)); err != nil {
+		t.Fatalf("a store-release role that is core must decode: %v", err)
+	}
+	if _, err := VerifyProfile(accepted); err != nil {
+		t.Fatalf("a store-release role that is core must verify: %v", err)
+	}
+
+	cases := map[string]func(*AuthorityRoleV1){
+		"separate-multisig": func(role *AuthorityRoleV1) {
+			*role = storeReleaseSeparateMultisig(t).Roles[2]
+		},
+		"vault":     func(role *AuthorityRoleV1) { role.Vault = vectorAddress("rehearsal/store-release/vault") },
+		"multisig":  func(role *AuthorityRoleV1) { role.Multisig = vectorAddress("rehearsal/store-release/multisig") },
+		"threshold": func(role *AuthorityRoleV1) { role.Threshold = 2 },
+		"member-count": func(role *AuthorityRoleV1) {
+			role.MemberCount, role.PermissionMasks = 5, []uint32{7, 7, 7, 7, 7}
+		},
+		"permission-masks": func(role *AuthorityRoleV1) { role.PermissionMasks = []uint32{3, 7, 7, 7} },
+		"config-authority": func(role *AuthorityRoleV1) { role.ConfigAuthority = vectorAddress("rehearsal/store-release/config") },
+		"time-lock":        func(role *AuthorityRoleV1) { role.TimeLockSeconds = 60 },
+	}
+	names := make([]string, 0, len(cases))
+	for name := range cases {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			refused := signUnchecked(t, withRole(t, newEstateProfile(t), AuthorityRoleStoreRelease, cases[name]), "owner-a", "owner-b")
+			_, err := DecodeProfile(marshalProfile(t, refused))
+			requireRefusal(t, err, RefusalStoreReleaseNotCore)
+			_, err = VerifyProfile(refused)
+			requireRefusal(t, err, RefusalStoreReleaseNotCore)
+			_, err = ProfileSHA256(refused)
+			requireRefusal(t, err, RefusalStoreReleaseNotCore)
+		})
+	}
+
+	// A profile with no store-release role is not refused by this rule: the
+	// rule ties the role to core, it does not require the role.
+	withoutRelease := newEstateProfile(t)
+	withoutRelease.Roles = []AuthorityRoleV1{withoutRelease.Roles[0], withoutRelease.Roles[1]}
+	withoutRelease.Store.ReleaseRole = AuthorityRoleCore
+	if err := ValidateProfile(withoutRelease); err != nil {
+		t.Fatalf("a profile with no store-release role is not this rule's refusal: %v", err)
+	}
+}
+
 // An enrolled Store refuses a release authority below two and requires its
 // configured threshold to equal roles.store-release exactly (Store
 // squads_authority.go configuredEnrolledReleaseSquadsAuthorityPolicy and
 // estate_profile_check.go verifyStoreEstateDeclaration), so a profile stating
 // 1 of N is refused here, before owners can sign an estate whose root Store
-// can never be configured. The owners' signatures do not change that.
+// can never be configured. The owners' signatures do not change that. The
+// per-role rule runs before the store-release-is-core rule, so this keeps
+// its own name.
 func TestValidateRequiresAStoreReleaseQuorumOfTwo(t *testing.T) {
-	// Positive control: the fixture's 2 of 3 is the least the Store accepts.
+	// Positive control: the fixture's store-release role, core's 3 of 4, is
+	// at least the least the Store accepts.
 	accepted := newEstateProfile(t)
-	if role := accepted.Roles[2]; role.Role != AuthorityRoleStoreRelease || role.Threshold != StoreReleaseMinThreshold {
-		t.Fatalf("the fixture's store-release role is not at the minimum: %+v", role)
+	if role := accepted.Roles[2]; role.Role != AuthorityRoleStoreRelease || role.Threshold < StoreReleaseMinThreshold {
+		t.Fatalf("the fixture's store-release role is below the minimum: %+v", role)
 	}
 	if _, err := DecodeProfile(marshalProfile(t, accepted)); err != nil {
-		t.Fatalf("a 2-of-3 Store release role must decode: %v", err)
+		t.Fatalf("the fixture's Store release role must decode: %v", err)
 	}
 	if _, err := VerifyProfile(accepted); err != nil {
-		t.Fatalf("a 2-of-3 Store release role must verify: %v", err)
+		t.Fatalf("the fixture's Store release role must verify: %v", err)
 	}
 
 	refused := storeReleaseThresholdOne(t)
@@ -121,6 +202,87 @@ func TestValidateRefusesAStoreReleaseKey(t *testing.T) {
 	requireRefusal(t, err, want)
 	_, err = VerifyProfile(refused)
 	requireRefusal(t, err, want)
+}
+
+// WL-111 / S-21: the estate runner is a non-voting seat, and as a role it is
+// a single machine key (kind "key"): no multisig, no threshold, no masks. A
+// runner spelled as a squads multisig is refused by name; the key-kind seat
+// verifies.
+func TestValidateRefusesARunnerSeatThatCanVote(t *testing.T) {
+	squadsKind := newEstateProfile(t)
+	squadsKind.Roles = insertSortedRole(squadsKind.Roles, AuthorityRoleV1{
+		Role: AuthorityRoleRunner, Kind: AuthorityKindSquads,
+		Multisig: vectorAddress("rehearsal/runner/multisig"), Vault: vectorAddress("rehearsal/runner/vault"),
+		Threshold: 0, MemberCount: 1, PermissionMasks: []uint32{7},
+		ConfigAuthority: "11111111111111111111111111111111", TimeLockSeconds: 0,
+	})
+	squadsKind = signUnchecked(t, squadsKind, "owner-a", "owner-b")
+	const want = RefusalFieldMalformed + ":roles." + AuthorityRoleRunner + ".kind"
+	if err := refuseMatches(t, squadsKind, want); err != nil {
+		t.Fatal(err)
+	}
+
+	// The key-kind runner seat — the machine's one address — verifies.
+	seat := newEstateProfile(t)
+	seat.Roles = insertSortedRole(seat.Roles, AuthorityRoleV1{
+		Role: AuthorityRoleRunner, Kind: AuthorityKindKey,
+		Vault: vectorAddress("rehearsal/runner/key"), Threshold: 1, MemberCount: 1,
+		PermissionMasks: []uint32{},
+	})
+	seat = signUnchecked(t, seat, "owner-a", "owner-b")
+	if _, err := VerifyProfile(seat); err != nil {
+		t.Fatalf("a key-kind runner seat must verify: %v", err)
+	}
+}
+
+// A runner seat that declares a threshold is a voting seat in disguise; the
+// threshold must stay zero.
+func TestValidateRefusesARunnerSeatWithAThreshold(t *testing.T) {
+	thresholded := newEstateProfile(t)
+	thresholded.Roles = insertSortedRole(thresholded.Roles, AuthorityRoleV1{
+		Role: AuthorityRoleRunner, Kind: AuthorityKindSquads,
+		Multisig: vectorAddress("rehearsal/runner/multisig"), Vault: vectorAddress("rehearsal/runner/vault"),
+		Threshold: 1, MemberCount: 1, PermissionMasks: []uint32{5},
+		ConfigAuthority: "11111111111111111111111111111111", TimeLockSeconds: 0,
+	})
+	thresholded = signUnchecked(t, thresholded, "owner-a", "owner-b")
+	const want = RefusalFieldMalformed + ":roles." + AuthorityRoleRunner + ".kind"
+	if err := refuseMatches(t, thresholded, want); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A core config authority other than the all-zero sentinel is a standing key
+// that can rewrite the core's own membership; only the sentinel verifies.
+func TestValidateRefusesASetCoreConfigAuthority(t *testing.T) {
+	standing := newEstateProfile(t)
+	standing.Roles[0].ConfigAuthority = vectorAddress("rehearsal/core/configAuthority")
+	standing = signUnchecked(t, standing, "owner-a", "owner-b")
+	const want = RefusalFieldMalformed + ":roles." + AuthorityRoleCore + ".configAuthority"
+	if err := refuseMatches(t, standing, want); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// insertSortedRole inserts role keeping Roles sorted by role name (roles
+// "core" < "estate-runner" < "program-upgrade" ...).
+func insertSortedRole(roles []AuthorityRoleV1, role AuthorityRoleV1) []AuthorityRoleV1 {
+	index := sort.Search(len(roles), func(i int) bool { return roles[i].Role > role.Role })
+	roles = append(roles, AuthorityRoleV1{})
+	copy(roles[index+1:], roles[index:])
+	roles[index] = role
+	return roles
+}
+
+// refuseMatches decodes and verifies profile and requires the exact refusal
+// from both paths.
+func refuseMatches(t *testing.T, profile EstateProfileV1, want string) error {
+	t.Helper()
+	_, err := DecodeProfile(marshalProfile(t, profile))
+	requireRefusal(t, err, want)
+	_, err = VerifyProfile(profile)
+	requireRefusal(t, err, want)
+	return nil
 }
 
 // contractsCeremonyProfilePath is a byte copy of the contracts repository's

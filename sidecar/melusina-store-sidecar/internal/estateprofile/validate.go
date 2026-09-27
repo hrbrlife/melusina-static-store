@@ -23,7 +23,7 @@ var (
 
 	programRoles   = []string{ProgramRoleLicenseRegistry, ProgramRoleWitnessVerifier}
 	externalRoles  = []string{ExternalRoleATA, ExternalRoleMemo, ExternalRoleSquadsV4, ExternalRoleToken, ExternalRoleToken2022, ExternalRoleTokenMetadata}
-	authorityRoles = []string{AuthorityRoleCore, AuthorityRoleProgramUpgrade, AuthorityRoleReseller, AuthorityRoleRootInstallAdmin, AuthorityRoleStoreRelease}
+	authorityRoles = []string{AuthorityRoleCore, AuthorityRoleProgramUpgrade, AuthorityRoleReseller, AuthorityRoleRootInstallAdmin, AuthorityRoleStoreRelease, AuthorityRoleRunner}
 )
 
 // squadsPermissionVote is the Vote bit of a Squads v4 member permission mask
@@ -337,6 +337,13 @@ func validateRoles(roles []AuthorityRoleV1) error {
 		}
 		coreSeen = coreSeen || role.Role == AuthorityRoleCore
 		field := "roles." + role.Role
+		// The runner seat is a single machine key (WL-111 / S-21): it is
+		// not a multisig, holds no threshold, and never votes. A
+		// squads-kind runner would either carry a threshold over zero
+		// voters (Squads refuses that) or smuggle a voting mask in.
+		if role.Role == AuthorityRoleRunner && role.Kind != AuthorityKindKey {
+			return refuseSubject(RefusalFieldMalformed, field+".kind")
+		}
 		if !validAddress(role.Vault) {
 			return refuseSubject(RefusalFieldMalformed, field+".vault")
 		}
@@ -372,6 +379,31 @@ func validateRoles(roles []AuthorityRoleV1) error {
 			if role.Role == AuthorityRoleStoreRelease && role.Threshold < StoreReleaseMinThreshold {
 				return refuseSubject(RefusalFieldMalformed, field+".threshold")
 			}
+			// WL-111 / S-21: the estate runner is a non-voting seat. Its
+			// member masks may carry initiate and execute but never the
+			// vote bit, and it is never the threshold target: a runner
+			// that could vote would be a hidden human seat.
+			if role.Role == AuthorityRoleRunner {
+				if role.Threshold != 0 {
+					return refuseSubject(RefusalFieldMalformed, field+".threshold")
+				}
+				for _, mask := range role.PermissionMasks {
+					if mask&squadsPermissionVote != 0 {
+						return refuseSubject(RefusalFieldMalformed, field+".permissionMasks")
+					}
+				}
+			}
+			// S-21: the core multisig's config authority must be the
+			// all-zero sentinel ("core-multisig-config-authority-set") —
+			// Squads' spelling of "no config authority". A settable config
+			// authority is a standing key that can rewrite the core's own
+			// membership — the exact hole the runner seat replaces.
+			if role.Role == AuthorityRoleCore {
+				raw, ok := decodeBase58Key(role.ConfigAuthority)
+				if !ok || raw != [32]byte{} {
+					return refuseSubject(RefusalFieldMalformed, field+".configAuthority")
+				}
+			}
 			if !validAddressOrDefault(role.ConfigAuthority) {
 				return refuseSubject(RefusalFieldMalformed, field+".configAuthority")
 			}
@@ -388,6 +420,46 @@ func validateRoles(roles []AuthorityRoleV1) error {
 	}
 	if !coreSeen {
 		return refuseSubject(RefusalIncomplete, "roles."+AuthorityRoleCore)
+	}
+	return validateStoreReleaseIsCore(roles)
+}
+
+// validateStoreReleaseIsCore makes the Store release custodian the core vault
+// by rule (K-CHN-03). The licence registry creates every app ReleaseEntry
+// under the core vault, and the Store serves an app only from the vault of
+// roles.store-release, so a separate store-release multisig leaves no app
+// release both registered and served, silently. A profile that states a
+// store-release role must therefore state core's authority in every field:
+// kind, multisig, vault, threshold, member count, permission masks, config
+// authority and time lock. The refusal carries no subject: which field
+// differs does not matter, the role is not core. It runs after every role's
+// own rules, so a malformed store-release role keeps its own name.
+func validateStoreReleaseIsCore(roles []AuthorityRoleV1) error {
+	var core, release *AuthorityRoleV1
+	for index := range roles {
+		switch roles[index].Role {
+		case AuthorityRoleCore:
+			core = &roles[index]
+		case AuthorityRoleStoreRelease:
+			release = &roles[index]
+		}
+	}
+	if release == nil || core == nil {
+		return nil
+	}
+	same := release.Kind == core.Kind &&
+		release.Multisig == core.Multisig &&
+		release.Vault == core.Vault &&
+		release.Threshold == core.Threshold &&
+		release.MemberCount == core.MemberCount &&
+		len(release.PermissionMasks) == len(core.PermissionMasks) &&
+		release.ConfigAuthority == core.ConfigAuthority &&
+		release.TimeLockSeconds == core.TimeLockSeconds
+	for index := 0; same && index < len(core.PermissionMasks); index++ {
+		same = release.PermissionMasks[index] == core.PermissionMasks[index]
+	}
+	if !same {
+		return refuse(RefusalStoreReleaseNotCore)
 	}
 	return nil
 }

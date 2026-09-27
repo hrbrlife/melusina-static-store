@@ -106,7 +106,7 @@ func newKeylessFixture(t *testing.T) keylessFixture {
 	m.rawAccounts[localPDA.Base58()] = mkLocalAccountPinned(sidecarID, license, artifact)
 	m.sidecarErr = errKeylessIdentityRead
 
-	cfg := Config{DistDir: dist, PublicBaseURL: origin}
+	cfg := Config{DistDir: dist, PublicBaseURL: origin, SidecarClasses: sidecarClassTableFixture(t)}
 	return keylessFixture{
 		cfg: cfg, m: m, svc: &publishService{cfg: cfg, cr: m},
 		component: componentrelease.ComponentRelease{

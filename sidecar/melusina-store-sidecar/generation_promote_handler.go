@@ -18,6 +18,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/sidecarclasses"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -320,6 +321,18 @@ func (s *publishService) verifyComponentReleaseOnChain(ctx context.Context, c co
 func (s *publishService) verifySidecarClassComponentOnChain(ctx context.Context, c componentrelease.ComponentRelease) error {
 	if c.ComponentClass != componentrelease.ClassSidecar {
 		return fmt.Errorf("component %s: %w: class %q is not the sidecar class, kind %q", c.ComponentID, componentrelease.ErrClassAuthorityMismatch, c.ComponentClass, c.Chain.Kind)
+	}
+	// The sidecar class table (K-CHN-33) is the estate-level declaration of
+	// each sidecar's class; the publisher's signed kind is cross-checked
+	// against it at promote AND serve time (this is the shared dispatcher for
+	// both). A Store operator without a loaded table refuses here — no table,
+	// no promotion: the class is never guessed from the signed claim alone.
+	declared, ok := s.cfg.SidecarClasses.ClassFor(c.ComponentID)
+	if !ok {
+		return fmt.Errorf("component %s: %w", c.ComponentID, sidecarclasses.ErrSidecarRowMissing(c.ComponentID))
+	}
+	if declared != c.Chain.Kind {
+		return fmt.Errorf("component %s: %w", c.ComponentID, sidecarclasses.ErrComponentClassMismatch(c.ComponentID, c.Chain.Kind, declared))
 	}
 	switch c.Chain.Kind {
 	case componentrelease.AuthoritySidecarIdentity:

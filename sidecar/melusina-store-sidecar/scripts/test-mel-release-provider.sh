@@ -188,11 +188,11 @@ default_release_state: ready
 default_reconciliation_state: source-pinned
 default_source_branch: dev-publish
 release_squads_authority:
-  multisig: 3D1TFuixe17WNQGBGUc1c8BKEAfspARX34Ak9yP77wkD
-  vault: QLCZ39GVSyJn89pN4HUe4yFrVXXu2NVKKdbxvfFNbn4
+  multisig: AUFQcMxjxDQE7RSSy4sHhuQWVyrdn7L6E2LvSLGkU4S7
+  vault: HVGqHHs1yTdhrBUT4JLepFAbS6wXKAZHNSqWxb2zWomG
   program_id: SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
-  threshold: 2
-  member_count: 3
+  threshold: 3
+  member_count: 4
 groups:
   test:
     apps:
@@ -213,8 +213,8 @@ YAML
 set +e
 MEL_RELEASE_CONFIG="$TMP/bazaar-catalog.yaml" MEL_RELEASE_SOURCE_ROOT="$TMP/sources" MEL_APP_ID="$ADAPTER_APP" \
   MEL_RELEASE_STORE_URL=https://bazaar.rehearsal.invalid MEL_RELEASE_STORE_DOMAIN=bazaar.rehearsal.invalid \
-  MEL_RELEASE_SQUADS_MULTISIG=3D1TFuixe17WNQGBGUc1c8BKEAfspARX34Ak9yP77wkD \
-  MEL_RELEASE_SQUADS_VAULT=QLCZ39GVSyJn89pN4HUe4yFrVXXu2NVKKdbxvfFNbn4 \
+  MEL_RELEASE_SQUADS_MULTISIG=AUFQcMxjxDQE7RSSy4sHhuQWVyrdn7L6E2LvSLGkU4S7 \
+  MEL_RELEASE_SQUADS_VAULT=HVGqHHs1yTdhrBUT4JLepFAbS6wXKAZHNSqWxb2zWomG \
   "$CATALOG_ADAPTER" unknown >"$TMP/catalog-adapter.log" 2>&1
 rc=$?
 set -e

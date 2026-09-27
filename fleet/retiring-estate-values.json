@@ -17,6 +17,8 @@
     "retiring/roles.core.multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
     "retiring/roles.core.vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
     "retiring/roles.root-install-admin.vault": "Arkupda1Giah5RdtyZX4GzNMnpoJTxcGVkNwwS7rfR32",
+    "retiring/roles.store-release.multisig": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+    "retiring/roles.store-release.vault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
     "retiring/root-domain": "melusina-os.org",
     "retiring/root-domain-sha256": "0595e1c47c3033976959c872a52b4ad9a1470faf1e7c31426e0d669f9fa4d4d7",
     "retiring/store.operatorBoxKey": "D62iWtghh4s6majv1xm5bbeTnLmzrkycF1tA9bgcnKJ5",

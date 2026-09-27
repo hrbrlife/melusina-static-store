@@ -204,8 +204,8 @@ func TestRunRefusesAnotherEstatesStateBeforeTheProvider(t *testing.T) {
 		"  multisig: "+testSquadsMultisig+"\n"+
 		"  vault: "+testSquadsVault+"\n"+
 		"  program_id: "+testSquadsProgramID+"\n"+
-		"  threshold: 2\n"+
-		"  member_count: 3\n"+
+		"  threshold: 3\n"+
+		"  member_count: 4\n"+
 		"groups:\n"+
 		"  test:\n"+
 		"    apps:\n"+

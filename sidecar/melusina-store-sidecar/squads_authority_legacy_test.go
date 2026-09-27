@@ -31,6 +31,10 @@ func TestLoadConfig_LegacyStoreRetainsFixedReleaseQuorum(t *testing.T) {
 	config := profileEnrolledStoreConfig(t, "")
 	delete(config, "estate_enrollment_state_path")
 	delete(config, "rpc_url")
+	// The vector profile's release role is core's 3 of 4 (K-CHN-03), the
+	// legacy quorum itself, so the profile-specific quorum is stated here.
+	authority := config["release_squads_authority"].(map[string]any)
+	authority["threshold"], authority["member_count"] = 2, 3
 	_, err := LoadConfig(writeJSONConfig(t, config))
 	if err == nil || !strings.Contains(err.Error(), "release_squads_authority quorum must be 3/4") {
 		t.Fatalf("unenrolled Store accepted profile-specific 2/3 quorum: %v", err)

@@ -325,13 +325,18 @@ func buildVectors(t *testing.T) vectorsDocument {
 		},
 		{
 			Name: "store-release-threshold-one", Stage: "decode", Refusal: RefusalFieldMalformed + ":roles.store-release.threshold",
-			Description: "The owners signed a profile whose Store release multisig is 1 of 3. An enrolled Store refuses a release authority below two and requires its configured threshold to equal this role exactly, so the profile is refused before an estate is founded on a root Store that can never be configured.",
+			Description: "The owners signed a profile whose Store release multisig is 1 of 4. An enrolled Store refuses a release authority below two and requires its configured threshold to equal this role exactly, so the profile is refused before an estate is founded on a root Store that can never be configured.",
 			Document:    string(marshalProfile(t, storeReleaseThresholdOne(t))),
 		},
 		{
 			Name: "store-release-single-key", Stage: "decode", Refusal: RefusalFieldMalformed + ":roles.store-release.kind",
 			Description: "The owners signed a profile whose Store release role is one key. A key is threshold one by definition, and an enrolled Store refuses a release role that is not a Squads multisig.",
 			Document:    string(marshalProfile(t, storeReleaseSingleKey(t))),
+		},
+		{
+			Name: "store-release-not-core", Stage: "decode", Refusal: RefusalStoreReleaseNotCore,
+			Description: "The owners signed a profile whose Store release role is its own well-formed 2-of-3 Squads multisig, as a founder following the runbook's separate store-release declaration would. The licence registry creates every app ReleaseEntry under the core vault and the Store serves an app only from roles.store-release's vault, so no app release could be both registered and served; the profile is refused by name (K-CHN-03).",
+			Document:    string(marshalProfile(t, storeReleaseSeparateMultisig(t))),
 		},
 		{
 			Name: "store-id-53-characters", Stage: "decode", Refusal: RefusalFieldMalformed + ":store.storeId",
@@ -719,7 +724,7 @@ func TestVectorsDecodeControls(t *testing.T) {
 			}
 		})
 	}
-	for _, want := range []string{"duplicate-key", "unknown-field", "mainnet-genesis", "changed-threshold-without-succession", "final-program-with-authority", "governed-program-stated-final", "governed-program-without-authority", "store-release-threshold-one", "store-release-single-key", "draft-not-enrollable", "store-id-53-characters"} {
+	for _, want := range []string{"duplicate-key", "unknown-field", "mainnet-genesis", "changed-threshold-without-succession", "final-program-with-authority", "governed-program-stated-final", "governed-program-without-authority", "store-release-threshold-one", "store-release-single-key", "store-release-not-core", "draft-not-enrollable", "store-id-53-characters"} {
 		if !hasVector(document.Decode, want) {
 			t.Fatalf("the named control %q is not in %s", want, vectorsPath)
 		}
@@ -923,6 +928,8 @@ func TestPaypeVectorKeepsPublicValuesAndPlaceholdersApart(t *testing.T) {
 		{"roles.core.multisig", profile.Roles[0].Multisig, paypeCoreMultisig},
 		{"programs.license-registry.upgradeAuthority", profile.Programs[0].UpgradeAuthority, paypeRegistryAuthority},
 		{"roles.root-install-admin.vault", profile.Roles[1].Vault, paypeRootInstallAdmin},
+		{"roles.store-release.vault", profile.Roles[2].Vault, paypeCoreVault},
+		{"roles.store-release.multisig", profile.Roles[2].Multisig, paypeCoreMultisig},
 		{"store.rootDomain", profile.Store.RootDomain, paypeRootStoreDomain},
 		{"store.storeId", profile.Store.StoreID, paypeRootStoreID},
 		{"store.operatorKey", profile.Store.OperatorKey, paypeRootStoreOperatorKey},

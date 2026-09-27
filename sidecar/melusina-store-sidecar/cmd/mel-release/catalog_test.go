@@ -21,8 +21,8 @@ release_squads_authority:
   multisig: ` + testSquadsMultisig + `
   vault: ` + testSquadsVault + `
   program_id: ` + testSquadsProgramID + `
-  threshold: 2
-  member_count: 3
+  threshold: 3
+  member_count: 4
 
 groups:
   money:
@@ -165,10 +165,10 @@ func TestLoadCatalogRejectsAppSpecificSquadsAuthority(t *testing.T) {
 // field; nothing is implied, including the quorum.
 func TestLoadCatalogRequiresACompleteWellFormedSquadsAuthority(t *testing.T) {
 	for name, change := range map[string]struct{ old, new string }{
-		"no threshold":         {"  threshold: 2\n", ""},
-		"no member count":      {"  member_count: 3\n", ""},
-		"zero threshold":       {"  threshold: 2\n", "  threshold: 0\n"},
-		"quorum above members": {"  member_count: 3\n", "  member_count: 1\n"},
+		"no threshold":         {"  threshold: 3\n", ""},
+		"no member count":      {"  member_count: 4\n", ""},
+		"zero threshold":       {"  threshold: 3\n", "  threshold: 0\n"},
+		"quorum above members": {"  member_count: 4\n", "  member_count: 1\n"},
 		"no multisig":          {"  multisig: " + testSquadsMultisig + "\n", ""},
 		"malformed vault":      {"  vault: " + testSquadsVault + "\n", "  vault: not-a-public-key\n"},
 		"malformed program":    {"  program_id: " + testSquadsProgramID + "\n", "  program_id: 0x1234\n"},

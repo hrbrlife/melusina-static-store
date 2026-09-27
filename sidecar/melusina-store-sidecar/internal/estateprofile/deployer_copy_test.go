@@ -20,8 +20,13 @@ import (
 // StoreReleaseMinThreshold), #12 (79c27ef7, the draft is the ceremony profile
 // schema), #18 (b8413595, MaxStoreIDLength 52), and #3 (c5196544, the
 // storeEnrollmentVectors the owner-side successor tools reproduce). It also
-// carries StoreHostAuthorizationV1 (7bda6a17), provider-install C8 (2aa1303c)
-// and recovery M16 (eb92b954).
+// carries StoreHostAuthorizationV1 (7bda6a17), provider-install C8 (2aa1303c),
+// recovery M16 (eb92b954), the estate runner seat and core config-authority
+// sentinel (a32fdd57, WL-111 / S-21), the ceremony release trust (e980ab9a,
+// release_trust.go) and K-CHN-03: roles.store-release is core's authority in
+// every field, refused estate-profile-store-release-not-core otherwise,
+// because the licence registry creates every app ReleaseEntry under the core
+// vault and this Store serves an app only from roles.store-release's vault.
 //
 // Every non-test source is recorded by hash in the vectors' goSources, and
 // TestVectorsGoSourcesAreRecorded holds this package to that record. The
@@ -33,16 +38,16 @@ import (
 // `go test ./internal/estateprofile/ -update-vectors`, confirm that the
 // regenerated files still equal the deployer's, and re-pin the commit and
 // every hash here.
-const deployerCopyCommit = "b23823962d5abd9e4b1ac1ab83d82362634afdcb"
+const deployerCopyCommit = "4b9d4dd59be407e4a3b5d7f34da55644ee34c954"
 
 // deployerCopyTestdata is the SHA-256 of each testdata file the package's
 // tests read, as the deployer committed it at deployerCopyCommit
 // (deploy-ui/testdata/<name>). The deployer's own byte copy of the Store's
 // vectors (store-estate-profile-vectors.json) is not among them.
 var deployerCopyTestdata = map[string]string{
-	"estate-profile-vectors.json":                 "9714fa2f5bfa4da3d6f76a3af12019bb5dfc4ca65d4200a46c04ae6e04fe305c",
+	"estate-profile-vectors.json":                 "8ff252da2a2336b72b243ca1188def0b643ef94cb0175e6bbb500987641c314e",
 	"foundation-authorization-vectors.json":       "19dd047d8cab7c9926032bb0883177920af806ed2174818c937866ee75ffc9ad",
-	"provider-install-authorization-vectors.json": "625725a242416a529bf7763212e30e053642ef8c3c74c161c2b50fcdd1616f75",
+	"provider-install-authorization-vectors.json": "016e2b1db5b4d8c21fcd1143975e3a3886b81dad7f1aceaf43fa5bb85377e06a",
 	"store-host-authorization-vectors.json":       "99b85dad81eabe6d9f61a86a1cc4f6a63160f7d2b67507ff86766b312ebb2045",
 	"contracts-example-estate.profile.json":       "29c66510a588c364d09b35ccb56ef20c58dfe400f0fa00dd5299122c5884c521",
 }
@@ -52,17 +57,18 @@ var deployerCopyTestdata = map[string]string{
 var deployerCopyTests = map[string]string{
 	"accept_test.go":                         "3ae5a1fb28dc349cf13af691aee8857d827d2731c4fc1254467d17d9c8845a58",
 	"digest_test.go":                         "a4527abcaa746e1a9eceec791d3480e24f789ef994b5e33ee0dc5a0f703ea24d",
-	"fixtures_test.go":                       "ed0a00223d20fb67f66196e1561a7037ce5f0509ea827f9fee41442d9a28252d",
+	"fixtures_test.go":                       "1521f84fd3d50c7d6e912a3f3d6add99c8e98fb4d3123c0906949e99c0bf1432",
 	"foundation_authorization_test.go":       "c2e06b298e4ee3d08841f40bb22ae9c28036b552d6574318add21234387e9269",
 	"owner_threshold_test.go":                "363072d3903e97eb535dd801b139d979036783e0ba25c61b01256598a9cb1287",
 	"projection_test.go":                     "c45ff0f93dd5c5f0317a0b07013fd4a816b0c81dcaeacc88e13556304bb9bfcf",
 	"provider_install_authorization_test.go": "ef64b96c46ca4e3760be52503504de3eb00fbd12652a0856a6c268d11279529e",
+	"release_trust_test.go":                  "0ae02ed9bc7258885ddc3eb76cfc0fe1479cf64701da9d37b6b38a96955e163c",
 	"store_enrollment_successor_test.go":     "687bb1f7a106c3b1b512ce5b0166f59ef3ffb59fbfd374e229cd46cf18cc2b2e",
 	"store_enrollment_test.go":               "c0e2f1929545bf1d7cb6f9edc39e1eb2552b1e73a4a719792efdfe4308c01597",
 	"store_host_authorization_test.go":       "14cc6a99bfb14a5ae6fe9ebad4cb9477dfb5a1bc46cd4b951c6fbc702ba8e18d",
 	"strictjson_test.go":                     "ad4755613a3a9bc41fb7b596827417165a5b866a6342066baf7a558a188731d7",
-	"validate_test.go":                       "c9decc31d06fdc4c036a22ebc5073bdb64632243ed291e85edbe4e306782ae1f",
-	"vectors_test.go":                        "762edf2b8f37030bafb4a3bf8d8ac6a91905045b49db8d6122d0281a73b40b7d",
+	"validate_test.go":                       "7a5d9d8b4a5c6ba1d280ca77ff12592863ba9f7b9f543d76377aa967771d3a6f",
+	"vectors_test.go":                        "89cad49b795152fc1c945477cfb6eafba6b55b25b85ae284d77f44dd199beb52",
 	"verify_test.go":                         "34838f35b6b642919bc4207dc922aa5e78a795ed15975ee3cc5dea8175803a2b",
 }
 

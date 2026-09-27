@@ -322,7 +322,8 @@ func TestEstateStoreConfigRenderNeverOverwritesAndProfileCheckCatchesQuorumDrift
 		t.Fatal(err)
 	}
 	authority := doc["release_squads_authority"].(map[string]any)
-	authority["threshold"] = float64(3)
+	// The profile's release role is core's 3 of 4 (K-CHN-03); 2 is drift.
+	authority["threshold"] = float64(2)
 	driftedRaw, err := json.Marshal(doc)
 	if err != nil {
 		t.Fatal(err)

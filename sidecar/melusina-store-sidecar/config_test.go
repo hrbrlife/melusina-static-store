@@ -205,17 +205,18 @@ func TestLoadConfig_ProfileEnrolledStoreAcceptsItsExplicitProfileQuorum(t *testi
 	statePath := filepath.Join(t.TempDir(), "estate-enrollment.json")
 	cfg, err := LoadConfig(writeJSONConfig(t, profileEnrolledStoreConfig(t, statePath)))
 	if err != nil {
-		t.Fatalf("LoadConfig refused the signed-profile 2-of-3 role: %v", err)
+		t.Fatalf("LoadConfig refused the signed-profile 3-of-4 role: %v", err)
 	}
-	if cfg.ReleaseSquadsAuthority.Threshold != 2 || cfg.ReleaseSquadsAuthority.MemberCount != 3 {
-		t.Fatalf("profile quorum = %d/%d, want 2/3", cfg.ReleaseSquadsAuthority.Threshold, cfg.ReleaseSquadsAuthority.MemberCount)
+	// The profile's store-release role is core's 3 of 4 (K-CHN-03).
+	if cfg.ReleaseSquadsAuthority.Threshold != 3 || cfg.ReleaseSquadsAuthority.MemberCount != 4 {
+		t.Fatalf("profile quorum = %d/%d, want 3/4", cfg.ReleaseSquadsAuthority.Threshold, cfg.ReleaseSquadsAuthority.MemberCount)
 	}
 	authority, err := cfg.sharedSquadsAuthority()
 	if err != nil {
 		t.Fatalf("serve-time authority rejected the accepted profile quorum: %v", err)
 	}
-	if authority.Threshold != 2 || authority.MemberCount != 3 {
-		t.Fatalf("serve-time profile quorum = %d/%d, want 2/3", authority.Threshold, authority.MemberCount)
+	if authority.Threshold != 3 || authority.MemberCount != 4 {
+		t.Fatalf("serve-time profile quorum = %d/%d, want 3/4", authority.Threshold, authority.MemberCount)
 	}
 }
 

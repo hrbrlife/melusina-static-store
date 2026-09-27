@@ -288,14 +288,15 @@ func refuseMatches(t *testing.T, profile EstateProfileV1, want string) error {
 }
 
 // contractsCeremonyProfilePath is a byte copy of the contracts repository's
-// scripts/estate/examples/example-estate.profile.json (blob c1df4a37, last
-// changed in contracts c3c940b "master_registry leaves the foundation", read
-// at contracts origin/main c3c940b): the document the chain foundation runs
-// from, schema melusina.estate-profile/v1. A hand edit, or a copy of another
+// scripts/estate/examples/example-estate.profile.json, re-copied in the
+// K-CHN-09 implementation worktree (contracts branch hermes/b01/K-CHN-09)
+// after the example gained the estate-runner seat (core and tenant) and lost
+// ceremony.coreApprovalRoles: the document the chain foundation runs from,
+// schema melusina.estate-profile/v1. A hand edit, or a copy of another
 // revision, fails by name; re-copy it with `git show <commit>:<path>`.
 const (
 	contractsCeremonyProfilePath   = "../../testdata/contracts-example-estate.profile.json"
-	contractsCeremonyProfileSHA256 = "29c66510a588c364d09b35ccb56ef20c58dfe400f0fa00dd5299122c5884c521"
+	contractsCeremonyProfileSHA256 = "3b96ce8b05cf7ad0bc978cf25549b60eb05610acefdfadf8afe65b62ef1c6b8e"
 )
 
 func contractsCeremonyProfile(t *testing.T) []byte {

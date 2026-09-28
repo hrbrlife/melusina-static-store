@@ -1,16 +1,22 @@
-
 package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
 )
 
-// K-CHN-13 step 3: chain-id, mint and domain bind to the estate profile.
-// With -profile, a flag that disagrees with the verified profile is refused
-// by name, and the profile's values enter the report. There is no default
+// K-CHN-13 step 3, reworked per the adversarial review: chain-id and domain
+// bind to the estate profile; the MINT BINDING IS DROPPED. The root Store's
+// operating licence is an owner input and a different fact from
+// anchors.masterMint — the review proved the old mint half compared the
+// licence against the profile's master mint, so the correct invocation was
+// refused and omitting the flag silently derived the identity from the
+// master mint, with tautological tests hiding both. With -profile a stated
+// -license-mint now passes through untouched (it is the owner's licence),
+// and the profile never substitutes its own mint. There is still no default
 // chain: the literal solana:devnet must not survive in this command.
 //
 // The profile is the committed estate-profile vector, the same document the
@@ -28,14 +34,14 @@ func TestKill13ProfileBinding(t *testing.T) {
 	profilePath := writeVectorProfile(t, t.TempDir(), "new-estate-revision-1")
 	base := prepArgs(t, t.TempDir())
 
-	t.Run("profile alone derives chain, mint and domain", func(t *testing.T) {
+	t.Run("profile alone derives the chain and the domain", func(t *testing.T) {
 		var out bytes.Buffer
 		args := append([]string{"-profile", profilePath}, profileArgs(t, base)...)
 		if err := run(args, &out); err != nil {
 			t.Fatal(err)
 		}
 		report := out.String()
-		for _, want := range []string{"solana:" + vectorLabel, vectorMint, vectorDomain} {
+		for _, want := range []string{"solana:" + vectorLabel, vectorDomain} {
 			if !strings.Contains(report, want) {
 				t.Fatalf("the report lacks the derived %q", want)
 			}
@@ -51,12 +57,49 @@ func TestKill13ProfileBinding(t *testing.T) {
 		}
 	})
 
-	t.Run("a mint disagreeing with the profile is refused by name", func(t *testing.T) {
+	// The rework's non-tautological mint control: the licence mint an
+	// owner states is NOT compared with, and NOT replaced by, the
+	// profile's anchors.masterMint. The old test asserted the refusal
+	// boot-identity-mint-differs-from-profile for a mint that differed
+	// from masterMint — with the vector's own masterMint passed in, it
+	// could never fail for the right reason. What must hold now is the
+	// opposite: a licence mint distinct from anchors.masterMint (the
+	// retiring vector's priorLicenseNft shape) runs and the report
+	// carries exactly the stated mint — the profile never lends its
+	// master mint to the identity.
+	t.Run("a licence mint distinct from anchors.masterMint runs unchanged under the profile", func(t *testing.T) {
 		var out bytes.Buffer
-		args := append(profileArgs(t, base), "-profile", profilePath, "-license-mint", "BeSunPxiNitjYE6UKbwV7663NGEokx6GsCWYYYKDdiNB")
+		licence := "9WzDXwBbmkg8ZTbNMqUxv76baTMsyLhWnPMpWFQK7Vq2"
+		if licence == vectorMint {
+			t.Fatal("control: the licence mint must differ from the vector's anchors.masterMint")
+		}
+		args := replaceFlags(profileArgs(t, base), map[string]string{"-license-mint": licence})
+		args = append(args, "-profile", profilePath)
+		if err := run(args, &out); err != nil {
+			t.Fatalf("the correct invocation (owning licence, not masterMint) was refused: %v", err)
+		}
+		if !strings.Contains(out.String(), licence) {
+			t.Fatal("the report does not carry the stated licence mint")
+		}
+		if strings.Contains(out.String(), vectorMint) {
+			t.Fatal("the report carries the profile's anchors.masterMint — the wrong estate fact")
+		}
+	})
+
+	t.Run("the profile does not substitute a mint when none is stated", func(t *testing.T) {
+		// With -profile and no -license-mint, the run must refuse on the
+		// missing required flag (validateOptions), never silently adopt
+		// anchors.masterMint as the licence — the omitted-flag failure
+		// mode the review found.
+		var out bytes.Buffer
+		args := stripFlag(profileArgs(t, base), "-license-mint")
+		args = append(args, "-profile", profilePath)
 		err := run(args, &out)
-		if err == nil || !strings.Contains(err.Error(), RefusalMintDiffersFromProfile) {
-			t.Fatalf("want %s, got %v", RefusalMintDiffersFromProfile, err)
+		if err == nil {
+			t.Fatal("a run with no licence mint must not succeed by adopting the profile's anchors.masterMint")
+		}
+		if !strings.Contains(err.Error(), "missing required flags") {
+			t.Fatalf("want the missing-flag refusal, got %v", err)
 		}
 	})
 
@@ -78,8 +121,10 @@ func TestKill13ProfileBinding(t *testing.T) {
 	})
 }
 
-// profileArgs replaces prepArgs' chain and programme with the vector
-// profile's own, so the profile is the only estate source in the argv.
+// profileArgs replaces prepArgs' chain, programme and domain with the
+// vector profile's own, so the profile is the only estate source for those
+// facts in the argv. The licence mint is deliberately NOT replaced: it is
+// an owner input the profile never supplies or checks (K-CHN-13 rework).
 func profileArgs(t *testing.T, args []string) []string {
 	t.Helper()
 	out := []string{}
@@ -90,11 +135,6 @@ func profileArgs(t *testing.T, args []string) []string {
 		}
 		if args[index] == "-program-id" {
 			out = append(out, "-program-id", vectorProgramID)
-			index++
-			continue
-		}
-		if args[index] == "-license-mint" {
-			out = append(out, "-license-mint", vectorMint)
 			index++
 			continue
 		}
@@ -119,6 +159,12 @@ func TestKill13SourceCarriesNoDevnetLiteral(t *testing.T) {
 	if strings.Contains(raw, "solana:devnet") {
 		t.Fatal("boot-identity-prep still names solana:devnet")
 	}
+	// The rework's own guard: the mint-binding refusal name is gone with
+	// the binding (a stray reintroduction fails this control).
+	if strings.Contains(raw, "boot-identity-mint-differs-from-profile") {
+		t.Fatal("the dropped mint binding is back")
+	}
+	_ = json.Marshal
 }
 
 // stripFlag removes one flag and its value from the argument list.

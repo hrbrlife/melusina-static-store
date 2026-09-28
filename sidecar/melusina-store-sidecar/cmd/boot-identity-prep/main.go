@@ -43,12 +43,21 @@ const (
 	// programme the key is salted by must be the verified profile's own, so a
 	// verified profile never lends its chain to another estate's programme.
 	RefusalProgramDiffersFromProfile = "boot-identity-program-differs-from-profile"
-	// RefusalMintDiffersFromProfile and RefusalDomainDiffersFromProfile
-	// (K-CHN-13): the licence mint the PDA is seeded by and the Store domain
-	// the report hashes are the verified profile's own; a flag that
+	// RefusalDomainDiffersFromProfile (K-CHN-13): with -profile, the Store
+	// domain the report hashes is the verified profile's own; a flag that
 	// disagrees names the profile's value and refuses before anything is
 	// created or derived.
-	RefusalMintDiffersFromProfile  = "boot-identity-mint-differs-from-profile"
+	//
+	// K-CHN-13 rework: the MINT binding is DROPPED. The root Store's
+	// operating licence is NOT anchors.masterMint — the estate's master NFT
+	// is a different fact (the retiring profile vector carries both
+	// distinct: priorLicenseNft vs anchors.masterMint), and the Store's
+	// own runtime (boot_identity.go) and renderer keep them separate.
+	// The adversarial review found the mint half bound the wrong fact and
+	// made the tautological tests hide it; the licence mint remains an
+	// owner input, never derived from the profile. With neither -profile
+	// nor -chain-id the tool still refuses boot-identity-chain-id-required
+	// (there is no default chain).
 	RefusalDomainDiffersFromProfile = "boot-identity-domain-differs-from-profile"
 )
 
@@ -168,15 +177,17 @@ func parseOptions(args []string) (options, error) {
 		return options{}, err
 	}
 	opts.chainID = chainID
-	// K-CHN-13: with -profile, the licence mint and the Store domain bind to
-	// the verified profile the same way the chain and the programme do; the
-	// profile's values are the ones the report carries.
+	// K-CHN-13: with -profile, the Store domain binds to the verified
+	// profile the same way the chain and the programme do; the profile's
+	// value is the one the report hashes. The licence mint is NOT taken
+	// from the profile (K-CHN-13 rework): the root Store's operating
+	// licence is an owner input, a different fact from anchors.masterMint.
 	if strings.TrimSpace(opts.profilePath) != "" {
-		mint, domain, err := bindProfileFacts(opts.profilePath, opts.licenseMint, opts.domain)
+		domain, err := bindProfileDomain(opts.profilePath, opts.domain)
 		if err != nil {
 			return options{}, err
 		}
-		opts.licenseMint, opts.domain = mint, domain
+		opts.domain = domain
 	}
 	return opts, validateOptions(opts)
 }
@@ -207,23 +218,23 @@ func resolveChainID(stated, profilePath, programID string) (string, error) {
 	return derived, nil
 }
 
-// bindProfileFacts (K-CHN-13) is the mint and domain half of the profile
-// binding: with -profile, each stated flag must equal the verified profile's
-// field, and the caller uses the profile's values. The preparer's operator
-// key is seeded by the mint and the report hashes the domain, so a mixed
-// estate identity is refused here rather than derived.
-func bindProfileFacts(profilePath, licenseMint, domain string) (mint, storeDomain string, err error) {
+// bindProfileDomain (K-CHN-13, reworked) is the domain half of the profile
+// binding: with -profile, a stated -domain must equal the verified
+// profile's store.rootDomain, and the caller uses the profile's value. The
+// licence mint is deliberately NOT bound here (K-CHN-13 rework): the root
+// Store's operating licence is an owner input and a different fact from
+// anchors.masterMint, which the adversarial review proved the mint binding
+// compared against — binding it refused the correct invocation and, with
+// the flag omitted, silently derived the identity from the master mint.
+func bindProfileDomain(profilePath, domain string) (string, error) {
 	_, facts, err := chainIDFromProfile(profilePath)
 	if err != nil {
-		return "", "", err
-	}
-	if licenseMint = strings.TrimSpace(licenseMint); licenseMint != "" && licenseMint != facts.masterMint {
-		return "", "", fmt.Errorf("%s: -license-mint %q, estate profile anchors.masterMint is %q", RefusalMintDiffersFromProfile, licenseMint, facts.masterMint)
+		return "", err
 	}
 	if domain = strings.TrimSpace(domain); domain != "" && domain != facts.rootDomain {
-		return "", "", fmt.Errorf("%s: -domain %q, estate profile store.rootDomain is %q", RefusalDomainDiffersFromProfile, domain, facts.rootDomain)
+		return "", fmt.Errorf("%s: -domain %q, estate profile store.rootDomain is %q", RefusalDomainDiffersFromProfile, domain, facts.rootDomain)
 	}
-	return facts.masterMint, facts.rootDomain, nil
+	return facts.rootDomain, nil
 }
 
 // chainIDFromProfile reads and verifies an owner-signed EstateProfileV1 and

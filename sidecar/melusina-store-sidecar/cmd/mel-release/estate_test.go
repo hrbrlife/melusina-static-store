@@ -478,6 +478,9 @@ func TestBindCatalogRequiresTheEstateStoreAndAuthority(t *testing.T) {
 		"threshold":      {other(func(a *SquadsAuthority) { a.Threshold = 2 }), "roles.store-release authority"},
 		"member count":   {other(func(a *SquadsAuthority) { a.MemberCount = 5 }), "roles.store-release authority"},
 		"malformed":      {other(func(a *SquadsAuthority) { a.Vault = "" }), "valid shared Squads authority"},
+		// K-CHN-38: a membership-only ledger (no declared population) parses,
+		// but bindCatalog must refuse it as a release catalog.
+		"membership-only ledger": {func() *Catalog { c := other(func(*SquadsAuthority) {}); c.ExpectedLiveAppCount = 0; return c }(), "no positive expected_live_app_count"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			attempt := cfg

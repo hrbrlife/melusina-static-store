@@ -1120,13 +1120,13 @@ def test_estate_scan_refuses_an_unusable_reference_or_values_file():
             # Positive control: the committed bytes, copied, scan.
             values_file.write_text(committed, encoding="utf-8")
             report = provider.estate_scan(text, document, reference)
-            # Store forbid set (28) + the snapshot file's origin host and
+            # Store forbid set (len(store["values"])) + the snapshot file's origin host and
             # parent domain + its index digest (3) + the checked-in ledger's
             # release authority (3 keys) + the reference ledger's own
-            # authority again (3, deduplicated as fields) = 37. A field
+            # authority again (3, deduplicated as fields) = that + 9. A field
             # defined twice would narrow the scan silently, so the width is
             # exact.
-            assert report["status"] == "clean" and report["valueCount"] == 37, report
+            assert report["status"] == "clean" and report["valueCount"] == len(store["values"]) + 9, report
         finally:
             provider.ESTATE_SCAN_VALUES = old_values
 

@@ -12,10 +12,10 @@ package main
 // ed25519 signature is verified on-chain by the register handler — see
 // FEDERATED-STORE-MVP §1 — and the sidecar does not read AuthorSig. It confirms
 // the on-chain ReleaseEntry exists, is Active and pins this AppHash, and its
-// publish admission (admitReleaseEntryForPublish) refuses a releaseHash, appId
-// or version the entry does not attest and, on an enrolled Store, an entry
-// whose publisher key, custodian or signature the estate's releaseTrust does
-// not admit.
+// release admission (admitReleaseEntry, run at /publish and again before every
+// serve) refuses a releaseHash, appId or version the entry does not attest
+// and, on an enrolled Store, an entry whose publisher key, custodian or
+// signature the estate's releaseTrust does not admit.
 type ReleaseJSON struct {
 	Schema             string       `json:"$schema"`
 	AppHash            string       `json:"appHash"`     // lowercase hex tree-hash over {app.spk, metadata.json} (canonicalAppHash; NOT sha256(spk))

@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -408,7 +409,8 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 func checkSidecarCascade(ctx context.Context, rr rawAccountReader, c componentReleaseChainView, artifact [32]byte) error {
 	sidecarID := c.sidecarID
 	licenseMint := c.licenseMint
-	pinMaster := c.keyless || c.pinMaster
+	componentMaster := c.keyless || c.componentMaster
+	pinMaster := componentMaster || c.pinMaster
 	if pinMaster && c.masterMint == (primitives.Pubkey{}) {
 		return errors.New("cascade master mint pin is the zero key; the master mint comes from the signed component or the enrolled estate profile, never a default")
 	}
@@ -441,7 +443,10 @@ func checkSidecarCascade(ctx context.Context, rr rawAccountReader, c componentRe
 	}
 	if pinMaster && master != c.masterMint {
 		if c.keyless {
-			return fmt.Errorf("%w:LicenseEntry.master_nft_mint: %w: LicenseEntry names %s, the component %s", errCascadeBindingMismatch, errKeylessSidecarMasterMismatch, master.Base58(), c.masterMint.Base58())
+			return fmt.Errorf("%w:LicenseEntry.master_nft_mint: %w: %w: LicenseEntry names %s, the component %s", errCascadeBindingMismatch, errKeylessSidecarMasterMismatch, componentrelease.ErrSidecarMasterMintNotPinned, master.Base58(), c.masterMint.Base58())
+		}
+		if componentMaster {
+			return fmt.Errorf("%w:LicenseEntry.master_nft_mint: %w: LicenseEntry names %s, the component %s", errCascadeBindingMismatch, componentrelease.ErrSidecarMasterMintNotPinned, master.Base58(), c.masterMint.Base58())
 		}
 		if err := cascadeBind("LicenseEntry", "master_nft_mint", master, c.masterMint, "the estate's master mint", sidecarID, licPDA.Base58()); err != nil {
 			return err
@@ -700,8 +705,15 @@ type componentReleaseChainView struct {
 	// without the keyless Local-pin rule. This Store's own boot cascade sets it
 	// with the enrolled profile's anchors.masterMint, the pin the sidecar boot
 	// gate takes from its estate anchors. A keyless view implies it.
-	pinMaster  bool
-	masterMint primitives.Pubkey
+	pinMaster bool
+	// componentMaster says masterMint is the signed component's masterNftMint
+	// (the seed its globalApprovalPda was derived from), and implies pinMaster.
+	// A LicenseEntry naming another master is then refused as
+	// componentrelease.ErrSidecarMasterMintNotPinned, the name the tenant update
+	// controller refuses the same component by (requireSidecarMintPins). A
+	// keyless view implies it; the key-bearing promote and serve gate sets it.
+	componentMaster bool
+	masterMint      primitives.Pubkey
 }
 
 // errKeylessSidecarLocalPinAbsent: a keyless sidecar's LocalSidecarApproval has

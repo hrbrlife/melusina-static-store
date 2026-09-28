@@ -26,8 +26,8 @@ type releaseEntryMeta struct {
 	PDA string
 	// MasterNFTMint is the account's own master_nft_mint field, the first
 	// ReleaseEntry seed. An explicit recall (releaseEntryExplicitRecall) and
-	// the publish admission (admitReleaseEntryForPublish) both hold it to the
-	// estate master.
+	// the release admission (admitReleaseEntry, at publish and serve) both
+	// hold it to the estate master.
 	MasterNFTMint [32]byte
 	AppHash       [32]byte
 	AppID         [32]byte

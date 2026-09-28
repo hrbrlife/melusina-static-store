@@ -309,8 +309,8 @@ func VerifyPublish(ctx context.Context, cr chainReader, cfg Config, spk []byte, 
 	// unless the ReleaseEntry attests that release hash and this app. So the
 	// entry must attest exactly this release (app_hash, app_id, release_hash,
 	// version) and, on an enrolled Store, be admitted by the estate's
-	// releaseTrust as mel-release admits it (admitReleaseEntryForPublish).
-	if err := admitReleaseEntryForPublish(cfg, appHashBytes, submittedMeta, rel, metadataAppID(metadata)); err != nil {
+	// releaseTrust as mel-release admits it (admitReleaseEntry).
+	if err := admitReleaseEntry(cfg, appHashBytes, submittedMeta, rel, metadataAppID(metadata)); err != nil {
 		return err
 	}
 
@@ -418,6 +418,16 @@ func resolveFoundationTier(ctx context.Context, cr chainReader, relPDA pda.Pubke
 //	(d) the app is explicitly Clear: appID is the served release's Sandstorm
 //	    appId text, SHA-256 of which must be the ReleaseEntry's app_id, and
 //	    its decoded key's BlacklistStatusEntry must read Clear
+//	(e) the entry attests exactly the served release and is admitted, as
+//	    /publish admits it (admitReleaseEntry): app_hash, app_id =
+//	    sha256(appID), release_hash = the served RELEASE.json releaseHash and
+//	    version, and on an enrolled Store the estate's releaseTrust (master
+//	    mint, custodian, digest, publisher key, threshold, signature). The
+//	    served RELEASE.json is what the catalogue lists and the pointer the
+//	    Store serves or re-signs carries, and the tenant's authorization
+//	    daemon refuses a release hash or app the entry does not attest
+//	    (release-hash-mismatch, release-appid-mismatch), so the Store refuses
+//	    it first, by name: check=release_entry_admission.
 //
 // When StoreAuthority is explicitly configured, it also requires an Active
 // exact StoreReleaseListing for this store. ReleaseEntry authenticity is
@@ -432,6 +442,9 @@ func VerifyServeHash(ctx context.Context, cr chainReader, cfg Config, appHashHex
 		return err
 	}
 	if err := verifyAppClear(ctx, cr, appID, &meta.AppID); err != nil {
+		return err
+	}
+	if err := admitReleaseEntry(cfg, appHash, meta, rel, appID); err != nil {
 		return err
 	}
 	return verifyStoreReleaseListing(ctx, cr, cfg, appHash, releasePDA)
@@ -615,7 +628,7 @@ func fetchInstallerReleaseMetaForHash(ctx context.Context, cr chainReader, cfg C
 // ReleaseEntry PDA and its decoded account (whose app_id binds the caller's
 // clearance check). FAIL-CLOSED. (The author ed25519 sig was verified
 // on-chain at register — §1. Publish additionally admits the whole entry,
-// release_hash and publisher included: admitReleaseEntryForPublish.)
+// release_hash and publisher included: admitReleaseEntry.)
 func verifyReleaseEntryHash(ctx context.Context, cr chainReader, cfg Config, appHashHex string, rel ReleaseJSON) (pda.Pubkey, [32]byte, pda.Pubkey, releaseEntryMeta, error) {
 	return verifyReleaseEntryHashWithAuthorityPolicy(ctx, cr, cfg, appHashHex, rel, false)
 }

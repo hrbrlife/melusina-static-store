@@ -32,7 +32,7 @@ import (
 // release-appid-mismatch). So /publish admits the entry before it signs
 // anything: the entry must attest exactly this release, and on an enrolled
 // Store the estate's releaseTrust must admit its publisher, custodian and
-// signature (admitReleaseEntryForPublish).
+// signature (admitReleaseEntry).
 
 // admissionOtherPublisher is a well-formed key the fixture estate never
 // enrolled. It is derived from a fixed public label and holds no authority.
@@ -184,11 +184,11 @@ func TestPublishAdmissionBindsTheAppID(t *testing.T) {
 	}
 	meta.PDA = f.relPDA
 	enrolled := withReleaseTrust(cfg, m)
-	if err := admitReleaseEntryForPublish(enrolled, f.appHashBytes, meta, f.rel, f.appIDText); err != nil {
+	if err := admitReleaseEntry(enrolled, f.appHashBytes, meta, f.rel, f.appIDText); err != nil {
 		t.Fatalf("positive control: %v", err)
 	}
 	other := testAppIDText("another app")
-	requireAdmissionRefusal(t, admitReleaseEntryForPublish(enrolled, f.appHashBytes, meta, f.rel, other), releaseentry.ErrAppIDMismatch)
+	requireAdmissionRefusal(t, admitReleaseEntry(enrolled, f.appHashBytes, meta, f.rel, other), releaseentry.ErrAppIDMismatch)
 	if err := entryAttestsOnly(meta, f, other); !errors.Is(err, releaseentry.ErrAppIDMismatch) {
 		t.Fatalf("trust-free subset admitted another app: %v", err)
 	}

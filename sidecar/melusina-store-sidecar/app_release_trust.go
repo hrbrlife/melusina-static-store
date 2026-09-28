@@ -76,20 +76,25 @@ func bindAppReleaseTrust(cfg *Config, state *storeEnrollmentState) error {
 	return nil
 }
 
-// admitReleaseEntryForPublish is the /publish admission of the ReleaseEntry
+// admitReleaseEntry is the one admission of an app release's ReleaseEntry
 // meta (read at the PDA derived from rel's master mint and appHash, Active and
-// pinning appHash, as verifyReleaseEntryHash already established). The Store
-// is about to sign rel.ReleaseHash into its receipt and catalog pointer, and
-// the tenant's authorization daemon refuses a receipt whose release hash or
-// app is not the entry's (evalRelease: release-hash-mismatch,
-// release-appid-mismatch). So the entry must attest exactly this release:
+// pinning appHash, as verifyReleaseEntryHash already established). /publish
+// runs it before the Store signs rel.ReleaseHash into its receipt and catalog
+// pointer (VerifyPublish), and every serve runs it again before the Store
+// hands out the release's package, lists its catalogue row, serves or
+// re-signs its pointer (VerifyServeHash; the verdict cache is keyed by the
+// release claim this binds, releaseVerdictKey). The tenant's authorization
+// daemon refuses a receipt or pointer whose release hash or app is not the
+// entry's (evalRelease: release-hash-mismatch, release-appid-mismatch), so
+// the Store neither signs nor serves one. The entry must attest exactly this
+// release:
 // app_hash, app_id = sha256(metadata appId), release_hash and version. With
 // the enrolled estate's trust bound it is admitted in full, as `mel-release`
 // admits it before every promote: the estate master mint, the release
 // custodian, the recorded digest, a publisher key the owners enrolled in
 // releaseTrust, the threshold and that key's signature. Every refusal names
 // check=release_entry_admission and the releaseentry refusal.
-func admitReleaseEntryForPublish(cfg Config, appHash [32]byte, meta releaseEntryMeta, rel ReleaseJSON, appIDText string) error {
+func admitReleaseEntry(cfg Config, appHash [32]byte, meta releaseEntryMeta, rel ReleaseJSON, appIDText string) error {
 	releaseHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(rel.ReleaseHash)))
 	if err != nil {
 		return fmt.Errorf("check=release_entry_admission: release.releaseHash is not 32-byte hex: %w", err)

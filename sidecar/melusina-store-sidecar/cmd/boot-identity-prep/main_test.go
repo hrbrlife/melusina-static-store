@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -17,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hrbrlife/melusina-attest/derive"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -56,10 +59,7 @@ func TestRunGeneratesShardsAndOmitsSecretValues(t *testing.T) {
 		}
 	}
 
-	var report ceremonyReport
-	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
-		t.Fatalf("unmarshal report: %v", err)
-	}
+	report, _ := openSignedReport(t, out.Bytes())
 	if !report.Shards.Created {
 		t.Fatal("first run should create shards")
 	}
@@ -87,6 +87,114 @@ func TestRunGeneratesShardsAndOmitsSecretValues(t *testing.T) {
 // testProgramID is a fictitious registry: sha256("boot-identity-prep test
 // registry"), base58. The preparer has no program of its own to fall back to.
 const testProgramID = "G4Ps7fo3cud6NxSWoJS78fozqCWtCmAT9ZdoM3t4vHWb"
+
+// openSignedReport reads what run printed the way the report's readers do:
+// exactly one object with exactly the three fields, the schema, canonical
+// standard base64, and a signature over reportSigningDomain || the report's
+// bytes that verifies under the operator key derived AGAIN here from the
+// shards on disk and the reported operator Ref, which must also be the
+// signing key the report names. It returns the report and its exact bytes.
+func openSignedReport(t *testing.T, out []byte) (ceremonyReport, []byte) {
+	t.Helper()
+	var signed signedReport
+	decoder := json.NewDecoder(bytes.NewReader(out))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&signed); err != nil {
+		t.Fatalf("the output is not the signed report file: %v", err)
+	}
+	if decoder.More() {
+		t.Fatal("the output carries data after the signed report")
+	}
+	if signed.Schema != signedReportSchema {
+		t.Fatalf("schema = %q, want %q", signed.Schema, signedReportSchema)
+	}
+	raw, err := base64.StdEncoding.Strict().DecodeString(signed.ReportBase64)
+	if err != nil || len(raw) == 0 || base64.StdEncoding.EncodeToString(raw) != signed.ReportBase64 {
+		t.Fatalf("report_base64 is not canonical standard base64 of a report: %v", err)
+	}
+	var report ceremonyReport
+	strict := json.NewDecoder(bytes.NewReader(raw))
+	strict.DisallowUnknownFields()
+	if err := strict.Decode(&report); err != nil {
+		t.Fatalf("the signed bytes are not a ceremony report: %v", err)
+	}
+	if again, err := encodeIndented(report); err != nil || !bytes.Equal(again, raw) {
+		t.Fatalf("the signed bytes are not the report's own encoding: %v", err)
+	}
+	shards, err := loadShards(report.Shards.Dir)
+	if err != nil {
+		t.Fatalf("load the run's shards: %v", err)
+	}
+	operator, err := derive.DeriveSidecar(report.OperatorIdentityRef, shards)
+	if err != nil {
+		t.Fatalf("derive the operator again: %v", err)
+	}
+	key, err := operator.Public().SignPublicKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hex.EncodeToString(key) != report.RegisterSidecarInput.SigningPubkeyHex || primitives.EncodeBase58(key) != report.RegisterSidecarInput.SigningPubkeyBase58 {
+		t.Fatal("the report names another signing key than the operator key its shards derive")
+	}
+	signature, err := hex.DecodeString(signed.OperatorSignatureHex)
+	if err != nil || len(signature) != ed25519.SignatureSize || hex.EncodeToString(signature) != signed.OperatorSignatureHex {
+		t.Fatalf("operator_signature_hex is not 64 bytes of lowercase hex: %v", err)
+	}
+	if !ed25519.Verify(key, reportSigningMessage(raw), signature) {
+		t.Fatal("store-identity-report-signature-invalid: the report does not verify under the derived operator key")
+	}
+	return report, raw
+}
+
+// The file is self-signed by the derived operator key (openSignedReport, the
+// positive half). The negative half: the same signature does not cover a
+// report with one byte flipped, and a signature by any other key does not
+// verify under the derived operator key.
+func TestRunSignsTheExactReportWithTheDerivedOperatorKey(t *testing.T) {
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "melusina-store-sidecar")
+	if err := os.WriteFile(binaryPath, []byte("sidecar-binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	certPath, _ := writeTestCert(t, dir, "bazaar.example.org")
+	var out bytes.Buffer
+	if err := run([]string{
+		"-shards-dir", filepath.Join(dir, "shards"),
+		"-license-mint", randPubkeyB58(t),
+		"-domain", "bazaar.example.org",
+		"-operator-domain", "example.org",
+		"-program-id", testProgramID,
+		"-chain-id", testChainID,
+		"-binary", binaryPath,
+		"-tls-cert", certPath,
+	}, &out); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	report, raw := openSignedReport(t, out.Bytes())
+	var signed signedReport
+	if err := json.Unmarshal(out.Bytes(), &signed); err != nil {
+		t.Fatal(err)
+	}
+	key, _ := hex.DecodeString(report.RegisterSidecarInput.SigningPubkeyHex)
+	signature, _ := hex.DecodeString(signed.OperatorSignatureHex)
+	for index := range raw {
+		flipped := append([]byte(nil), raw...)
+		flipped[index] ^= 0x01
+		if ed25519.Verify(key, reportSigningMessage(flipped), signature) {
+			t.Fatalf("the signature still verifies with byte %d flipped", index)
+		}
+	}
+	if ed25519.Verify(key, raw, signature) {
+		t.Fatal("the signature verifies without its domain: it is not separated from the key's other messages")
+	}
+	_, other, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ed25519.Verify(key, reportSigningMessage(raw), ed25519.Sign(other, reportSigningMessage(raw))) {
+		t.Fatal("a signature by another key verifies under the derived operator key")
+	}
+}
 
 // The operator key is salted by the registry program, so the preparer refuses
 // to derive one without an explicit -program-id, before it creates a shard.
@@ -165,10 +273,7 @@ func TestRunReusesCompleteShardSet(t *testing.T) {
 	if !bytes.Equal(firstAuthor, secondAuthor) {
 		t.Fatal("complete shard set was regenerated instead of reused")
 	}
-	var report ceremonyReport
-	if err := json.Unmarshal(second.Bytes(), &report); err != nil {
-		t.Fatal(err)
-	}
+	report, _ := openSignedReport(t, second.Bytes())
 	if report.Shards.Created {
 		t.Fatal("second run should report existing shards, not created")
 	}
@@ -199,10 +304,7 @@ func TestRunSeparatesStableOperatorFromRotatedBinding(t *testing.T) {
 	), &v1); err != nil {
 		t.Fatal(err)
 	}
-	var first ceremonyReport
-	if err := json.Unmarshal(v1.Bytes(), &first); err != nil {
-		t.Fatal(err)
-	}
+	first, _ := openSignedReport(t, v1.Bytes())
 
 	var v3 bytes.Buffer
 	if err := run(append(append([]string{}, base...),
@@ -213,10 +315,7 @@ func TestRunSeparatesStableOperatorFromRotatedBinding(t *testing.T) {
 	), &v3); err != nil {
 		t.Fatal(err)
 	}
-	var rotated ceremonyReport
-	if err := json.Unmarshal(v3.Bytes(), &rotated); err != nil {
-		t.Fatal(err)
-	}
+	rotated, _ := openSignedReport(t, v3.Bytes())
 	if rotated.IdentityRef.KeyVersion != 3 || rotated.IdentityRef.Domain != "melusina-os.org" {
 		t.Fatalf("binding Ref not rotated: %+v", rotated.IdentityRef)
 	}

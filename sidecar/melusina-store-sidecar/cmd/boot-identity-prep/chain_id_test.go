@@ -168,10 +168,7 @@ func TestProfileMustVerify(t *testing.T) {
 
 func requireReportChain(t *testing.T, raw []byte, want string) {
 	t.Helper()
-	var report ceremonyReport
-	if err := json.Unmarshal(raw, &report); err != nil {
-		t.Fatalf("unmarshal report: %v", err)
-	}
+	report, _ := openSignedReport(t, raw)
 	for field, got := range map[string]string{
 		"identity_ref.chain_id":          report.IdentityRef.ChainID,
 		"operator_identity_ref.chain_id": report.OperatorIdentityRef.ChainID,

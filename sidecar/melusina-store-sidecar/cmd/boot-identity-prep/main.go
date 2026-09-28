@@ -1,10 +1,23 @@
 // Command boot-identity-prep prepares the store-sidecar B1-02 boot identity
 // ceremony without broadcasting any on-chain transaction.
+//
+// It prints ONE self-signed file (K-CHN-14 / WL-142): the ceremony report's
+// exact bytes, carried as report_base64, and the derived operator key's
+// Ed25519 signature over reportSigningDomain || those bytes. The key that
+// signs is the key the report names as register_sidecar_identity.signing_pubkey,
+// so the four values the foundation takes from the report (rootStoreOperator,
+// rootStoreBoxKey, tlsCertificateSha256, binarySha256) travel under the
+// operator's own signature instead of being retyped. Readers: contracts
+// scripts/estate/lib/store-identity-report.mjs and deployer
+// deploy-ui/internal/storereport, which share signedReportSchema and
+// reportSigningDomain.
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -54,6 +67,24 @@ var chainReferencePattern = regexp.MustCompile(`^[-_a-zA-Z0-9]{1,32}$`)
 // maxProfileBytes bounds the -profile read at the estateprofile package's own
 // bound for one profile document.
 const maxProfileBytes = estateprofile.MaxProfileJSONBytes
+
+const (
+	// signedReportSchema names the one file this command prints.
+	signedReportSchema = "melusina.store-identity-report.signed.v1"
+	// reportSigningDomain separates the report signature from every other
+	// message the same derived operator key signs.
+	reportSigningDomain = "MELUSINA_STORE_IDENTITY_REPORT_V1\n"
+)
+
+// signedReport is the file: report_base64 is the exact bytes of the
+// ceremonyReport encoding (two-space indent, trailing newline), so a reader
+// verifies the signature over the bytes it then parses and never has to
+// re-serialize JSON in another language.
+type signedReport struct {
+	Schema               string `json:"schema"`
+	ReportBase64         string `json:"report_base64"`
+	OperatorSignatureHex string `json:"operator_signature_hex"`
+}
 
 type options struct {
 	shardsDir          string
@@ -125,13 +156,49 @@ func run(args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	report, err := prepare(opts)
+	report, operator, err := prepare(opts)
 	if err != nil {
 		return err
 	}
-	enc := json.NewEncoder(out)
+	signed, err := signReport(report, operator)
+	if err != nil {
+		return err
+	}
+	raw, err := encodeIndented(signed)
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(raw)
+	return err
+}
+
+// encodeIndented is the one encoding of both the report and the file.
+func encodeIndented(value any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
 	enc.SetIndent("", "  ")
-	return enc.Encode(report)
+	if err := enc.Encode(value); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// signReport signs the report's exact bytes with the derived operator key,
+// the key the report itself names as its signing key.
+func signReport(report ceremonyReport, operator *identity.Private) (signedReport, error) {
+	raw, err := encodeIndented(report)
+	if err != nil {
+		return signedReport{}, err
+	}
+	return signedReport{
+		Schema:               signedReportSchema,
+		ReportBase64:         base64.StdEncoding.EncodeToString(raw),
+		OperatorSignatureHex: hex.EncodeToString(operator.Sign(reportSigningMessage(raw))),
+	}, nil
+}
+
+func reportSigningMessage(raw []byte) []byte {
+	return append([]byte(reportSigningDomain), raw...)
 }
 
 func parseOptions(args []string) (options, error) {
@@ -270,18 +337,18 @@ func validateOptions(opts options) error {
 	return nil
 }
 
-func prepare(opts options) (ceremonyReport, error) {
+func prepare(opts options) (ceremonyReport, *identity.Private, error) {
 	keyVersion := uint32(opts.keyVersion)
 	licenseMint, _ := primitives.PubkeyFromBase58(opts.licenseMint)
 	programID, _ := primitives.PubkeyFromBase58(opts.programID)
 	sidecarPDA, bump, err := pda.SidecarIdentity(licenseMint, opts.sidecarID, keyVersion, programID)
 	if err != nil {
-		return ceremonyReport{}, fmt.Errorf("derive sidecar identity PDA: %w", err)
+		return ceremonyReport{}, nil, fmt.Errorf("derive sidecar identity PDA: %w", err)
 	}
 
 	shards, shardsCreated, err := ensureShards(opts.shardsDir)
 	if err != nil {
-		return ceremonyReport{}, err
+		return ceremonyReport{}, nil, err
 	}
 	ref := identity.Ref{
 		Kind:        identity.KindSidecar,
@@ -303,7 +370,7 @@ func prepare(opts options) (ceremonyReport, error) {
 	}
 	operatorPDA, _, err := pda.SidecarIdentity(licenseMint, opts.sidecarID, operatorVersion, programID)
 	if err != nil {
-		return ceremonyReport{}, fmt.Errorf("derive operator identity PDA: %w", err)
+		return ceremonyReport{}, nil, fmt.Errorf("derive operator identity PDA: %w", err)
 	}
 	operatorRef := identity.Ref{
 		Kind:        identity.KindSidecar,
@@ -317,25 +384,25 @@ func prepare(opts options) (ceremonyReport, error) {
 	}
 	operator, err := derive.DeriveSidecar(operatorRef, shards)
 	if err != nil {
-		return ceremonyReport{}, fmt.Errorf("derive sidecar operator: %w", err)
+		return ceremonyReport{}, nil, fmt.Errorf("derive sidecar operator: %w", err)
 	}
 	pub := operator.Public()
 	signingPubkey, err := pub.SignPublicKey()
 	if err != nil {
-		return ceremonyReport{}, err
+		return ceremonyReport{}, nil, err
 	}
 	encryptionPubkey, err := pub.BoxPublicKey()
 	if err != nil {
-		return ceremonyReport{}, err
+		return ceremonyReport{}, nil, err
 	}
 
 	binaryHash, err := sha256OfFile(opts.binaryPath)
 	if err != nil {
-		return ceremonyReport{}, fmt.Errorf("binary_hash: %w", err)
+		return ceremonyReport{}, nil, fmt.Errorf("binary_hash: %w", err)
 	}
 	tlsFingerprint, caHash, err := certHashes(opts.tlsCertPath, opts.caChainPath)
 	if err != nil {
-		return ceremonyReport{}, err
+		return ceremonyReport{}, nil, err
 	}
 	domainHash := primitives.StoreDomainHash(opts.domain)
 
@@ -377,7 +444,7 @@ func prepare(opts options) (ceremonyReport, error) {
 			OperatorDomain:     strings.TrimSpace(opts.operatorDomain),
 			TLSCertPath:        opts.tlsCertPath,
 		},
-	}, nil
+	}, operator, nil
 }
 
 func ensureShards(dir string) (derive.SidecarShards, bool, error) {

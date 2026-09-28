@@ -90,10 +90,7 @@ func TestSidecarIDDefaultIsTheContractsRootStoreSidecarID(t *testing.T) {
 			}, &out); err != nil {
 				t.Fatalf("%s key_version %d: run: %v", vector.Name, expected.KeyVersion, err)
 			}
-			var report ceremonyReport
-			if err := json.Unmarshal(out.Bytes(), &report); err != nil {
-				t.Fatal(err)
-			}
+			report, _ := openSignedReport(t, out.Bytes())
 			if report.SidecarIdentityPDA != expected.Address || report.SidecarIdentityBump != expected.Bump || report.IdentityRef.PDA != expected.Address {
 				t.Fatalf("sidecar-pda-vector-mismatch:%s/sidecar_identity[key_version=%d]: prep emitted %s bump %d, contracts expect %s bump %d",
 					vector.Name, expected.KeyVersion, report.SidecarIdentityPDA, report.SidecarIdentityBump, expected.Address, expected.Bump)

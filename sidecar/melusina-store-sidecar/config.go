@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
@@ -190,9 +192,21 @@ type Config struct {
 	// (sidecar_cascade | sidecar_identity). It is REQUIRED before any sidecar
 	// release is promoted or served: an empty table refuses every sidecar
 	// component with sidecar-row-missing:<id> — the class is never guessed.
-	// Load it with sidecarclasses.Sign/Verify at startup (the operator identity
-	// that signs the desired generation signs this too).
+	// It is loaded from sidecar_classes.path/signature/authorized_operator_key
+	// at startup by LoadConfig (production loader, fail-closed: a configured
+	// table that is missing, unsigned, wrongly-signed or drifting refuses
+	// startup), and produced by the sidecar-classes-prep subcommand, signed
+	// with the boot-identity operator key (the operator identity that signs
+	// the desired generation signs this too).
 	SidecarClasses sidecarclasses.Table `json:"-"`
+	// SidecarClassesConfig is the production wiring for the signed sidecar
+	// class table (K-CHN-33). When path is non-empty, LoadConfig loads and
+	// verifies the table against the pinned authorized operator key and this
+	// Store's own store_id (the destination is never taken from the document)
+	// and installs it into SidecarClasses; any refusal fails startup. When
+	// path is empty the Store keeps its nil-table fail-closed behaviour
+	// (every sidecar promote/serve refuses sidecar-row-missing:<id>).
+	SidecarClassesConfig SidecarClassesFileConfig `json:"sidecar_classes"`
 	// ServedSnapshotDir is the dedicated directory where a gated route
 	// (/packages/, /releases/<class>/) makes the private copy of an artifact
 	// it hashes and serves. It is an absolute path on the disk that holds the
@@ -248,6 +262,20 @@ type Config struct {
 	// vault) and releaseTrust. The /publish admission holds every app
 	// ReleaseEntry to it before the Store signs a receipt or catalog pointer.
 	appReleaseTrust *releaseentry.Trust
+}
+
+// SidecarClassesFileConfig is the production wiring of the signed sidecar
+// class table (K-CHN-33). The document and its detached base58 ed25519
+// signature are operator-supplied files; the key the signature is verified
+// against is the authorized operator's base58 public key pinned HERE in the
+// config (never read from the table document), and the destination the table
+// must carry is this Store's own store_id, never taken from the document
+// alone. A store_id is required when the table is configured: without it the
+// destination check is not a check at all.
+type SidecarClassesFileConfig struct {
+	Path                  string `json:"path"`
+	SignaturePath         string `json:"signature_path"`
+	AuthorizedOperatorKey string `json:"authorized_operator_key"`
 }
 
 // BootIdentityConfig provisions the gated /publish operator boot-identity
@@ -430,7 +458,104 @@ func LoadConfig(path string) (Config, error) {
 	if err := validateCatalogStorageRoots(cfg); err != nil {
 		return cfg, err
 	}
+	if err := loadSidecarClassesTable(&cfg); err != nil {
+		return cfg, err
+	}
 	return cfg, nil
+}
+
+// loadSidecarClassesTable is the PRODUCTION loader of the signed sidecar class
+// table (K-CHN-33). It runs inside LoadConfig for every Store process, so the
+// serve and promote gates read a table that was signature-verified against the
+// pinned authorized operator key and this Store's own store_id before any
+// listener opens. Fail-closed: when the table is configured, a missing file,
+// a bad signature, an unknown signer or a wrong destination refuses startup —
+// the Store never serves with a half-installed estate fact. When it is not
+// configured, the table stays nil and every sidecar promote/serve keeps its
+// nil-table refusal (sidecar-row-missing:<id>: the class is never guessed).
+func loadSidecarClassesTable(cfg *Config) error {
+	sc := cfg.SidecarClassesConfig
+	sc.Path = strings.TrimSpace(sc.Path)
+	sc.SignaturePath = strings.TrimSpace(sc.SignaturePath)
+	sc.AuthorizedOperatorKey = strings.TrimSpace(sc.AuthorizedOperatorKey)
+	if sc.Path == "" {
+		if sc.SignaturePath != "" || sc.AuthorizedOperatorKey != "" {
+			return fmt.Errorf("config: sidecar_classes.path is required when signature_path or authorized_operator_key is set")
+		}
+		return nil
+	}
+	if sc.SignaturePath == "" {
+		return fmt.Errorf("config: sidecar_classes.signature_path is required when sidecar_classes.path is set: the class of every sidecar is a signed estate fact, never an unsigned one")
+	}
+	if sc.AuthorizedOperatorKey == "" {
+		return fmt.Errorf("config: sidecar_classes.authorized_operator_key is required when sidecar_classes.path is set: the key is pinned here, never taken from the document")
+	}
+	// The detached signature is a separate operator file holding the base58
+	// signature text; the loader proves the table it verified was signed by
+	// re-deriving the same signature from that file (K-CHN-33 rework: the
+	// document's embedded signature alone is not the operator's input — a
+	// signature file that disagrees with the document refuses startup).
+	sigRaw, err := readBoundedConfigFile(sc.SignaturePath, "sidecar class table signature")
+	if err != nil {
+		return err
+	}
+	detachedSig := strings.TrimSpace(string(sigRaw))
+	if cfg.StoreID == "" {
+		return fmt.Errorf("config: store_id is required when sidecar_classes is configured: the table's destination must be pinned to this Store")
+	}
+	docRaw, err := readBoundedConfigFile(sc.Path, "sidecar class table")
+	if err != nil {
+		return err
+	}
+	var doc sidecarclasses.Table
+	if err := json.Unmarshal(docRaw, &doc); err != nil {
+		return fmt.Errorf("config: sidecar_classes.path: %w", err)
+	}
+	authorized, err := primitives.PubkeyFromBase58(sc.AuthorizedOperatorKey)
+	if err != nil {
+		return fmt.Errorf("config: sidecar_classes.authorized_operator_key: %w", err)
+	}
+	if err := sidecarclasses.Verify(ed25519.PublicKey(authorized[:]), cfg.StoreID, doc); err != nil {
+		return fmt.Errorf("config: sidecar_classes: %w", err)
+	}
+	// signedAtUnix freshness (round-2 MINOR): a table dated implausibly far
+	// in the future refuses startup — a future-dated table is a replay hazard,
+	// not a signed fact of today. Backward validity is deliberately long (the
+	// table is a slow-moving estate fact), and RECALL is by signing a new
+	// table (the newer signedAtUnix wins the operator's next publish);
+	// this loader additionally refuses a table older than the one previously
+	// loaded at the same path (forward monotonicity — see the second-load
+	// test), so an attacker who replays an old signed table cannot roll the
+	// estate's classes back.
+	if skew := doc.SignedAtUnix - time.Now().Unix(); skew > 5*60 {
+		return fmt.Errorf("config: sidecar_classes: signedAtUnix is %d seconds in the future — an implausibly future-dated class table refuses startup", skew)
+	}
+	// The signature the operator detached (the separate file) must BE the
+	// signature the document carries: a table whose embedded signature was
+	// swapped after the operator signed the file set refuses startup, so the
+	// signature file is a real operator control, not a decorative copy.
+	if doc.OperatorSignature != detachedSig {
+		return fmt.Errorf("config: sidecar_classes: the detached signature file disagrees with the table document's signature — refusing a table whose provenance the operator did not pin")
+	}
+	cfg.SidecarClasses = doc
+	cfg.SidecarClassesConfig = sc
+	return nil
+}
+
+// readBoundedConfigFile reads an operator input file for the class-table
+// loader, bounded and regular-file only (never a symlink or device).
+func readBoundedConfigFile(path, label string) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, fmt.Errorf("config: %s: %w", label, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("config: %s must be a regular file, not a symlink or device", label)
+	}
+	if info.Size() > 4<<20 {
+		return nil, fmt.Errorf("config: %s exceeds 4 MiB", label)
+	}
+	return os.ReadFile(path)
 }
 
 func (cfg StoreLinkControlMTLSConfig) configured() bool {

@@ -92,6 +92,14 @@ var storeStateExcludedConfigFields = map[string]string{
 	"store_link_control_mtls.client_ca_path": "host-bound trust input, provisioned with the host",
 	"listing_signer_socket":                  "runtime socket, created by the listing signer at start",
 	"served_snapshot_dir":                    "transient: unnamed per-request copies of served artifacts; the Store recreates the empty directory at start",
+	// K-CHN-33: the three sidecar class table inputs are operator-provisioned
+	// trust files (the signed estate fact, its detached signature and the
+	// pinned operator key), read once at startup and never Store state: a
+	// replacement host receives its own provisioned copy, and the key is
+	// public material, not a secret.
+	"sidecar_classes.path":                    "operator-provisioned trust input: the signed sidecar class table document, verified at startup",
+	"sidecar_classes.signature_path":          "operator-provisioned trust input: the sidecar class table's detached signature, verified at startup",
+	"sidecar_classes.authorized_operator_key": "operator-provisioned trust input: the pinned base58 operator public key the table's signature is verified against",
 }
 
 type storeStateOptions struct {

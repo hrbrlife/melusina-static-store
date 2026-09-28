@@ -437,7 +437,7 @@ func storeStatePathFields(t *testing.T) []string {
 			case reflect.Struct:
 				walk(field.Type, prefix+name+".")
 			case reflect.String:
-				for _, suffix := range []string{"_dir", "_root", "_path", "_socket"} {
+				for _, suffix := range []string{"_dir", "_root", "_path", "_socket", "_key", "path"} {
 					if strings.HasSuffix(name, suffix) {
 						fields = append(fields, prefix+name)
 					}

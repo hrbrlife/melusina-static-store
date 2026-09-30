@@ -95,6 +95,9 @@ func ValidateProfile(profile EstateProfileV1) error {
 	if err := validatePrev(profile.Prev, profile.Revision); err != nil {
 		return err
 	}
+	if err := ValidatePredecessor(profile.Predecessor); err != nil {
+		return err
+	}
 	return validateSignatureShape(profile.Signatures, "signatures")
 }
 

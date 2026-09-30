@@ -166,9 +166,11 @@ func packageGoSources(t *testing.T) map[string]string {
 func buildVectors(t *testing.T) vectorsDocument {
 	t.Helper()
 	rehearsal := newEstateProfile(t)
+	first := newEstateFirstProfile(t)
 	migrate := newEstateMigrate(t, rehearsal, false)
 	recalling := newEstateMigrate(t, rehearsal, true)
 	paype := paypeDevnetProfile(t)
+	successor := newEstateSuccessorProfile(t, paype)
 
 	document := vectorsDocument{
 		Schema: vectorsSchema,
@@ -192,8 +194,13 @@ func buildVectors(t *testing.T) vectorsDocument {
 	}{
 		{
 			name:        "new-estate-revision-1",
-			description: "A fictitious new estate at revision 1: owner policy 2 of 3, no succession, no recalls, prev unstated.",
+			description: "The original signed fictitious estate at revision 1: predecessor absent in this legacy document, original digest retained. It verifies but cannot claim first-estate admission.",
 			profile:     rehearsal,
+		},
+		{
+			name:        "new-estate-first-signed",
+			description: "A separately owner-signed fictitious first estate with explicit predecessor:none in its digest preimage; this is the new first-estate admission fixture.",
+			profile:     first,
 		},
 		{
 			name:        "new-estate-revision-2-migrate",
@@ -216,6 +223,11 @@ func buildVectors(t *testing.T) vectorsDocument {
 			illustrative: true,
 			fields:       paypeIllustrativeFields,
 			profile:      paype,
+		},
+		{
+			name:        "new-estate-successor-of-paype",
+			description: "A FICTITIOUS successor estate (D07): the rehearsal shape with an estate predecessor naming the paype vector's revision 1 — its own estateId and the exact profileSha256 its owners signed — so the estate branch bytes of the preimage (W(\"estate\") ‖ W(estateId) ‖ W(profileSha256) after prev.sha256) are recorded and a second implementation must reproduce them.",
+			profile:     successor,
 		},
 	} {
 		preimage, err := ProfilePreimage(item.profile)
@@ -247,6 +259,7 @@ func buildVectors(t *testing.T) vectorsDocument {
 	}
 
 	raw := marshalProfile(t, rehearsal)
+	firstRaw := marshalProfile(t, first)
 	governedAuthority := rehearsal.Programs[0].UpgradeAuthority
 	thresholdChanged := rehearsal
 	thresholdChanged.OwnerPolicy.Threshold = 3
@@ -367,6 +380,37 @@ func buildVectors(t *testing.T) vectorsDocument {
 			Name: "owner-signatures-insufficient", Stage: "verify", Refusal: RefusalSignaturesInsufficient,
 			Description: "One valid signature under a threshold of two.",
 			Document:    string(marshalProfile(t, signProfile(t, rehearsal, "owner-a"))),
+		},
+		// D07: the predecessor member's own decode and verify controls.
+		{
+			Name: "predecessor-dropped-after-signing-none", Stage: "verify", Refusal: RefusalSignatureInvalid + ":owner-a",
+			Description: "D07: removing explicit predecessor:none from a newly signed profile leaves a valid legacy shape but fails its owner signature.",
+			Document:    string(mutateJSON(t, firstRaw, `,"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, ``)),
+		},
+		{
+			Name: "predecessor-injected-into-legacy", Stage: "verify", Refusal: RefusalSignatureInvalid + ":owner-a",
+			Description: "D07: injecting predecessor:none into an existing signed legacy profile changes its digest and fails its owner signature.",
+			Document:    string(mutateJSON(t, raw, `,"signatures":`, `,"predecessor":{"kind":"none","estateId":"","profileSha256":""},"signatures":`)),
+		},
+		{
+			Name: "predecessor-zero-object", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.kind",
+			Description: "D07: the explicit all-empty object is not the legacy absent member and cannot default to none.",
+			Document:    string(mutateJSON(t, firstRaw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"","estateId":"","profileSha256":""}`)),
+		},
+		{
+			Name: "predecessor-none-with-estate", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.estateId",
+			Description: "D07: kind none names no estate; a none predecessor that states an estateId is malformed at that member, never read as a first-estate profile with a stray value.",
+			Document:    string(mutateJSON(t, firstRaw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"none","estateId":"`+paype.EstateID+`","profileSha256":""}`)),
+		},
+		{
+			Name: "predecessor-estate-incomplete", Stage: "decode", Refusal: RefusalIncomplete + ":predecessor.profileSha256",
+			Description: "D07: an estate predecessor states both digests; an empty profileSha256 is a half-profile, refused as incomplete before its form is judged.",
+			Document:    string(mutateJSON(t, firstRaw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"estate","estateId":"`+paype.EstateID+`","profileSha256":""}`)),
+		},
+		{
+			Name: "predecessor-kind-unknown", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.kind",
+			Description: "D07: kind is one of the two closed spellings, none and estate; a third is malformed at predecessor.kind.",
+			Document:    string(mutateJSON(t, firstRaw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"successor","estateId":"","profileSha256":""}`)),
 		},
 	}
 

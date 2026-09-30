@@ -1,6 +1,7 @@
 package estateprofile
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
@@ -206,6 +207,16 @@ func newEstateProfile(t *testing.T) EstateProfileV1 {
 	return signProfile(t, profile, "owner-a", "owner-b")
 }
 
+// newEstateFirstProfile is a separately signed first-estate statement. The
+// existing newEstateProfile vectors remain legacy documents with absent
+// predecessor and their exact original preimages and signatures.
+func newEstateFirstProfile(t *testing.T) EstateProfileV1 {
+	t.Helper()
+	profile := newEstateProfile(t)
+	profile.Predecessor = PredecessorV1{Kind: PredecessorKindNone}
+	return signProfile(t, profile, "owner-a", "owner-b")
+}
+
 // newEstateMigrate is revision 2 of the same estate: the owners handed
 // authority to a successor policy with a threshold-signed succession step, and
 // recalled the revision they left behind.
@@ -234,6 +245,28 @@ func newEstateMigrate(t *testing.T, previous EstateProfileV1, recallPrevious boo
 		profile.Recalls = []RecallV1{{SHA256: previousDigest, Reason: "revision 1 owner key set retired"}}
 	}
 	return signProfile(t, profile, "owner-a", "owner-b", "owner-d")
+}
+
+// newEstateSuccessorProfile is a FICTITIOUS successor fixture (D07): the
+// rehearsal estate's revision 1 renamed as a second estate whose owners name
+// the paype vector's revision 1 — the retiring estate's own estateId and the
+// exact profileSha256 its owners signed — as the profile it succeeds. The
+// named digest is paypeDevnetProfile's, computed at call time; nothing here
+// is a fact about any real estate, and the paype vector itself remains the
+// retiring-estate snapshot it always was.
+func newEstateSuccessorProfile(t *testing.T, retired EstateProfileV1) EstateProfileV1 {
+	t.Helper()
+	retiredDigest, err := ProfileSHA256(retired)
+	if err != nil {
+		t.Fatalf("digest the retired profile the successor names: %v", err)
+	}
+	profile := newEstateFirstProfile(t)
+	profile.Predecessor = PredecessorV1{
+		Kind:          PredecessorKindEstate,
+		EstateID:      retired.EstateID,
+		ProfileSHA256: retiredDigest,
+	}
+	return signProfile(t, profile, "owner-a", "owner-b")
 }
 
 // paypeDevnetProfile is a retiring-estate snapshot from public values.
@@ -357,6 +390,15 @@ func marshalProfile(t *testing.T, profile EstateProfileV1) []byte {
 	raw, err := json.Marshal(profile)
 	if err != nil {
 		t.Fatalf("marshal profile: %v", err)
+	}
+	// Legacy vectors predate predecessor. Keep their original raw member set,
+	// while explicit none and estate statements serialize with their member.
+	if profile.Predecessor == (PredecessorV1{}) {
+		member := []byte(`,"predecessor":{"kind":"","estateId":"","profileSha256":""}`)
+		if bytes.Count(raw, member) != 1 {
+			t.Fatalf("legacy profile has no unique zero predecessor member to omit")
+		}
+		raw = bytes.Replace(raw, member, nil, 1)
 	}
 	return raw
 }

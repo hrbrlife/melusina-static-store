@@ -65,6 +65,8 @@ const (
 	// a profile that stated less could never configure its own root Store and
 	// would cost its owners a new revision to correct.
 	StoreReleaseMinThreshold = 2
+	// CoreMinThreshold is the least threshold that may protect the core vault.
+	CoreMinThreshold = 2
 
 	// MaxStoreIDLength is the longest storeId a profile may state. The
 	// Store's state backup names its RemoteBak namespace

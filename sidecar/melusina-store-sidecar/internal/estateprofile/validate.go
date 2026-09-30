@@ -376,6 +376,9 @@ func validateRoles(roles []AuthorityRoleV1) error {
 			if role.Threshold == 0 || role.Threshold > voters {
 				return refuseSubject(RefusalFieldMalformed, field+".threshold")
 			}
+			if role.Role == AuthorityRoleCore && role.Threshold < CoreMinThreshold {
+				return refuseSubject(RefusalFieldMalformed, field+".threshold")
+			}
 			if role.Role == AuthorityRoleStoreRelease && role.Threshold < StoreReleaseMinThreshold {
 				return refuseSubject(RefusalFieldMalformed, field+".threshold")
 			}

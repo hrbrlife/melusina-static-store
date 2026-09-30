@@ -169,6 +169,7 @@ func buildVectors(t *testing.T) vectorsDocument {
 	migrate := newEstateMigrate(t, rehearsal, false)
 	recalling := newEstateMigrate(t, rehearsal, true)
 	paype := paypeDevnetProfile(t)
+	successor := newEstateSuccessorProfile(t, paype)
 
 	document := vectorsDocument{
 		Schema: vectorsSchema,
@@ -216,6 +217,11 @@ func buildVectors(t *testing.T) vectorsDocument {
 			illustrative: true,
 			fields:       paypeIllustrativeFields,
 			profile:      paype,
+		},
+		{
+			name:        "new-estate-successor-of-paype",
+			description: "A FICTITIOUS successor estate (D07): the rehearsal shape with an estate predecessor naming the paype vector's revision 1 — its own estateId and the exact profileSha256 its owners signed — so the estate branch bytes of the preimage (W(\"estate\") ‖ W(estateId) ‖ W(profileSha256) after prev.sha256) are recorded and a second implementation must reproduce them.",
+			profile:     successor,
 		},
 	} {
 		preimage, err := ProfilePreimage(item.profile)
@@ -367,6 +373,27 @@ func buildVectors(t *testing.T) vectorsDocument {
 			Name: "owner-signatures-insufficient", Stage: "verify", Refusal: RefusalSignaturesInsufficient,
 			Description: "One valid signature under a threshold of two.",
 			Document:    string(marshalProfile(t, signProfile(t, rehearsal, "owner-a"))),
+		},
+		// D07: the predecessor member's own decode and verify controls.
+		{
+			Name: "predecessor-absent", Stage: "decode", Refusal: RefusalJSONMissingField + ":$.predecessor",
+			Description: "D07: the predecessor member is required — an absent one is never read as none, because a document that predates the field cannot be silently migrated to first-estate status.",
+			Document:    string(mutateJSON(t, raw, `,"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, ``)),
+		},
+		{
+			Name: "predecessor-none-with-estate", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.estateId",
+			Description: "D07: kind none names no estate; a none predecessor that states an estateId is malformed at that member, never read as a first-estate profile with a stray value.",
+			Document:    string(mutateJSON(t, raw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"none","estateId":"`+paype.EstateID+`","profileSha256":""}`)),
+		},
+		{
+			Name: "predecessor-estate-incomplete", Stage: "decode", Refusal: RefusalIncomplete + ":predecessor.profileSha256",
+			Description: "D07: an estate predecessor states both digests; an empty profileSha256 is a half-profile, refused as incomplete before its form is judged.",
+			Document:    string(mutateJSON(t, raw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"estate","estateId":"`+paype.EstateID+`","profileSha256":""}`)),
+		},
+		{
+			Name: "predecessor-kind-unknown", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.kind",
+			Description: "D07: kind is one of the two closed spellings, none and estate; a third is malformed at predecessor.kind.",
+			Document:    string(mutateJSON(t, raw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"successor","estateId":"","profileSha256":""}`)),
 		},
 	}
 

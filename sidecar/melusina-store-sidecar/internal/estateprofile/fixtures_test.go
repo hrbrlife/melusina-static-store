@@ -202,6 +202,8 @@ func newEstateProfile(t *testing.T) EstateProfileV1 {
 		},
 		Recalls: []RecallV1{},
 		Prev:    PrevV1{},
+		// D07: revision 1 of a first estate states predecessor none.
+		Predecessor: PredecessorV1{Kind: PredecessorKindNone},
 	}
 	return signProfile(t, profile, "owner-a", "owner-b")
 }
@@ -234,6 +236,28 @@ func newEstateMigrate(t *testing.T, previous EstateProfileV1, recallPrevious boo
 		profile.Recalls = []RecallV1{{SHA256: previousDigest, Reason: "revision 1 owner key set retired"}}
 	}
 	return signProfile(t, profile, "owner-a", "owner-b", "owner-d")
+}
+
+// newEstateSuccessorProfile is a FICTITIOUS successor fixture (D07): the
+// rehearsal estate's revision 1 renamed as a second estate whose owners name
+// the paype vector's revision 1 — the retiring estate's own estateId and the
+// exact profileSha256 its owners signed — as the profile it succeeds. The
+// named digest is paypeDevnetProfile's, computed at call time; nothing here
+// is a fact about any real estate, and the paype vector itself remains the
+// retiring-estate snapshot it always was.
+func newEstateSuccessorProfile(t *testing.T, retired EstateProfileV1) EstateProfileV1 {
+	t.Helper()
+	retiredDigest, err := ProfileSHA256(retired)
+	if err != nil {
+		t.Fatalf("digest the retired profile the successor names: %v", err)
+	}
+	profile := newEstateProfile(t)
+	profile.Predecessor = PredecessorV1{
+		Kind:          PredecessorKindEstate,
+		EstateID:      retired.EstateID,
+		ProfileSHA256: retiredDigest,
+	}
+	return signProfile(t, profile, "owner-a", "owner-b")
 }
 
 // paypeDevnetProfile is a retiring-estate snapshot from public values.
@@ -329,6 +353,9 @@ func paypeDevnetProfile(t *testing.T) EstateProfileV1 {
 		},
 		Recalls: []RecallV1{},
 		Prev:    PrevV1{},
+		// D07: the retiring snapshot is the FIRST estate of its line as
+		// recorded: predecessor none.
+		Predecessor: PredecessorV1{Kind: PredecessorKindNone},
 	}
 	return signProfile(t, profile, "owner-a", "owner-b", "owner-c")
 }

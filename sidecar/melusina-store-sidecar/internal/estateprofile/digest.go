@@ -155,6 +155,17 @@ func profilePreimage(profile EstateProfileV1) []byte {
 	}
 	writer.uint64(profile.Prev.Revision)
 	writer.string(profile.Prev.SHA256)
+	// The predecessor is digested after Prev and before the excluded
+	// signatures. The "none" form contributes ZERO bytes: a profile that
+	// gains the none member keeps its exact preimage, digest and signature
+	// validity (existing signed vectors still verify). ONLY when an estate
+	// is named does the preimage grow, by W("estate") ‖ W(estateId) ‖
+	// W(profileSha256) in that order, after prev.sha256.
+	if profile.Predecessor.Kind == PredecessorKindEstate {
+		writer.string(profile.Predecessor.Kind)
+		writer.string(profile.Predecessor.EstateID)
+		writer.string(profile.Predecessor.ProfileSHA256)
+	}
 	return writer.Bytes()
 }
 

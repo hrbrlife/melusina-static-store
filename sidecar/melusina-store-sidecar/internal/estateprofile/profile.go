@@ -145,6 +145,12 @@ type EstateProfileV1 struct {
 	Recalls          []RecallV1           `json:"recalls"`
 	// Prev is informational. Acceptance never requires continuity with it.
 	Prev PrevV1 `json:"prev"`
+	// Predecessor separates the first estate from every later one (D07,
+	// K-REL-06): none is the signed statement of a first estate, and an
+	// estate names the profile it succeeds by digest. It is digested after
+	// Prev, and an absent predecessor is refused rather than read as none —
+	// see predecessor.go.
+	Predecessor PredecessorV1 `json:"predecessor"`
 	// Signatures are excluded from the digest and sorted by KeyID.
 	Signatures []SignatureV1 `json:"signatures"`
 }

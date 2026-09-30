@@ -155,6 +155,16 @@ func profilePreimage(profile EstateProfileV1) []byte {
 	}
 	writer.uint64(profile.Prev.Revision)
 	writer.string(profile.Prev.SHA256)
+	// The predecessor is digested after Prev and before the excluded
+	// signatures: kind first, then — only when an estate is named — the
+	// named estateId and profileSha256, in that order. The "none" branch
+	// writes ONLY kind, so first-estate and later-estate preimages are never
+	// confusable by length alone.
+	writer.string(profile.Predecessor.Kind)
+	if profile.Predecessor.Kind == PredecessorKindEstate {
+		writer.string(profile.Predecessor.EstateID)
+		writer.string(profile.Predecessor.ProfileSHA256)
+	}
 	return writer.Bytes()
 }
 

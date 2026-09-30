@@ -1,7 +1,6 @@
 package estateprofile
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
@@ -390,15 +389,6 @@ func marshalProfile(t *testing.T, profile EstateProfileV1) []byte {
 	raw, err := json.Marshal(profile)
 	if err != nil {
 		t.Fatalf("marshal profile: %v", err)
-	}
-	// Legacy vectors predate predecessor. Keep their original raw member set,
-	// while explicit none and estate statements serialize with their member.
-	if profile.Predecessor == (PredecessorV1{}) {
-		member := []byte(`,"predecessor":{"kind":"","estateId":"","profileSha256":""}`)
-		if bytes.Count(raw, member) != 1 {
-			t.Fatalf("legacy profile has no unique zero predecessor member to omit")
-		}
-		raw = bytes.Replace(raw, member, nil, 1)
 	}
 	return raw
 }

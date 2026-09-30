@@ -171,6 +171,10 @@ func buildVectors(t *testing.T) vectorsDocument {
 	recalling := newEstateMigrate(t, rehearsal, true)
 	paype := paypeDevnetProfile(t)
 	successor := newEstateSuccessorProfile(t, paype)
+	paypeDigest, err := ProfileSHA256(paype)
+	if err != nil {
+		t.Fatalf("digest predecessor fixture: %v", err)
+	}
 
 	document := vectorsDocument{
 		Schema: vectorsSchema,
@@ -385,32 +389,42 @@ func buildVectors(t *testing.T) vectorsDocument {
 		{
 			Name: "predecessor-dropped-after-signing-none", Stage: "verify", Refusal: RefusalSignatureInvalid + ":owner-a",
 			Description: "D07: removing explicit predecessor:none from a newly signed profile leaves a valid legacy shape but fails its owner signature.",
-			Document:    string(mutateJSON(t, firstRaw, `,"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, ``)),
+			Document:    string(mutateJSON(t, firstRaw, `,"predecessor":"none"`, ``)),
 		},
 		{
 			Name: "predecessor-injected-into-legacy", Stage: "verify", Refusal: RefusalSignatureInvalid + ":owner-a",
 			Description: "D07: injecting predecessor:none into an existing signed legacy profile changes its digest and fails its owner signature.",
-			Document:    string(mutateJSON(t, raw, `,"signatures":`, `,"predecessor":{"kind":"none","estateId":"","profileSha256":""},"signatures":`)),
+			Document:    string(mutateJSON(t, raw, `,"signatures":`, `,"predecessor":"none","signatures":`)),
 		},
 		{
-			Name: "predecessor-zero-object", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.kind",
+			Name: "predecessor-zero-object", Stage: "decode", Refusal: RefusalJSONMissingField + ":$.predecessor.estateId",
 			Description: "D07: the explicit all-empty object is not the legacy absent member and cannot default to none.",
-			Document:    string(mutateJSON(t, firstRaw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"","estateId":"","profileSha256":""}`)),
+			Document:    string(mutateJSON(t, firstRaw, `"predecessor":"none"`, `"predecessor":{}`)),
 		},
 		{
-			Name: "predecessor-none-with-estate", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.estateId",
-			Description: "D07: kind none names no estate; a none predecessor that states an estateId is malformed at that member, never read as a first-estate profile with a stray value.",
-			Document:    string(mutateJSON(t, firstRaw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"none","estateId":"`+paype.EstateID+`","profileSha256":""}`)),
+			Name: "predecessor-estate-extra-kind", Stage: "decode", Refusal: RefusalJSONUnknownField + ":$.predecessor.kind",
+			Description: "D07: an object carrying the obsolete kind key cannot override the exact two-key estate relationship or claim none.",
+			Document:    string(mutateJSON(t, firstRaw, `"predecessor":"none"`, `"predecessor":{"estateId":"`+paype.EstateID+`","profileSha256":"`+paypeDigest+`","kind":"none"}`)),
 		},
 		{
 			Name: "predecessor-estate-incomplete", Stage: "decode", Refusal: RefusalIncomplete + ":predecessor.profileSha256",
 			Description: "D07: an estate predecessor states both digests; an empty profileSha256 is a half-profile, refused as incomplete before its form is judged.",
-			Document:    string(mutateJSON(t, firstRaw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"estate","estateId":"`+paype.EstateID+`","profileSha256":""}`)),
+			Document:    string(mutateJSON(t, firstRaw, `"predecessor":"none"`, `"predecessor":{"estateId":"`+paype.EstateID+`","profileSha256":""}`)),
 		},
 		{
-			Name: "predecessor-kind-unknown", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.kind",
-			Description: "D07: kind is one of the two closed spellings, none and estate; a third is malformed at predecessor.kind.",
-			Document:    string(mutateJSON(t, firstRaw, `"predecessor":{"kind":"none","estateId":"","profileSha256":""}`, `"predecessor":{"kind":"successor","estateId":"","profileSha256":""}`)),
+			Name: "predecessor-wrong-string", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor",
+			Description: "D07: none is the only predecessor string; a third spelling is malformed at predecessor.",
+			Document:    string(mutateJSON(t, firstRaw, `"predecessor":"none"`, `"predecessor":"successor"`)),
+		},
+		{
+			Name: "predecessor-estate-missing-profile-key", Stage: "decode", Refusal: RefusalJSONMissingField + ":$.predecessor.profileSha256",
+			Description: "D07: a named predecessor object requires profileSha256; absence cannot default to an empty digest.",
+			Document:    string(mutateJSON(t, firstRaw, `"predecessor":"none"`, `"predecessor":{"estateId":"`+paype.EstateID+`"}`)),
+		},
+		{
+			Name: "predecessor-estate-missing-id-key", Stage: "decode", Refusal: RefusalJSONMissingField + ":$.predecessor.estateId",
+			Description: "D07: a named predecessor object requires estateId; absence cannot default to an empty digest.",
+			Document:    string(mutateJSON(t, firstRaw, `"predecessor":"none"`, `"predecessor":{"profileSha256":"`+paypeDigest+`"}`)),
 		},
 	}
 

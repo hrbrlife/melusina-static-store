@@ -39,14 +39,14 @@ import (
 // `go test ./internal/estateprofile/ -update-vectors`, confirm that the
 // regenerated files still equal the deployer's, and re-pin the commit and
 // every hash here.
-const deployerCopyCommit = "317955d76e95618426b0f7c1b7eb50c4c266dc64"
+const deployerCopyCommit = "198eeaad3384d96b882d5fa897266962437fb89e"
 
 // deployerCopyTestdata is the SHA-256 of each testdata file the package's
 // tests read, as the deployer committed it at deployerCopyCommit
 // (deploy-ui/testdata/<name>). The deployer's own byte copy of the Store's
 // vectors (store-estate-profile-vectors.json) is not among them.
 var deployerCopyTestdata = map[string]string{
-	"estate-profile-vectors.json":                 "4f171bd14649ffcedf0e9d4d503d3520aab2d98a817e9d81c3d494a2dde8c64c",
+	"estate-profile-vectors.json":                 "a437b2e4d5a88103c61cc66c639ac895a5198c1c0ad546cf9194ffb798cb083e",
 	"foundation-authorization-vectors.json":       "19dd047d8cab7c9926032bb0883177920af806ed2174818c937866ee75ffc9ad",
 	"provider-install-authorization-vectors.json": "016e2b1db5b4d8c21fcd1143975e3a3886b81dad7f1aceaf43fa5bb85377e06a",
 	"store-host-authorization-vectors.json":       "99b85dad81eabe6d9f61a86a1cc4f6a63160f7d2b67507ff86766b312ebb2045",
@@ -59,7 +59,7 @@ var deployerCopyTestdata = map[string]string{
 var deployerCopyTests = map[string]string{
 	"accept_test.go":                         "3ae5a1fb28dc349cf13af691aee8857d827d2731c4fc1254467d17d9c8845a58",
 	"digest_test.go":                         "a4527abcaa746e1a9eceec791d3480e24f789ef994b5e33ee0dc5a0f703ea24d",
-	"fixtures_test.go":                       "a854e450ce3afd8b07b81083a75b5c44e13a2a4ec0ebcee141e45f46ca82a645",
+	"fixtures_test.go":                       "c0481e8b0cbf22ce1cb34243dcc4569be40b4340153f8d13d6589fea8c8ae0e7",
 	"foundation_authorization_test.go":       "c2e06b298e4ee3d08841f40bb22ae9c28036b552d6574318add21234387e9269",
 	"owner_threshold_test.go":                "363072d3903e97eb535dd801b139d979036783e0ba25c61b01256598a9cb1287",
 	"projection_test.go":                     "c45ff0f93dd5c5f0317a0b07013fd4a816b0c81dcaeacc88e13556304bb9bfcf",
@@ -70,7 +70,7 @@ var deployerCopyTests = map[string]string{
 	"store_host_authorization_test.go":       "14cc6a99bfb14a5ae6fe9ebad4cb9477dfb5a1bc46cd4b951c6fbc702ba8e18d",
 	"strictjson_test.go":                     "ad4755613a3a9bc41fb7b596827417165a5b866a6342066baf7a558a188731d7",
 	"validate_test.go":                       "a2c85421a72f9b70de3a7f571411ff3108f8484a50223ac6d400b5d06805750d",
-	"vectors_test.go":                        "182ad20a7b7373ab9bf34ddec44193324937d48e3b4f351d8ff18604c81bb9aa",
+	"vectors_test.go":                        "de4067a44376ace1be98a32e37797861cc19620192b527338d5d8c90d8b1eb4a",
 	"verify_test.go":                         "34838f35b6b642919bc4207dc922aa5e78a795ed15975ee3cc5dea8175803a2b",
 }
 

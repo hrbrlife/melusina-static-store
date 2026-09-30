@@ -1,16 +1,20 @@
 package estateprofile
 
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+)
+
 // The first estate has no predecessor. Every later estate names the profile it
 // succeeds: an owner-signed predecessor {estateId, profileSha256} that is part
 // of EstateProfileV1's digest, so the owners sign which estate's values their
 // release must not carry. An absent predecessor is a distinct legacy state:
 // it retains its old digest but never asserts that this is a first estate.
 //
-// The JSON shape is one closed union spelled as a struct, because the strict
-// decoder refuses unions and this house's style is all-keys-required objects
-// (PrevV1 already spells an unstated value as {0, ""}): the "none" form is
-// {"kind":"none","estateId":"","profileSha256":""} and the estate form is
-// {"kind":"estate","estateId":"<64hex>","profileSha256":"<64hex>"}.
+// The wire form is the ceremony's closed union: the string "none" or an
+// object with exactly estateId and profileSha256. Kind is an internal tag for
+// callers and the digest preimage; it is never a third wire key.
 type PredecessorV1 struct {
 	Kind string `json:"kind"`
 	// EstateID and ProfileSHA256 name the predecessor estate and the exact
@@ -25,6 +29,55 @@ const (
 	PredecessorKindNone   = "none"
 	PredecessorKindEstate = "estate"
 )
+
+// MarshalJSON writes only the canonical predecessor wire. The zero value is
+// omitted by EstateProfileV1.MarshalJSON; null here is an internal sentinel,
+// and the strict profile decoder never accepts a present null member.
+func (predecessor PredecessorV1) MarshalJSON() ([]byte, error) {
+	switch predecessor.Kind {
+	case "":
+		return []byte("null"), nil
+	case PredecessorKindNone:
+		return []byte(`"none"`), nil
+	case PredecessorKindEstate:
+		return json.Marshal(struct {
+			EstateID      string `json:"estateId"`
+			ProfileSHA256 string `json:"profileSha256"`
+		}{predecessor.EstateID, predecessor.ProfileSHA256})
+	default:
+		// A malformed in-memory value is still representable for negative
+		// controls; ValidatePredecessor refuses it before use.
+		return json.Marshal(predecessor.Kind)
+	}
+}
+
+// UnmarshalJSON maps the two canonical wire alternatives to the internal
+// tag. DecodeProfile checks the exact keys and types before this method runs;
+// direct callers still get a refusal for null or a different JSON kind.
+func (predecessor *PredecessorV1) UnmarshalJSON(raw []byte) error {
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return fmt.Errorf("predecessor cannot be null")
+	}
+	var text string
+	if len(raw) > 0 && raw[0] == '"' {
+		if err := json.Unmarshal(raw, &text); err != nil {
+			return err
+		}
+		*predecessor = PredecessorV1{Kind: text}
+		return nil
+	}
+	var named struct {
+		EstateID      string `json:"estateId"`
+		ProfileSHA256 string `json:"profileSha256"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&named); err != nil {
+		return err
+	}
+	*predecessor = PredecessorV1{Kind: PredecessorKindEstate, EstateID: named.EstateID, ProfileSHA256: named.ProfileSHA256}
+	return nil
+}
 
 // ValidatePredecessor checks the predecessor of a FINAL profile: Kind is one
 // of the two closed spellings; a none predecessor states no estate; an

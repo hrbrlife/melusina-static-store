@@ -8,7 +8,7 @@ import "crypto/ed25519"
 // yet trusted: only VerifyProfile establishes identity and authority.
 func DecodeProfile(raw []byte) (EstateProfileV1, error) {
 	var profile EstateProfileV1
-	err := decodeStrict(raw, MaxProfileJSONBytes, &profile, func(tree any) error {
+	err := decodeStrictProfile(raw, MaxProfileJSONBytes, &profile, func(tree any) error {
 		schema, kind := peekStrictJSONKind(tree)
 		if schema == DraftSchema {
 			return refuse(RefusalDraftNotEnrollable)

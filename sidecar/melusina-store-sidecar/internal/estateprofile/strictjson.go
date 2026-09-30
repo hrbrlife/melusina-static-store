@@ -29,6 +29,17 @@ var safeIntegerPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,15})$`)
 // sees the parsed tree before the shape check, so a document of the wrong kind
 // is refused as that kind rather than as a list of unknown fields.
 func decodeStrict(raw []byte, limit int, destination any, precheck func(tree any) error) error {
+	return decodeStrictWithProfilePredecessor(raw, limit, destination, precheck, false)
+}
+
+// decodeStrictProfile keeps all the strict JSON rules, with one profile-only
+// exception: legacy signed EstateProfileV1 documents may omit predecessor.
+// Presence is still distinct from an explicit, owner-signed "none".
+func decodeStrictProfile(raw []byte, limit int, destination *EstateProfileV1, precheck func(tree any) error) error {
+	return decodeStrictWithProfilePredecessor(raw, limit, destination, precheck, true)
+}
+
+func decodeStrictWithProfilePredecessor(raw []byte, limit int, destination any, precheck func(tree any) error, profilePredecessor bool) error {
 	if len(raw) == 0 {
 		return refuse(RefusalJSONEmpty)
 	}
@@ -45,7 +56,7 @@ func decodeStrict(raw []byte, limit int, destination any, precheck func(tree any
 	if err := precheck(tree); err != nil {
 		return err
 	}
-	if err := checkStrictJSONShape(tree, reflect.TypeOf(destination).Elem(), "$"); err != nil {
+	if err := checkStrictJSONShape(tree, reflect.TypeOf(destination).Elem(), "$", profilePredecessor); err != nil {
 		return err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
@@ -134,10 +145,38 @@ func parseStrictJSONTree(raw []byte) (any, error) {
 
 // checkStrictJSONShape requires the parsed tree to have exactly the shape of
 // the destination type: the exact key set of every struct, spelled exactly as
-// tagged, and the exact JSON type of every leaf.
-func checkStrictJSONShape(value any, typeOf reflect.Type, path string) error {
+// tagged, and the exact JSON type of every leaf. The sole profile exception
+// is the optional predecessor, whose present wire value is a closed union.
+func checkStrictJSONShape(value any, typeOf reflect.Type, path string, profilePredecessor bool) error {
 	if value == nil {
 		return refuseSubject(RefusalJSONNull, path)
+	}
+	if profilePredecessor && path == "$.predecessor" && typeOf == reflect.TypeOf(PredecessorV1{}) {
+		if statement, ok := value.(string); ok {
+			if statement != PredecessorKindNone {
+				return refuseSubject(RefusalFieldMalformed, "predecessor")
+			}
+			return nil
+		}
+		object, ok := value.(map[string]any)
+		if !ok {
+			return refuseSubject(RefusalJSONWrongType, path)
+		}
+		for name := range object {
+			if name != "estateId" && name != "profileSha256" {
+				return refuseSubject(RefusalJSONUnknownField, path+"."+name)
+			}
+		}
+		for _, name := range []string{"estateId", "profileSha256"} {
+			child, present := object[name]
+			if !present {
+				return refuseSubject(RefusalJSONMissingField, path+"."+name)
+			}
+			if err := checkStrictJSONShape(child, reflect.TypeOf(""), path+"."+name, false); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	switch typeOf.Kind() {
 	case reflect.Struct:
@@ -161,9 +200,12 @@ func checkStrictJSONShape(value any, typeOf reflect.Type, path string) error {
 		for _, name := range order {
 			child, present := object[name]
 			if !present {
+				if profilePredecessor && path == "$" && typeOf == reflect.TypeOf(EstateProfileV1{}) && name == "predecessor" {
+					continue
+				}
 				return refuseSubject(RefusalJSONMissingField, path+"."+name)
 			}
-			if err := checkStrictJSONShape(child, fields[name], path+"."+name); err != nil {
+			if err := checkStrictJSONShape(child, fields[name], path+"."+name, profilePredecessor); err != nil {
 				return err
 			}
 		}
@@ -173,7 +215,7 @@ func checkStrictJSONShape(value any, typeOf reflect.Type, path string) error {
 			return refuseSubject(RefusalJSONWrongType, path)
 		}
 		for index, child := range array {
-			if err := checkStrictJSONShape(child, typeOf.Elem(), fmt.Sprintf("%s[%d]", path, index)); err != nil {
+			if err := checkStrictJSONShape(child, typeOf.Elem(), fmt.Sprintf("%s[%d]", path, index), profilePredecessor); err != nil {
 				return err
 			}
 		}

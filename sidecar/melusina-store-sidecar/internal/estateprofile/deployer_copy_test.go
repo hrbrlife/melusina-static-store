@@ -70,6 +70,7 @@ var deployerCopyTests = map[string]string{
 var storeOnlyTests = map[string]string{
 	"deployer_copy_test.go":   "the Store's check of this copy against the deployer's",
 	"campaign_c1_d07_test.go": "C1 D07 first-estate lineage contract",
+	"campaign_d07_test.go":    "D07 producer-owned predecessor positives and shape refusals",
 	"campaign_c1_d12_test.go": "C1 D12 network and threshold contract",
 	"campaign_c1_d13_test.go": "C1 D13 permanent parameter contract",
 	"campaign_c1_d14_test.go": "C1 D14 runner seat contract",

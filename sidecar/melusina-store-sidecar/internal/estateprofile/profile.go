@@ -12,6 +12,8 @@
 // no private key and signs nothing.
 package estateprofile
 
+import "encoding/json"
+
 const (
 	// ProfileSchema and ProfileKind name the only enrollable document.
 	ProfileSchema = "melusina.estate.profile.v1"
@@ -145,8 +147,29 @@ type EstateProfileV1 struct {
 	Recalls          []RecallV1           `json:"recalls"`
 	// Prev is informational. Acceptance never requires continuity with it.
 	Prev PrevV1 `json:"prev"`
+	// Predecessor separates the first estate from every later one (D07,
+	// K-REL-06): none is the signed statement of a first estate, and an
+	// estate names the profile it succeeds by digest. It is digested after
+	// Prev. An absent predecessor remains a distinct legacy state and is
+	// never read as none — see predecessor.go.
+	Predecessor PredecessorV1 `json:"predecessor"`
 	// Signatures are excluded from the digest and sorted by KeyID.
 	Signatures []SignatureV1 `json:"signatures"`
+}
+
+// MarshalJSON omits the predecessor of an older signed profile rather than
+// emitting an unsigned null or treating absence as an explicit first-estate
+// statement. Explicit none and named predecessors use the canonical wire
+// form supplied by PredecessorV1.MarshalJSON.
+func (profile EstateProfileV1) MarshalJSON() ([]byte, error) {
+	type wire EstateProfileV1
+	if profile.Predecessor == (PredecessorV1{}) {
+		return json.Marshal(struct {
+			*wire
+			Predecessor any `json:"predecessor,omitempty"`
+		}{wire: (*wire)(&profile)})
+	}
+	return json.Marshal(wire(profile))
 }
 
 // OwnerPolicyV1 is a public Ed25519 threshold policy. Signers are sorted by

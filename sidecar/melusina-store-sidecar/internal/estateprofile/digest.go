@@ -155,6 +155,14 @@ func profilePreimage(profile EstateProfileV1) []byte {
 	}
 	writer.uint64(profile.Prev.Revision)
 	writer.string(profile.Prev.SHA256)
+	// An absent predecessor is the legacy preimage. Every explicit
+	// predecessor contributes bytes, including none: an old signature over
+	// the legacy preimage cannot be reused to claim a first estate.
+	if profile.Predecessor.Kind != "" {
+		writer.string(profile.Predecessor.Kind)
+		writer.string(profile.Predecessor.EstateID)
+		writer.string(profile.Predecessor.ProfileSHA256)
+	}
 	return writer.Bytes()
 }
 

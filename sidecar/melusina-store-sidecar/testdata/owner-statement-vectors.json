@@ -4,7 +4,8 @@
   "notes": [
     "Restricted ASCII, no BOM and no trailing newline. The five LF-delimited lines shown in statement are the exact Ed25519 message bytes; preimageHex and statementSha256 pin them. The statement is rebuilt from the document, never taken from an untrusted supplied message.",
     "Estate words are a labelled synthetic fingerprint for this fixture. Document digest validation separately binds the estate ID and charter digest where applicable. These test signatures have no authority on any estate.",
-    "The charter digest is inside each later document preimage, not appended to statement-v1 or to the document digest after signing."
+    "The charter digest is inside each later document preimage, not appended to statement-v1 or to the document digest after signing.",
+    "The install-objective-adoption row is the C3 D09 signed statement under its own synthetic estate owner policy; the six D50 rows retain the four-signer synthetic policy above."
   ],
   "template": "Melusina owner document\\nkind=<kind>\\nestate=<estateWords>\\nexpires=<UTC>\\ndigest=<64 lowercase hex>",
   "signerThreshold": 2,
@@ -144,6 +145,46 @@
         {
           "keyId": "owner-b",
           "signature": "XNXvAl0mCWArt01Av8n6QgCEOW7cdx18fCbngXW4tZ8M2EN461axz3WG5Gej2-WTiHMWOBgdCiSsAVy80p0nBw"
+        }
+      ]
+    },
+    {
+      "kind": "install-objective-adoption",
+      "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
+      "estateWords": "synthetic C3 estate",
+      "expiry": "2026-12-31T00:00:00Z",
+      "digest": "3730ef79ba8c8dd62b40b24c347abae82a6b7292fa5246d0776c6fa262e9f418",
+      "estateCharterSha256": "87e0c35e5c6210e83cfb3a8b8d3614c8ffc3b1559c744c97cd7dd813a26838a6",
+      "ownerPolicy": {
+        "policyId": "policy.rehearsal.owners.v1",
+        "revision": 1,
+        "threshold": 2,
+        "signers": [
+          {
+            "keyId": "owner-a",
+            "ed25519PublicKey": "959d083a8a74caaa95bb336f79373b8f377932db132f4f2d3b582f5c3cec3346"
+          },
+          {
+            "keyId": "owner-b",
+            "ed25519PublicKey": "7fcb5095ddb94f3d6b79c8787b08d4e6cc8115777ee37365b0bd193134f0c683"
+          },
+          {
+            "keyId": "owner-c",
+            "ed25519PublicKey": "0238f346a29f2d40671f8665e0c3a06485464de432c2be9cf711060376c518ff"
+          }
+        ]
+      },
+      "statement": "Melusina owner document\nkind=install-objective-adoption\nestate=synthetic C3 estate\nexpires=2026-12-31T00:00:00Z\ndigest=3730ef79ba8c8dd62b40b24c347abae82a6b7292fa5246d0776c6fa262e9f418",
+      "preimageHex": "4d656c7573696e61206f776e657220646f63756d656e740a6b696e643d696e7374616c6c2d6f626a6563746976652d61646f7074696f6e0a6573746174653d73796e746865746963204333206573746174650a657870697265733d323032362d31322d33315430303a30303a30305a0a6469676573743d33373330656637396261386338646436326234306232346333343761626165383261366237323932666135323436643037373663366661323632653966343138",
+      "statementSha256": "b508a0d43babbc2ed0b83435f48a920d3471e72af354eaf5b85328dbf60c12cb",
+      "signatures": [
+        {
+          "keyId": "owner-a",
+          "signature": "8pRuoJxfZLYSb5g_MF3rGzetY45RRtetKjDr5F0eIS9rlNetpU9mw02PzMlmQURvLh2pEn3ua42DokJsWcEsAg"
+        },
+        {
+          "keyId": "owner-b",
+          "signature": "ssxtmzaET27uge400nLRBy5v7LgAbQchvXLyoItw5WErLggvG91tx_1lKgYJ-ondGwJ8Fh_9uum7bLu3_Xw4AA"
         }
       ]
     }

@@ -92,7 +92,7 @@ func TestC1EstateVectorDigest(t *testing.T) {
 		"foundation-authorization-vectors.json":           "",
 		"provider-install-authorization-vectors.json":     "",
 		"store-host-authorization-vectors.json":           "",
-		"owner-statement-vectors.json":                    "f931ce299fea8d2c2194f9b76ea53c3de78e95bf619a7e2035327c8ea5a4dfc8",
+		"owner-statement-vectors.json":                    "a776a6e86effd462650ac4ce8f7138fa946722a4d08a7cb2dc3fd9b3ad9bab53",
 		"foundation-authorization-statement-vectors.json": "3e027696561284ea924f73bef3d98f4653cec598e7e9a0f9958dca9506ab3568",
 	}
 	seen := map[string]bool{}

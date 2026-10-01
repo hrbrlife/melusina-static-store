@@ -1,10 +1,53 @@
 package estateprofile
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestC1D07SharedVectorHelperPinned(t *testing.T) {
+	raw, err := os.ReadFile("vectors_test.go")
+	if err != nil {
+		t.Fatalf("C1_D07_SHARED_HELPER_MISSING:vectors_test.go: %v", err)
+	}
+	if got := fmt.Sprintf("%x", sha256.Sum256(raw)); got != "89cad49b795152fc1c945477cfb6eafba6b55b25b85ae284d77f44dd199beb52" {
+		t.Fatalf("C1_D07_SHARED_HELPER_DRIFT:vectors_test.go:%s", got)
+	}
+}
+
+func TestC1D07CrossCopyParityRequired(t *testing.T) {
+	contractsRoot := os.Getenv("C1_CONTRACTS_CHECKOUT")
+	if contractsRoot == "" {
+		contractsRoot = "../../../../../contracts"
+	}
+	deployerRoot := os.Getenv("C1_DEPLOYER_CHECKOUT")
+	if deployerRoot == "" {
+		deployerRoot = "../../../../../deployer"
+	}
+	local, err := os.ReadFile("../../testdata/estate-profile-vectors.json")
+	if err != nil {
+		t.Fatalf("C1_D07_COPY_PARITY_MISSING:store: %v", err)
+	}
+	for _, peer := range []struct{ name, path string }{
+		{"contracts", filepath.Join(contractsRoot, "scripts/estate/testdata/estate-profile-vectors.json")},
+		{"deployer", filepath.Join(deployerRoot, "deploy-ui/testdata/estate-profile-vectors.json")},
+		{"deployer-store", filepath.Join(deployerRoot, "deploy-ui/testdata/store-estate-profile-vectors.json")},
+	} {
+		copy, err := os.ReadFile(peer.path)
+		if err != nil {
+			t.Fatalf("C1_D07_COPY_PARITY_MISSING:%s: %v", peer.name, err)
+		}
+		if !bytes.Equal(local, copy) {
+			t.Fatalf("C1_D07_COPY_PARITY_DRIFT:%s", peer.name)
+		}
+	}
+}
 
 // The generated vector is allowed to grow when D07 and later producers run.
 // These checks require the named cases and refusals of whatever they emit.

@@ -1,10 +1,52 @@
 package estateprofile
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 )
+
+func TestC1D13SharedFixtureHelperPinned(t *testing.T) {
+	raw, err := os.ReadFile("fixtures_test.go")
+	if err != nil {
+		t.Fatalf("C1_D13_SHARED_HELPER_MISSING:fixtures_test.go: %v", err)
+	}
+	if got := fmt.Sprintf("%x", sha256.Sum256(raw)); got != "1521f84fd3d50c7d6e912a3f3d6add99c8e98fb4d3123c0906949e99c0bf1432" {
+		t.Fatalf("C1_D13_SHARED_HELPER_DRIFT:fixtures_test.go:%s", got)
+	}
+}
+
+func TestC1D13CrossCopyParityRequired(t *testing.T) {
+	contractsRoot := os.Getenv("C1_CONTRACTS_CHECKOUT")
+	if contractsRoot == "" {
+		contractsRoot = "../../../../../contracts"
+	}
+	deployerRoot := os.Getenv("C1_DEPLOYER_CHECKOUT")
+	if deployerRoot == "" {
+		deployerRoot = "../../../../../deployer"
+	}
+	local, err := os.ReadFile("../../testdata/estate-profile-vectors.json")
+	if err != nil {
+		t.Fatalf("C1_D13_COPY_PARITY_MISSING:store: %v", err)
+	}
+	for _, peer := range []struct{ name, path string }{
+		{"contracts", filepath.Join(contractsRoot, "scripts/estate/testdata/estate-profile-vectors.json")},
+		{"deployer", filepath.Join(deployerRoot, "deploy-ui/testdata/estate-profile-vectors.json")},
+		{"deployer-store", filepath.Join(deployerRoot, "deploy-ui/testdata/store-estate-profile-vectors.json")},
+	} {
+		copy, err := os.ReadFile(peer.path)
+		if err != nil {
+			t.Fatalf("C1_D13_COPY_PARITY_MISSING:%s: %v", peer.name, err)
+		}
+		if !bytes.Equal(local, copy) {
+			t.Fatalf("C1_D13_COPY_PARITY_DRIFT:%s", peer.name)
+		}
+	}
+}
 
 type c1PermanentFixture struct {
 	EvidenceClass            string   `json:"evidenceClass"`
@@ -89,6 +131,16 @@ func TestC1D13CeremonyPermanentParametersAccepted(t *testing.T) {
 		got.FoundationEditionCount != uint64(len(parameters.FoundationEditions)) ||
 		got.RemainingEditionHeadroom != parameters.RemainingEditionHeadroom {
 		t.Fatalf("D13_PERMANENT_PARAMETER_RESULT: got %+v, want %+v", got, parameters)
+	}
+	// Input dependence: one fewer planned edition leaves one more edition of
+	// headroom, so a constant result cannot satisfy this test.
+	fewer := uint64(len(parameters.FoundationEditions)) - 1
+	again, err := CheckPermanentParameters(c1D13CeremonyRaw(t), fewer, parameters.MasterEditionCap)
+	if err != nil {
+		t.Fatalf("D13_PERMANENT_PARAMETERS_ACCEPTED: fewer planned editions: %v", err)
+	}
+	if again.FoundationEditionCount != fewer || again.RemainingEditionHeadroom != parameters.MasterEditionCap-fewer {
+		t.Fatalf("D13_PERMANENT_PARAMETER_RESULT_NOT_INPUT_DERIVED: got %+v for %d planned of cap %d", again, fewer, parameters.MasterEditionCap)
 	}
 }
 

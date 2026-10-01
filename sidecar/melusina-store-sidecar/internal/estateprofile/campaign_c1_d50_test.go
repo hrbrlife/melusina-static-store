@@ -1,6 +1,7 @@
 package estateprofile
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
@@ -8,17 +9,63 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
+func TestC1D50SharedFixtureHelperPinned(t *testing.T) {
+	raw, err := os.ReadFile("fixtures_test.go")
+	if err != nil {
+		t.Fatalf("C1_D50_SHARED_HELPER_MISSING:fixtures_test.go: %v", err)
+	}
+	if got := fmt.Sprintf("%x", sha256.Sum256(raw)); got != "1521f84fd3d50c7d6e912a3f3d6add99c8e98fb4d3123c0906949e99c0bf1432" {
+		t.Fatalf("C1_D50_SHARED_HELPER_DRIFT:fixtures_test.go:%s", got)
+	}
+}
+
+func TestC1D50CrossCopyParityRequired(t *testing.T) {
+	contractsRoot := os.Getenv("C1_CONTRACTS_CHECKOUT")
+	if contractsRoot == "" {
+		contractsRoot = "../../../../../contracts"
+	}
+	deployerRoot := os.Getenv("C1_DEPLOYER_CHECKOUT")
+	if deployerRoot == "" {
+		deployerRoot = "../../../../../deployer"
+	}
+	for _, name := range []string{
+		"owner-statement-vectors.json",
+		"foundation-authorization-vectors.json",
+		"foundation-authorization-statement-vectors.json",
+	} {
+		local, err := os.ReadFile("../../testdata/" + name)
+		if err != nil {
+			t.Fatalf("C1_D50_COPY_PARITY_MISSING:%s:store: %v", name, err)
+		}
+		for _, peer := range []struct{ name, path string }{
+			{"contracts", filepath.Join(contractsRoot, "scripts/estate/testdata", name)},
+			{"deployer", filepath.Join(deployerRoot, "deploy-ui/testdata", name)},
+		} {
+			copy, err := os.ReadFile(peer.path)
+			if err != nil {
+				t.Fatalf("C1_D50_COPY_PARITY_MISSING:%s:%s: %v", name, peer.name, err)
+			}
+			if !bytes.Equal(local, copy) {
+				t.Fatalf("C1_D50_COPY_PARITY_DRIFT:%s:%s", name, peer.name)
+			}
+		}
+	}
+}
+
+type c1StatementSigner struct {
+	KeyID     string `json:"keyId"`
+	PublicKey string `json:"ed25519PublicKey"`
+}
+
 type c1StatementVector struct {
-	Schema    string `json:"schema"`
-	Threshold int    `json:"signerThreshold"`
-	Signers   []struct {
-		KeyID     string `json:"keyId"`
-		PublicKey string `json:"ed25519PublicKey"`
-	} `json:"signers"`
+	Schema    string              `json:"schema"`
+	Threshold int                 `json:"signerThreshold"`
+	Signers   []c1StatementSigner `json:"signers"`
 	Documents []struct {
 		Kind            string        `json:"kind"`
 		EstateWords     string        `json:"estateWords"`
@@ -28,6 +75,10 @@ type c1StatementVector struct {
 		PreimageHex     string        `json:"preimageHex"`
 		StatementSHA256 string        `json:"statementSha256"`
 		Signatures      []SignatureV1 `json:"signatures"`
+		OwnerPolicy     *struct {
+			Threshold int                 `json:"threshold"`
+			Signers   []c1StatementSigner `json:"signers"`
+		} `json:"ownerPolicy"`
 	} `json:"documents"`
 }
 
@@ -40,7 +91,7 @@ func TestC1D50StatementBytesAndSignaturesAcrossKinds(t *testing.T) {
 	if err := json.Unmarshal(raw, &vectors); err != nil {
 		t.Fatal(err)
 	}
-	if vectors.Schema != "melusina.owner.statement-v1-vectors.v1" || vectors.Threshold != 2 || len(vectors.Documents) != 6 {
+	if vectors.Schema != "melusina.owner.statement-v1-vectors.v1" || vectors.Threshold != 2 || len(vectors.Documents) != 7 {
 		t.Fatalf("D50_STATEMENT_VECTOR_HEADER: schema=%s threshold=%d kinds=%d", vectors.Schema, vectors.Threshold, len(vectors.Documents))
 	}
 	keys := map[string]ed25519.PublicKey{}
@@ -51,8 +102,28 @@ func TestC1D50StatementBytesAndSignaturesAcrossKinds(t *testing.T) {
 		}
 		keys[signer.KeyID] = key
 	}
+	seenAdoption := false
 	for _, row := range vectors.Documents {
 		t.Run(row.Kind, func(t *testing.T) {
+			threshold := vectors.Threshold
+			rowKeys := keys
+			if row.OwnerPolicy != nil {
+				threshold = row.OwnerPolicy.Threshold
+				rowKeys = map[string]ed25519.PublicKey{}
+				for _, signer := range row.OwnerPolicy.Signers {
+					key, err := hex.DecodeString(signer.PublicKey)
+					if err != nil || len(key) != ed25519.PublicKeySize {
+						t.Fatalf("D50_STATEMENT_OWNER_POLICY_KEY: %s: %v", signer.KeyID, err)
+					}
+					rowKeys[signer.KeyID] = key
+				}
+			}
+			if row.Kind == "install-objective-adoption" {
+				seenAdoption = true
+				if row.OwnerPolicy == nil || len(row.OwnerPolicy.Signers) != 3 || threshold != 2 {
+					t.Fatal("D50_ADOPTION_STATEMENT_OWNER_POLICY")
+				}
+			}
 			want := fmt.Sprintf("Melusina owner document\nkind=%s\nestate=%s\nexpires=%s\ndigest=%s", row.Kind, row.EstateWords, row.Expiry, row.Digest)
 			if row.Statement != want || hex.EncodeToString([]byte(want)) != row.PreimageHex {
 				t.Fatal("D50_STATEMENT_PREIMAGE_DRIFT")
@@ -61,16 +132,19 @@ func TestC1D50StatementBytesAndSignaturesAcrossKinds(t *testing.T) {
 			if hex.EncodeToString(sum[:]) != row.StatementSHA256 {
 				t.Fatal("D50_STATEMENT_DIGEST_DRIFT")
 			}
-			if len(row.Signatures) < vectors.Threshold {
+			if len(row.Signatures) < threshold {
 				t.Fatal("D50_STATEMENT_THRESHOLD_UNMET")
 			}
 			for _, signature := range row.Signatures {
 				wire, err := base64.RawURLEncoding.DecodeString(signature.Signature)
-				if err != nil || !ed25519.Verify(keys[signature.KeyID], []byte(want), wire) {
+				if err != nil || !ed25519.Verify(rowKeys[signature.KeyID], []byte(want), wire) {
 					t.Fatalf("D50_STATEMENT_SIGNATURE_INVALID: %s", signature.KeyID)
 				}
 			}
 		})
+	}
+	if !seenAdoption {
+		t.Fatal("D50_ADOPTION_STATEMENT_MISSING")
 	}
 }
 

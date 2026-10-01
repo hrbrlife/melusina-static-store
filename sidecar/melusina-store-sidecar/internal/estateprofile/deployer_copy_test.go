@@ -10,13 +10,12 @@ import (
 	"testing"
 )
 
-// The Store's historical estateprofile copy was taken from the deployer's
-// deploy-ui/internal/estateprofile (melusina-os-deployer). Its original source
-// set and unchanged copied tests remain pinned to deployerCopyCommit. C1 adds
-// fail-closed producer seams and acceptance tests, while the reviewed D07
-// vector bytes remain a historical seed. peer_copies_test.go is the deployer's
-// check against the Store, so the Store does not carry it. This file is the
-// Store's reciprocal check. At
+// The Store's copy of this package is taken from the deployer's
+// deploy-ui/internal/estateprofile (melusina-os-deployer), every file byte for
+// byte, except two test files. peer_copies_test.go is the deployer's check of
+// its copy against the Store's, so the Store does not carry it. This file is
+// the Store's check against the deployer's. deployerCopyCommit is the
+// historical base of this copy. At
 // that commit the deployer copy carries seam audit round 1 #4 (201da7c2,
 // StoreReleaseMinThreshold), #12 (79c27ef7, the draft is the ceremony profile
 // schema), #18 (b8413595, MaxStoreIDLength 52), and #3 (c5196544, the
@@ -29,35 +28,25 @@ import (
 // because the licence registry creates every app ReleaseEntry under the core
 // vault and this Store serves an app only from roles.store-release's vault.
 //
-// The D07 vectors retain their historical goSources hashes as provenance;
-// TestVectorsGoSourcesAreRecorded checks that record while C1 behavioral tests
-// lock the producer changes. To re-sync historical copied files: copy each file
-// with `git show <commit>:deploy-ui/internal/estateprofile/<file>` and each
-// testdata file with `git show <commit>:deploy-ui/testdata/<file>`. Then run
-// `go test ./internal/estateprofile/ -update-vectors`, confirm that the
-// regenerated files still equal the deployer's, and re-pin the commit and
-// every hash here.
+// Every non-test source is recorded by hash in the vectors' goSources, and
+// TestVectorsGoSourcesAreRecorded holds this package to that live record.
+// Producers regenerate the profile vector and example after the last code
+// change and copy them byte for byte to every mirror. The generated entries
+// in the adjacent digest are updated in the same landing. Unchanged historical
+// testdata and tests remain pinned below.
 const deployerCopyCommit = "4b9d4dd59be407e4a3b5d7f34da55644ee34c954"
 
-// deployerCopyTestdata pins the package's testdata. Unchanged entries are from
-// deployerCopyCommit. The estate-profile-vectors.json entry is instead the
-// reviewed D07 seed (deployer archive/msb-20260928/D07/deployer at
-// 198eeaad3384d96b882d5fa897266962437fb89e), adopted byte for byte for
-// C1 before its producer code. The new C1-estate.sha256 file records its
-// byte pin. The deployer's own byte copy of the Store's vectors
-// (store-estate-profile-vectors.json) is not among them.
+// deployerCopyTestdata pins testdata that no producer regenerates. The
+// generated estate-profile vector and example are checked by semantic tests,
+// live goSources and the adjacent re-pinnable digest instead.
 var deployerCopyTestdata = map[string]string{
-	"estate-profile-vectors.json":                 "a437b2e4d5a88103c61cc66c639ac895a5198c1c0ad546cf9194ffb798cb083e",
 	"foundation-authorization-vectors.json":       "19dd047d8cab7c9926032bb0883177920af806ed2174818c937866ee75ffc9ad",
 	"provider-install-authorization-vectors.json": "016e2b1db5b4d8c21fcd1143975e3a3886b81dad7f1aceaf43fa5bb85377e06a",
 	"store-host-authorization-vectors.json":       "99b85dad81eabe6d9f61a86a1cc4f6a63160f7d2b67507ff86766b312ebb2045",
-	"contracts-example-estate.profile.json":       "29c66510a588c364d09b35ccb56ef20c58dfe400f0fa00dd5299122c5884c521",
 }
 
-// deployerCopyTests pins the copied test files. All entries except
-// vectors_test.go are from deployerCopyCommit. vectors_test.go is mirrored
-// byte-for-byte from the C1 deployer contract branch; its revised generator
-// retains the D07 source provenance without pinning future producer code.
+// deployerCopyTests pins the copied test files at the current shared contract
+// head. Producers re-pin a generated-vector test when they change its recipe.
 var deployerCopyTests = map[string]string{
 	"accept_test.go":                         "3ae5a1fb28dc349cf13af691aee8857d827d2731c4fc1254467d17d9c8845a58",
 	"digest_test.go":                         "a4527abcaa746e1a9eceec791d3480e24f789ef994b5e33ee0dc5a0f703ea24d",
@@ -72,7 +61,7 @@ var deployerCopyTests = map[string]string{
 	"store_host_authorization_test.go":       "14cc6a99bfb14a5ae6fe9ebad4cb9477dfb5a1bc46cd4b951c6fbc702ba8e18d",
 	"strictjson_test.go":                     "ad4755613a3a9bc41fb7b596827417165a5b866a6342066baf7a558a188731d7",
 	"validate_test.go":                       "7a5d9d8b4a5c6ba1d280ca77ff12592863ba9f7b9f543d76377aa967771d3a6f",
-	"vectors_test.go":                        "17e3090b3c4a2d974050ff926a23c3ef728556a4ff6a56e616ad8bde752aaf19",
+	"vectors_test.go":                        "89cad49b795152fc1c945477cfb6eafba6b55b25b85ae284d77f44dd199beb52",
 	"verify_test.go":                         "34838f35b6b642919bc4207dc922aa5e78a795ed15975ee3cc5dea8175803a2b",
 }
 
@@ -86,9 +75,9 @@ var storeOnlyTests = map[string]string{
 	"campaign_c1_d50_test.go": "C1 D50 owner statement contract",
 }
 
-// TestC1EstateVectorDigest verifies the byte-pinned contract copy independently
-// of the package's generated-vector check. The D07 review head supplied the
-// profile bytes; the foundation bytes were already pinned in this package.
+// TestC1EstateVectorDigest requires the generated profile vector's adjacent
+// digest to match its current bytes. Only the non-generated inputs have raw
+// digest constants here; producers update the generated entry at each landing.
 func TestC1EstateVectorDigest(t *testing.T) {
 	const digestFile = "../../testdata/C1-estate.sha256"
 	raw, err := os.ReadFile(digestFile)
@@ -97,7 +86,8 @@ func TestC1EstateVectorDigest(t *testing.T) {
 	}
 	entries := strings.Split(strings.TrimSpace(string(raw)), "\n")
 	want := map[string]string{
-		"estate-profile-vectors.json":                     "a437b2e4d5a88103c61cc66c639ac895a5198c1c0ad546cf9194ffb798cb083e",
+		"estate-profile-vectors.json":                     "",
+		"contracts-example-estate.profile.json":           "",
 		"foundation-authorization-vectors.json":           "19dd047d8cab7c9926032bb0883177920af806ed2174818c937866ee75ffc9ad",
 		"owner-statement-vectors.json":                    "f931ce299fea8d2c2194f9b76ea53c3de78e95bf619a7e2035327c8ea5a4dfc8",
 		"foundation-authorization-statement-vectors.json": "d544fb3934d6aea2e21f7e1778ac096e94b71b6d6cd1c80c7e4beb6d26d9abc7",
@@ -109,7 +99,8 @@ func TestC1EstateVectorDigest(t *testing.T) {
 			t.Fatalf("C1_ESTATE_DIGEST_MALFORMED: %q", entry)
 		}
 		name := parts[1]
-		if seen[name] || want[name] == "" || parts[0] != want[name] {
+		pinned, known := want[name]
+		if seen[name] || !known || (pinned != "" && parts[0] != pinned) {
 			t.Fatalf("C1_ESTATE_DIGEST_MISMATCH: %s", name)
 		}
 		seen[name] = true
@@ -129,7 +120,7 @@ func TestC1SharedSeamVectorDigest(t *testing.T) {
 		t.Fatalf("C1_SHARED_DIGEST_MISSING: %v", err)
 	}
 	want := map[string]string{
-		"C1-estate-vectors.json":            "c88827511b407d61fb9013c8d70069b3d08369dfd215c608230279e04bff70c2",
+		"C1-estate-vectors.json":            "b58b661e4540cee6870fbe804c6e13c2f0f91e53ef0f095870a759df1d4694af",
 		"d33-signed-manifest.json":          "01d90c84f456c7ee8790d1cb75f2d7323d7fcf2cc3efaa85195f362003628ebb",
 		"d33-publisher-device.json":         "740bc4f97bff36b7998a1b18683a59bcb31cb33cc67af3a652e141876d1e73ea",
 		"known-estate-lineage-vectors.json": "8dd70f5c47f1533e89a5ff4d4787f8240df945309fc0192925723f7ebedd81fc",
@@ -166,9 +157,9 @@ func sha256File(t *testing.T, path string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// TestPackageCopyIsTheDeployerCopy checks unchanged historical copy files
-// against deployerCopyCommit, plus the mirrored C1 vectors_test.go revision.
-// The C1 byte guards and behavioral tests cover the new contract surfaces.
+// TestPackageCopyIsTheDeployerCopy holds the Store's copied immutable testdata
+// and tests to their recorded deployer bytes. The generated vector's live
+// goSources check holds every non-test source to its current provenance.
 func TestPackageCopyIsTheDeployerCopy(t *testing.T) {
 	if len(deployerCopyCommit) != 40 || strings.Trim(deployerCopyCommit, "0123456789abcdef") != "" {
 		t.Fatalf("deployerCopyCommit %q is not a full commit id", deployerCopyCommit)

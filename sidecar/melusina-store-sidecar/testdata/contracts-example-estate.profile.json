@@ -79,6 +79,13 @@
     "publicKey": "BaTPhfQKzdJATTDrHeVJ3mM4hFyhqtxhuQT7aFEGbhje",
     "acknowledgePermanentDomainClaimRelease": true
   },
+  "releaseTrust": {
+    "publisherKeys": [
+      "db3fed4db0f6df4b0a55f6eda912ee319f8ab8331695ab35b879caa5bc6ee242",
+      "ee7a6ece31976f5d397fe4a5598bb6643cb078f76c2376af3a210330bb970d22"
+    ],
+    "threshold": 1
+  },
   "ceremony": {
     "programDeployer": "GePDfrwrTFApTKBW39gwP7vHPMLJqvcYveHhj2EDxVLF",
     "minimumCoreVaultLamports": "20000000000",

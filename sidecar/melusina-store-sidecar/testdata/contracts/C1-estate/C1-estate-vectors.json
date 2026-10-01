@@ -1,7 +1,7 @@
 {
   "schema": "melusina.seam.C1-estate.v1",
   "evidenceClass": "synthetic-local-fixture",
-  "note": "Public illustrative data. No signature, wallet, chain, Store, or tenant authority is asserted by this file. D07 signed vector bytes live in scripts/estate/testdata/estate-profile-vectors.json and are not regenerated here.",
+  "note": "Public illustrative data. No signature, wallet, chain, Store, or tenant authority is asserted by this file. Generated profile vectors are regenerated in producer order.",
   "estate": {
     "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
     "legacyProfileSha256": "221876c6953c274d688bc42132f18cd0a9fa07d775e4561319238ca4ff6a7e83",
@@ -20,14 +20,6 @@
       "estate-gate-lineage-below-source-floor"
     ]
   },
-  "networkFeatures": [
-    {"name": "real-devnet", "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG", "feature": "devnet"},
-    {"name": "example-private-cluster", "genesisHash": "DszkBgTZVoPkk9tDyXH85k4xs7HSjzxaCoLnPnuZNu6L", "feature": "devnet"},
-    {"name": "second-private-cluster", "genesisHash": "BUbWwVen8PwCnZVhFxVgwRNQtdU7weJoYMTwRhUjePKG", "feature": "devnet"},
-    {"name": "mainnet-beta", "genesisHash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d", "refusal": "mainnet-separate-authorization-required"},
-    {"name": "zero-genesis", "genesisHash": "11111111111111111111111111111111", "refusal": "genesis-unknown"},
-    {"name": "malformed-genesis", "genesisHash": "not-a-base58-genesis", "refusal": "genesis-malformed"}
-  ],
   "governance": {
     "coreVoterCount": 4,
     "coreThresholdFloor": 2,
@@ -61,7 +53,8 @@
     "assurance": "Enhanced",
     "maxAgeDays": 365,
     "instructionOrder": ["issue_kyc_attestation", "renew_or_reissue_kyc_attestation", "verify_kyc_eligibility", "revoke_kyc_attestation"],
-    "refusals": ["KYC_RENEW_WRONG_ISSUER", "KYC_RENEW_REVOKED_AUTHORITY", "KYC_RENEW_WRONG_PURPOSE", "KYC_RENEW_EXPIRED_LICENSE", "KYC_SUPERSEDED_PROOF", "KYC_REISSUE_REPLAY"]
+    "refusals": ["KYC_RENEW_WRONG_ISSUER", "KYC_RENEW_REVOKED_AUTHORITY", "KYC_RENEW_WRONG_PURPOSE", "KYC_SUPERSEDED_PROOF", "KYC_REISSUE_REPLAY"],
+    "notLockedRefusals": {"KYC_RENEW_EXPIRED_LICENSE": "No typed licence-expiry source exists in LicenseEntry; owner must name one before this refusal can be tested."}
   },
   "squadsBatch": {
     "instructionOrder": ["batchCreate", "proposalCreate:isDraft", "batchAddTransaction", "proposalActivate"],

@@ -11,11 +11,12 @@
   ],
   "goSources": {
     "accept.go": "44ff86bca76b55883af036de6d51b52b931f06a1f07dc15d2b986abac165dcaf",
-    "digest.go": "58bb700e6f4827d383e37121e1a7d63a35220718c8f729269f4104847913ac0a",
+    "digest.go": "1c07f9247d9e2890a0468c2f01877e830da620b6c7d590f99554136ea56790cc",
     "encoding.go": "a456d7d89ec571187360595d1761b800c0900d1731776e9136858f1865f38e43",
     "foundation_authorization.go": "d7e1aa80ac49b9e8a181a8b055363985163450978e6ae197769986bc00635f8b",
-    "predecessor.go": "73c48e12da256d0c762ba90f499e57abcdf43ccc90452ce339325123b72c4031",
-    "profile.go": "5308038933f930cb0284dff1af81b0d72076a16cdfbd861c42bf26ae550c7bb8",
+    "owner_statement.go": "efd97935fbb1293c0af51bd75f9261685a70efe1426e2b278338886a60ef9b37",
+    "permanent_parameters.go": "e2c95227ad4bc4717f78608d321738584a280781afd6cf965403440c71983234",
+    "profile.go": "8ce9cfe1069288b650f471b6f4c30965977b2db0e8315cc6ed582013427874ae",
     "projection.go": "0f263822b7c04a0a6445ebb53620c7783aafc6dcd4856d7ca2dc461a18788960",
     "provider_install_authorization.go": "dda9969431007e5636ea43956e00e0106fae3eafe6b4538593555af3d9e2b589",
     "refusal.go": "17bde7383e2c75b99125951a01cd94149f637a8d672161339055beb5f289b40a",
@@ -23,9 +24,9 @@
     "store_enrollment.go": "5a73b7f373e8b9cb0843245969f3693bdad44e98967cf8068965e2fad2e6bebc",
     "store_enrollment_successor.go": "bec114248b3e8c70d6e4f5901425c7bfaaf489f5b03dcb21626913f33c9f32df",
     "store_host_authorization.go": "ce41e90451e37667acfc805f6f6284f82fabbe7fbd0a0cfa480c445c52dda661",
-    "strictjson.go": "40df45f37e61d9d6ffa161e95955c86bb0f4c70b680da4010f6efdb1e5dda143",
-    "validate.go": "88566506a719ea9f58052ac630ef62502461753e2cb1f73164df6e5eec9d1de9",
-    "verify.go": "db340741fe7ee55b29f87bdededf5993abe34e338bf6f91be5e5b981ce56daa6"
+    "strictjson.go": "63f13cb4005800ccbb89eff196200630254f7861e62473ddf42db86b33cb7e59",
+    "validate.go": "e25774b338d769c571649e3b9708c9848465551820ceb415eadaca1024cf4020",
+    "verify.go": "b1c4675d3fe8baa35785807b59bf810b178d3df41928271e6963482d40e8c269"
   },
   "profiles": [
     {

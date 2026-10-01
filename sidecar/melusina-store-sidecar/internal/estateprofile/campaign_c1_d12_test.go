@@ -6,46 +6,45 @@ import (
 	"testing"
 )
 
-func c1NetworkFeatures(t *testing.T) []struct {
-	Name        string `json:"name"`
-	GenesisHash string `json:"genesisHash"`
-	Feature     string `json:"feature"`
-	Refusal     string `json:"refusal"`
-} {
-	t.Helper()
-	raw, err := os.ReadFile("../../testdata/contracts/C1-estate/C1-estate-vectors.json")
+func TestC1D12GeneratedExampleHasDerivedFeatureOnly(t *testing.T) {
+	raw, err := os.ReadFile("../../testdata/contracts-example-estate.profile.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var fixture struct {
-		NetworkFeatures []struct {
-			Name        string `json:"name"`
-			GenesisHash string `json:"genesisHash"`
-			Feature     string `json:"feature"`
-			Refusal     string `json:"refusal"`
-		} `json:"networkFeatures"`
+	var example struct {
+		Network   map[string]json.RawMessage `json:"network"`
+		Hierarchy struct {
+			Include bool `json:"include"`
+		} `json:"hierarchy"`
+		Programs map[string]json.RawMessage `json:"programs"`
 	}
-	if err := json.Unmarshal(raw, &fixture); err != nil {
+	if err := json.Unmarshal(raw, &example); err != nil {
 		t.Fatal(err)
 	}
-	return fixture.NetworkFeatures
+	if _, supplied := example.Network["licenseRegistryFeature"]; supplied {
+		t.Fatal("D12_EXAMPLE_SUPPLIED_DERIVED_FEATURE")
+	}
+	if len(example.Network["genesisHash"]) == 0 {
+		t.Fatal("D12_EXAMPLE_GENESIS_MISSING")
+	}
+	if !example.Hierarchy.Include {
+		for _, name := range []string{"level2_registry", "level3_registry", "level4_registry"} {
+			if _, supplied := example.Programs[name]; supplied {
+				t.Fatalf("D12_EXAMPLE_UNUSED_LEVEL_PROGRAM: %s", name)
+			}
+		}
+	}
 }
 
 func TestC1D12PrivateGenesisAndCoreThreshold(t *testing.T) {
 	base := newEstateProfile(t)
-	// Every derivable non-mainnet genesis in the shared vector is admissible.
-	for _, row := range c1NetworkFeatures(t) {
-		if row.Feature != "devnet" {
-			continue
-		}
-		t.Run(row.Name, func(t *testing.T) {
-			private := base
-			private.Network.GenesisHash = row.GenesisHash
-			private = signProfile(t, private, "owner-a", "owner-b")
-			if _, err := VerifyProfile(private); err != nil {
-				t.Fatalf("D12_PRIVATE_GENESIS_REFUSED: %v", err)
-			}
-		})
+	// Store verifies the signed genesis. The feature is derived later from that
+	// genesis by the ceremony reader, never supplied in an EstateProfileV1.
+	private := base
+	private.Network.GenesisHash = "DszkBgTZVoPkk9tDyXH85k4xs7HSjzxaCoLnPnuZNu6L"
+	private = signProfile(t, private, "owner-a", "owner-b")
+	if _, err := VerifyProfile(private); err != nil {
+		t.Fatalf("D12_PRIVATE_GENESIS_REFUSED: %v", err)
 	}
 	// The signed 2-of-4 core authority is the minimum allowed foundation.
 	two := base
@@ -76,16 +75,7 @@ func TestC1D12CoreThresholdOneRefused(t *testing.T) {
 
 func TestC1D12MainnetRefused(t *testing.T) {
 	profile := newEstateProfile(t)
-	var mainnet string
-	for _, row := range c1NetworkFeatures(t) {
-		if row.Name == "mainnet-beta" {
-			mainnet = row.GenesisHash
-		}
-	}
-	if mainnet == "" || mainnet != MainnetBetaGenesisHash {
-		t.Fatal("D12_MAINNET_VECTOR_MISSING_OR_DRIFTED")
-	}
-	profile.Network.GenesisHash = mainnet
+	profile.Network.GenesisHash = MainnetBetaGenesisHash
 	if err := ValidateProfile(profile); RefusalName(err) != RefusalMainnetGenesis {
 		t.Fatalf("D12_MAINNET_REFUSAL: %v", err)
 	}
@@ -93,15 +83,15 @@ func TestC1D12MainnetRefused(t *testing.T) {
 
 func TestC1D12UnderivableGenesisRefused(t *testing.T) {
 	base := newEstateProfile(t)
-	for _, row := range c1NetworkFeatures(t) {
-		if row.Name != "zero-genesis" && row.Name != "malformed-genesis" {
-			continue
-		}
-		t.Run(row.Name, func(t *testing.T) {
+	for _, row := range []struct{ name, genesis string }{
+		{"zero-genesis", "11111111111111111111111111111111"},
+		{"malformed-genesis", "not-base58!"},
+	} {
+		t.Run(row.name, func(t *testing.T) {
 			profile := base
-			profile.Network.GenesisHash = row.GenesisHash
+			profile.Network.GenesisHash = row.genesis
 			if err := ValidateProfile(profile); err == nil {
-				t.Fatalf("D12_UNDERIVABLE_GENESIS_ACCEPTED: %s", row.Name)
+				t.Fatalf("D12_UNDERIVABLE_GENESIS_ACCEPTED: %s", row.name)
 			}
 		})
 	}

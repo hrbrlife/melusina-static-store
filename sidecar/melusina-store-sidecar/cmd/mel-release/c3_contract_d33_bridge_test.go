@@ -1,11 +1,10 @@
 package main
 
-import "errors"
+import "encoding/json"
 
-// This unlocked test-only bridge lets D33 connect its in-process document
-// derivation without adding a trace flag or test output to the production CLI.
-// The D33 producer replaces this default with a call to the actual derivation
-// function. Both this bridge and the source function remain outside the lock.
+// This stable test bridge observes the production document derivation without
+// adding a trace flag or test output to the CLI. The locked D33 test pins its
+// bytes; D33 implements the fail-closed production derivation instead.
 type c3D33DocumentFiles struct {
 	EstateProfile   string
 	ReleaseSet      string
@@ -20,6 +19,19 @@ func c3D33DocumentPaths(dir string) c3D33DocumentFiles {
 	}
 }
 
-var c3D33DeriveInputs = func(c3D33DocumentFiles) (c3D33InputTrace, error) {
-	return c3D33InputTrace{}, errors.New("C3-D33-derived-input-bridge-unwired")
+var c3D33DeriveInputs = func(files c3D33DocumentFiles) (c3D33InputTrace, error) {
+	result, err := deriveReleaseDocumentInputs(files.EstateProfile, files.ReleaseSet, files.PublisherDevice)
+	if err != nil {
+		return c3D33InputTrace{}, err
+	}
+	var pins []c3D33ArtifactPin
+	if err := json.Unmarshal(result.ArtifactPins, &pins); err != nil {
+		return c3D33InputTrace{}, err
+	}
+	return c3D33InputTrace{
+		Schema: result.Schema, EstateID: result.EstateID,
+		ProfileSHA256: result.ProfileSHA256, ReleaseSetSHA256: result.ReleaseSetSHA256,
+		PublisherDeviceKeyID: result.PublisherDeviceKeyID,
+		ReleaseToolsRole:     result.ReleaseToolsRole, ArtifactPins: pins,
+	}, nil
 }

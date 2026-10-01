@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -145,6 +146,7 @@ func c3D41ChainID(t *testing.T, profile estateprofile.EstateProfileV1) string {
 }
 
 func TestC3D41RendererSeparatesIdentityAndPublicLeaf(t *testing.T) {
+	c3D41PinSharedHelpers(t)
 	vector := c3D41TLSVector(t)
 	if vector.RootStoreHost != "store."+vector.Zone || vector.StaticRecord.Name != vector.RootStoreHost || vector.StaticRecord.Type != "A" || len(vector.PublicLeaf.RenewalFingerprintsSHA256) != 2 {
 		t.Fatal("C3-D41-public-route-vector-invalid")
@@ -181,6 +183,7 @@ func TestC3D41RendererSeparatesIdentityAndPublicLeaf(t *testing.T) {
 }
 
 func TestC3D41TwoPublicRenewalsAndTwoRestartsKeepIdentity(t *testing.T) {
+	c3D41PinSharedHelpers(t)
 	vector := c3D41TLSVector(t)
 	if vector.IdentityLeaf.CertPath == vector.PublicLeaf.CertPath || vector.IdentityLeaf.FingerprintSHA256 == vector.PublicLeaf.RenewalFingerprintsSHA256[0] || vector.PublicLeaf.RenewalFingerprintsSHA256[0] == vector.PublicLeaf.RenewalFingerprintsSHA256[1] {
 		t.Fatal("C3-D41-identity-public-vector-not-split")
@@ -225,6 +228,7 @@ func TestC3D41TwoPublicRenewalsAndTwoRestartsKeepIdentity(t *testing.T) {
 }
 
 func TestC3D41MutatedIdentityLeafRefusedAtBoot(t *testing.T) {
+	c3D41PinSharedHelpers(t)
 	dir := t.TempDir()
 	writeTestShards(t, dir)
 	identityPath, identityFP := writeTestTLSCert(t, dir)
@@ -273,5 +277,25 @@ func TestC3D41MutatedIdentityLeafRefusedAtBoot(t *testing.T) {
 	}
 	if _, err := deriveVerifiedBootIdentity(context.Background(), cfg, chain); err == nil || !strings.Contains(err.Error(), "tls_cert_fingerprint") {
 		t.Fatalf("C3-D41-mutated-identity-leaf-accepted-at-boot: %v", err)
+	}
+}
+
+func c3D41PinSharedHelpers(t *testing.T) {
+	t.Helper()
+	for path, want := range map[string]string{
+		"boot_identity_test.go":           "277cf814b5859f84267a843f94a7cd656cd1ad097e06c2b438cf42a73b4e390b",
+		"estate_profile_check_test.go":    "705f0e900e7c288359b83588378850759cb91e16a6f7c5470b5796e06dba39e5",
+		"root_store_boot_cascade_test.go": "50c7928e636742d6cdab275b92b317a5ff45ceca308f6e7c5a330bb5a9682b18",
+		"served_tls_test.go":              "8af0d48f0c117b558db337f02ade282a98a1e3b5784b16626620766173c1ec49",
+		"testhelpers_test.go":             "43724f7eb3bd815ef95b2c3c0a9eba3c5e60d8933bd634f42dc899760f2d0f0b",
+	} {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("C3-D41-shared-helper-pin: %s: %v", path, err)
+		}
+		sum := sha256.Sum256(raw)
+		if got := hex.EncodeToString(sum[:]); got != want {
+			t.Fatalf("C3-D41-shared-helper-pin: %s is %s, pinned %s", path, got, want)
+		}
 	}
 }

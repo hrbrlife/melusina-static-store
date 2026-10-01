@@ -2039,7 +2039,6 @@
       "issuedAt": "2026-10-01T00:00:00Z",
       "nonce": "1111111111111111111111111111111111111111111111111111111111111111",
       "ownerStatement": {
-        "schema": "statement-v1",
         "kind": "install-objective-adoption",
         "estateWords": "synthetic C3 estate",
         "expiry": "2026-12-31T00:00:00Z",

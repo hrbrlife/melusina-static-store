@@ -47,6 +47,7 @@ type c3D18Spec struct {
 }
 
 func TestC3D18TwoPassBootIdentityUsesOneLicenseAndShards(t *testing.T) {
+	c3D18PinSharedHelper(t)
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
 	if err != nil {
 		t.Fatalf("C3-D18-vector-unreadable: %v", err)
@@ -301,5 +302,19 @@ func TestC3D18TwoPassBootIdentityUsesOneLicenseAndShards(t *testing.T) {
 	}
 	if err := run(partialArgs, &bytes.Buffer{}); err == nil || !strings.Contains(err.Error(), "partial shard set") {
 		t.Fatalf("C3-D18-partial-shards-overwritten: %v", err)
+	}
+}
+
+func c3D18PinSharedHelper(t *testing.T) {
+	t.Helper()
+	const path = "main_test.go"
+	const want = "c90937d0dfc624c54f6ca5e5f8303a49ed3fa419d8f8797459d220a192c8d162"
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("C3-D18-shared-helper-pin: %s: %v", path, err)
+	}
+	sum := sha256.Sum256(raw)
+	if got := hex.EncodeToString(sum[:]); got != want {
+		t.Fatalf("C3-D18-shared-helper-pin: %s is %s, pinned %s", path, got, want)
 	}
 }

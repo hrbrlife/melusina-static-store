@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -277,6 +278,7 @@ func TestC3D33CrossLanguageCanonicalPreimage(t *testing.T) {
 }
 
 func TestC3D33TypedDocumentsTwoOperatorDirectories(t *testing.T) {
+	c3D33PinBridge(t)
 	if os.Getenv("C3_D33_DOCUMENT_CHILD") == "1" {
 		dir := os.Getenv("C3_D33_DOCUMENT_DIR")
 		fmt.Printf("C3_D33_RESULT=%v\n", run(c3D33Args(dir)))
@@ -349,6 +351,23 @@ func TestC3D33TypedDocumentsTwoOperatorDirectories(t *testing.T) {
 	traces[1].PublisherDeviceKeyID = traces[0].PublisherDeviceKeyID
 	if !reflect.DeepEqual(traces[0], traces[1]) {
 		t.Fatal("C3-D33-operator-directory-changed-estate-tool-metadata")
+	}
+}
+
+func c3D33PinBridge(t *testing.T) {
+	t.Helper()
+	_, source, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("C3-D33-bridge-pin: source path unavailable")
+	}
+	path := filepath.Join(filepath.Dir(source), "c3_contract_d33_bridge_test.go")
+	const want = "e9560cd96483f05d2ab6d776dda2ec26976e96e1fe94349a77e171ad3e47c189"
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("C3-D33-bridge-pin: %s: %v", path, err)
+	}
+	if got := fmt.Sprintf("%x", sha256.Sum256(raw)); got != want {
+		t.Fatalf("C3-D33-bridge-pin: %s is %s, pinned %s", path, got, want)
 	}
 }
 
@@ -488,5 +507,28 @@ func TestC3D33ProfileProjectionMismatchRefusedByName(t *testing.T) {
 	t.Setenv("MEL_RELEASE_STORE_URL", "https://operator-chosen.example.test")
 	if _, err := loadPreflightConfig(); err == nil || !strings.Contains(err.Error(), "PROFILE_PROJECTION_MISMATCH") {
 		t.Fatalf("C3-D33-PROFILE_PROJECTION_MISMATCH: %v", err)
+	}
+}
+
+// Review fix (rev1): D33's metadata and portable-receipt obligations live in
+// the same repository's Python suite. This locked file pins and runs it so
+// they remain D33 acceptance (one locked file per task, R1).
+func TestC3D33MetadataAndPortableReceiptChildSuite(t *testing.T) {
+	script := filepath.Join("..", "..", "..", "..", "scripts", "test-c3-d33-metadata.py")
+	raw, err := os.ReadFile(script)
+	if err != nil {
+		t.Fatalf("C3-D33-child-suite-missing: %v", err)
+	}
+	if got := fmt.Sprintf("%x", sha256.Sum256(raw)); got != "44173f7303d4f8703521521bfc6fadbf007351884e81fa68eab2aef390785597" {
+		t.Fatalf("C3-D33-child-suite-pin: %s is %s", script, got)
+	}
+	output, err := exec.Command("python3", script, "-v").CombinedOutput()
+	for _, name := range []string{"test_producer_build_emits_portable_digest_receipt", "test_SOURCE_METADATA_VALID_RELEASE", "test_metadata_not_bound_to_release_names_app_and_field", "test_portable_receipt_detects_metadata_icon_and_screenshot_bytes"} {
+		if !strings.Contains(string(output), name) {
+			t.Fatalf("C3-D33-child-suite: %s did not run\n%s", name, output)
+		}
+	}
+	if err != nil {
+		t.Fatalf("C3-D33-child-suite: %v\n%s", err, output)
 	}
 }

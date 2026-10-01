@@ -1,11 +1,13 @@
 package estateprofile
 
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+)
 
 // PermanentParametersV1 is the Store-facing result of checking the public
-// ceremony profile before permanent mint parameters are committed. The
-// implementation belongs to D13; this declaration only makes its contract
-// callable by the locked tests while that producer has not started.
+// ceremony profile before permanent mint parameters are committed.
 type PermanentParametersV1 struct {
 	ResellerIssuanceLimit    uint64
 	MasterEditionCap         uint64
@@ -14,9 +16,61 @@ type PermanentParametersV1 struct {
 	RemainingEditionHeadroom uint64
 }
 
-// CheckPermanentParameters must validate the raw ceremony profile, including
-// the two permanent acknowledgements, against the planned edition count and
-// the reviewed master edition cap. The producer replaces this fail-closed seam.
-func CheckPermanentParameters(_ []byte, _, _ uint64) (PermanentParametersV1, error) {
-	return PermanentParametersV1{}, errors.New("D13_UNIMPLEMENTED")
+// Permanent-parameter refusal names. Each is a fixed contract string: the
+// locked tests compare err.Error() for equality, so nothing may be wrapped.
+const (
+	RefusalPermanentIssuanceLimitBelowFloor   = "issuance-limit-below-floor"
+	RefusalPermanentMaxSupplyMismatch         = "max-supply-mismatch"
+	RefusalPermanentEditionCapBelowPlanned    = "edition-cap-below-planned"
+	RefusalPermanentEditionHeadroomInsufficnt = "edition-headroom-insufficient"
+)
+
+// resellerIssuanceLimitFloor is the reviewed floor for the ceremony reseller's
+// issuance limit: the boundary value the C1 vectors call out (2) as passing;
+// anything below it, including an unacknowledged limit, is refused.
+const resellerIssuanceLimitFloor = 2
+
+// d13CeremonyReseller carries the subset of the ceremony profile the permanent
+// parameter check reads. The rest of the document is tolerated untouched: the
+// check is additive over the existing profile verification, not a second
+// schema.
+type d13CeremonyReseller struct {
+	Ceremony struct {
+		Reseller struct {
+			IssuanceLimit       uint64 `json:"issuanceLimit"`
+			MaxSupply           uint64 `json:"maxSupply"`
+			IssuanceAcknowledged bool  `json:"issuanceAcknowledged"`
+		} `json:"reseller"`
+	} `json:"ceremony"`
+}
+
+// CheckPermanentParameters validates the raw ceremony profile's reseller
+// issuance parameters against the planned edition count and the reviewed
+// master edition cap, fail-closed: any doubt is a refusal by name, and the
+// refusal strings are part of the locked contract.
+func CheckPermanentParameters(rawCeremonyProfile []byte, plannedEditions uint64, masterEditionCap uint64) (PermanentParametersV1, error) {
+	var parsed d13CeremonyReseller
+	if err := json.Unmarshal(rawCeremonyProfile, &parsed); err != nil {
+		return PermanentParametersV1{}, fmt.Errorf("permanent-parameters-ceremony-unreadable: %w", err)
+	}
+	reseller := parsed.Ceremony.Reseller
+	if !reseller.IssuanceAcknowledged || reseller.IssuanceLimit < resellerIssuanceLimitFloor {
+		return PermanentParametersV1{}, errors.New(RefusalPermanentIssuanceLimitBelowFloor)
+	}
+	if reseller.MaxSupply != masterEditionCap {
+		return PermanentParametersV1{}, errors.New(RefusalPermanentMaxSupplyMismatch)
+	}
+	if plannedEditions > masterEditionCap {
+		return PermanentParametersV1{}, errors.New(RefusalPermanentEditionCapBelowPlanned)
+	}
+	if masterEditionCap-plannedEditions < 1 {
+		return PermanentParametersV1{}, errors.New(RefusalPermanentEditionHeadroomInsufficnt)
+	}
+	return PermanentParametersV1{
+		ResellerIssuanceLimit:    reseller.IssuanceLimit,
+		MasterEditionCap:         masterEditionCap,
+		ProfileMaxSupply:         reseller.MaxSupply,
+		FoundationEditionCount:   plannedEditions,
+		RemainingEditionHeadroom: masterEditionCap - plannedEditions,
+	}, nil
 }

@@ -1,0 +1,36 @@
+{
+  "schema": "c9.sidecar-classes-vector.v1",
+  "doc": {
+    "schema": "melusina.sidecar-classes.v1",
+    "storeId": "c9-test-store",
+    "operatorPubkey": "B5C2MsaQyNN3MiCPyEcW2uDXn2Z7jJBHswNcpp3Coe68",
+    "signedAtUnix": 1790812800,
+    "rows": [
+      {
+        "id": "ailagoon",
+        "class": "sidecar_cascade",
+        "keyCustody": "none",
+        "declaredAt": "2026-10-01T00:00:00Z",
+        "source": "C9 fixture: keyless screening gateway"
+      },
+      {
+        "id": "swaprail",
+        "class": "sidecar_identity",
+        "keyCustody": "sidecar-held-identity",
+        "declaredAt": "2026-10-01T00:00:00Z",
+        "source": "C9 fixture: key-bearing money rail"
+      }
+    ],
+    "operatorSignature": "5HuQNj1fL3wwJS5PPdZeCbFNX79kd3Y1DoCLHqUYK317ZQFCKE7c9PCER3UjYjjc82hokhauz1D8EbAow7dKYTsS"
+  },
+  "contentHashSha256": "54dff3988a1a94d65bbe533af784fac126879ddf555388f5c19e7a207bd9bfe7",
+  "signedMessageHex": "6d656c7573696e612d736964656361722d636c61737365732d7631000000001b6d656c7573696e612e736964656361722d636c61737365732e76310000000d63392d746573742d73746f72650000002c423543324d736151794e4e334d69435079456357327544586e325a376a4a424873774e63707033436f653638000000006abda28054dff3988a1a94d65bbe533af784fac126879ddf555388f5c19e7a207bd9bfe7",
+  "authorizedOperatorPubkey": "B5C2MsaQyNN3MiCPyEcW2uDXn2Z7jJBHswNcpp3Coe68",
+  "expectedStoreId": "c9-test-store",
+  "knownComponents": [
+    "ailagoon",
+    "swaprail"
+  ],
+  "keylessComponentId": "ailagoon",
+  "keyBearingComponentId": "swaprail"
+}

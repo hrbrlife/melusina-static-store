@@ -5,6 +5,7 @@ import importlib.util
 import json
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 
@@ -89,6 +90,10 @@ class C1D14StoreProvider(unittest.TestCase):
             with self.assertRaisesRegex(provider.ProviderError, "RUNNER_NOT_APPROVED"):
                 provider.reject_register("app", "a" * 64, "b" * 64, "1.0.0", "c" * 64,
                                          "transaction", Path("/tmp/c1-d14-reject.json"))
+            with self.assertRaisesRegex(provider.ProviderError,
+                                        "rejection request does not bind the immutable proposal state"):
+                provider.reject_register("app", "a" * 64, "b" * 64, "1.0.0", "c" * 64,
+                                         "different-transaction", Path("/tmp/c1-d14-reject.json"))
 
     def test_d14_stale_revoke_refuses_without_approved_runner(self):
         with patch.object(provider, "require_shared_squads_authority", return_value=AUTHORITY), \
@@ -96,6 +101,16 @@ class C1D14StoreProvider(unittest.TestCase):
              patch.object(provider, "run", side_effect=AssertionError("D14_REVOKE_SENT_WITHOUT_RUNNER")):
             with self.assertRaisesRegex(provider.ProviderError, "RUNNER_NOT_APPROVED"):
                 provider.revoke("release-entry", Path("/tmp/c1-d14-revoke.json"))
+        # An already revoked entry is an idempotent success and needs no vote.
+        with patch.object(provider, "require_shared_squads_authority", return_value=AUTHORITY), \
+             patch.object(provider, "generic_executor", return_value="approved-runner"), \
+             patch.object(provider, "state_root", return_value=Path("/tmp")), \
+             patch.object(provider.subprocess, "run",
+                          return_value=SimpleNamespace(stdout='{"status":"Revoked"}')), \
+             patch.object(provider, "write_json") as written:
+            provider.revoke("release-entry", Path("/tmp/c1-d14-revoke.json"))
+        self.assertTrue(written.call_args.args[1]["alreadyRevoked"],
+                        "D14_ALREADY_REVOKED_IDEMPOTENT")
 
 
 if __name__ == "__main__":

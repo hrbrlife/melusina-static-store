@@ -74,6 +74,70 @@ func TestC1D50StatementBytesAndSignaturesAcrossKinds(t *testing.T) {
 	}
 }
 
+func TestC1D50GeneratedFoundationVectorSemantics(t *testing.T) {
+	raw, err := os.ReadFile("../../testdata/foundation-authorization-vectors.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vectors struct {
+		Schema         string `json:"schema"`
+		Authorizations []struct {
+			Name          string          `json:"name"`
+			Authorization json.RawMessage `json:"authorization"`
+			PreimageHex   string          `json:"preimageHex"`
+			SHA256        string          `json:"sha256"`
+		} `json:"authorizations"`
+	}
+	if err := json.Unmarshal(raw, &vectors); err != nil {
+		t.Fatal(err)
+	}
+	if vectors.Schema != "melusina.estate.foundation-authorization-vectors.v1" {
+		t.Fatalf("D50_FOUNDATION_VECTOR_SCHEMA: %s", vectors.Schema)
+	}
+	found := false
+	for _, row := range vectors.Authorizations {
+		if row.Name != "new-estate-foundation" {
+			continue
+		}
+		found = true
+		var wire map[string]json.RawMessage
+		if err := json.Unmarshal(row.Authorization, &wire); err != nil {
+			t.Fatal(err)
+		}
+		var signingForm string
+		if err := json.Unmarshal(wire["signingForm"], &signingForm); err != nil || signingForm != "statement-v1" ||
+			len(wire["ownerStatement"]) == 0 || len(wire["estateCharterSha256"]) == 0 {
+			t.Fatalf("D50_FOUNDATION_VECTOR_SIGNING_FORM_MISSING: %s, %v", signingForm, err)
+		}
+		document, err := DecodeFoundationAuthorization(row.Authorization)
+		if err != nil {
+			t.Fatalf("D50_FOUNDATION_VECTOR_DECODE: %v", err)
+		}
+		if document.GenesisOwnerPolicy.Threshold < 2 || len(document.Signatures) < int(document.GenesisOwnerPolicy.Threshold) {
+			t.Fatal("D50_FOUNDATION_VECTOR_THRESHOLD")
+		}
+		preimage, err := FoundationAuthorizationPreimage(document)
+		if err != nil || hex.EncodeToString(preimage) != row.PreimageHex {
+			t.Fatalf("D50_FOUNDATION_VECTOR_PREIMAGE: %v", err)
+		}
+		issued, err := time.Parse(time.RFC3339, document.IssuedAt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expires, err := time.Parse(time.RFC3339, document.ExpiresAt)
+		if err != nil || !expires.After(issued) {
+			t.Fatalf("D50_FOUNDATION_VECTOR_EXPIRY: %v", err)
+		}
+		got, err := VerifyFoundationAuthorization(document, issued.Add(expires.Sub(issued)/2))
+		if err != nil || got != row.SHA256 {
+			t.Fatalf("D50_FOUNDATION_VECTOR_SIGNATURE: got %s, %v; want %s", got, err, row.SHA256)
+		}
+	}
+	if !found {
+		t.Fatal("D50_FOUNDATION_VECTOR_CASE_MISSING: new-estate-foundation")
+	}
+}
+
 type c1FoundationStatementVector struct {
 	FixtureClock  string          `json:"fixtureClock"`
 	CharterSHA256 string          `json:"charterSha256"`
@@ -141,6 +205,15 @@ func TestC1D50SuppliedStatementCannotOverrideDocument(t *testing.T) {
 	if err == nil || err.Error() != "owner-statement-mismatch" {
 		t.Fatalf("D50_OWNER_STATEMENT_MISMATCH: got %v", err)
 	}
+	c1D50RequireValidStatement(t)
+}
+
+func c1D50RequireValidStatement(t *testing.T) {
+	t.Helper()
+	vector := c1FoundationStatement(t)
+	if err := c1D50VerifyAtFixtureTime(t, vector.Authorization); err != nil {
+		t.Fatalf("D50_VALID_STATEMENT_REFUSED: %v", err)
+	}
 }
 
 func c1D50EditedAuthorization(t *testing.T, edit func(map[string]json.RawMessage)) []byte {
@@ -180,6 +253,7 @@ func TestC1D50MissingStatementNeverFallsBack(t *testing.T) {
 	if err := c1D50VerifyAtFixtureTime(t, raw); err == nil || err.Error() != "owner-statement-mismatch" {
 		t.Fatalf("D50_MISSING_STATEMENT_FALLBACK: got %v", err)
 	}
+	c1D50RequireValidStatement(t)
 }
 
 func TestC1D50UnknownStatementKindRefused(t *testing.T) {
@@ -198,6 +272,7 @@ func TestC1D50UnknownStatementKindRefused(t *testing.T) {
 	if err := c1D50VerifyAtFixtureTime(t, raw); err == nil || err.Error() != "owner-document-kind-unknown" {
 		t.Fatalf("D50_OWNER_DOCUMENT_KIND_UNKNOWN: got %v", err)
 	}
+	c1D50RequireValidStatement(t)
 }
 
 func TestC1D50CharterDigestBinding(t *testing.T) {
@@ -231,4 +306,5 @@ func TestC1D50DigestOnlySignatureCannotSatisfyStatementForm(t *testing.T) {
 	if err := c1D50VerifyAtFixtureTime(t, raw); err == nil || err.Error() != "owner-signature-invalid" {
 		t.Fatalf("D50_DIGEST_ONLY_SIGNATURE_REFUSED: got %v", err)
 	}
+	c1D50RequireValidStatement(t)
 }

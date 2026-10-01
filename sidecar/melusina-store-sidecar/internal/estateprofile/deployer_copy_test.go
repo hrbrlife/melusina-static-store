@@ -36,13 +36,14 @@ import (
 // testdata and tests remain pinned below.
 const deployerCopyCommit = "4b9d4dd59be407e4a3b5d7f34da55644ee34c954"
 
-// deployerCopyTestdata pins testdata that no producer regenerates. The
-// generated estate-profile vector and example are checked by semantic tests,
-// live goSources and the adjacent re-pinnable digest instead.
+// deployerCopyTestdata names the historical copied inputs. D50 may regenerate
+// each one, so its current digest is read from the adjacent re-pinnable
+// manifest rather than frozen here. The same DEPLOYER_COPY_TESTDATA_DRIFT
+// check still runs on every named copy.
 var deployerCopyTestdata = map[string]string{
-	"foundation-authorization-vectors.json":       "19dd047d8cab7c9926032bb0883177920af806ed2174818c937866ee75ffc9ad",
-	"provider-install-authorization-vectors.json": "016e2b1db5b4d8c21fcd1143975e3a3886b81dad7f1aceaf43fa5bb85377e06a",
-	"store-host-authorization-vectors.json":       "99b85dad81eabe6d9f61a86a1cc4f6a63160f7d2b67507ff86766b312ebb2045",
+	"foundation-authorization-vectors.json":       "",
+	"provider-install-authorization-vectors.json": "",
+	"store-host-authorization-vectors.json":       "",
 }
 
 // deployerCopyTests pins the copied test files at the current shared contract
@@ -60,7 +61,7 @@ var deployerCopyTests = map[string]string{
 	"store_enrollment_test.go":               "c0e2f1929545bf1d7cb6f9edc39e1eb2552b1e73a4a719792efdfe4308c01597",
 	"store_host_authorization_test.go":       "14cc6a99bfb14a5ae6fe9ebad4cb9477dfb5a1bc46cd4b951c6fbc702ba8e18d",
 	"strictjson_test.go":                     "ad4755613a3a9bc41fb7b596827417165a5b866a6342066baf7a558a188731d7",
-	"validate_test.go":                       "7a5d9d8b4a5c6ba1d280ca77ff12592863ba9f7b9f543d76377aa967771d3a6f",
+	"validate_test.go":                       "394423bda7dc3ad6d78197afb3e88a4294505f4c7dcd1e43f80709f4cac08b5f",
 	"vectors_test.go":                        "89cad49b795152fc1c945477cfb6eafba6b55b25b85ae284d77f44dd199beb52",
 	"verify_test.go":                         "34838f35b6b642919bc4207dc922aa5e78a795ed15975ee3cc5dea8175803a2b",
 }
@@ -88,9 +89,11 @@ func TestC1EstateVectorDigest(t *testing.T) {
 	want := map[string]string{
 		"estate-profile-vectors.json":                     "",
 		"contracts-example-estate.profile.json":           "",
-		"foundation-authorization-vectors.json":           "19dd047d8cab7c9926032bb0883177920af806ed2174818c937866ee75ffc9ad",
+		"foundation-authorization-vectors.json":           "",
+		"provider-install-authorization-vectors.json":     "",
+		"store-host-authorization-vectors.json":           "",
 		"owner-statement-vectors.json":                    "f931ce299fea8d2c2194f9b76ea53c3de78e95bf619a7e2035327c8ea5a4dfc8",
-		"foundation-authorization-statement-vectors.json": "d544fb3934d6aea2e21f7e1778ac096e94b71b6d6cd1c80c7e4beb6d26d9abc7",
+		"foundation-authorization-statement-vectors.json": "3e027696561284ea924f73bef3d98f4653cec598e7e9a0f9958dca9506ab3568",
 	}
 	seen := map[string]bool{}
 	for _, entry := range entries {
@@ -164,9 +167,28 @@ func TestPackageCopyIsTheDeployerCopy(t *testing.T) {
 	if len(deployerCopyCommit) != 40 || strings.Trim(deployerCopyCommit, "0123456789abcdef") != "" {
 		t.Fatalf("deployerCopyCommit %q is not a full commit id", deployerCopyCommit)
 	}
+	rawDigests, err := os.ReadFile("../../testdata/C1-estate.sha256")
+	if err != nil {
+		t.Fatalf("DEPLOYER_COPY_TESTDATA_DIGEST_MISSING: %v", err)
+	}
+	currentDigests := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(string(rawDigests)), "\n") {
+		parts := strings.SplitN(line, "  ", 2)
+		if len(parts) != 2 {
+			t.Fatalf("DEPLOYER_COPY_TESTDATA_DIGEST_MALFORMED: %q", line)
+		}
+		currentDigests[parts[1]] = parts[0]
+	}
 	for name, want := range deployerCopyTestdata {
+		if want == "" {
+			want = currentDigests[name]
+		}
+		if want == "" {
+			t.Errorf("DEPLOYER_COPY_TESTDATA_DIGEST_MISSING: %s", name)
+			continue
+		}
 		if got := sha256File(t, filepath.Join("..", "..", "testdata", name)); got != want {
-			t.Errorf("DEPLOYER_COPY_TESTDATA_DRIFT: testdata/%s is %s, pinned %s; see deployerCopyTestdata source notes", name, got, want)
+			t.Errorf("DEPLOYER_COPY_TESTDATA_DRIFT: testdata/%s is %s, current digest %s", name, got, want)
 		}
 	}
 

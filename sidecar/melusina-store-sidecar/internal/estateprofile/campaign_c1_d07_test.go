@@ -123,8 +123,36 @@ func TestC1D07GeneratedVectorSemantics(t *testing.T) {
 		}
 		if row.Refusal != refusal || (row.Stage != "decode" && row.Stage != "verify") || row.Document == "" {
 			t.Errorf("D07_VECTOR_CASE_DRIFT: %s: stage=%s refusal=%s", name, row.Stage, row.Refusal)
+			continue
+		}
+		profile, err := DecodeProfile([]byte(row.Document))
+		if err == nil && row.Stage == "verify" {
+			_, err = VerifyProfile(profile)
+		}
+		if err == nil || err.Error() != refusal {
+			t.Errorf("D07_VECTOR_CASE_BEHAVIOR: %s got %v, want %s", name, err, refusal)
 		}
 	}
+	c1D07RequireValidLegacyProfile(t)
+}
+
+func c1D07RequireValidLegacyProfile(t *testing.T) {
+	t.Helper()
+	for _, row := range loadVectors(t).Profiles {
+		if row.Name != "new-estate-revision-1" {
+			continue
+		}
+		profile, err := DecodeProfile(row.Profile)
+		if err != nil {
+			t.Fatalf("D07_VALID_LEGACY_PROFILE_REFUSED: %v", err)
+		}
+		got, err := VerifyProfile(profile)
+		if err != nil || got != row.ProfileSHA256 {
+			t.Fatalf("D07_VALID_LEGACY_SIGNATURE_REFUSED: got %s, %v; want %s", got, err, row.ProfileSHA256)
+		}
+		return
+	}
+	t.Fatal("D07_LEGACY_VECTOR_MISSING")
 }
 
 // These checks use the decoder and verifier that enrolment uses.
@@ -178,6 +206,7 @@ func TestC1D07PredecessorTamperRefusals(t *testing.T) {
 			if err == nil || err.Error() != row.Refusal {
 				t.Fatalf("D07_PREDECESSOR_REFUSAL: got %v, want %s", err, row.Refusal)
 			}
+			c1D07RequireValidLegacyProfile(t)
 		})
 	}
 	for name, seen := range want {
@@ -208,6 +237,7 @@ func TestC1D07EmptySignaturesRefusedByName(t *testing.T) {
 		if err == nil || err.Error() != "estate-profile-owner-signatures-insufficient" {
 			t.Fatalf("D07_EMPTY_SIGNATURES_REFUSAL: got %v", err)
 		}
+		c1D07RequireValidLegacyProfile(t)
 		return
 	}
 	t.Fatal("D07_FIRST_ESTATE_VECTOR_MISSING")
@@ -237,23 +267,19 @@ func TestC1D07LegacyAbsentPredecessorStaysAbsent(t *testing.T) {
 	t.Fatal("D07_LEGACY_VECTOR_MISSING")
 }
 
-func TestC1D07LegacySignedDigestUnchanged(t *testing.T) {
+func TestC1D07LegacySignedProfileStillValid(t *testing.T) {
 	vectors := loadVectors(t)
-	const want = "221876c6953c274d688bc42132f18cd0a9fa07d775e4561319238ca4ff6a7e83"
 	for _, row := range vectors.Profiles {
 		if row.Name != "new-estate-revision-1" {
 			continue
-		}
-		if row.ProfileSHA256 != want {
-			t.Fatalf("D07_LEGACY_VECTOR_DIGEST_CHANGED: got %s want %s", row.ProfileSHA256, want)
 		}
 		profile, err := DecodeProfile(row.Profile)
 		if err != nil {
 			t.Fatalf("D07_LEGACY_PROFILE_DECODE: %v", err)
 		}
 		got, err := VerifyProfile(profile)
-		if err != nil || got != want {
-			t.Fatalf("D07_LEGACY_PROFILE_SIGNATURE: got %s, %v; want %s", got, err, want)
+		if err != nil || got != row.ProfileSHA256 {
+			t.Fatalf("D07_LEGACY_PROFILE_SIGNATURE: got %s, %v; want %s", got, err, row.ProfileSHA256)
 		}
 		return
 	}

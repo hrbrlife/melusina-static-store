@@ -12,11 +12,28 @@ func TestC1D12GeneratedExampleHasDerivedFeatureOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	var example struct {
+		Schema    string                     `json:"schema"`
+		Estate    string                     `json:"estate"`
 		Network   map[string]json.RawMessage `json:"network"`
 		Hierarchy struct {
 			Include bool `json:"include"`
 		} `json:"hierarchy"`
-		Programs map[string]json.RawMessage `json:"programs"`
+		Programs     map[string]json.RawMessage `json:"programs"`
+		ReleaseTrust struct {
+			PublisherKeys []string `json:"publisherKeys"`
+			Threshold     uint32   `json:"threshold"`
+		} `json:"releaseTrust"`
+		MasterNftMint   string `json:"masterNftMint"`
+		ResellerNftMint string `json:"resellerNftMint"`
+		RootStoreDomain string `json:"rootStoreDomain"`
+		Squads          struct {
+			Core struct {
+				Threshold uint32 `json:"threshold"`
+				Members   []struct {
+					PublicKey string `json:"publicKey"`
+				} `json:"members"`
+			} `json:"core"`
+		} `json:"squads"`
 	}
 	if err := json.Unmarshal(raw, &example); err != nil {
 		t.Fatal(err)
@@ -26,6 +43,32 @@ func TestC1D12GeneratedExampleHasDerivedFeatureOnly(t *testing.T) {
 	}
 	if len(example.Network["genesisHash"]) == 0 {
 		t.Fatal("D12_EXAMPLE_GENESIS_MISSING")
+	}
+	var genesis string
+	if err := json.Unmarshal(example.Network["genesisHash"], &genesis); err != nil || !validAddress(genesis) || genesis == MainnetBetaGenesisHash {
+		t.Fatalf("D12_EXAMPLE_GENESIS_INVALID: %s, %v", genesis, err)
+	}
+	var licenseProgram, witnessProgram string
+	_ = json.Unmarshal(example.Programs["license_registry"], &licenseProgram)
+	_ = json.Unmarshal(example.Programs["witness_verifier"], &witnessProgram)
+	if example.Schema != FoundationCeremonyProfileSchema || example.Estate != "example-estate" ||
+		len(example.Programs["license_registry"]) == 0 || len(example.Programs["witness_verifier"]) == 0 ||
+		!validAddress(licenseProgram) || !validAddress(witnessProgram) ||
+		!validAddress(example.MasterNftMint) || !validAddress(example.ResellerNftMint) ||
+		example.RootStoreDomain == "" || example.Squads.Core.Threshold < 2 ||
+		len(example.Squads.Core.Members) < int(example.Squads.Core.Threshold) ||
+		len(example.ReleaseTrust.PublisherKeys) < int(example.ReleaseTrust.Threshold) || example.ReleaseTrust.Threshold == 0 {
+		t.Fatal("D12_EXAMPLE_SHAPE_INCOMPLETE")
+	}
+	for _, key := range example.ReleaseTrust.PublisherKeys {
+		if !validDigest(key) {
+			t.Fatalf("D12_EXAMPLE_PUBLISHER_KEY_INVALID: %s", key)
+		}
+	}
+	for _, member := range example.Squads.Core.Members {
+		if !validAddress(member.PublicKey) {
+			t.Fatalf("D12_EXAMPLE_CORE_MEMBER_INVALID: %s", member.PublicKey)
+		}
 	}
 	if !example.Hierarchy.Include {
 		for _, name := range []string{"level2_registry", "level3_registry", "level4_registry"} {

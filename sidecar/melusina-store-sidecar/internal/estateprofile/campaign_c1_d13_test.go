@@ -113,6 +113,10 @@ func TestC1D13PermanentParameterRefusals(t *testing.T) {
 			if err == nil || err.Error() != row.refusal {
 				t.Fatalf("D13_PERMANENT_PARAMETER_REFUSAL: got %v, want %s", err, row.refusal)
 			}
+			valid, err := CheckPermanentParameters(raw, planned, parameters.MasterEditionCap)
+			if err != nil || valid.ProfileMaxSupply != parameters.ProfileMaxSupply {
+				t.Fatalf("D13_VALID_PERMANENT_PARAMETERS_REFUSED: got %+v, %v", valid, err)
+			}
 		})
 	}
 }

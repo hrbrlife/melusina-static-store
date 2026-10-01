@@ -64,6 +64,9 @@ class C1D33SourceBinding(unittest.TestCase):
                                     r"metadata-not-bound-to-release:fixture\.app:description"):
             provider.write_staged_metadata(self.source, self.destination, changed)
         self.assertFalse(self.destination.exists(), "D33_UNCUT_METADATA_WROTE_STAGED_FILE")
+        provider.write_staged_metadata(self.source, self.destination, self.staged())
+        self.assertEqual(json.loads(self.destination.read_text(encoding="utf-8"))["description"],
+                         "Owner-authored copy", "D33_VALID_METADATA_REFUSED")
 
     def test_d33_release_input_sha256_mismatch(self):
         tool = self.root / "fixture-helper.js"

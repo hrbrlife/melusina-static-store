@@ -1,7 +1,7 @@
 {
   "schema": "melusina.estate.foundation-authorization-statement-vectors.v1",
   "evidenceClass": "synthetic-local-fixture",
-  "note": "D50 charter-bound successor to the legacy FoundationAuthorizationV1 vector. The legacy document without signingForm/estateCharterSha256/ownerStatement keeps its historical digest signatures. The new signed digest preimage includes signingForm=statement-v1 and estateCharterSha256 after the owner policy; ownerStatement is top-level transport metadata excluded from the digest. New signatures are over rebuilt statement bytes only, with no raw-digest fallback. Fixture clock is 2026-09-21T01:30:00Z. No production authority.",
+  "note": "D50 charter-bound FoundationAuthorizationV1 statement-v1 vector. Documents without signingForm/estateCharterSha256/ownerStatement refuse; no digest-only signature fallback. The signed digest preimage includes signingForm=statement-v1 and estateCharterSha256 after the owner policy; ownerStatement is top-level transport metadata excluded from the digest. Signatures are over rebuilt statement bytes only. Fixture clock is 2026-09-21T01:30:00Z. No production authority.",
   "fixtureClock": "2026-09-21T01:30:00Z",
   "charterSha256": "f11690bfbe64490b486b01e929820212e84cd6c6c381b3fa622b5b12f7cc0d4e",
   "preimageEncoding": "W(domain), W(schema), W(kind), W(purpose), W(estateId), W(estateNonce), W(ownerPolicyEncoding), W(signingForm), W(estateCharterSha256), W(ceremonyProfileSchema), W(ceremonyProfileSha256), W(releaseSetSha256), W(targetBindingSha256), W(networkGenesisHash), u64be(issuedAt seconds), u64be(expiresAt seconds), W(authorizationNonce); W is u32be length plus UTF-8 bytes",

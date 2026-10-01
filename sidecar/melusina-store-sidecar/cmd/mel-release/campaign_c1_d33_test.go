@@ -179,6 +179,11 @@ func TestC1D33TypedFrontDoorRefusesUnpinnedProvider(t *testing.T) {
 			if err == nil || !strings.Contains(err.Error(), "RELEASE_PROVIDER_UNPINNED") {
 				t.Fatalf("D33_RELEASE_PROVIDER_UNPINNED: got %v", err)
 			}
+			missingProfile := filepath.Join(t.TempDir(), "missing-estate-profile.json")
+			err = run([]string{"preflight", "--profile", missingProfile, "--manifest", manifest, "--device", device})
+			if err == nil || strings.Contains(err.Error(), "RELEASE_PROVIDER_UNPINNED") {
+				t.Fatalf("D33_MISSING_PROFILE_PRECEDES_PROVIDER: got %v", err)
+			}
 		})
 	}
 }
@@ -194,6 +199,10 @@ func TestC1D33LegacyOverrideCannotReplaceProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	profile := c1D33FixtureProfile(t, manifest)
+	err = run([]string{"preflight", "--profile", profile, "--manifest", manifest, "--device", device})
+	if err == nil || !strings.Contains(err.Error(), "RELEASE_PROVIDER_UNPINNED") {
+		t.Fatalf("D33_VALID_PROFILE_REACHES_PROVIDER_SELECTION: got %v", err)
+	}
 	t.Setenv("MEL_RELEASE_STORE_DOMAIN", "us.paype.cc")
 	err = run([]string{"preflight", "--profile", profile, "--manifest", manifest, "--device", device})
 	if err == nil || !strings.Contains(err.Error(), "PROFILE_PROJECTION_MISMATCH") {

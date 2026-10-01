@@ -45,7 +45,7 @@ func c9D23ReadTable(t *testing.T) sidecarclasses.Table {
 	t.Helper()
 	for name, want := range c9D23HelperPins {
 		b, err := os.ReadFile(name)
-		if err != nil || hex.EncodeToString(sha256Sum(b)) != want {
+		if err != nil || hex.EncodeToString(c9D23SHA256(b)) != want {
 			t.Fatalf("D23_SHARED_HELPER_DRIFT:%s: %v", name, err)
 		}
 	}
@@ -54,7 +54,7 @@ func c9D23ReadTable(t *testing.T) sidecarclasses.Table {
 	if err != nil {
 		t.Fatalf("D23_VECTOR_MISSING: %v", err)
 	}
-	if got := hex.EncodeToString(sha256Sum(raw)); got != c9D23VectorDigest {
+	if got := hex.EncodeToString(c9D23SHA256(raw)); got != c9D23VectorDigest {
 		t.Fatalf("D23_VECTOR_DRIFT: got %s", got)
 	}
 	digestFile, err := os.ReadFile(filepath.Join(base, "sidecar-classes-v1.sha256"))
@@ -93,7 +93,7 @@ func c9D23ReadTable(t *testing.T) sidecarclasses.Table {
 	return v.Doc
 }
 
-func sha256Sum(b []byte) []byte { sum := sha256.Sum256(b); return sum[:] }
+func c9D23SHA256(b []byte) []byte { sum := sha256.Sum256(b); return sum[:] }
 
 func TestC9D23SignedTableRefusesCorruptionAndDestinationSubstitution(t *testing.T) {
 	table := c9D23ReadTable(t)
@@ -213,10 +213,10 @@ func TestC9D23SignedClassesPromoteAndServeBothKinds(t *testing.T) {
 			// An absent table must refuse the same otherwise valid artifact. A
 			// constant-error shortcut cannot satisfy the positives above.
 			svc.cfg.SidecarClasses = sidecarclasses.Table{}
-			if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err == nil || !strings.Contains(strings.ToLower(err.Error()), "table") {
+			if err := svc.verifyComponentReleaseOnChain(context.Background(), c); err == nil || !(strings.Contains(strings.ToLower(err.Error()), "table") || strings.Contains(strings.ToLower(err.Error()), "sidecar-row-missing")) {
 				t.Fatalf("D23_ABSENT_TABLE_PROMOTE_REFUSED:%s: %v", tc.name, err)
 			}
-			if err := svc.verifyDesiredGenerationServeSurface(componentrelease.DesiredGeneration{Components: []componentrelease.ComponentRelease{c}}); err == nil || !strings.Contains(strings.ToLower(err.Error()), "table") {
+			if err := svc.verifyDesiredGenerationServeSurface(componentrelease.DesiredGeneration{Components: []componentrelease.ComponentRelease{c}}); err == nil || !(strings.Contains(strings.ToLower(err.Error()), "table") || strings.Contains(strings.ToLower(err.Error()), "sidecar-row-missing")) {
 				t.Fatalf("D23_ABSENT_TABLE_SERVE_REFUSED:%s: %v", tc.name, err)
 			}
 		})

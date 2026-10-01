@@ -124,7 +124,7 @@ func assertDerivedPDA(record, docPDA string, derived primitives.Pubkey) error {
 // gate is the ApplyDeps.ChainGate callback.
 func (g *solanaChainGate) gate(ctx context.Context, c componentrelease.ComponentRelease, _ componentrelease.ComponentInstall) error {
 	if c.Chain.Program != g.programB58 {
-		return fmt.Errorf("chain gate %s: program %q != pinned %q", c.ComponentID, c.Chain.Program, g.programB58)
+		return fmt.Errorf("chain gate %s: %w: program %q != pinned %q", c.ComponentID, componentrelease.ErrChainProgramNotPinned, c.Chain.Program, g.programB58)
 	}
 	want, err := hashBytes(contentIdentity(c))
 	if err != nil {
@@ -285,13 +285,16 @@ func (g *solanaChainGate) gateKeylessSidecarCascade(ctx context.Context, c compo
 }
 
 // requireSidecarMintPins refuses a sidecar component that names another
-// license or master mint than this controller's config pins.
+// license or master mint than this controller's config pins. A master mismatch
+// is componentrelease.ErrSidecarMasterMintNotPinned, the name the Store's
+// promote and serve gates refuse the same component by (there, against the
+// master its LicenseEntry names).
 func (g *solanaChainGate) requireSidecarMintPins(c componentrelease.ComponentRelease) error {
 	if c.Chain.LicenseNftMint != g.licenseB58 {
 		return fmt.Errorf("chain gate %s: licenseNftMint pin mismatch", c.ComponentID)
 	}
 	if c.Chain.MasterNftMint != g.masterB58 {
-		return fmt.Errorf("chain gate %s: masterNftMint (global-approval seed) pin mismatch", c.ComponentID)
+		return fmt.Errorf("chain gate %s: %w: masterNftMint (global-approval seed) pin mismatch", c.ComponentID, componentrelease.ErrSidecarMasterMintNotPinned)
 	}
 	return nil
 }

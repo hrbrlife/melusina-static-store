@@ -175,7 +175,7 @@ func TestPackageCopyIsTheDeployerCopy(t *testing.T) {
 	}
 	for name, want := range deployerCopyTestdata {
 		if got := sha256File(t, filepath.Join("..", "..", "testdata", name)); got != want {
-			t.Errorf("DEPLOYER_COPY_TESTDATA_DRIFT: testdata/%s is %s, the deployer's deploy-ui/testdata/%s at %s is %s; re-copy it or re-sync the package", name, got, name, deployerCopyCommit, want)
+			t.Errorf("DEPLOYER_COPY_TESTDATA_DRIFT: testdata/%s is %s, pinned %s; see deployerCopyTestdata source notes", name, got, want)
 		}
 	}
 

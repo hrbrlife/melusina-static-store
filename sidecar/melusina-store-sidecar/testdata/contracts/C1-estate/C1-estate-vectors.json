@@ -1,0 +1,121 @@
+{
+  "schema": "melusina.seam.C1-estate.v1",
+  "evidenceClass": "synthetic-local-fixture",
+  "note": "Public illustrative data. No signature, wallet, chain, Store, or tenant authority is asserted by this file. Generated profile vectors are regenerated in producer order.",
+  "estate": {
+    "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
+    "legacyProfileSha256": "221876c6953c274d688bc42132f18cd0a9fa07d775e4561319238ca4ff6a7e83",
+    "firstSignedProfileSha256": "e6b992db831bf1dbba67ecc74837118746424ca4f440abc61f120f074fdb9382",
+    "predecessor": "none",
+    "knownEstateForbidden": {
+      "vector": "known-estate-lineage-vectors.json",
+      "count": 31,
+      "sourceFloorSha256": "2d4e9daaf4e5b8ac5c6df3ea636a553a6cfffea69054397b2a93319672296213",
+      "excludeBuildingEstateOwnValues": true
+    },
+    "lineageRefusals": [
+      "predecessor-none-with-contradictory-predecessor",
+      "estate-profile-owner-signature-invalid:owner-a",
+      "estate-gate-known-estate-lineage",
+      "estate-gate-lineage-below-source-floor"
+    ]
+  },
+  "governance": {
+    "coreVoterCount": 4,
+    "coreThresholdFloor": 2,
+    "acceptedThreshold": 2,
+    "runner": {
+      "publicKey": "GePDfrwrTFApTKBW39gwP7vHPMLJqvcYveHhj2EDxVLF",
+      "permissions": ["initiate", "execute"],
+      "vote": false
+    },
+    "proposalStates": ["Draft", "Active", "Approved", "Rejected", "Cancelled", "Executed"],
+    "refusals": ["core-threshold-below-two", "runner-vote-forbidden", "runner-key-is-voter", "proposal-threshold-unmet", "proposal-transaction-identity-mismatch"]
+  },
+  "permanentParameters": {
+    "evidenceClass": "illustrative-boundary-case-not-estate-choice",
+    "profilePath": "ceremony.reseller.maxSupply",
+    "resellerIssuanceLimit": 2,
+    "issuanceAcknowledged": true,
+    "masterEditionCap": 4,
+    "profileMaxSupply": 4,
+    "foundationEditions": [1, 2, 3],
+    "remainingEditionHeadroom": 1,
+    "requiredAcknowledgement": "acknowledgePermanentDomainClaimRelease",
+    "refusals": ["issuance-limit-below-floor", "edition-cap-below-planned", "max-supply-mismatch", "edition-headroom-insufficient", "metadata-commitment-mismatch", "extend-program-held"]
+  },
+  "kycRenewal": {
+    "schema": "melusina.kyc-renewal.v1",
+    "serializedAbiVector": "kyc-renewal-abi-vectors.json",
+    "sameSubjectKey": true,
+    "samePurpose": true,
+    "purpose": "msb.kyc.account-opening",
+    "assurance": "Enhanced",
+    "maxAgeDays": 365,
+    "instructionOrder": ["issue_kyc_attestation", "renew_or_reissue_kyc_attestation", "verify_kyc_eligibility", "revoke_kyc_attestation"],
+    "refusals": ["KYC_RENEW_WRONG_ISSUER", "KYC_RENEW_REVOKED_AUTHORITY", "KYC_RENEW_WRONG_PURPOSE", "KYC_SUPERSEDED_PROOF", "KYC_REISSUE_REPLAY"],
+    "notLockedRefusals": {"KYC_RENEW_EXPIRED_LICENSE": "No typed licence-expiry source exists in LicenseEntry; owner must name one before this refusal can be tested."}
+  },
+  "squadsBatch": {
+    "instructionOrder": ["batchCreate", "proposalCreate:isDraft", "batchAddTransaction", "proposalActivate"],
+    "maximumInners": 25,
+    "transactionPrefix": "Ed25519Program",
+    "requiredStages": ["propose", "collect", "execute"],
+    "refusals": ["batch-proposal-not-draft", "batch-inner-digest-absent", "batch-inner-digest-drift", "batch-approvals-uncollected", "batch-readback-inner-mismatch", "batch-ed25519-prefix-misplaced", "batch-too-many-inners"]
+  },
+  "fundingPlan": {
+    "schema": "funding-plan-v1",
+    "lamportsPerSol": 1000000000,
+    "rows": [
+      {"phase": "initial", "role": "program-deployer", "address": "GePDfrwrTFApTKBW39gwP7vHPMLJqvcYveHhj2EDxVLF", "needLamports": "21000000000", "balanceLamports": "21000000000", "shortfallLamports": "0"},
+      {"phase": "initial", "role": "core-vault", "address": "BaTPhfQKzdJATTDrHeVJ3mM4hFyhqtxhuQT7aFEGbhje", "needLamports": "20000000000", "balanceLamports": "20000000000", "shortfallLamports": "0"},
+      {"phase": "set-licence-price", "role": "reseller-authority", "address": "3LTyNL98UKczNJdsW6W5A3G5PyyV2sNCbpcQUdHqVJvZ", "needLamports": "1000000", "balanceLamports": "1000000", "shortfallLamports": "0"}
+    ],
+    "retrySkipsCompletedPhases": true,
+    "refusals": ["funding-short:reseller-authority", "funding-plan-version-unknown", "funding-foreign-stranded-buffer", "funding-commitment-changed", "funding-json-drift"]
+  },
+  "failedAttempt": {
+    "ordinaryResumeDestructiveCalls": 0,
+    "cleanupMode": "intent-only",
+    "cleanupOwnedResourcesOnly": true,
+    "liveLicenceRevocationAllowed": false,
+    "refusals": ["cleanup-foreign-state", "cleanup-live-licence", "cleanup-authority-missing", "cleanup-claim-ownership-changed", "cleanup-release-before-revoke"]
+  },
+  "approvalAuthorization": {
+    "ownerThreshold": 2,
+    "requiresSignedOwnerMaterial": true,
+    "requiresExactProposalInners": true,
+    "requiresExactGenesis": true,
+    "operatorFeePayer": "GePDfrwrTFApTKBW39gwP7vHPMLJqvcYveHhj2EDxVLF",
+    "memberWalletMayHaveZeroSol": true,
+    "refusals": ["approval-owner-threshold-unmet", "approval-inner-mismatch", "approval-genesis-mismatch", "approval-wrapper-allowlist-unsigned", "signer-changed-transaction"]
+  },
+  "ownerStatement": {
+    "schema": "statement-v1",
+    "fieldsInOrder": ["kind", "estateWords", "expiry", "digest"],
+    "kinds": ["estate-foundation-authorization", "estate-profile", "store-host-authorization", "store-enrollment", "provider-install-authorization", "estate-charter"],
+    "threshold": 2,
+    "ownerSeats": 4,
+    "signingKind": "wallet",
+    "pinSignerKind": "reserved",
+    "refusals": ["owner-document-kind-unknown", "owner-statement-mismatch", "charter-digest-mismatch", "inbox-authority-token-in-url", "partial-signature-replay"]
+  },
+  "seedCatalogue": {
+    "schema": "SeedCatalogueAuthorizationV1",
+    "platformSidecarsBeforeApps": true,
+    "platformSidecarsRequireGateReceipt": false,
+    "appsRequireGateReceiptAtExecution": true,
+    "appInstructionOrder": ["approve_global_app", "approve_reseller_app", "register_release_entry"],
+    "ed25519PrecompilePerEntry": true,
+    "refusals": ["NotMasterOwner", "seed-app-not-in-authorization", "seed-publisher-outside-release-trust", "seed-authorization-expired", "seed-app-batch-without-gate-receipt", "batch-exceeds-authorization"]
+  },
+  "rehearsal": {
+    "evidenceClass": "private-cluster-local-fixture",
+    "steps": [2, 3, 4],
+    "phaseOrder": ["found-estate", "start-root-store", "set-up-provider-edge"],
+    "allowedManualCommand": "installer --host-enroll",
+    "devPermissive": false,
+    "appInstalls": 0,
+    "refusals": ["phase-order-circular", "phase-hand-step", "phase-command-flag-unknown", "driver-terminal-step", "dev-permissive-default-on", "foundation-genesis-mismatch", "foundation-program-digest-mismatch", "production-evidence-in-fixture"]
+  }
+}

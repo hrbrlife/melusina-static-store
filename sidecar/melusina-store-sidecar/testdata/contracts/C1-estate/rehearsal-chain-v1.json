@@ -1,0 +1,37 @@
+{
+  "schema": "melusina.c1-estate.rehearsal-chain.v1",
+  "evidenceClass": "private-cluster-local-fixture",
+  "authority": "none; public synthetic values for tests only",
+  "sourceCeremonyProfileSha256": "29c66510a588c364d09b35ccb56ef20c58dfe400f0fa00dd5299122c5884c521",
+  "sourceFeatureWarning": "D07 example still declares mainnet for a private genesis; D12 producer must regenerate a corrected profile and pin its resulting digest",
+  "network": {
+    "name": "example-private-cluster",
+    "genesisHash": "DszkBgTZVoPkk9tDyXH85k4xs7HSjzxaCoLnPnuZNu6L",
+    "derivedLicenseRegistryFeature": "devnet",
+    "mainnetAllowed": false
+  },
+  "programs": [
+    {"role": "license-registry", "programId": "3mRUgjX9UKEYx1pBXJfVidXn3XNv6pnHZMEqc9UmpE7L", "sha256": "87c41948c1e4f7ef7bcc7223955478ce409947c19d7487ee12e4e6c4c46f392f", "sizeBytes": 73},
+    {"role": "witness-verifier", "programId": "E8EWx96zQCDCxsPa58FHc2RaDWGvqmxGLvWRXMvDQFNw", "sha256": "1df142a80a2794e7d1ad1474c1db820cd9c48d9b51905b19f3253743b1916bcd", "sizeBytes": 73}
+  ],
+  "profile": {
+    "predecessor": "none",
+    "coreThreshold": 2,
+    "runnerVotes": false,
+    "devPermissive": false,
+    "mailEnabled": false,
+    "noticeChannel": "bell-only",
+    "billing": "unavailable",
+    "supervisorRoot": "deferred",
+    "customerChannel": "desktop-wallet"
+  },
+  "phaseGraph": [
+    {"step": 2, "phase": "found-estate", "executor": "ceremony-run", "dependsOn": [], "readback": "foundation-receipt", "ownerDocument": "foundation-authorization", "fundingPlan": "funding-plan-v1"},
+    {"step": 3, "phase": "start-root-store", "executor": "installer --store-host", "dependsOn": ["found-estate"], "modes": ["create-host", "install-bootstrap", "accept-release", "prepare-state-roots", "run-genesis", "first-start", "verify"], "readback": "root-store-ready"},
+    {"step": 4, "phase": "set-up-provider-edge", "executor": "provider-work-order", "dependsOn": ["start-root-store"], "readback": "edge-route-ready"}
+  ],
+  "storeBootstrapAuthorizeFlags": ["--release-set", "--foundation-release-set", "--publisher-keyset", "--seed-listing-count"],
+  "allowedManualCommand": "installer --host-enroll",
+  "appInstalls": 0,
+  "preflightRefusals": ["foundation-genesis-mismatch", "foundation-program-digest-mismatch", "phase-order-circular", "phase-command-flag-unknown", "phase-hand-step", "driver-terminal-step", "dev-permissive-default-on", "production-evidence-in-fixture"]
+}

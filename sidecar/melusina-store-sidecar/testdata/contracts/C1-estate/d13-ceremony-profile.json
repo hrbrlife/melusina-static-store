@@ -4,7 +4,7 @@
   "network": {
     "name": "example-private-cluster",
     "genesisHash": "DszkBgTZVoPkk9tDyXH85k4xs7HSjzxaCoLnPnuZNu6L",
-    "licenseRegistryFeature": "mainnet"
+    "licenseRegistryFeature": "devnet"
   },
   "programs": {
     "license_registry": "3mRUgjX9UKEYx1pBXJfVidXn3XNv6pnHZMEqc9UmpE7L",
@@ -26,7 +26,7 @@
     "programId": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
     "core": {
       "createKey": "GGLa1QEDAtLpWSfnJusLXaWRmYLaxGCPTSPW4tWjyNac",
-      "threshold": 3,
+      "threshold": 2,
       "timeLockSeconds": 0,
       "members": [
         {
@@ -101,7 +101,9 @@
       "territory": "EXAMPLE",
       "issuanceLimit": 2,
       "category": null,
-      "licensePriceLamports": "1000000"
+      "licensePriceLamports": "1000000",
+      "maxSupply": 4,
+      "issuanceAcknowledged": true
     },
     "rootStoreLicense": {
       "mint": "BeSunPxiNitjYE6UKbwV7663NGEokx6GsCWYYYKDdiNB",

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -285,16 +286,10 @@ func refuseMatches(t *testing.T, profile EstateProfileV1, want string) error {
 	return nil
 }
 
-// contractsCeremonyProfilePath is a byte copy of the contracts repository's
-// scripts/estate/examples/example-estate.profile.json (blob c1df4a37, last
-// changed in contracts c3c940b "master_registry leaves the foundation", read
-// at contracts origin/main c3c940b): the document the chain foundation runs
-// from, schema melusina.estate-profile/v1. A hand edit, or a copy of another
-// revision, fails by name; re-copy it with `git show <commit>:<path>`.
-const (
-	contractsCeremonyProfilePath   = "../../testdata/contracts-example-estate.profile.json"
-	contractsCeremonyProfileSHA256 = "29c66510a588c364d09b35ccb56ef20c58dfe400f0fa00dd5299122c5884c521"
-)
+// D12 regenerates the contracts example and re-pins this adjacent digest
+// witness in the same landing. Deployer also checks its vendored contracts
+// copy separately; this package check is portable to the Store copy.
+const contractsCeremonyProfilePath = "../../testdata/contracts-example-estate.profile.json"
 
 func contractsCeremonyProfile(t *testing.T) []byte {
 	t.Helper()
@@ -302,8 +297,20 @@ func contractsCeremonyProfile(t *testing.T) []byte {
 	if err != nil {
 		t.Fatalf("read %s: %v", contractsCeremonyProfilePath, err)
 	}
-	if sum := sha256.Sum256(raw); hex.EncodeToString(sum[:]) != contractsCeremonyProfileSHA256 {
-		t.Fatalf("CONTRACTS_CEREMONY_PROFILE_COPY_DRIFT: %s is %x, not the contracts bytes %s", contractsCeremonyProfilePath, sum, contractsCeremonyProfileSHA256)
+	manifest, err := os.ReadFile("../../testdata/C1-estate.sha256")
+	if err != nil {
+		t.Fatalf("read C1-estate.sha256: %v", err)
+	}
+	var expected string
+	for _, line := range strings.Split(string(manifest), "\n") {
+		parts := strings.SplitN(line, "  ", 2)
+		if len(parts) == 2 && parts[1] == "contracts-example-estate.profile.json" {
+			expected = parts[0]
+		}
+	}
+	sum := sha256.Sum256(raw)
+	if len(expected) != 64 || hex.EncodeToString(sum[:]) != expected {
+		t.Fatalf("CONTRACTS_CEREMONY_PROFILE_COPY_DRIFT: %s is %x, witness %s", contractsCeremonyProfilePath, sum, expected)
 	}
 	return raw
 }

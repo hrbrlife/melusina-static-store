@@ -1,0 +1,134 @@
+{
+  "schema": "melusina.kyc-renewal-abi-v1",
+  "evidenceClass": "synthetic-local-fixture",
+  "note": "Anchor instruction discriminator and Borsh field order are pinned; all key bytes and roots are synthetic. Subject and purpose are immutable and obtained from the existing KycAttestationEntry PDA/accounts, never typed into instruction data. This fixture does not assert a deployed upgrade.",
+  "program": "license-registry",
+  "instruction": {
+    "name": "renew_or_reissue_kyc_attestation",
+    "discriminatorHex": "883e6cc8d42e6539",
+    "args": [
+      {
+        "name": "mode",
+        "type": "u8",
+        "values": {
+          "renew": 0,
+          "reissue": 1
+        }
+      },
+      {
+        "name": "expectedCurrentRevision",
+        "type": "u64-le"
+      },
+      {
+        "name": "expectedCurrentStateSha256",
+        "type": "[u8;32]"
+      },
+      {
+        "name": "newMerkleRoot",
+        "type": "[u8;32]"
+      },
+      {
+        "name": "assuranceLevel",
+        "type": "u8",
+        "values": {
+          "Enhanced": 2
+        }
+      },
+      {
+        "name": "expiresInDays",
+        "type": "u32-le"
+      },
+      {
+        "name": "idempotencyKey",
+        "type": "[u8;32]"
+      }
+    ],
+    "accountOrder": [
+      "kyc_attestation",
+      "kyc_current_version",
+      "license_entry",
+      "issuer_authority",
+      "install_admin_entry",
+      "authority",
+      "second_authority",
+      "user_wallet"
+    ],
+    "sameAttestationPda": true,
+    "sameSubjectAndPurpose": true,
+    "examples": [
+      {
+        "name": "renew",
+        "fields": {
+          "expectedCurrentStateSha256": "dbb233e9152c99791649d827ce3c73fb1dd91800a17fd479f174f7a4177d5733",
+          "newMerkleRoot": "dd623ecd4e778b4fbe6fd815d492c09e904188af8a0b0110dfc8fe316f3ea9fe",
+          "assuranceLevel": 2,
+          "expiresInDays": 365,
+          "idempotencyKey": "4400ce88801dd45bb0c099770b9c4962bcf38942aea38a5af43d5865e43cc437",
+          "mode": "renew",
+          "expectedCurrentRevision": 1
+        },
+        "instructionDataHex": "883e6cc8d42e6539000100000000000000dbb233e9152c99791649d827ce3c73fb1dd91800a17fd479f174f7a4177d5733dd623ecd4e778b4fbe6fd815d492c09e904188af8a0b0110dfc8fe316f3ea9fe026d0100004400ce88801dd45bb0c099770b9c4962bcf38942aea38a5af43d5865e43cc437",
+        "instructionDataSha256": "22f944861a6afacae1fa499e2c75acf5d8d24b67c58338cfab0c2a85667c991b",
+        "instructionDataLength": 118
+      },
+      {
+        "name": "reissue",
+        "fields": {
+          "expectedCurrentStateSha256": "dbb233e9152c99791649d827ce3c73fb1dd91800a17fd479f174f7a4177d5733",
+          "newMerkleRoot": "dd623ecd4e778b4fbe6fd815d492c09e904188af8a0b0110dfc8fe316f3ea9fe",
+          "assuranceLevel": 2,
+          "expiresInDays": 365,
+          "idempotencyKey": "99f8b05e388dbb702f1dbe7240a77cff74afe6270388467ecedeecb28085f596",
+          "mode": "reissue",
+          "expectedCurrentRevision": 2
+        },
+        "instructionDataHex": "883e6cc8d42e6539010200000000000000dbb233e9152c99791649d827ce3c73fb1dd91800a17fd479f174f7a4177d5733dd623ecd4e778b4fbe6fd815d492c09e904188af8a0b0110dfc8fe316f3ea9fe026d01000099f8b05e388dbb702f1dbe7240a77cff74afe6270388467ecedeecb28085f596",
+        "instructionDataSha256": "85d08592c75ffaaf7fe4070ea6060634f7f16db95e3fa776d6bb44891277e3c6",
+        "instructionDataLength": 118
+      }
+    ]
+  },
+  "consumer": {
+    "account": "KycCurrentVersionV1",
+    "discriminatorHex": "71cf49d9a914a101",
+    "fieldsInOrder": [
+      "version:u8",
+      "attestation:pubkey",
+      "subject:pubkey",
+      "purpose:u8",
+      "assuranceLevel:u8",
+      "revision:u64-le",
+      "merkleRoot:[u8;32]",
+      "stateSha256:[u8;32]",
+      "expiresAtUnix:i64-le",
+      "status:u8"
+    ],
+    "sample": {
+      "version": 1,
+      "attestationHex": "2222222222222222222222222222222222222222222222222222222222222222",
+      "subjectHex": "1111111111111111111111111111111111111111111111111111111111111111",
+      "purpose": 0,
+      "assuranceLevel": 2,
+      "revision": 2,
+      "merkleRoot": "dd623ecd4e778b4fbe6fd815d492c09e904188af8a0b0110dfc8fe316f3ea9fe",
+      "stateSha256": "df6d07acfb1bcb469c15bdb31b48770ff5adea1fe58380a332bb9aaee5003d4d",
+      "expiresAtUnix": 1823083200,
+      "status": 0
+    },
+    "accountDataHex": "71cf49d9a914a101012222222222222222222222222222222222222222222222222222222222222222111111111111111111111111111111111111111111111111111111111111111100020200000000000000dd623ecd4e778b4fbe6fd815d492c09e904188af8a0b0110dfc8fe316f3ea9fedf6d07acfb1bcb469c15bdb31b48770ff5adea1fe58380a332bb9aaee5003d4dc00aaa6c0000000000",
+    "accountDataSha256": "9c2fcb4823f4e85d3b9c3bb193aa51cb0f2a26af1f86a2979d55323019f4cd3c",
+    "accountDataLength": 156,
+    "currentProofRequiresMatchingRevisionAndStateDigest": true,
+    "oldReaderCompatibility": "legacy consumer cannot assert current after a renewal; unsupported ABI refuses closed",
+    "newReaderCompatibility": "current-version account is mandatory; a superseded state digest or revision refuses"
+  },
+  "refusals": [
+    "KYC_RENEW_WRONG_ISSUER",
+    "KYC_RENEW_REVOKED_AUTHORITY",
+    "KYC_RENEW_WRONG_PURPOSE",
+    "KYC_RENEW_EXPIRED_LICENSE",
+    "KYC_SUPERSEDED_PROOF",
+    "KYC_REISSUE_REPLAY",
+    "KYC_UNSUPPORTED_ABI"
+  ]
+}

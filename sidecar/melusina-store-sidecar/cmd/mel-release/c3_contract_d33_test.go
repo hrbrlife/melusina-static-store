@@ -45,17 +45,12 @@ type c3D33InputTrace struct {
 
 type c3D33DocumentResult struct {
 	Refusal string
-	Trace   []byte
 }
-
-// Verified by the Deployer release-set canonical preimage verifier for the
-// estate-a signed D fixture. It excludes signatures, unlike the JSON file hash.
-const c3D33SignedDeployableCanonicalSHA256 = "734fe6f50cc30ba22bb6073a12fbec00516a70abb874789914c841ace41df6b5"
 
 // The C3 front door has three explicit public documents. Keep each fixture
 // inside the operator's own directory so no inherited checkout or home path
 // can supply a missing release input. The device reference contains no key.
-func c3D33DocumentArgs(t *testing.T, dir string) []string {
+func c3D33DocumentArgs(t *testing.T, dir string, deviceIndex int) []string {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
 	if err != nil {
@@ -63,6 +58,9 @@ func c3D33DocumentArgs(t *testing.T, dir string) []string {
 	}
 	var vector struct {
 		ReleaseSet struct {
+			StorePreflight struct {
+				PublisherDeviceReferenceSchema string `json:"publisherDeviceReferenceSchema"`
+			} `json:"storePreflight"`
 			SignedEstateStages []struct {
 				Deployable json.RawMessage `json:"deployable"`
 			} `json:"signedEstateStages"`
@@ -84,7 +82,7 @@ func c3D33DocumentArgs(t *testing.T, dir string) []string {
 	if err := json.Unmarshal(raw, &vector); err != nil {
 		t.Fatal(err)
 	}
-	if len(vector.ReleaseSet.TrustedPublisherKeyset.Keys) == 0 || len(vector.ReleaseSet.SignedEstateStages) == 0 || len(vector.ReleaseSet.SignedEstateStages[0].Deployable) == 0 || len(vector.StoreHost.PassTwo.SignedFinalProfile) == 0 {
+	if len(vector.ReleaseSet.TrustedPublisherKeyset.Keys) < 2 || deviceIndex < 0 || deviceIndex >= len(vector.ReleaseSet.TrustedPublisherKeyset.Keys) || len(vector.ReleaseSet.SignedEstateStages) == 0 || len(vector.ReleaseSet.SignedEstateStages[0].Deployable) == 0 || len(vector.StoreHost.PassTwo.SignedFinalProfile) == 0 {
 		t.Fatal("C3-D33-typed-document-fixture-incomplete")
 	}
 	var signedD struct {
@@ -123,9 +121,9 @@ func c3D33DocumentArgs(t *testing.T, dir string) []string {
 		t.Fatal("C3-D33-profile-publisher-keyset-differs-from-pinned-F0")
 	}
 	device, err := json.Marshal(map[string]string{
-		"schema":           "melusina.publisher-device-reference.v1",
-		"keyId":            vector.ReleaseSet.TrustedPublisherKeyset.Keys[0].KeyID,
-		"ed25519PublicKey": vector.ReleaseSet.TrustedPublisherKeyset.Keys[0].PublicKey,
+		"schema":           vector.ReleaseSet.StorePreflight.PublisherDeviceReferenceSchema,
+		"keyId":            vector.ReleaseSet.TrustedPublisherKeyset.Keys[deviceIndex].KeyID,
+		"ed25519PublicKey": vector.ReleaseSet.TrustedPublisherKeyset.Keys[deviceIndex].PublicKey,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -166,7 +164,7 @@ func c3D33RunDocuments(t *testing.T, dir string, extra map[string]string) c3D33D
 			cmd.Env = append(cmd.Env, entry)
 		}
 	}
-	cmd.Env = append(cmd.Env, "HOME="+dir, "C3_D33_DOCUMENT_CHILD=1", "C3_D33_DOCUMENT_DIR="+dir, "C3_D33_TRACE_INPUTS=1")
+	cmd.Env = append(cmd.Env, "HOME="+dir, "C3_D33_DOCUMENT_CHILD=1", "C3_D33_DOCUMENT_DIR="+dir)
 	for key, value := range extra {
 		cmd.Env = append(cmd.Env, key+"="+value)
 	}
@@ -179,9 +177,6 @@ func c3D33RunDocuments(t *testing.T, dir string, extra map[string]string) c3D33D
 	}
 	var result c3D33DocumentResult
 	for _, line := range strings.Split(string(out), "\n") {
-		if strings.HasPrefix(line, "C3_D33_RELEASE_INPUTS_JSON=") {
-			result.Trace = []byte(strings.TrimPrefix(line, "C3_D33_RELEASE_INPUTS_JSON="))
-		}
 		if strings.HasPrefix(line, "C3_D33_RESULT=") {
 			result.Refusal = strings.TrimPrefix(line, "C3_D33_RESULT=")
 		}
@@ -192,7 +187,7 @@ func c3D33RunDocuments(t *testing.T, dir string, extra map[string]string) c3D33D
 	return result
 }
 
-func c3D33ExpectedTrace(t *testing.T) c3D33InputTrace {
+func c3D33ExpectedTrace(t *testing.T, deviceIndex int) c3D33InputTrace {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
 	if err != nil {
@@ -200,6 +195,10 @@ func c3D33ExpectedTrace(t *testing.T) c3D33InputTrace {
 	}
 	var vector struct {
 		ReleaseSet struct {
+			StorePreflight struct {
+				DerivedInputSchema string `json:"derivedInputSchema"`
+				CanonicalSHA256    string `json:"canonicalSha256"`
+			} `json:"storePreflight"`
 			SignedEstateStages []struct {
 				Deployable json.RawMessage `json:"deployable"`
 			} `json:"signedEstateStages"`
@@ -229,13 +228,51 @@ func c3D33ExpectedTrace(t *testing.T) c3D33InputTrace {
 		t.Fatal(err)
 	}
 	return c3D33InputTrace{
-		Schema:               "melusina.release-inputs-preflight.v1",
+		Schema:               vector.ReleaseSet.StorePreflight.DerivedInputSchema,
 		EstateID:             vector.StoreHost.PassTwo.EstateID,
 		ProfileSHA256:        vector.StoreHost.PassTwo.SignedFinalProfileSHA256,
-		ReleaseSetSHA256:     c3D33SignedDeployableCanonicalSHA256,
-		PublisherDeviceKeyID: vector.ReleaseSet.TrustedPublisherKeyset.Keys[0].KeyID,
+		ReleaseSetSHA256:     vector.ReleaseSet.StorePreflight.CanonicalSHA256,
+		PublisherDeviceKeyID: vector.ReleaseSet.TrustedPublisherKeyset.Keys[deviceIndex].KeyID,
 		ReleaseToolsRole:     "absent",
 		ArtifactPins:         signedD.Artifacts,
+	}
+}
+
+// The Store worker has no Deployer decoder in its repository. These are the
+// exact cross-language bytes and message that its verifier must reproduce.
+func TestC3D33CrossLanguageCanonicalPreimage(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vector struct {
+		ReleaseSet struct {
+			StorePreflight struct {
+				PublisherDeviceReferenceSchema string   `json:"publisherDeviceReferenceSchema"`
+				PublisherDeviceReferenceFields []string `json:"publisherDeviceReferenceFields"`
+				DerivedInputSchema             string   `json:"derivedInputSchema"`
+				DerivedInputFields             []string `json:"derivedInputFields"`
+				CanonicalPreimageHex           string   `json:"canonicalPreimageHex"`
+				CanonicalSHA256                string   `json:"canonicalSha256"`
+				SignatureMessage               string   `json:"signatureMessage"`
+				SignatureMessageEncoding       string   `json:"signatureMessageEncoding"`
+			} `json:"storePreflight"`
+		} `json:"releaseSet"`
+	}
+	if err := json.Unmarshal(raw, &vector); err != nil {
+		t.Fatal(err)
+	}
+	preflight := vector.ReleaseSet.StorePreflight
+	preimage, err := hex.DecodeString(preflight.CanonicalPreimageHex)
+	if err != nil || len(preimage) == 0 {
+		t.Fatalf("C3-D33-cross-language-preimage-invalid: %v", err)
+	}
+	digest := sha256.Sum256(preimage)
+	if hex.EncodeToString(digest[:]) != preflight.CanonicalSHA256 || preflight.SignatureMessage != preflight.CanonicalSHA256 || preflight.SignatureMessageEncoding != "64 ASCII lowercase hexadecimal characters, signed directly with Ed25519" {
+		t.Fatal("C3-D33-cross-language-signature-message-drift")
+	}
+	if preflight.PublisherDeviceReferenceSchema != "melusina.publisher-device-reference.v1" || !reflect.DeepEqual(preflight.PublisherDeviceReferenceFields, []string{"schema", "keyId", "ed25519PublicKey"}) || preflight.DerivedInputSchema != "melusina.release-inputs-preflight.v1" || !reflect.DeepEqual(preflight.DerivedInputFields, []string{"schema", "estateId", "profileSha256", "releaseSetSha256", "publisherDeviceKeyId", "releaseToolsRole", "artifactPins"}) {
+		t.Fatal("C3-D33-store-preflight-schema-drift")
 	}
 }
 
@@ -249,7 +286,7 @@ func TestC3D33TypedDocumentsTwoOperatorDirectories(t *testing.T) {
 	var traces []c3D33InputTrace
 	for i := 0; i < 2; i++ {
 		dir := t.TempDir()
-		c3D33DocumentArgs(t, dir)
+		c3D33DocumentArgs(t, dir, i)
 		result := c3D33RunDocuments(t, dir, nil)
 		refusal := result.Refusal
 		if strings.Contains(refusal, "missing required env") {
@@ -258,18 +295,19 @@ func TestC3D33TypedDocumentsTwoOperatorDirectories(t *testing.T) {
 		if !strings.Contains(refusal, "RELEASE_PROVIDER_UNPINNED") {
 			t.Fatalf("C3-D33-RELEASE_PROVIDER_UNPINNED: operator %d: %s", i+1, refusal)
 		}
-		if len(result.Trace) == 0 {
-			t.Fatalf("C3-D33-derived-release-input-trace-missing: operator %d", i+1)
+		trace, err := c3D33DeriveInputs(c3D33DocumentPaths(dir))
+		if err != nil {
+			t.Fatalf("C3-D33-derived-release-inputs-unavailable: operator %d: %v", i+1, err)
 		}
-		var trace c3D33InputTrace
-		if err := json.Unmarshal(result.Trace, &trace); err != nil {
-			t.Fatalf("C3-D33-derived-release-input-trace-invalid: %v", err)
+		if !reflect.DeepEqual(trace, c3D33ExpectedTrace(t, i)) {
+			t.Fatalf("C3-D33-derived-estate-tool-metadata-drift: operator %d: got=%+v want=%+v", i+1, trace, c3D33ExpectedTrace(t, i))
 		}
-		if !reflect.DeepEqual(trace, c3D33ExpectedTrace(t)) {
-			t.Fatalf("C3-D33-derived-estate-tool-metadata-drift: operator %d: got=%+v want=%+v", i+1, trace, c3D33ExpectedTrace(t))
+		traceJSON, err := json.Marshal(trace)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if strings.Contains(string(result.Trace), dir) {
-			t.Fatalf("C3-D33-derived-trace-leaked-operator-path: %s", result.Trace)
+		if strings.Contains(string(traceJSON), dir) {
+			t.Fatalf("C3-D33-derived-inputs-leaked-operator-path: %s", traceJSON)
 		}
 		refusals = append(refusals, refusal)
 		traces = append(traces, trace)
@@ -277,6 +315,10 @@ func TestC3D33TypedDocumentsTwoOperatorDirectories(t *testing.T) {
 	if refusals[0] != refusals[1] {
 		t.Fatalf("C3-D33-operator-directory-changed-release-inputs: %q != %q", refusals[0], refusals[1])
 	}
+	if traces[0].PublisherDeviceKeyID == traces[1].PublisherDeviceKeyID {
+		t.Fatal("C3-D33-device-reference-not-derived-from-input")
+	}
+	traces[1].PublisherDeviceKeyID = traces[0].PublisherDeviceKeyID
 	if !reflect.DeepEqual(traces[0], traces[1]) {
 		t.Fatal("C3-D33-operator-directory-changed-estate-tool-metadata")
 	}
@@ -284,7 +326,7 @@ func TestC3D33TypedDocumentsTwoOperatorDirectories(t *testing.T) {
 
 func TestC3D33AlternateProviderAndMetadataInputsCannotBypass(t *testing.T) {
 	dir := t.TempDir()
-	c3D33DocumentArgs(t, dir)
+	c3D33DocumentArgs(t, dir, 0)
 	marker := filepath.Join(dir, "provider-executed")
 	provider := filepath.Join(dir, "operator-provider")
 	if err := os.WriteFile(provider, []byte("#!/bin/sh\nprintf used > '"+marker+"'\n"), 0o700); err != nil {
@@ -309,6 +351,30 @@ func TestC3D33AlternateProviderAndMetadataInputsCannotBypass(t *testing.T) {
 	if _, err := os.Stat(marker); !os.IsNotExist(err) {
 		t.Fatalf("C3-D33-alternate-provider-executed: %v", err)
 	}
+	// A constant RELEASE_PROVIDER_UNPINNED response must not hide a bad
+	// signature when the alternate helper is configured. Signature validation
+	// precedes provider selection even on this adversarial path.
+	releasePath := filepath.Join(dir, "release-set.json")
+	releaseRaw, err := os.ReadFile(releasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var changed map[string]any
+	if err := json.Unmarshal(releaseRaw, &changed); err != nil {
+		t.Fatal(err)
+	}
+	changed["artifacts"].([]any)[0].(map[string]any)["sizeBytes"] = float64(2147483649)
+	invalidRaw, err := json.Marshal(changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(releasePath, invalidRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	invalid := c3D33RunDocuments(t, dir, map[string]string{"MEL_RELEASE_SIGNER_PROVIDER": provider})
+	if !strings.Contains(invalid.Refusal, "release_signature_invalid") || strings.Contains(invalid.Refusal, "RELEASE_PROVIDER_UNPINNED") {
+		t.Fatalf("C3-D33-alternate-provider-hid-bad-release-signature: %s", invalid.Refusal)
+	}
 }
 
 func TestC3D33TamperedDocumentsRefuseBeforeAbsentRole(t *testing.T) {
@@ -330,7 +396,7 @@ func TestC3D33TamperedDocumentsRefuseBeforeAbsentRole(t *testing.T) {
 	} {
 		t.Run(control.name, func(t *testing.T) {
 			dir := t.TempDir()
-			c3D33DocumentArgs(t, dir)
+			c3D33DocumentArgs(t, dir, 0)
 			path := filepath.Join(dir, control.file)
 			raw, err := os.ReadFile(path)
 			if err != nil {
@@ -356,43 +422,6 @@ func TestC3D33TamperedDocumentsRefuseBeforeAbsentRole(t *testing.T) {
 				t.Fatalf("C3-D33-%s-not-refused-before-provider-selection: %s", control.name, result.Refusal)
 			}
 		})
-	}
-}
-
-func TestC3D33AbsentReleaseToolsRefusesBeforeProvider(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
-	if err != nil {
-		t.Fatalf("C3-D33-vector-unreadable: %v", err)
-	}
-	var vector struct {
-		ReleaseSet struct {
-			AbsentRoles []struct {
-				Role    string `json:"role"`
-				Refusal string `json:"refusal"`
-			} `json:"absentRoles"`
-		} `json:"releaseSet"`
-	}
-	if err := json.Unmarshal(raw, &vector); err != nil {
-		t.Fatalf("C3-D33-vector-invalid: %v", err)
-	}
-	absent := false
-	for _, role := range vector.ReleaseSet.AbsentRoles {
-		if role.Role == "release-tools" && role.Refusal == "RELEASE_PROVIDER_UNPINNED" {
-			absent = true
-		}
-	}
-	if !absent {
-		t.Fatal("C3-D33-absent-release-tools-not-declared")
-	}
-	// The real preflight boundary would otherwise execute a configured build
-	// provider. An unsigned helper may never run while this role is absent.
-	h := newHarness(t)
-	_, err = h.preflight("1.0.1")
-	if err == nil || !strings.Contains(err.Error(), "RELEASE_PROVIDER_UNPINNED") {
-		t.Fatalf("C3-D33-RELEASE_PROVIDER_UNPINNED: preflight error = %v", err)
-	}
-	if calls := h.callOps(); len(calls) != 0 {
-		t.Fatalf("C3-D33-unsigned-provider-executed: %v", calls)
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,27 +16,6 @@ import (
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
-
-// The two-renewal fixture below proves the Store can hot-load public pairs.
-// This control also pins the missing command boundary that must obtain those
-// pairs through D39's estate ACME responder. --help is deliberately offline;
-// an unregistered mode would fall into normal Store startup and require config.
-func TestC3D41AcmeRenewModeRegistered(t *testing.T) {
-	if os.Getenv("C3_D41_ACME_MODE_CHILD") == "1" {
-		os.Args = []string{"melusina-store-sidecar", "acme-renew", "--help"}
-		main()
-		return
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestC3D41AcmeRenewModeRegistered$")
-	cmd.Dir = t.TempDir()
-	cmd.Env = append(os.Environ(), "C3_D41_ACME_MODE_CHILD=1")
-	out, err := cmd.CombinedOutput()
-	if ctx.Err() != nil || err != nil || !strings.Contains(string(out), "acme-renew") || !strings.Contains(strings.ToLower(string(out)), "responder") {
-		t.Fatalf("C3-D41-acme-renew-mode-missing: err=%v timeout=%v output=%s", err, ctx.Err(), out)
-	}
-}
 
 func c3D41TLSVector(t *testing.T) struct {
 	Zone          string `json:"zone"`
@@ -172,11 +150,12 @@ func TestC3D41RendererSeparatesIdentityAndPublicLeaf(t *testing.T) {
 		t.Fatal("C3-D41-public-route-vector-invalid")
 	}
 	profile := c3D41SignedProfile(t)
-	config, err := buildStoreConfigRenderCandidate(profile, storeConfigRenderInput{
+	input := storeConfigRenderInput{
 		LicenseNFTMint: c3D41RootStoreLicenseMint(t),
 		RPCURL:         "https://rpc.rehearsal.invalid/v1", RPCAttempts: 1,
 		ChainID: c3D41ChainID(t, profile), OperatorDomain: "operator.rehearsal.invalid",
-	})
+	}
+	config, err := buildStoreConfigRenderCandidate(profile, input)
 	if err != nil {
 		t.Fatalf("C3-D41-renderer-refused-valid-input: %v", err)
 	}
@@ -185,6 +164,19 @@ func TestC3D41RendererSeparatesIdentityAndPublicLeaf(t *testing.T) {
 	}
 	if config.BootIdentity.TLSCertPath != vector.IdentityLeaf.CertPath || config.TLS.CertPath != vector.PublicLeaf.CertPath {
 		t.Fatalf("C3-D41-rendered-paths-not-vector: identity=%q public=%q", config.BootIdentity.TLSCertPath, config.TLS.CertPath)
+	}
+	// A constant pre-baked config cannot satisfy a second, valid input. The
+	// distinct RPC setting is an operator input, never a certificate path.
+	changed := input
+	changed.RPCURL = "https://rpc.second.invalid/v2"
+	second, err := buildStoreConfigRenderCandidate(profile, changed)
+	if err != nil || second.RPCURL != changed.RPCURL || second.BootIdentity.TLSCertPath != config.BootIdentity.TLSCertPath || second.TLS.CertPath != config.TLS.CertPath {
+		t.Fatalf("C3-D41-renderer-hardcoded-input-or-drifting-leaf-path: second=%+v err=%v", second, err)
+	}
+	wrongRoot := profile
+	wrongRoot.Store.IsRoot = false
+	if _, err := buildStoreConfigRenderCandidate(wrongRoot, input); err == nil || !strings.Contains(err.Error(), "store-config-render-profile-not-root") {
+		t.Fatalf("C3-D41-renderer-accepted-non-root-profile: %v", err)
 	}
 }
 

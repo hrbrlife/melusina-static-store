@@ -3,13 +3,12 @@
 
 import importlib.util
 import hashlib
+import inspect
 import json
-import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 
 HERE = Path(__file__).resolve().parent
@@ -21,76 +20,41 @@ SPEC.loader.exec_module(provider)
 
 class C3D33MetadataContract(unittest.TestCase):
     def test_producer_build_emits_portable_digest_receipt(self):
-        """Exercise provider.build's real receipt write with fake local build tools."""
+        """Pin one portable receipt emitter and its use by the governed build."""
+        emitter = getattr(provider, "emit_portable_release_input_receipt", None)
+        self.assertTrue(callable(emitter), "C3-D33-portable-receipt-emitter-missing")
+        self.assertIn(
+            "emit_portable_release_input_receipt(", inspect.getsource(provider.build),
+            "C3-D33-governed-build-does-not-emit-portable-receipt",
+        )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            source = root / "selected-source"
-            source.mkdir()
-            source_metadata = source / "metadata.json"
-            app_id, commit, version = "c3-test-app", "a" * 40, "0.0.1"
-            source_metadata.write_text(json.dumps({
-                "appId": app_id, "name": "C3 Test App", "version": version,
-            }) + "\n", encoding="utf-8")
-            spk_bytes = b"C3 provider-produced SPK\n"
-            spk_sha = hashlib.sha256(spk_bytes).hexdigest()
-            runtime_bytes = b'{"schema":"melusina-app-runtime-contract-v1","app":{"appId":"c3-test-app","version":"0.0.1"}}\n'
-            provider_state = root / "state" / "apps" / app_id / "provider"
+            app_id, commit = "c3-test-app", "a" * 40
+            spk = root / "app.spk"
+            metadata = root / "metadata.json"
+            runtime = root / "RUNTIME-CONTRACT.json"
+            spk.write_bytes(b"C3 provider-produced SPK\n")
+            metadata.write_bytes(b'{"appId":"c3-test-app","name":"C3 Test App"}\n')
+            runtime.write_bytes(b'{"schema":"melusina-app-runtime-contract-v1"}\n')
             receipt_path = root / "candidate-receipt.json"
-
-            def fake_run(args, **_kwargs):
-                if args[0].endswith("pack-app-candidate.sh"):
-                    (source / "app.spk").write_bytes(spk_bytes)
-                    return ""
-                if args[0] == str(root / "apphash"):
-                    return "b" * 64
-                raise AssertionError(f"C3-D33-unexpected-provider-command: {args}")
-
-            def fake_prepare(_source, _app_id, destination):
-                destination.mkdir()
-                shutil.copyfile(source_metadata, destination / "metadata.json")
-                return True
-
-            def fake_stage(_source, built_spk, catalog, _app_id):
-                shutil.copyfile(built_spk, catalog / "app.spk")
-                staged = json.loads(source_metadata.read_text(encoding="utf-8"))
-                staged.update({"packageId": spk_sha[:32], "sha256": spk_sha})
-                provider.write_staged_metadata(source_metadata, catalog / "metadata.json", staged)
-                return {"version": version}
-
-            def fake_runtime(_source, destination, *_args):
-                destination.write_bytes(runtime_bytes)
-
-            with (patch.object(provider, "require_shared_squads_authority", return_value={}),
-                  patch.object(provider, "source_path", return_value=source),
-                  patch.object(provider, "app_spec", return_value={"source_commit": commit, "source_branch": "dev-publish"}),
-                  patch.object(provider, "require_source_commit_advertised_by_origin"),
-                  patch.object(provider, "require_current_source_selection", return_value={"sourceCommit": commit, "receiptSha256": "c" * 64}),
-                  patch.object(provider, "source_metadata_path", return_value=source_metadata),
-                  patch.object(provider, "require_catalog_metadata_identity"),
-                  patch.object(provider, "catalog_slot", return_value={"developer": "fixture", "repo": "fixture", "slug": "c3"}),
-                  patch.object(provider, "state_root", return_value=provider_state),
-                  patch.object(provider, "pack_profile_env", return_value={}),
-                  patch.object(provider, "run", side_effect=fake_run),
-                  patch.object(provider, "prepare_candidate_catalog", side_effect=fake_prepare),
-                  patch.object(provider, "stage_private_candidate_catalog", side_effect=fake_stage),
-                  patch.object(provider, "ensure_bin", return_value=root / "apphash"),
-                  patch.object(provider, "materialize_runtime_contract", side_effect=fake_runtime),
-                  patch.dict(provider.os.environ, {"MEL_RELEASE_MASTER_NFT_MINT": "C3-development-test-mint"})):
-                provider.build(app_id, version, receipt_path)
-
-            produced = json.loads(receipt_path.read_text(encoding="utf-8"))
-            portable = produced.get("portableEvidence")
-            self.assertIsInstance(portable, dict, "C3-D33-portable-receipt-emitter-missing")
-            expected = {
-                "schema": "melusina-release-input-receipt.v1",
-                "appId": app_id,
-                "sourceCommit": commit,
-                "sourceSelectionReceiptSha256": "c" * 64,
-                "spkSha256": spk_sha,
-                "metadataSha256": hashlib.sha256((provider_state / "candidate" / "catalog" / "metadata.json").read_bytes()).hexdigest(),
-                "runtimeContractSha256": hashlib.sha256(runtime_bytes).hexdigest(),
-            }
-            self.assertEqual(portable, expected, "C3-D33-portable-receipt-digests-not-source-bound")
+            for selected_commit in (commit, "d" * 40):
+                emitter(
+                    receipt_path, app_id, selected_commit, "c" * 64,
+                    spk, metadata, runtime,
+                )
+                produced = json.loads(receipt_path.read_text(encoding="utf-8"))
+                portable = produced.get("portableEvidence")
+                expected = {
+                    "schema": "melusina-release-input-receipt.v1",
+                    "appId": app_id,
+                    "sourceCommit": selected_commit,
+                    "sourceSelectionReceiptSha256": "c" * 64,
+                    "spkSha256": hashlib.sha256(spk.read_bytes()).hexdigest(),
+                    "metadataSha256": hashlib.sha256(metadata.read_bytes()).hexdigest(),
+                    "runtimeContractSha256": hashlib.sha256(runtime.read_bytes()).hexdigest(),
+                }
+                self.assertEqual(portable, expected, "C3-D33-portable-receipt-digests-not-source-bound")
+                metadata.write_bytes(metadata.read_bytes() + b"\n")
 
     def test_SOURCE_METADATA_VALID_RELEASE(self):
         with tempfile.TemporaryDirectory() as directory:

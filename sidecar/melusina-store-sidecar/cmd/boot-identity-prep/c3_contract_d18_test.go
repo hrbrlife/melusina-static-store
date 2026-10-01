@@ -229,10 +229,10 @@ func TestC3D18TwoPassBootIdentityUsesOneLicenseAndShards(t *testing.T) {
 	}
 	var a, b ceremonyReport
 	if err := json.Unmarshal(before.Bytes(), &a); err != nil {
-		t.Fatal(err)
+		t.Fatalf("C3-D18-pass-one-report-empty-or-invalid: %v", err)
 	}
 	if err := json.Unmarshal(after.Bytes(), &b); err != nil {
-		t.Fatal(err)
+		t.Fatalf("C3-D18-pass-two-report-empty-or-invalid: %v", err)
 	}
 	if !a.Shards.Created || b.Shards.Created || a.SidecarIdentityPDA != b.SidecarIdentityPDA || a.RegisterSidecarInput.SigningPubkeyBase58 != b.RegisterSidecarInput.SigningPubkeyBase58 || a.RegisterSidecarInput.TLSCertFingerprintHex != b.RegisterSidecarInput.TLSCertFingerprintHex {
 		t.Fatalf("C3-D18-identity-regenerated-on-spec-rebuild: first=%+v second=%+v", a, b)

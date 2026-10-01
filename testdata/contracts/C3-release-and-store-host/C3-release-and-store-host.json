@@ -186,7 +186,7 @@
     },
     "deployable": {
       "neutralF0Raw": "{\"schema\":\"melusina.bootstrap-release-set.v2\",\"stage\":\"foundation\",\"sequence\":184,\"createdAt\":\"2026-09-20T11:30:00Z\",\"foundation\":{\"sequence\":0,\"sha256\":\"\"},\"publisherKeyset\":{\"threshold\":3,\"keys\":[{\"keyId\":\"publisher-a\",\"ed25519PublicKey\":\"8ade52cc4c6bfaf7f874be3ecab6111512d9e56ec6f9a91c07c54c5860342916\"},{\"keyId\":\"publisher-b\",\"ed25519PublicKey\":\"87a87c5e82ad04cc59d9a85f2e670ac30913f2e9631d155d41bad8207ea06a70\"},{\"keyId\":\"publisher-c\",\"ed25519PublicKey\":\"1e6aaec5ad3c22465ca14f4ef273e2503aa989d9520aeee0cf52df55e627aa03\"},{\"keyId\":\"publisher-d\",\"ed25519PublicKey\":\"dd1b9b0b0055ee9bbc4f33fea68081a03753295cccdb4a63b82f9ccabf109a5c\"}]},\"recalls\":[],\"phaseEndpoints\":{\"p0-verify\":[],\"p1-host-prep\":[\"https://deb.debian.org\"],\"p2-enroll\":[\"http://127.0.0.1:9291\"],\"p3-foundation\":[\"https://images.example.org\",\"https://mirror.publisher.example\"],\"p4-after-closure\":[]},\"artifacts\":[{\"role\":\"base-image\",\"name\":\"base-image.qcow2\",\"sha256\":\"cf6f44c5a632c0c54b4595d6488b5f305e2f1f595bcae5583da272aae53a5a98\",\"sizeBytes\":2147483648,\"sourceRepo\":\"\",\"sourceCommit\":\"\",\"toolchain\":\"\",\"origins\":[\"https://images.example.org/2026-09-01/debian-13-genericcloud-amd64.qcow2\",\"https://mirror.publisher.example/base/2026-09-01/debian-13-genericcloud-amd64.qcow2\"],\"phase\":\"p3-foundation\"},{\"role\":\"os-package-closure\",\"name\":\"cryptsetup-2.7.5-amd64.deb\",\"sha256\":\"26316fd6fc15e5d5fdcf11af93525314eb8b30412636414189bd9e656f9566fa\",\"sizeBytes\":524288,\"sourceRepo\":\"\",\"sourceCommit\":\"\",\"toolchain\":\"\",\"origins\":[\"https://deb.debian.org/debian/pool/main/c/cryptsetup-2.7.5-amd64.deb\"],\"phase\":\"p1-host-prep\"},{\"role\":\"installer\",\"name\":\"melusina-installer\",\"sha256\":\"744eabb77e1dbf8bc1ca406292a67b69aed6c84f5959eeeef99143f2529d5987\",\"sizeBytes\":48,\"sourceRepo\":\"melusina/deployer\",\"sourceCommit\":\"b55ea80f59d503af1bfbd8cb78c517505f8accf9\",\"toolchain\":\"go1.25.0\",\"origins\":[],\"phase\":\"p0-verify\"},{\"role\":\"provider-suite\",\"name\":\"provider-suite.tar.gz\",\"sha256\":\"e94925982fafeb5b9224ed9d37328760fdb3476c232c50a232f1ff30b67b8e75\",\"sizeBytes\":16777216,\"sourceRepo\":\"melusina/deployer\",\"sourceCommit\":\"b55ea80f59d503af1bfbd8cb78c517505f8accf9\",\"toolchain\":\"go1.25.0\",\"origins\":[],\"phase\":\"p0-verify\"},{\"role\":\"shell-bundle\",\"name\":\"shell-bundle.tar.xz\",\"sha256\":\"c819d8dab423234395466e966aafa3d0990dd64e3732eb86adc7620a9b69dcc0\",\"sizeBytes\":22,\"sourceRepo\":\"melusina/shell\",\"sourceCommit\":\"40ddcb0337e8c87beefd55528f9f1739993dfb1b\",\"toolchain\":\"go1.25.0\",\"origins\":[],\"phase\":\"p0-verify\"},{\"role\":\"store-bootstrap\",\"name\":\"store-bootstrap.tar.gz\",\"sha256\":\"00390743f2143d970966957433cfeab8c2ba5a59e890d7d8504cc6932f8c7c91\",\"sizeBytes\":8388608,\"sourceRepo\":\"hrbrlife/melusina-static-store\",\"sourceCommit\":\"f2fd4753677390ab1b7348517631a5d9dbe9cf6b\",\"toolchain\":\"go1.25.0\",\"origins\":[],\"phase\":\"p0-verify\"}],\"completeness\":\"incomplete\",\"declaredAbsent\":[{\"role\":\"chain-constants-template\",\"name\":\"chain-constants-template.toml\",\"reason\":\"the building estate ceremony is not yet founded\"},{\"role\":\"chain-program-source\",\"name\":\"chain-program-source.tar.gz\",\"reason\":\"the building estate ceremony is not yet founded\"},{\"role\":\"topology-resolver\",\"name\":\"topology-resolver\",\"reason\":\"no topology resolver is selected in the neutral platform cut\"}],\"signatures\":[{\"keyId\":\"publisher-a\",\"signature\":\"6647d18b7151eca15a682f277cf604d1451d20cf1c05123c1b9eee35abf2a15906f5020057fd86879fafe0ac36791ec0033ac78d143671a68acba55160db4c04\"},{\"keyId\":\"publisher-b\",\"signature\":\"b17fdedff318e93303522e678d5b5bb6d0e73ec9672e9327c832a4c32289798e8f9e3ca966f8a25d6d6db34f2dee3c815a54f0bb7875f75165a2bd11553a2a0d\"},{\"keyId\":\"publisher-c\",\"signature\":\"b050d64075205feb8808cc2c4be8c0304fcb0d560bc613d9deff01796b9ba1219638e6a3030390e4c024cc5335bd4cd448e7334f6e1610e8c2e6335ba74d2b0e\"}]}",
-      "estateBinding": "synthetic-estate-b",
+      "estateBinding": "synthetic-estate-a",
       "publisherSignatures": "detached",
       "ownerSignatures": "detached"
     },
@@ -209,12 +209,10 @@
         "incusFingerprint": "9918f2eaf777a9c3919164b8290317854dff76a5ea8f3be59aec308a557db6bc",
         "sha256": "c9643de27e79d85b31de2a2f6297140f7d58d1bd517954d6edb087ec47c733e7",
         "sizeBytes": 4096,
-        "provenance": {
-          "sourceRepo": "hrbrlife/melusina-static-store",
-          "sourceCommit": "afc25af8e77243da58e1d68af8c4c0ad0c3443b7",
-          "toolchain": "go1.25.0",
-          "buildInputSha256": "6e0c58c4d4bd3de544ef815693913baa7a74160213b9222d310c0cc85d175aea"
-        }
+        "sourceRepo": "hrbrlife/melusina-static-store",
+        "sourceCommit": "afc25af8e77243da58e1d68af8c4c0ad0c3443b7",
+        "toolchain": "go1.25.0",
+        "buildInputSha256": "6e0c58c4d4bd3de544ef815693913baa7a74160213b9222d310c0cc85d175aea"
       },
       {
         "role": "provider-image",
@@ -222,12 +220,10 @@
         "incusFingerprint": "5fdfea983f8e4db61bb8d88ceef310a0d1d7e24763f5e720d563968dfc1eebe0",
         "sha256": "736569b22072597e454732572ee4c73a56c9294cc21264079fa4f8d7426c18dc",
         "sizeBytes": 8192,
-        "provenance": {
-          "sourceRepo": "melusina/deployer",
-          "sourceCommit": "b551ee37ffebe15c9ce50a436fe9115cb00dad94",
-          "toolchain": "go1.25.0",
-          "buildInputSha256": "2a01c9f8215f8d57b3431a5849b27046bff66ca598df7e87f5377701510bac08"
-        }
+        "sourceRepo": "melusina/deployer",
+        "sourceCommit": "b551ee37ffebe15c9ce50a436fe9115cb00dad94",
+        "toolchain": "go1.25.0",
+        "buildInputSha256": "2a01c9f8215f8d57b3431a5849b27046bff66ca598df7e87f5377701510bac08"
       }
     ],
     "absentRoles": [
@@ -941,7 +937,43 @@
         "name": "estate-b",
         "neutralF0Raw": "{\"schema\":\"melusina.bootstrap-release-set.v2\",\"stage\":\"foundation\",\"sequence\":184,\"createdAt\":\"2026-09-20T11:30:00Z\",\"foundation\":{\"sequence\":0,\"sha256\":\"\"},\"publisherKeyset\":{\"threshold\":3,\"keys\":[{\"keyId\":\"publisher-a\",\"ed25519PublicKey\":\"8ade52cc4c6bfaf7f874be3ecab6111512d9e56ec6f9a91c07c54c5860342916\"},{\"keyId\":\"publisher-b\",\"ed25519PublicKey\":\"87a87c5e82ad04cc59d9a85f2e670ac30913f2e9631d155d41bad8207ea06a70\"},{\"keyId\":\"publisher-c\",\"ed25519PublicKey\":\"1e6aaec5ad3c22465ca14f4ef273e2503aa989d9520aeee0cf52df55e627aa03\"},{\"keyId\":\"publisher-d\",\"ed25519PublicKey\":\"dd1b9b0b0055ee9bbc4f33fea68081a03753295cccdb4a63b82f9ccabf109a5c\"}]},\"recalls\":[],\"phaseEndpoints\":{\"p0-verify\":[],\"p1-host-prep\":[\"https://deb.debian.org\"],\"p2-enroll\":[\"http://127.0.0.1:9291\"],\"p3-foundation\":[\"https://images.example.org\",\"https://mirror.publisher.example\"],\"p4-after-closure\":[]},\"artifacts\":[{\"role\":\"base-image\",\"name\":\"base-image.qcow2\",\"sha256\":\"cf6f44c5a632c0c54b4595d6488b5f305e2f1f595bcae5583da272aae53a5a98\",\"sizeBytes\":2147483648,\"sourceRepo\":\"\",\"sourceCommit\":\"\",\"toolchain\":\"\",\"origins\":[\"https://images.example.org/2026-09-01/debian-13-genericcloud-amd64.qcow2\",\"https://mirror.publisher.example/base/2026-09-01/debian-13-genericcloud-amd64.qcow2\"],\"phase\":\"p3-foundation\"},{\"role\":\"os-package-closure\",\"name\":\"cryptsetup-2.7.5-amd64.deb\",\"sha256\":\"26316fd6fc15e5d5fdcf11af93525314eb8b30412636414189bd9e656f9566fa\",\"sizeBytes\":524288,\"sourceRepo\":\"\",\"sourceCommit\":\"\",\"toolchain\":\"\",\"origins\":[\"https://deb.debian.org/debian/pool/main/c/cryptsetup-2.7.5-amd64.deb\"],\"phase\":\"p1-host-prep\"},{\"role\":\"installer\",\"name\":\"melusina-installer\",\"sha256\":\"744eabb77e1dbf8bc1ca406292a67b69aed6c84f5959eeeef99143f2529d5987\",\"sizeBytes\":48,\"sourceRepo\":\"melusina/deployer\",\"sourceCommit\":\"b55ea80f59d503af1bfbd8cb78c517505f8accf9\",\"toolchain\":\"go1.25.0\",\"origins\":[],\"phase\":\"p0-verify\"},{\"role\":\"provider-suite\",\"name\":\"provider-suite.tar.gz\",\"sha256\":\"e94925982fafeb5b9224ed9d37328760fdb3476c232c50a232f1ff30b67b8e75\",\"sizeBytes\":16777216,\"sourceRepo\":\"melusina/deployer\",\"sourceCommit\":\"b55ea80f59d503af1bfbd8cb78c517505f8accf9\",\"toolchain\":\"go1.25.0\",\"origins\":[],\"phase\":\"p0-verify\"},{\"role\":\"shell-bundle\",\"name\":\"shell-bundle.tar.xz\",\"sha256\":\"c819d8dab423234395466e966aafa3d0990dd64e3732eb86adc7620a9b69dcc0\",\"sizeBytes\":22,\"sourceRepo\":\"melusina/shell\",\"sourceCommit\":\"40ddcb0337e8c87beefd55528f9f1739993dfb1b\",\"toolchain\":\"go1.25.0\",\"origins\":[],\"phase\":\"p0-verify\"},{\"role\":\"store-bootstrap\",\"name\":\"store-bootstrap.tar.gz\",\"sha256\":\"00390743f2143d970966957433cfeab8c2ba5a59e890d7d8504cc6932f8c7c91\",\"sizeBytes\":8388608,\"sourceRepo\":\"hrbrlife/melusina-static-store\",\"sourceCommit\":\"f2fd4753677390ab1b7348517631a5d9dbe9cf6b\",\"toolchain\":\"go1.25.0\",\"origins\":[],\"phase\":\"p0-verify\"}],\"completeness\":\"incomplete\",\"declaredAbsent\":[{\"role\":\"chain-constants-template\",\"name\":\"chain-constants-template.toml\",\"reason\":\"the building estate ceremony is not yet founded\"},{\"role\":\"chain-program-source\",\"name\":\"chain-program-source.tar.gz\",\"reason\":\"the building estate ceremony is not yet founded\"},{\"role\":\"topology-resolver\",\"name\":\"topology-resolver\",\"reason\":\"no topology resolver is selected in the neutral platform cut\"}],\"signatures\":[{\"keyId\":\"publisher-a\",\"signature\":\"6647d18b7151eca15a682f277cf604d1451d20cf1c05123c1b9eee35abf2a15906f5020057fd86879fafe0ac36791ec0033ac78d143671a68acba55160db4c04\"},{\"keyId\":\"publisher-b\",\"signature\":\"b17fdedff318e93303522e678d5b5bb6d0e73ec9672e9327c832a4c32289798e8f9e3ca966f8a25d6d6db34f2dee3c815a54f0bb7875f75165a2bd11553a2a0d\"},{\"keyId\":\"publisher-c\",\"signature\":\"b050d64075205feb8808cc2c4be8c0304fcb0d560bc613d9deff01796b9ba1219638e6a3030390e4c024cc5335bd4cd448e7334f6e1610e8c2e6335ba74d2b0e\"}]}"
       }
-    ]
+    ],
+    "storePreflight": {
+      "publisherDeviceReferenceSchema": "melusina.publisher-device-reference.v1",
+      "publisherDeviceReferenceFields": [
+        "schema",
+        "keyId",
+        "ed25519PublicKey"
+      ],
+      "derivedInputSchema": "melusina.release-inputs-preflight.v1",
+      "derivedInputFields": [
+        "schema",
+        "estateId",
+        "profileSha256",
+        "releaseSetSha256",
+        "publisherDeviceKeyId",
+        "releaseToolsRole",
+        "artifactPins"
+      ],
+      "releaseSetSourceOfTruth": "deployer/deploy-ui/internal/releaseset/releaseset.go canonicalPreimageUnchecked; this cross-language byte vector is normative",
+      "canonicalEncoding": "UTF-8 domain and strings prefixed by big-endian uint32 byte length; uint64 sequence, Unix seconds and sizes; uint8 threshold; ordered arrays and phases as in deployer canonicalPreimageUnchecked; signatures excluded",
+      "canonicalPreimageHex": "000000224d454c5553494e415f424f4f5453545241505f52454c454153455f5345545f56320a000000216d656c7573696e612e626f6f7473747261702d72656c656173652d7365742e76320000000a6465706c6f7961626c6500000000000000ba000000006aafc3b800000000000000b9000000403763336666663330346231353938343463643137373530333132653863356365616638613166633435343532623362613130643564343339656564396263343003000000040000000b7075626c69736865722d6100000040386164653532636334633662666166376638373462653365636162363131313531326439653536656336663961393163303763353463353836303334323931360000000b7075626c69736865722d6200000040383761383763356538326164303463633539643961383566326536373061633330393133663265393633316431353564343162616438323037656130366137300000000b7075626c69736865722d6300000040316536616165633561643363323234363563613134663465663237336532353033616139383964393532306165656530636635326466353565363237616130330000000b7075626c69736865722d640000004064643162396230623030353565653962626334663333666561363830383161303337353332393563636364623461363362383266396363616266313039613563000000000000000970302d766572696679000000000000000c70312d686f73742d70726570000000010000001668747470733a2f2f6465622e64656269616e2e6f72670000000970322d656e726f6c6c0000000100000015687474703a2f2f3132372e302e302e313a393239310000000d70332d666f756e646174696f6e000000020000001a68747470733a2f2f696d616765732e6578616d706c652e6f72670000002068747470733a2f2f6d6972726f722e7075626c69736865722e6578616d706c650000001070342d61667465722d636c6f73757265000000000000000a0000000a626173652d696d61676500000010626173652d696d6167652e71636f773200000040636636663434633561363332633063353462343539356436343838623566333035653266316635393562636165353538336461323732616165353361356139380000000080000000000000000000000000000000000000020000004868747470733a2f2f696d616765732e6578616d706c652e6f72672f323032362d30392d30312f64656269616e2d31332d67656e65726963636c6f75642d616d6436342e71636f77320000005368747470733a2f2f6d6972726f722e7075626c69736865722e6578616d706c652f626173652f323032362d30392d30312f64656269616e2d31332d67656e65726963636c6f75642d616d6436342e71636f77320000000d70332d666f756e646174696f6e00000018636861696e2d636f6e7374616e74732d74656d706c6174650000001d636861696e2d636f6e7374616e74732d74656d706c6174652e746f6d6c00000040343732646666656631303864636330386564646633366365636164373632623062353661636339613061333061393431663764393865623866376266326338320000000000001000000000126d656c7573696e612f636f6e74726163747300000028656662386362376464626638316239303464373632323565343037363230386165333134316566330000000a72757374312e37392e30000000000000000970302d76657269667900000014636861696e2d70726f6772616d2d736f757263650000001b636861696e2d70726f6772616d2d736f757263652e7461722e677a00000040653063383931623139623131333233306266303866313262333239636134336335383733396465376536666137373665613561346236393932393034323735350000000000300000000000126d656c7573696e612f636f6e74726163747300000028656662386362376464626638316239303464373632323565343037363230386165333134316566330000000a72757374312e37392e30000000000000000970302d766572696679000000126f732d7061636b6167652d636c6f737572650000001a637279707473657475702d322e372e352d616d6436342e64656200000040323633313666643666633135653564356664636631316166393335323533313465623862333034313236333634313431383962643965363536663935363666610000000000080000000000000000000000000000000000010000004468747470733a2f2f6465622e64656269616e2e6f72672f64656269616e2f706f6f6c2f6d61696e2f632f637279707473657475702d322e372e352d616d6436342e6465620000000c70312d686f73742d7072657000000009696e7374616c6c6572000000126d656c7573696e612d696e7374616c6c657200000040373434656162623737653164626638626331636134303632393261363762363961656436633834663539353965656565663939313433663235323964353938370000000000000030000000116d656c7573696e612f6465706c6f796572000000286235356561383066353964353033616631626662643863623738633531373530356638616363663900000008676f312e32352e30000000000000000970302d7665726966790000000e70726f76696465722d73756974650000001570726f76696465722d73756974652e7461722e677a00000040653934393235393832666166656235623932323465643964333733323837363066646233343736633233326335306132333266316666333062363762386537350000000001000000000000116d656c7573696e612f6465706c6f796572000000286235356561383066353964353033616631626662643863623738633531373530356638616363663900000008676f312e32352e30000000000000000970302d766572696679000000147075626c69636174696f6e2d65766964656e6365000000197075626c69636174696f6e2d65766964656e63652e6a736f6e00000040393636306237333964323838366436343934396365373133306339616664653139646161396232656265653566356661623666373061306265646238613162350000000000000200000000116d656c7573696e612f6465706c6f796572000000286235356561383066353964353033616631626662643863623738633531373530356638616363663900000008676f312e32352e30000000000000000970302d7665726966790000000c7368656c6c2d62756e646c65000000137368656c6c2d62756e646c652e7461722e787a000000406338313964386461623432333233343339353436366539363661616661336430393930646436346533373332656238366164633736323061396236396463633000000000000000160000000e6d656c7573696e612f7368656c6c000000283430646463623033333765386338376265656664353535323866396631373339393933646662316200000008676f312e32352e30000000000000000970302d7665726966790000000f73746f72652d626f6f7473747261700000001673746f72652d626f6f7473747261702e7461722e677a000000403030333930373433663231343364393730393636393537343333636665616238633262613561353965383930643764383530346363363933326638633763393100000000008000000000001e687262726c6966652f6d656c7573696e612d7374617469632d73746f7265000000286632666434373533363737333930616231623733343835313736333161356439646265396366366200000008676f312e32352e30000000000000000970302d76657269667900000011746f706f6c6f67792d7265736f6c76657200000011746f706f6c6f67792d7265736f6c76657200000040396633623233356562643733633138313263373137653364383961626136356663656661383363616532383836373864313331393063336364363065366137380000000000000080000000116d656c7573696e612f6465706c6f796572000000286235356561383066353964353033616631626662643863623738633531373530356638616363663900000008676f312e32352e30000000000000000970302d76657269667900000008636f6d706c65746500000000",
+      "canonicalSha256": "734fe6f50cc30ba22bb6073a12fbec00516a70abb874789914c841ace41df6b5",
+      "signatureMessage": "734fe6f50cc30ba22bb6073a12fbec00516a70abb874789914c841ace41df6b5",
+      "signatureMessageEncoding": "64 ASCII lowercase hexadecimal characters, signed directly with Ed25519",
+      "publisherDeviceRefusal": "PUBLISHER_DEVICE_UNTRUSTED"
+    },
+    "optionalSignedExtensions": {
+      "jsonRule": "omitempty: absent D05/D37 fields are omitted, never emitted as zero values",
+      "legacyRule": "if every artifact has no optional extension, append zero bytes and preserve all pinned canonical digests",
+      "presentRule": "after the legacy preimage append one length-prefixed UTF-8 string C3_RELEASE_SET_EXTENSIONS_V1\\n, then big-endian uint32 count of extended artifacts; for each artifact in signed artifact order append uint32 artifact index, uint8 bitmask (1 shellCapabilities, 2 incusFingerprint, 4 buildInputSha256), then present values in bit order; shellCapabilities uses uint32 count plus length-prefixed sorted strings, each other value is a length-prefixed UTF-8 string",
+      "fields": [
+        "shellCapabilities",
+        "incusFingerprint",
+        "buildInputSha256"
+      ],
+      "mutationRefusal": "release_signature_invalid"
+    }
   },
   "shellRelease": {
     "shellArtifact": {
@@ -1004,6 +1036,25 @@
         "installer-readback-v1",
         "store-cold-open-v1"
       ]
+    },
+    "checkerCLI": {
+      "command": "tools/check-shell-release-interface.cjs",
+      "archiveFormat": "tar.xz",
+      "requiredFlags": [
+        "--archive",
+        "--source-revision",
+        "--manifest"
+      ],
+      "refusals": [
+        "SHELL_ARCHIVE_HASH_MISMATCH",
+        "SHELL_ARCHIVE_REQUIRED_ENTRY_MISSING",
+        "SOURCE_SHA_NOT_EMBEDDED",
+        "SHELL_INTERFACE_CAPABILITY_MISSING",
+        "SHELL_ESTATE_LINEAGE_PRESENT",
+        "SHELL_ARCHIVE_TRAVERSAL",
+        "SHELL_ARCHIVE_OVERSIZED"
+      ],
+      "fixtureMode": false
     }
   },
   "runtimeContract": {
@@ -1556,6 +1607,457 @@
     "generation-publisher-key-file-present",
     "store-host-image-digest-mismatch",
     "store-host-image-fingerprint-absent",
-    "genesis-escrow-custody-undeclared"
-  ]
+    "genesis-escrow-custody-undeclared",
+    "objective-not-adopted",
+    "objective-adoption-threshold",
+    "objective-adoption-regressed",
+    "objective-adoption-below-floor",
+    "objective-owner-provided-not-domain-license",
+    "PUBLISHER_DEVICE_UNTRUSTED"
+  ],
+  "installObjectiveAdoption": {
+    "objective": {
+      "schema": "melusina.perfect-install-objective.v6",
+      "status": "PROPOSED",
+      "statusNote": "Synthetic C3 desktop trial objective: mail is off under N-846; bell notices remain. Owner adoption is a local test fixture.",
+      "coverageSchema": "melusina.perfect-install-objective-coverage.v2",
+      "supersedes": {
+        "schema": "melusina.perfect-install-objective.v5",
+        "sha256": "4c44706a30b480e97a406ffa243a6a52d06047c319b86ea58ae44ef08238266a",
+        "reason": "Synthetic mail-off desktop trial successor. Historical v5 remains a digest reference only."
+      },
+      "target": {
+        "domainBinding": "install-spec-domain",
+        "zoneBinding": "install-spec-zone-domain",
+        "installMode": "fresh-greenfield",
+        "priorDataOrUsers": false,
+        "compatibilityPathsAllowed": false,
+        "license": "new-melusina-license",
+        "controlSurface": "real-product-ui",
+        "syntheticBusinessDataOnly": true
+      },
+      "profiles": {
+        "edge": {
+          "allowed": [
+            "shared",
+            "dedicated",
+            "external"
+          ]
+        },
+        "dns": {
+          "allowed": [
+            "shared",
+            "dedicated",
+            "external"
+          ]
+        }
+      },
+      "deploymentSLA": {
+        "releaseBuildAndPublicationPrecedeDeploymentClock": true,
+        "preparationPrecedesDeploymentClock": true,
+        "healthyRunTargetSeconds": 3600,
+        "healthyRunTargetEnforcement": "measured-and-reported",
+        "signedDeploymentDeadlineSeconds": 10800,
+        "signedDeploymentDeadlineEnforcement": "hard-refusal",
+        "authorityStageMaxLifetimeSeconds": 1800,
+        "authorityStageBudgetSeconds": 1500,
+        "ownerSigningAllowancePerStageSeconds": 300,
+        "stagesChainPriorReceiptRoot": true,
+        "continuationMayResetDeadline": false,
+        "hiddenRuntimeTimeoutInflationAllowed": false,
+        "completeScopeMustBeBudgeted": true,
+        "uiStagingGrantRequired": true
+      },
+      "requiredSidecars": [
+        "ailagoon",
+        "aitx",
+        "chainwatch",
+        "chainwatch-observer",
+        "creeper",
+        "custody",
+        "dns",
+        "fineract",
+        "namedcoin",
+        "opensanctions",
+        "reconciler",
+        "remotebak-escrow-v1",
+        "sandbox-payout",
+        "sandbox-settlement",
+        "swaprail",
+        "telescreen",
+        "vintage",
+        "wolfdog-v2"
+      ],
+      "requiredCapabilityPacks": [
+        "ailagoon",
+        "namedcoin",
+        "msb"
+      ],
+      "requiredApplications": [
+        "namedcoin",
+        "namedcoin-configurator",
+        "dueprocess",
+        "paype-cc",
+        "cyberteller",
+        "fineract-setup",
+        "lobby",
+        "ccash-configurator",
+        "domain-template"
+      ],
+      "mail": {
+        "required": false,
+        "inbound": false,
+        "outbound": false,
+        "notices": "bell-only"
+      },
+      "platform": {
+        "sandstormAdminSurfaces": 28,
+        "storeOnlyApplications": true,
+        "requiredApplicationColdOpen": true,
+        "rootDiskEncryptedFromFirstWrite": true,
+        "ephemeralSwapEncrypted": true,
+        "vmUnsealCapsuleKind": "vm_unseal_v1",
+        "prebootChainReadOutsideEncryptedGuest": true
+      },
+      "postInstallRecordedAcceptance": {
+        "startsAfterSignedDeploymentReceipt": true,
+        "backupRestoreDrillReceipt": true,
+        "requiredBusinessJourney": [
+          "enhanced-namedcoin-issuance",
+          "approved-account-opening",
+          "governed-deposit",
+          "dueprocess-stp-swap",
+          "two-person-approved-withdrawal",
+          "travel-rule-checks",
+          "signing",
+          "settlement",
+          "reconciliation"
+        ]
+      },
+      "evidence": {
+        "retainedLiveReceipts": true,
+        "retainedRefusalTests": true,
+        "freshLaunchVerification": true,
+        "fullDeploymentVideo": true,
+        "timedRehearsalOnDisposableTarget": true,
+        "noSecurityBypass": true,
+        "noUIBypass": true
+      },
+      "retirement": {
+        "binding": "approved-disposition-manifest",
+        "dispositionManifestSchema": "melusina.estate-disposition-manifest.v1",
+        "dispositionManifestOwnerApprovalRequired": true,
+        "deleteOnlyAfterAcceptance": true,
+        "deleteRetiredTenantState": true,
+        "deleteRetiredTenantSpecificSharedAllocations": true,
+        "preserveInfrastructureUsedByOtherTenants": true,
+        "evidenceSlot": "retirement/approved-disposition-manifest"
+      },
+      "installInputs": {
+        "ownerProvided": [
+          "domain",
+          "license"
+        ],
+        "providerDeclared": [
+          "identity",
+          "acmeResponder",
+          "control",
+          "mxCertificate"
+        ],
+        "telegramChatIdRequired": false
+      },
+      "postInstallReadiness": {
+        "requiredBeforeTestHandover": true,
+        "distinctApprovers": [
+          "compliance-maker",
+          "executive-checker"
+        ],
+        "proves": [
+          "enhanced-namedcoin-issuance",
+          "two-distinct-reviewer-approvals",
+          "verified-identity-receipt",
+          "account-creation-with-applicant-signed-consent",
+          "account-approvals",
+          "fineract-activation",
+          "active-account",
+          "deposit-swap-withdrawal-corridor-configured"
+        ]
+      },
+      "budgets": {
+        "foundation": {
+          "clock": "precedes-deployment-clock",
+          "budget": {
+            "state": "unallocated",
+            "seconds": 0
+          },
+          "evidenceSlot": "foundation/estate-foundation-receipt-set",
+          "functions": [
+            {
+              "id": "host-and-hypervisor-bootstrap",
+              "support": "unsupported",
+              "blockedReason": "no host bootstrap exists (N-510)",
+              "evidenceSlot": "foundation/host-and-hypervisor-bootstrap"
+            },
+            {
+              "id": "chain-estate-bootstrap",
+              "support": "unverified",
+              "blockedReason": "the eighteen ceremony steps have run end to end only on a local single-node validator (evidence register 2026-09-20T23:30:09Z), with an executor that predates the current profile-driven one; the current executor, with its foundation-authorization, release-set and target-binding preflight, has no recorded run, and no ceremony has run on a real network (N-509, N-565)",
+              "evidenceSlot": "foundation/chain-estate-bootstrap"
+            },
+            {
+              "id": "shared-edge-provisioning",
+              "support": "unsupported",
+              "blockedReason": "no supported end-to-end shared-edge provisioner (N-508)",
+              "evidenceSlot": "foundation/shared-edge-provisioning"
+            },
+            {
+              "id": "provider-zone-onboarding",
+              "support": "unsupported",
+              "blockedReason": "the provider plane is single-zone (F-508)",
+              "evidenceSlot": "foundation/provider-zone-onboarding"
+            },
+            {
+              "id": "provider-suite-governed-release",
+              "support": "unverified",
+              "blockedReason": "a governed provider-suite release exists in source: assemble-provider-suite-release co-signs a ProviderSuiteManifest at the estate's releaseTrust threshold, the release cut verifies it, and install-suite delivers it to a host that accepts on signature, forward monotonicity and recall; no suite release has been signed and installed on a provider host at this cut (F-462)",
+              "evidenceSlot": "foundation/provider-suite-governed-release"
+            },
+            {
+              "id": "root-store-first-install-and-recovery",
+              "support": "unverified",
+              "blockedReason": "a Store that installs first and recovers is open work (WS5); not measured at this cut",
+              "evidenceSlot": "foundation/root-store-first-install-and-recovery"
+            }
+          ]
+        },
+        "baseInstall": {
+          "clock": "signed-deployment-clock",
+          "budget": {
+            "state": "engine-bound",
+            "seconds": 10800
+          },
+          "evidenceSlot": "base-install/signed-deployment-receipt",
+          "functions": [
+            {
+              "id": "tenant-base-plan",
+              "support": "supported",
+              "evidenceSlot": "base-install/tenant-base-plan"
+            },
+            {
+              "id": "healthy-run-timing-report",
+              "support": "supported",
+              "evidenceSlot": "base-install/healthy-run-timing-report"
+            },
+            {
+              "id": "edge-shared",
+              "appliesWhen": {
+                "profile": "edge",
+                "class": "shared"
+              },
+              "support": "supported",
+              "evidenceSlot": "base-install/edge-shared"
+            },
+            {
+              "id": "edge-dedicated",
+              "appliesWhen": {
+                "profile": "edge",
+                "class": "dedicated"
+              },
+              "support": "unsupported",
+              "blockedReason": "no target executor for an owned edge (F-509)",
+              "evidenceSlot": "base-install/edge-dedicated"
+            },
+            {
+              "id": "edge-external",
+              "appliesWhen": {
+                "profile": "edge",
+                "class": "external"
+              },
+              "support": "unsupported",
+              "blockedReason": "the HTTPS hook refuses every mode but shared-sni (F-509)",
+              "evidenceSlot": "base-install/edge-external"
+            },
+            {
+              "id": "dns-shared",
+              "appliesWhen": {
+                "profile": "dns",
+                "class": "shared"
+              },
+              "support": "supported",
+              "evidenceSlot": "base-install/dns-shared"
+            },
+            {
+              "id": "dns-dedicated",
+              "appliesWhen": {
+                "profile": "dns",
+                "class": "dedicated"
+              },
+              "support": "unsupported",
+              "blockedReason": "no target executor for owned authoritative DNS (F-509)",
+              "evidenceSlot": "base-install/dns-dedicated"
+            },
+            {
+              "id": "dns-external",
+              "appliesWhen": {
+                "profile": "dns",
+                "class": "external"
+              },
+              "support": "unverified",
+              "blockedReason": "external-manual DNS has no recorded execution evidence at this cut",
+              "evidenceSlot": "base-install/dns-external"
+            }
+          ]
+        },
+        "providerMaintenance": {
+          "clock": "separate-signed-plan",
+          "budget": {
+            "state": "unallocated",
+            "seconds": 0
+          },
+          "evidenceSlot": "provider-maintenance/maintenance-receipt-set",
+          "functions": [
+            {
+              "id": "provider-maintenance-admission",
+              "support": "unverified",
+              "blockedReason": "provider maintenance needs its own capability admission; no recorded run at this cut",
+              "evidenceSlot": "provider-maintenance/admission"
+            },
+            {
+              "id": "provider-resource-handoff-and-renewal",
+              "support": "unverified",
+              "blockedReason": "no recorded maintenance run at this cut",
+              "evidenceSlot": "provider-maintenance/resource-handoff-and-renewal"
+            }
+          ]
+        },
+        "capabilities": {
+          "clock": "separate-signed-plan",
+          "budget": {
+            "state": "unallocated",
+            "seconds": 0
+          },
+          "evidenceSlot": "capabilities/admission-receipt-set",
+          "functions": [
+            {
+              "id": "capability-pack-admission",
+              "support": "supported",
+              "evidenceSlot": "capabilities/pack-admission"
+            },
+            {
+              "id": "business-sidecar-release-approval-on-this-license",
+              "support": "unverified",
+              "blockedReason": "several required sidecars have stale-digest or no recorded approvals (P8-3); re-measure per subject",
+              "evidenceSlot": "capabilities/sidecar-release-approval"
+            },
+            {
+              "id": "financial-plane-admission",
+              "support": "unverified",
+              "blockedReason": "the financial plane has a separate admission with no recorded run at this cut",
+              "evidenceSlot": "capabilities/financial-plane-admission"
+            }
+          ]
+        },
+        "journeys": {
+          "clock": "after-signed-deployment-receipt",
+          "budget": {
+            "state": "unallocated",
+            "seconds": 0
+          },
+          "evidenceSlot": "journeys/recorded-acceptance-set",
+          "functions": [
+            {
+              "id": "msb-readiness-proof",
+              "support": "unverified",
+              "blockedReason": "no recorded run on a v6 estate",
+              "evidenceSlot": "journeys/msb-readiness-proof"
+            },
+            {
+              "id": "recorded-business-journey",
+              "support": "unverified",
+              "blockedReason": "no recorded run on a v6 estate",
+              "evidenceSlot": "journeys/recorded-business-journey"
+            },
+            {
+              "id": "backup-restore-drill",
+              "support": "unverified",
+              "blockedReason": "no recorded run on a v6 estate",
+              "evidenceSlot": "journeys/backup-restore-drill"
+            },
+            {
+              "id": "recovery-kit",
+              "support": "unsupported",
+              "blockedReason": "no recovery kit or member acknowledgement (RecoveryKitMemberAckV1) exists yet; the backup and recovery spec adds this slot (R10) with the drill receipt (M22)",
+              "evidenceSlot": "journeys/recovery-kit"
+            },
+            {
+              "id": "retirement-by-approved-disposition-manifest",
+              "support": "unsupported",
+              "blockedReason": "no disposition manifest contract or executor exists",
+              "evidenceSlot": "journeys/retirement-by-approved-disposition-manifest"
+            }
+          ]
+        }
+      }
+    },
+    "objectiveCanonicalEncoding": "UTF-8 compact JSON with lexicographically sorted object keys; arrays retain order",
+    "objectiveSha256": "9258aeea618617fc19c9d2266b57ba81444e810bcd6c8d30d8e3b9835432d80e",
+    "schema": "melusina.estate.install-objective-adoption.v1",
+    "fieldsInCanonicalPreimage": [
+      "schema",
+      "signingForm",
+      "estateCharterSha256",
+      "estateId",
+      "objectiveSchema",
+      "coverageSchema",
+      "objectiveSha256",
+      "supersedes",
+      "sequence",
+      "recalls",
+      "issuedAt",
+      "nonce"
+    ],
+    "canonicalPreimageRule": "MELUSINA_INSTALL_OBJECTIVE_ADOPTION_V1\\n UTF-8 bytes followed by compact lexicographically sorted-key JSON of fieldsInCanonicalPreimage; exclude ownerStatement and signatures",
+    "canonicalPreimageHex": "7b22636f766572616765536368656d61223a226d656c7573696e612e706572666563742d696e7374616c6c2d6f626a6563746976652d636f7665726167652e7632222c2265737461746543686172746572536861323536223a2238376530633335653563363231306538336366623361386238643336313463386666633362313535396337343463393763643764643831336132363833386136222c226573746174654964223a2236653138306633306466613238643435393635646635633936346330346363386339623131393361313537336665656338393362646439616634356432333935222c226973737565644174223a22323032362d31302d30315430303a30303a30305a222c226e6f6e6365223a2231313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131222c226f626a656374697665536368656d61223a226d656c7573696e612e706572666563742d696e7374616c6c2d6f626a6563746976652e7636222c226f626a656374697665536861323536223a2239323538616565613631383631376663313963396432323636623537626138313434346538313062636436633864333064386533623938333534333264383065222c22726563616c6c73223a5b5d2c22736368656d61223a226d656c7573696e612e6573746174652e696e7374616c6c2d6f626a6563746976652d61646f7074696f6e2e7631222c2273657175656e6365223a312c227369676e696e67466f726d223a2273746174656d656e742d7631222c2273757065727365646573223a7b22726561736f6e223a2253796e746865746963206d61696c2d6f6666206465736b746f7020747269616c20737563636573736f722e20486973746f726963616c2076352072656d61696e73206120646967657374207265666572656e6365206f6e6c792e222c22736368656d61223a226d656c7573696e612e706572666563742d696e7374616c6c2d6f626a6563746976652e7635222c22736861323536223a2234633434373036613330623438306539376134303666666132343361366135326430363034376333313962383665613538616534346566303832333832363661227d7d",
+    "canonicalDigest": "3730ef79ba8c8dd62b40b24c347abae82a6b7292fa5246d0776c6fa262e9f418",
+    "ownerStatementRule": "C1 statement-v1: UTF-8 exact display sentence, signed directly by distinct owner wallets; no signature over bare hex digest",
+    "signatureEncoding": "base64url without padding",
+    "positive": {
+      "schema": "melusina.estate.install-objective-adoption.v1",
+      "signingForm": "statement-v1",
+      "estateCharterSha256": "87e0c35e5c6210e83cfb3a8b8d3614c8ffc3b1559c744c97cd7dd813a26838a6",
+      "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
+      "objectiveSchema": "melusina.perfect-install-objective.v6",
+      "coverageSchema": "melusina.perfect-install-objective-coverage.v2",
+      "objectiveSha256": "9258aeea618617fc19c9d2266b57ba81444e810bcd6c8d30d8e3b9835432d80e",
+      "supersedes": {
+        "schema": "melusina.perfect-install-objective.v5",
+        "sha256": "4c44706a30b480e97a406ffa243a6a52d06047c319b86ea58ae44ef08238266a",
+        "reason": "Synthetic mail-off desktop trial successor. Historical v5 remains a digest reference only."
+      },
+      "sequence": 1,
+      "recalls": [],
+      "issuedAt": "2026-10-01T00:00:00Z",
+      "nonce": "1111111111111111111111111111111111111111111111111111111111111111",
+      "ownerStatement": {
+        "schema": "statement-v1",
+        "kind": "install-objective-adoption",
+        "estateWords": "synthetic C3 estate",
+        "expiry": "2026-12-31T00:00:00Z",
+        "digest": "3730ef79ba8c8dd62b40b24c347abae82a6b7292fa5246d0776c6fa262e9f418"
+      },
+      "signatures": [
+        {
+          "keyId": "owner-a",
+          "signature": "8pRuoJxfZLYSb5g_MF3rGzetY45RRtetKjDr5F0eIS9rlNetpU9mw02PzMlmQURvLh2pEn3ua42DokJsWcEsAg"
+        },
+        {
+          "keyId": "owner-b",
+          "signature": "ssxtmzaET27uge400nLRBy5v7LgAbQchvXLyoItw5WErLggvG91tx_1lKgYJ-ondGwJ8Fh_9uum7bLu3_Xw4AA"
+        }
+      ]
+    },
+    "statement": "Melusina owner document\nkind=install-objective-adoption\nestate=synthetic C3 estate\nexpires=2026-12-31T00:00:00Z\ndigest=3730ef79ba8c8dd62b40b24c347abae82a6b7292fa5246d0776c6fa262e9f418",
+    "buildingProfileCLIFlag": "-building-estate-profile",
+    "regressedRule": "sequence must be at least 1 and supersedes must equal the candidate objective supersedes exactly"
+  }
 }

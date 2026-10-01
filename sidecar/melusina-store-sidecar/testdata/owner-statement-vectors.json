@@ -1,0 +1,158 @@
+{
+  "schema": "melusina.owner.statement-v1-vectors.v1",
+  "evidenceClass": "synthetic-local-fixture",
+  "notes": [
+    "Restricted ASCII, no BOM and no trailing newline. The five LF-delimited lines shown in statement are the exact Ed25519 message bytes; preimageHex and statementSha256 pin them. The statement is rebuilt from the document, never taken from an untrusted supplied message.",
+    "Estate words are a labelled synthetic fingerprint for this fixture. Document digest validation separately binds the estate ID and charter digest where applicable. These test signatures have no authority on any estate.",
+    "The charter digest is inside each later document preimage, not appended to statement-v1 or to the document digest after signing."
+  ],
+  "template": "Melusina owner document\\nkind=<kind>\\nestate=<estateWords>\\nexpires=<UTC>\\ndigest=<64 lowercase hex>",
+  "signerThreshold": 2,
+  "signers": [
+    {
+      "keyId": "owner-a",
+      "ed25519PublicKey": "90fcc0b055ecddd178c522389d69100afab47b7a6e04219290bf6b7c7178d444"
+    },
+    {
+      "keyId": "owner-b",
+      "ed25519PublicKey": "f55d4e6e0103ac510c200fb1d64d3e7cc52ee4f44d6ead9fbfe7dab8d490e8d8"
+    },
+    {
+      "keyId": "owner-c",
+      "ed25519PublicKey": "8e31d5b673083dd947ac1579b2ab43243712d7152710924a7ca81fb838fb91f2"
+    },
+    {
+      "keyId": "owner-d",
+      "ed25519PublicKey": "ec9dd4defdbcfad5600880540076b898755e080dc1cbbd7ce7fca55e2b4454ca"
+    }
+  ],
+  "documents": [
+    {
+      "kind": "estate-foundation-authorization",
+      "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
+      "estateWords": "harbor amber cedar delta",
+      "expiry": "2026-09-21T02:00:00Z",
+      "digest": "5c981d9316aa2ed9f36f44d92cb7712b9da1b83c9f779a3f0a92224ae3afa8a6",
+      "statement": "Melusina owner document\nkind=estate-foundation-authorization\nestate=harbor amber cedar delta\nexpires=2026-09-21T02:00:00Z\ndigest=5c981d9316aa2ed9f36f44d92cb7712b9da1b83c9f779a3f0a92224ae3afa8a6",
+      "preimageHex": "4d656c7573696e61206f776e657220646f63756d656e740a6b696e643d6573746174652d666f756e646174696f6e2d617574686f72697a6174696f6e0a6573746174653d686172626f7220616d6265722063656461722064656c74610a657870697265733d323032362d30392d32315430323a30303a30305a0a6469676573743d35633938316439333136616132656439663336663434643932636237373132623964613162383363396637373961336630613932323234616533616661386136",
+      "statementSha256": "c7f2f550a133fe3e7f89d1cf78d9661716ec1fde804fa69d105b6b51bd0a04af",
+      "signatures": [
+        {
+          "keyId": "owner-a",
+          "signature": "1O6VVs3zuo-EZMyqbAg-EBQd1WDAVEnIhFTR2fFbbstK7m5xEypEf5ic3qxAdZBvC48XPBDbfmHW0cunxdmIAA"
+        },
+        {
+          "keyId": "owner-b",
+          "signature": "xFnz8mrpGFPsT1hGYoSVrQYzQ7M18TPwZDPcXAUCp7j332QiCBkSCzc9Si4osLEgvJzuKbPC6hdkNeIsfVZJCw"
+        }
+      ]
+    },
+    {
+      "kind": "estate-profile",
+      "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
+      "estateWords": "harbor amber cedar delta",
+      "expiry": "2026-09-21T02:00:00Z",
+      "digest": "e6b992db831bf1dbba67ecc74837118746424ca4f440abc61f120f074fdb9382",
+      "statement": "Melusina owner document\nkind=estate-profile\nestate=harbor amber cedar delta\nexpires=2026-09-21T02:00:00Z\ndigest=e6b992db831bf1dbba67ecc74837118746424ca4f440abc61f120f074fdb9382",
+      "preimageHex": "4d656c7573696e61206f776e657220646f63756d656e740a6b696e643d6573746174652d70726f66696c650a6573746174653d686172626f7220616d6265722063656461722064656c74610a657870697265733d323032362d30392d32315430323a30303a30305a0a6469676573743d65366239393264623833316266316462626136376563633734383337313138373436343234636134663434306162633631663132306630373466646239333832",
+      "statementSha256": "0c17ffab065f6e5b0967a7004ea2f81617bfac08bd8ea17dcd6b8d626e3f9526",
+      "signatures": [
+        {
+          "keyId": "owner-a",
+          "signature": "4g-C2DXRxIJw5jLYwzqmJUefIPTkUj0z4OayJQSWqM5rfMEkLE68j2hhHqyJbiHko77DlVIRtjJCfKSAMpYVCw"
+        },
+        {
+          "keyId": "owner-b",
+          "signature": "IkZxe9FHPX8FQKvOjxhY1_VYqRzFJNTBIV4S5WcFfrF8dhWTnhN2E7pmg0gEV4Fbb65ZsO-_Su3ILWAZ-2FEDw"
+        }
+      ]
+    },
+    {
+      "kind": "store-host-authorization",
+      "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
+      "estateWords": "harbor amber cedar delta",
+      "expiry": "2026-09-21T02:00:00Z",
+      "digest": "40a6860997949096cc84108bd804526afba2d533010cd8fe05a21642691d71ec",
+      "statement": "Melusina owner document\nkind=store-host-authorization\nestate=harbor amber cedar delta\nexpires=2026-09-21T02:00:00Z\ndigest=40a6860997949096cc84108bd804526afba2d533010cd8fe05a21642691d71ec",
+      "preimageHex": "4d656c7573696e61206f776e657220646f63756d656e740a6b696e643d73746f72652d686f73742d617574686f72697a6174696f6e0a6573746174653d686172626f7220616d6265722063656461722064656c74610a657870697265733d323032362d30392d32315430323a30303a30305a0a6469676573743d34306136383630393937393439303936636338343130386264383034353236616662613264353333303130636438666530356132313634323639316437316563",
+      "statementSha256": "ba6c632c80aca8f65b7021d612a348c61a8d027603d648a2e39ae319e8d318ef",
+      "signatures": [
+        {
+          "keyId": "owner-a",
+          "signature": "LPHC1YeJNbeaABp4Q6WJzhijpojNqZJCS-NmAUAqn8NIxusseUpGvC76zFyfhe0_GBn3F_bt2KG03GP66smYDQ"
+        },
+        {
+          "keyId": "owner-b",
+          "signature": "JDsGkaFFWyXz_zZcTfSct7GYbGg2atySi8NTdBB9zZ5cHYtdPEr-6x1jENHxQSLj3iI2sz3mbbIaSlKgV1AVBA"
+        }
+      ]
+    },
+    {
+      "kind": "store-enrollment",
+      "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
+      "estateWords": "harbor amber cedar delta",
+      "expiry": "2026-09-21T02:00:00Z",
+      "digest": "7f3d73b1df326eaa1fd8f5a0945910c54f8449d1262027927bc6de3ad038f38b",
+      "statement": "Melusina owner document\nkind=store-enrollment\nestate=harbor amber cedar delta\nexpires=2026-09-21T02:00:00Z\ndigest=7f3d73b1df326eaa1fd8f5a0945910c54f8449d1262027927bc6de3ad038f38b",
+      "preimageHex": "4d656c7573696e61206f776e657220646f63756d656e740a6b696e643d73746f72652d656e726f6c6c6d656e740a6573746174653d686172626f7220616d6265722063656461722064656c74610a657870697265733d323032362d30392d32315430323a30303a30305a0a6469676573743d37663364373362316466333236656161316664386635613039343539313063353466383434396431323632303237393237626336646533616430333866333862",
+      "statementSha256": "13000e40b6de78214f9917da09b3bb7073567f3c12b2be92d0cceae058c24f96",
+      "signatures": [
+        {
+          "keyId": "owner-a",
+          "signature": "-omf4_fU9qaeCBlGWvtzYMkRTdDaEh-37Ny2wW8koRDI3nx9EnvNXHdq6uy6NsyKfQ2E8za8VRPI4hBDZvGkDg"
+        },
+        {
+          "keyId": "owner-b",
+          "signature": "XHrEmtRm7LI1c_GhuP9SD6_beyQRIWd3K3RbRw2P9g93UGeH0H6mL0iYSLmx1LrrA999pO46-Q65aumT1hu-Cw"
+        }
+      ]
+    },
+    {
+      "kind": "provider-install-authorization",
+      "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
+      "estateWords": "harbor amber cedar delta",
+      "expiry": "2026-09-21T02:00:00Z",
+      "digest": "04d95f4226531379dbbebb060dad330d7c59355e465da18051e3939d861c996f",
+      "statement": "Melusina owner document\nkind=provider-install-authorization\nestate=harbor amber cedar delta\nexpires=2026-09-21T02:00:00Z\ndigest=04d95f4226531379dbbebb060dad330d7c59355e465da18051e3939d861c996f",
+      "preimageHex": "4d656c7573696e61206f776e657220646f63756d656e740a6b696e643d70726f76696465722d696e7374616c6c2d617574686f72697a6174696f6e0a6573746174653d686172626f7220616d6265722063656461722064656c74610a657870697265733d323032362d30392d32315430323a30303a30305a0a6469676573743d30346439356634323236353331333739646262656262303630646164333330643763353933353565343635646131383035316533393339643836316339393666",
+      "statementSha256": "8db059e1a8ade50d90d11035fbf73ceb3bdff6fcf7adad968ec22ec5cac82871",
+      "signatures": [
+        {
+          "keyId": "owner-a",
+          "signature": "tIO3HRqCWQ4b9Er5Ososasyz6dVeU4UaLjhXfnbbjOJU7FXfnDGSBoB2IY82CRA_c0UVo5EXpHwgEGPLRhP8AQ"
+        },
+        {
+          "keyId": "owner-b",
+          "signature": "Alh9UY1-Fqn8bzVdn47-JOocv6ZPdyi8SyG_u_KKB0aoO5gu_GgaIDJnbqPcJc9uG-k3LBM5341iRjj5-ykNDg"
+        }
+      ]
+    },
+    {
+      "kind": "estate-charter",
+      "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
+      "estateWords": "harbor amber cedar delta",
+      "expiry": "2026-09-21T02:00:00Z",
+      "digest": "f11690bfbe64490b486b01e929820212e84cd6c6c381b3fa622b5b12f7cc0d4e",
+      "statement": "Melusina owner document\nkind=estate-charter\nestate=harbor amber cedar delta\nexpires=2026-09-21T02:00:00Z\ndigest=f11690bfbe64490b486b01e929820212e84cd6c6c381b3fa622b5b12f7cc0d4e",
+      "preimageHex": "4d656c7573696e61206f776e657220646f63756d656e740a6b696e643d6573746174652d636861727465720a6573746174653d686172626f7220616d6265722063656461722064656c74610a657870697265733d323032362d30392d32315430323a30303a30305a0a6469676573743d66313136393062666265363434393062343836623031653932393832303231326538346364366336633338316233666136323262356231326637636330643465",
+      "statementSha256": "c10d72fd8e515e375e0c5ec199fe4c2b34bab6b6d95a88dfd6063d676fe6d7af",
+      "signatures": [
+        {
+          "keyId": "owner-a",
+          "signature": "IZ9_3jq3m-QiwW_jfYuOicU4S4gF2mKnY5AwiCPO8XkzSmTg8nkIkm_0Y813rhSWePhvfCqKOo1HAV96Tnl9BQ"
+        },
+        {
+          "keyId": "owner-b",
+          "signature": "XNXvAl0mCWArt01Av8n6QgCEOW7cdx18fCbngXW4tZ8M2EN461axz3WG5Gej2-WTiHMWOBgdCiSsAVy80p0nBw"
+        }
+      ]
+    }
+  ],
+  "refusals": [
+    "owner-document-kind-unknown",
+    "owner-statement-mismatch",
+    "charter-digest-mismatch",
+    "partial-signature-replay",
+    "inbox-authority-token-in-url"
+  ]
+}

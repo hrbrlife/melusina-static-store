@@ -1,0 +1,171 @@
+{
+  "schema": "melusina.estate.known-lineage-v1",
+  "evidenceClass": "reviewed-source-data-rejected-producer-head",
+  "sourceHead": "refs/heads/archive/msb-20260928/D07/deployer",
+  "sourceFloorSha256": "2d4e9daaf4e5b8ac5c6df3ea636a553a6cfffea69054397b2a93319672296213",
+  "sourceFloorEncoding": "sort by name; name NUL kind NUL value LF; exact scan Kind string values",
+  "rule": "forbid lineage union signed predecessor union foreign estate domains minus the building estate own values",
+  "ownEstateValueException": true,
+  "sharedProtocolExceptions": [
+    "lineage/retiring/network.genesisHash",
+    "lineage/retiring/externalPrograms.squads-v4.programId",
+    "lineage/catalog-ledger/release_squads_authority.program_id"
+  ],
+  "rows": [
+    {
+      "name": "lineage/catalog-ledger/catalog_index_sha256",
+      "kind": "sha256",
+      "value": "1281a51be9d34113d867935bb0c9d87188064df975a541ff1aeaa400f6edd602"
+    },
+    {
+      "name": "lineage/catalog-ledger/catalog_origin",
+      "kind": "hostname",
+      "value": "bazaar.melusina-os.org"
+    },
+    {
+      "name": "lineage/catalog-ledger/release_squads_authority.multisig",
+      "kind": "publicKey",
+      "value": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+    },
+    {
+      "name": "lineage/catalog-ledger/release_squads_authority.program_id",
+      "kind": "publicKey",
+      "value": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+    },
+    {
+      "name": "lineage/catalog-ledger/release_squads_authority.vault",
+      "kind": "publicKey",
+      "value": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3"
+    },
+    {
+      "name": "lineage/retiring/anchors.masterMint",
+      "kind": "publicKey",
+      "value": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe"
+    },
+    {
+      "name": "lineage/retiring/anchors.resellerMint",
+      "kind": "publicKey",
+      "value": "9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J"
+    },
+    {
+      "name": "lineage/retiring/externalPrograms.squads-v4.programId",
+      "kind": "publicKey",
+      "value": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+    },
+    {
+      "name": "lineage/retiring/network.genesisHash",
+      "kind": "publicKey",
+      "value": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
+    },
+    {
+      "name": "lineage/retiring/programs.license-registry.programId",
+      "kind": "publicKey",
+      "value": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb"
+    },
+    {
+      "name": "lineage/retiring/programs.license-registry.upgradeAuthority",
+      "kind": "publicKey",
+      "value": "ANaEQo267D4QN9jjmxQcUHHScPgdxi2d1PTKh6kuX2tp"
+    },
+    {
+      "name": "lineage/retiring/programs.witness-verifier.programId",
+      "kind": "publicKey",
+      "value": "ALLaDf2kgENEPFY63fhzC2cVBVfAZLzSDRn9yKjwQgnM"
+    },
+    {
+      "name": "lineage/retiring/roles.core.multisig",
+      "kind": "publicKey",
+      "value": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+    },
+    {
+      "name": "lineage/retiring/roles.core.vault",
+      "kind": "publicKey",
+      "value": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3"
+    },
+    {
+      "name": "lineage/retiring/roles.root-install-admin.vault",
+      "kind": "publicKey",
+      "value": "Arkupda1Giah5RdtyZX4GzNMnpoJTxcGVkNwwS7rfR32"
+    },
+    {
+      "name": "lineage/retiring/roles.store-release.multisig",
+      "kind": "publicKey",
+      "value": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+    },
+    {
+      "name": "lineage/retiring/roles.store-release.vault",
+      "kind": "publicKey",
+      "value": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3"
+    },
+    {
+      "name": "lineage/retiring/root-domain",
+      "kind": "hostname",
+      "value": "melusina-os.org"
+    },
+    {
+      "name": "lineage/retiring/root-domain-sha256",
+      "kind": "sha256",
+      "value": "0595e1c47c3033976959c872a52b4ad9a1470faf1e7c31426e0d669f9fa4d4d7"
+    },
+    {
+      "name": "lineage/retiring/store.operatorBoxKey",
+      "kind": "publicKey",
+      "value": "D62iWtghh4s6majv1xm5bbeTnLmzrkycF1tA9bgcnKJ5"
+    },
+    {
+      "name": "lineage/retiring/store.operatorIdPDA",
+      "kind": "publicKey",
+      "value": "7eESnZ9hvVAVTDCwSq73FGygqhp9bQZ5jF672NZsSKr6"
+    },
+    {
+      "name": "lineage/retiring/store.operatorKey",
+      "kind": "publicKey",
+      "value": "4J2hbufiTKmvgfxjGVNqhoQXiKVDsYwaor6hcaDKjzZV"
+    },
+    {
+      "name": "lineage/retiring/store.priorLicenseNft",
+      "kind": "publicKey",
+      "value": "35csavs4vjGKt24cbQRzsAjjQxBL2QP9mQf6iShHFCmN"
+    },
+    {
+      "name": "lineage/retiring/store.rootDomain",
+      "kind": "hostname",
+      "value": "bazaar.melusina-os.org"
+    },
+    {
+      "name": "lineage/retiring/store.rootDomainSha256",
+      "kind": "sha256",
+      "value": "1bdcbe62b188e6ffe095d43b5a6a2c7bed70e738d8a5cf3e6d389563fab46592"
+    },
+    {
+      "name": "lineage/retiring/store.sidecarId",
+      "kind": "text",
+      "value": "melusina-os-root-store-v2"
+    },
+    {
+      "name": "lineage/retiring/store.storeId",
+      "kind": "text",
+      "value": "melusina-os-root-store"
+    },
+    {
+      "name": "lineage/retiring/tenant-host-0",
+      "kind": "hostname",
+      "value": "paype.cc"
+    },
+    {
+      "name": "lineage/retiring/tenant-host-1",
+      "kind": "hostname",
+      "value": "us.paype.cc"
+    },
+    {
+      "name": "lineage/retiring/tenant-host-dev",
+      "kind": "hostname",
+      "value": "dev.paype.cc"
+    },
+    {
+      "name": "lineage/domain:app.hrbr.life",
+      "kind": "hostname",
+      "value": "app.hrbr.life"
+    }
+  ]
+}

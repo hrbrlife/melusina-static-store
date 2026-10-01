@@ -1,0 +1,168 @@
+{
+  "schema": "melusina.bootstrap-release-set.v2",
+  "stage": "deployable",
+  "sequence": 185,
+  "createdAt": "2026-09-20T11:30:00Z",
+  "foundation": {
+    "sequence": 184,
+    "sha256": "ee3da869273c179b6e578bc85a5332281365acb23a4ad1841a18971fdbdb997d"
+  },
+  "publisherKeyset": {
+    "threshold": 3,
+    "keys": [
+      {
+        "keyId": "publisher-a",
+        "ed25519PublicKey": "8ade52cc4c6bfaf7f874be3ecab6111512d9e56ec6f9a91c07c54c5860342916"
+      },
+      {
+        "keyId": "publisher-b",
+        "ed25519PublicKey": "87a87c5e82ad04cc59d9a85f2e670ac30913f2e9631d155d41bad8207ea06a70"
+      },
+      {
+        "keyId": "publisher-c",
+        "ed25519PublicKey": "1e6aaec5ad3c22465ca14f4ef273e2503aa989d9520aeee0cf52df55e627aa03"
+      },
+      {
+        "keyId": "publisher-d",
+        "ed25519PublicKey": "dd1b9b0b0055ee9bbc4f33fea68081a03753295cccdb4a63b82f9ccabf109a5c"
+      }
+    ]
+  },
+  "recalls": [],
+  "phaseEndpoints": {
+    "p0-verify": [],
+    "p1-host-prep": [
+      "https://deb.debian.org"
+    ],
+    "p2-enroll": [
+      "http://127.0.0.1:9291"
+    ],
+    "p3-foundation": [
+      "https://images.example.org",
+      "https://mirror.publisher.example"
+    ],
+    "p4-after-closure": []
+  },
+  "artifacts": [
+    {
+      "role": "base-image",
+      "name": "base-image.qcow2",
+      "sha256": "cf6f44c5a632c0c54b4595d6488b5f305e2f1f595bcae5583da272aae53a5a98",
+      "sizeBytes": 2147483648,
+      "sourceRepo": "",
+      "sourceCommit": "",
+      "toolchain": "",
+      "origins": [
+        "https://images.example.org/2026-09-01/debian-13-genericcloud-amd64.qcow2",
+        "https://mirror.publisher.example/base/2026-09-01/debian-13-genericcloud-amd64.qcow2"
+      ],
+      "phase": "p3-foundation"
+    },
+    {
+      "role": "chain-constants-template",
+      "name": "chain-constants-template.toml",
+      "sha256": "ff5daae1d10a10e21fb356e0dcd3e753a2adc74fede24293457ced938c1abf40",
+      "sizeBytes": 4096,
+      "sourceRepo": "melusina/contracts",
+      "sourceCommit": "efb8cb7ddbf81b904d76225e4076208ae3141ef3",
+      "toolchain": "rust1.79.0",
+      "origins": [],
+      "phase": "p0-verify"
+    },
+    {
+      "role": "chain-program-source",
+      "name": "chain-program-source.tar.gz",
+      "sha256": "df8ed4310f0a04a6707d7f0f3f41a35c5e72435b277f29a05289db692c7f24ad",
+      "sizeBytes": 3145728,
+      "sourceRepo": "melusina/contracts",
+      "sourceCommit": "efb8cb7ddbf81b904d76225e4076208ae3141ef3",
+      "toolchain": "rust1.79.0",
+      "origins": [],
+      "phase": "p0-verify"
+    },
+    {
+      "role": "os-package-closure",
+      "name": "cryptsetup-2.7.5-amd64.deb",
+      "sha256": "26316fd6fc15e5d5fdcf11af93525314eb8b30412636414189bd9e656f9566fa",
+      "sizeBytes": 524288,
+      "sourceRepo": "",
+      "sourceCommit": "",
+      "toolchain": "",
+      "origins": [
+        "https://deb.debian.org/debian/pool/main/c/cryptsetup-2.7.5-amd64.deb"
+      ],
+      "phase": "p1-host-prep"
+    },
+    {
+      "role": "installer",
+      "name": "melusina-installer",
+      "sha256": "744eabb77e1dbf8bc1ca406292a67b69aed6c84f5959eeeef99143f2529d5987",
+      "sizeBytes": 48,
+      "sourceRepo": "melusina/deployer",
+      "sourceCommit": "b55ea80f59d503af1bfbd8cb78c517505f8accf9",
+      "toolchain": "go1.25.0",
+      "origins": [],
+      "phase": "p0-verify"
+    },
+    {
+      "role": "provider-suite",
+      "name": "provider-suite.tar.gz",
+      "sha256": "e94925982fafeb5b9224ed9d37328760fdb3476c232c50a232f1ff30b67b8e75",
+      "sizeBytes": 16777216,
+      "sourceRepo": "melusina/deployer",
+      "sourceCommit": "b55ea80f59d503af1bfbd8cb78c517505f8accf9",
+      "toolchain": "go1.25.0",
+      "origins": [],
+      "phase": "p0-verify"
+    },
+    {
+      "role": "publication-evidence",
+      "name": "publication-evidence.json",
+      "sha256": "4eb31f25af9add99e7928997a55881136a87d9f0ccc72b63ce223a1b1c66cea2",
+      "sizeBytes": 1515,
+      "sourceRepo": "melusina/deployer",
+      "sourceCommit": "b55ea80f59d503af1bfbd8cb78c517505f8accf9",
+      "toolchain": "go1.25.0",
+      "origins": [],
+      "phase": "p0-verify"
+    },
+    {
+      "role": "shell-bundle",
+      "name": "shell-bundle.tar.xz",
+      "sha256": "c819d8dab423234395466e966aafa3d0990dd64e3732eb86adc7620a9b69dcc0",
+      "sizeBytes": 22,
+      "sourceRepo": "melusina/shell",
+      "sourceCommit": "40ddcb0337e8c87beefd55528f9f1739993dfb1b",
+      "toolchain": "go1.25.0",
+      "origins": [],
+      "phase": "p0-verify"
+    },
+    {
+      "role": "store-bootstrap",
+      "name": "store-bootstrap.tar.gz",
+      "sha256": "00390743f2143d970966957433cfeab8c2ba5a59e890d7d8504cc6932f8c7c91",
+      "sizeBytes": 8388608,
+      "sourceRepo": "hrbrlife/melusina-static-store",
+      "sourceCommit": "f2fd4753677390ab1b7348517631a5d9dbe9cf6b",
+      "toolchain": "go1.25.0",
+      "origins": [],
+      "phase": "p0-verify"
+    }
+  ],
+  "completeness": "complete",
+  "declaredAbsent": [],
+  "signatures": [
+    {
+      "keyId": "publisher-a",
+      "signature": "86a10a740900fc19b7f8c713f3ecff458ecf11e3efbd2703e52c0c839b175613aae381fcb630e2e8535857e66251586190181ce16f88ac22025f36fce386cd0b"
+    },
+    {
+      "keyId": "publisher-b",
+      "signature": "c504b1f5af4273c4df2ba3f2134680989aabf39d8ccbd2e3827062da1a51c39d7fc881ee080a85cc61cdfaf6c0db13ab830a15e5e07cb57b8d1a82a521a87103"
+    },
+    {
+      "keyId": "publisher-c",
+      "signature": "2ed7a2ecc041e75c1d84a7abf2ee5826932a3bbc5d16836dcf1c63379d9ee4302f9f14fde86f867a95863c55fbd3e20099f1f4cbfb8f37ff2296509c8cd3250b"
+    }
+  ]
+}

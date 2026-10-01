@@ -1,0 +1,6 @@
+{
+  "schema": "melusina.publisher-device-reference.v1",
+  "signerKind": "wallet",
+  "deviceId": "c1-local-test-wallet",
+  "publicKey": "8ade52cc4c6bfaf7f874be3ecab6111512d9e56ec6f9a91c07c54c5860342916"
+}

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,8 +14,30 @@ import (
 	"github.com/hrbrlife/melusina-attest/derive"
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
+
+// The two-renewal fixture below proves the Store can hot-load public pairs.
+// This control also pins the missing command boundary that must obtain those
+// pairs through D39's estate ACME responder. --help is deliberately offline;
+// an unregistered mode would fall into normal Store startup and require config.
+func TestC3D41AcmeRenewModeRegistered(t *testing.T) {
+	if os.Getenv("C3_D41_ACME_MODE_CHILD") == "1" {
+		os.Args = []string{"melusina-store-sidecar", "acme-renew", "--help"}
+		main()
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestC3D41AcmeRenewModeRegistered$")
+	cmd.Dir = t.TempDir()
+	cmd.Env = append(os.Environ(), "C3_D41_ACME_MODE_CHILD=1")
+	out, err := cmd.CombinedOutput()
+	if ctx.Err() != nil || err != nil || !strings.Contains(string(out), "acme-renew") || !strings.Contains(strings.ToLower(string(out)), "responder") {
+		t.Fatalf("C3-D41-acme-renew-mode-missing: err=%v timeout=%v output=%s", err, ctx.Err(), out)
+	}
+}
 
 func c3D41TLSVector(t *testing.T) struct {
 	Zone          string `json:"zone"`
@@ -85,16 +108,74 @@ func c3D41RootStoreLicenseMint(t *testing.T) string {
 	return vector.StoreHost.PassOne.IdentityInputs.LicenseNFTMint
 }
 
+func c3D41SignedProfile(t *testing.T) estateprofile.EstateProfileV1 {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vector struct {
+		StoreHost struct {
+			PassTwo struct {
+				SignedFinalProfile       json.RawMessage `json:"signedFinalProfile"`
+				SignedFinalProfileSHA256 string          `json:"signedFinalProfileSha256"`
+			} `json:"passTwo"`
+		} `json:"storeHost"`
+	}
+	if err := json.Unmarshal(raw, &vector); err != nil {
+		t.Fatal(err)
+	}
+	profile, err := estateprofile.DecodeProfile(vector.StoreHost.PassTwo.SignedFinalProfile)
+	if err != nil {
+		t.Fatalf("C3-D41-signed-profile-unreadable: %v", err)
+	}
+	digest, err := estateprofile.VerifyProfile(profile)
+	if err != nil || digest != vector.StoreHost.PassTwo.SignedFinalProfileSHA256 {
+		t.Fatalf("C3-D41-signed-profile-unverified: digest=%q err=%v", digest, err)
+	}
+	if profile.Store.RootDomain != c3D41TLSVector(t).RootStoreHost {
+		t.Fatalf("C3-D41-signed-profile-public-route-drift: %q", profile.Store.RootDomain)
+	}
+	return profile
+}
+
+func c3D41ChainID(t *testing.T, profile estateprofile.EstateProfileV1) string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vector struct {
+		StoreHost struct {
+			PassOne struct {
+				IdentityInputs struct {
+					ChainID   string `json:"chainId"`
+					ProgramID string `json:"programId"`
+					Domain    string `json:"domain"`
+				} `json:"identityInputs"`
+			} `json:"passOne"`
+		} `json:"storeHost"`
+	}
+	if err := json.Unmarshal(raw, &vector); err != nil {
+		t.Fatal(err)
+	}
+	inputs := vector.StoreHost.PassOne.IdentityInputs
+	if inputs.ChainID == "" || inputs.Domain != profile.Store.RootDomain || inputs.ProgramID != profileProgramID(t, profile, estateprofile.ProgramRoleLicenseRegistry) {
+		t.Fatalf("C3-D41-renderer-identity-inputs-drift: %+v", inputs)
+	}
+	return inputs.ChainID
+}
+
 func TestC3D41RendererSeparatesIdentityAndPublicLeaf(t *testing.T) {
 	vector := c3D41TLSVector(t)
 	if vector.RootStoreHost != "store."+vector.Zone || vector.StaticRecord.Name != vector.RootStoreHost || vector.StaticRecord.Type != "A" || len(vector.PublicLeaf.RenewalFingerprintsSHA256) != 2 {
 		t.Fatal("C3-D41-public-route-vector-invalid")
 	}
-	profile := storeEstateProfileFixture(t)
+	profile := c3D41SignedProfile(t)
 	config, err := buildStoreConfigRenderCandidate(profile, storeConfigRenderInput{
 		LicenseNFTMint: c3D41RootStoreLicenseMint(t),
 		RPCURL:         "https://rpc.rehearsal.invalid/v1", RPCAttempts: 1,
-		ChainID: "solana:rehearsal", OperatorDomain: "operator.rehearsal.invalid",
+		ChainID: c3D41ChainID(t, profile), OperatorDomain: "operator.rehearsal.invalid",
 	})
 	if err != nil {
 		t.Fatalf("C3-D41-renderer-refused-valid-input: %v", err)

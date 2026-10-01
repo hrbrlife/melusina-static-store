@@ -2,10 +2,14 @@
 """C3: one signed source cut owns Store product metadata and artwork."""
 
 import importlib.util
+import hashlib
 import json
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 HERE = Path(__file__).resolve().parent
@@ -16,6 +20,78 @@ SPEC.loader.exec_module(provider)
 
 
 class C3D33MetadataContract(unittest.TestCase):
+    def test_producer_build_emits_portable_digest_receipt(self):
+        """Exercise provider.build's real receipt write with fake local build tools."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "selected-source"
+            source.mkdir()
+            source_metadata = source / "metadata.json"
+            app_id, commit, version = "c3-test-app", "a" * 40, "0.0.1"
+            source_metadata.write_text(json.dumps({
+                "appId": app_id, "name": "C3 Test App", "version": version,
+            }) + "\n", encoding="utf-8")
+            spk_bytes = b"C3 provider-produced SPK\n"
+            spk_sha = hashlib.sha256(spk_bytes).hexdigest()
+            runtime_bytes = b'{"schema":"melusina-app-runtime-contract-v1","app":{"appId":"c3-test-app","version":"0.0.1"}}\n'
+            provider_state = root / "state" / "apps" / app_id / "provider"
+            receipt_path = root / "candidate-receipt.json"
+
+            def fake_run(args, **_kwargs):
+                if args[0].endswith("pack-app-candidate.sh"):
+                    (source / "app.spk").write_bytes(spk_bytes)
+                    return ""
+                if args[0] == str(root / "apphash"):
+                    return "b" * 64
+                raise AssertionError(f"C3-D33-unexpected-provider-command: {args}")
+
+            def fake_prepare(_source, _app_id, destination):
+                destination.mkdir()
+                shutil.copyfile(source_metadata, destination / "metadata.json")
+                return True
+
+            def fake_stage(_source, built_spk, catalog, _app_id):
+                shutil.copyfile(built_spk, catalog / "app.spk")
+                staged = json.loads(source_metadata.read_text(encoding="utf-8"))
+                staged.update({"packageId": spk_sha[:32], "sha256": spk_sha})
+                provider.write_staged_metadata(source_metadata, catalog / "metadata.json", staged)
+                return {"version": version}
+
+            def fake_runtime(_source, destination, *_args):
+                destination.write_bytes(runtime_bytes)
+
+            with (patch.object(provider, "require_shared_squads_authority", return_value={}),
+                  patch.object(provider, "source_path", return_value=source),
+                  patch.object(provider, "app_spec", return_value={"source_commit": commit, "source_branch": "dev-publish"}),
+                  patch.object(provider, "require_source_commit_advertised_by_origin"),
+                  patch.object(provider, "require_current_source_selection", return_value={"sourceCommit": commit, "receiptSha256": "c" * 64}),
+                  patch.object(provider, "source_metadata_path", return_value=source_metadata),
+                  patch.object(provider, "require_catalog_metadata_identity"),
+                  patch.object(provider, "catalog_slot", return_value={"developer": "fixture", "repo": "fixture", "slug": "c3"}),
+                  patch.object(provider, "state_root", return_value=provider_state),
+                  patch.object(provider, "pack_profile_env", return_value={}),
+                  patch.object(provider, "run", side_effect=fake_run),
+                  patch.object(provider, "prepare_candidate_catalog", side_effect=fake_prepare),
+                  patch.object(provider, "stage_private_candidate_catalog", side_effect=fake_stage),
+                  patch.object(provider, "ensure_bin", return_value=root / "apphash"),
+                  patch.object(provider, "materialize_runtime_contract", side_effect=fake_runtime),
+                  patch.dict(provider.os.environ, {"MEL_RELEASE_MASTER_NFT_MINT": "C3-development-test-mint"})):
+                provider.build(app_id, version, receipt_path)
+
+            produced = json.loads(receipt_path.read_text(encoding="utf-8"))
+            portable = produced.get("portableEvidence")
+            self.assertIsInstance(portable, dict, "C3-D33-portable-receipt-emitter-missing")
+            expected = {
+                "schema": "melusina-release-input-receipt.v1",
+                "appId": app_id,
+                "sourceCommit": commit,
+                "sourceSelectionReceiptSha256": "c" * 64,
+                "spkSha256": spk_sha,
+                "metadataSha256": hashlib.sha256((provider_state / "candidate" / "catalog" / "metadata.json").read_bytes()).hexdigest(),
+                "runtimeContractSha256": hashlib.sha256(runtime_bytes).hexdigest(),
+            }
+            self.assertEqual(portable, expected, "C3-D33-portable-receipt-digests-not-source-bound")
+
     def test_SOURCE_METADATA_VALID_RELEASE(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "source.json"
@@ -64,6 +140,92 @@ class C3D33MetadataContract(unittest.TestCase):
                         )
                     else:
                         self.fail(f"C3-D33-metadata-not-bound-to-release:{field}: uncut metadata accepted")
+
+    def test_portable_receipt_detects_metadata_icon_and_screenshot_bytes(self):
+        """A32 can compare later served bytes without a live Store or source checkout."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            metadata = root / "metadata.json"
+            icon = root / "icons" / "c3.png"
+            screenshot = root / "screens" / "c3.png"
+            spk = root / "app.spk"
+            runtime_contract = root / "RUNTIME-CONTRACT.json"
+            icon.parent.mkdir()
+            screenshot.parent.mkdir()
+            metadata_bytes = b'{"appId":"c3-test-app","name":"C3 Test App","icon":"icons/c3.png","screenshots":[{"url":"screens/c3.png"}]}\n'
+            icon_bytes = b"C3 fixture icon bytes\n"
+            screenshot_bytes = b"C3 fixture screenshot bytes\n"
+            spk_bytes = b"C3 fixture SPK bytes\n"
+            runtime_contract_bytes = b'{"schema":"urn:melusina:runtime-contract:v1","appId":"c3-test-app"}\n'
+            metadata.write_bytes(metadata_bytes)
+            icon.write_bytes(icon_bytes)
+            screenshot.write_bytes(screenshot_bytes)
+            spk.write_bytes(spk_bytes)
+            runtime_contract.write_bytes(runtime_contract_bytes)
+            digest = lambda data: hashlib.sha256(data).hexdigest()
+            receipt = root / "release-metadata-receipt.json"
+            receipt.write_text(json.dumps({
+                "schema": "melusina.release-metadata-artwork-receipt.v1",
+                "appId": "c3-test-app",
+                "sourceCommit": "a" * 40,
+                "sourceSha256": digest(metadata_bytes + icon_bytes + screenshot_bytes),
+                "sourceSelectionReceiptSha256": "c" * 64,
+                "spkSha256": digest(spk_bytes),
+                "metadataSha256": digest(metadata_bytes),
+                "runtimeContractSha256": digest(runtime_contract_bytes),
+                "assets": [
+                    {"kind": "icon", "path": "icons/c3.png", "sha256": digest(icon_bytes)},
+                    {"kind": "screenshot", "path": "screens/c3.png", "sha256": digest(screenshot_bytes)},
+                ],
+            }, sort_keys=True) + "\n", encoding="utf-8")
+            pinned = json.loads(receipt.read_text(encoding="utf-8"))
+            for field, payload in (
+                ("spkSha256", spk_bytes),
+                ("metadataSha256", metadata_bytes),
+                ("runtimeContractSha256", runtime_contract_bytes),
+            ):
+                self.assertEqual(pinned[field], digest(payload), f"C3-D33-portable-receipt-{field}-fixture-invalid")
+            comparator = HERE / "compare-release-metadata.py"
+
+            def compare():
+                return subprocess.run(
+                    ["python3", str(comparator), "--receipt", str(receipt),
+                     "--metadata", str(metadata), "--assets", str(root),
+                     "--spk", str(spk), "--runtime-contract", str(runtime_contract)],
+                    text=True, capture_output=True, check=False,
+                )
+
+            with self.subTest(control="positive"):
+                positive = compare()
+                self.assertEqual(
+                    positive.returncode, 0,
+                    f"C3-D33-portable-metadata-artwork-positive: {positive.stdout}{positive.stderr}",
+                )
+            for label, path, changed, expected in (
+                ("metadata", metadata, metadata_bytes.replace(b"C3 Test App", b"Uncut App"),
+                 "metadata-sha256-mismatch:c3-test-app"),
+                ("icon", icon, b"C3 altered icon bytes\n",
+                 "artwork-sha256-mismatch:c3-test-app:icon:icons/c3.png"),
+                ("screenshot", screenshot, b"C3 altered screenshot bytes\n",
+                 "artwork-sha256-mismatch:c3-test-app:screenshot:screens/c3.png"),
+                ("spk", spk, b"C3 altered SPK bytes\n",
+                 "artifact-sha256-mismatch:c3-test-app:spk"),
+                ("runtime-contract", runtime_contract, b'{"schema":"urn:melusina:runtime-contract:v1","appId":"other"}\n',
+                 "runtime-contract-sha256-mismatch:c3-test-app"),
+            ):
+                with self.subTest(control=label):
+                    original = path.read_bytes()
+                    path.write_bytes(changed)
+                    result = compare()
+                    path.write_bytes(original)
+                    self.assertNotEqual(
+                        result.returncode, 0,
+                        f"C3-D33-{label}-byte-mismatch-accepted",
+                    )
+                    self.assertIn(
+                        expected, result.stdout + result.stderr,
+                        f"C3-D33-{label}-byte-mismatch-not-named: {result.stdout}{result.stderr}",
+                    )
 
 
 if __name__ == "__main__":

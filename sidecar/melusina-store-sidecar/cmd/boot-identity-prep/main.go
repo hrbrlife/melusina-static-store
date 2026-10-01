@@ -5,6 +5,7 @@ package main
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -43,6 +44,11 @@ const (
 	// programme the key is salted by must be the verified profile's own, so a
 	// verified profile never lends its chain to another estate's programme.
 	RefusalProgramDiffersFromProfile = "boot-identity-program-differs-from-profile"
+	// RefusalIdentityLeafSelfSignatureInvalid: the first -tls-cert certificate
+	// is the boot identity leaf; it must be self-signed, so a mutated or
+	// externally signed leaf is refused rather than fingerprinted into the
+	// ceremony report.
+	RefusalIdentityLeafSelfSignatureInvalid = "identity-leaf-self-signature-invalid"
 )
 
 // chainReferencePattern is a CAIP-2 chain reference ([-_a-zA-Z0-9]{1,32}).
@@ -481,7 +487,15 @@ func certHashes(tlsCertPath, caChainPath string) ([32]byte, [32]byte, error) {
 	if err != nil {
 		return [32]byte{}, [32]byte{}, fmt.Errorf("tls cert: %w", err)
 	}
-	leafFingerprint := sha256.Sum256(leafAndMaybeChain[0])
+	leafDER := leafAndMaybeChain[0]
+	leaf, err := x509.ParseCertificate(leafDER)
+	if err != nil {
+		return [32]byte{}, [32]byte{}, fmt.Errorf("%s: parse tls identity leaf: %v", RefusalIdentityLeafSelfSignatureInvalid, err)
+	}
+	if err := leaf.CheckSignature(leaf.SignatureAlgorithm, leaf.RawTBSCertificate, leaf.Signature); err != nil {
+		return [32]byte{}, [32]byte{}, fmt.Errorf("%s: %v", RefusalIdentityLeafSelfSignatureInvalid, err)
+	}
+	leafFingerprint := sha256.Sum256(leafDER)
 	caCerts := leafAndMaybeChain[1:]
 	if strings.TrimSpace(caChainPath) != "" {
 		caCerts, err = readPEMCerts(caChainPath)

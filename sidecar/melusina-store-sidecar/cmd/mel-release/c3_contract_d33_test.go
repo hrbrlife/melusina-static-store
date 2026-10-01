@@ -295,6 +295,34 @@ func TestC3D33TypedDocumentsTwoOperatorDirectories(t *testing.T) {
 		if !strings.Contains(refusal, "RELEASE_PROVIDER_UNPINNED") {
 			t.Fatalf("C3-D33-RELEASE_PROVIDER_UNPINNED: operator %d: %s", i+1, refusal)
 		}
+		if i == 0 {
+			// A fixed RELEASE_PROVIDER_UNPINNED reply is insufficient: the
+			// same document entry point must check the device before the role.
+			devicePath := filepath.Join(dir, "publisher-device.json")
+			deviceRaw, err := os.ReadFile(devicePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var device map[string]any
+			if err := json.Unmarshal(deviceRaw, &device); err != nil {
+				t.Fatal(err)
+			}
+			device["keyId"] = "unknown-device"
+			changed, err := json.Marshal(device)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(devicePath, changed, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			invalid := c3D33RunDocuments(t, dir, nil)
+			if !strings.Contains(invalid.Refusal, "PUBLISHER_DEVICE_UNTRUSTED") || strings.Contains(invalid.Refusal, "RELEASE_PROVIDER_UNPINNED") {
+				t.Fatalf("C3-D33-constant-provider-refusal-hid-untrusted-device: %s", invalid.Refusal)
+			}
+			if err := os.WriteFile(devicePath, deviceRaw, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
 		trace, err := c3D33DeriveInputs(c3D33DocumentPaths(dir))
 		if err != nil {
 			t.Fatalf("C3-D33-derived-release-inputs-unavailable: operator %d: %v", i+1, err)
@@ -397,6 +425,10 @@ func TestC3D33TamperedDocumentsRefuseBeforeAbsentRole(t *testing.T) {
 		t.Run(control.name, func(t *testing.T) {
 			dir := t.TempDir()
 			c3D33DocumentArgs(t, dir, 0)
+			baseline := c3D33RunDocuments(t, dir, nil)
+			if !strings.Contains(baseline.Refusal, "RELEASE_PROVIDER_UNPINNED") {
+				t.Fatalf("C3-D33-valid-documents-refused-before-provider-selection: %s", baseline.Refusal)
+			}
 			path := filepath.Join(dir, control.file)
 			raw, err := os.ReadFile(path)
 			if err != nil {

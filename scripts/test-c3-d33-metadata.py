@@ -91,6 +91,15 @@ class C3D33MetadataContract(unittest.TestCase):
                 "icon": "icons/c3.png", "screenshot": "screens/c3.png",
             }
             source.write_text(json.dumps(authored) + "\n", encoding="utf-8")
+            try:
+                provider.write_staged_metadata(source, candidate, authored)
+            except provider.ProviderError as error:
+                self.fail(f"C3-D33-valid-source-metadata-refused: {error}")
+            self.assertTrue(candidate.is_file(), "C3-D33-valid-source-metadata-not-written")
+            self.assertEqual(
+                json.loads(candidate.read_text(encoding="utf-8")), authored,
+                "C3-D33-valid-source-metadata-not-preserved",
+            )
             for field in ("name", "description", "role", "icon", "screenshot"):
                 with self.subTest(field=field):
                     changed = dict(authored)

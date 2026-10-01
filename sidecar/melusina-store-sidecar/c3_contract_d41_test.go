@@ -1,0 +1,301 @@
+package main
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/hrbrlife/melusina-attest/derive"
+	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
+)
+
+func c3D41TLSVector(t *testing.T) struct {
+	Zone          string `json:"zone"`
+	RootStoreHost string `json:"rootStoreHost"`
+	IdentityLeaf  struct {
+		CertPath          string `json:"certPath"`
+		FingerprintSHA256 string `json:"fingerprintSha256"`
+	} `json:"identityLeaf"`
+	PublicLeaf struct {
+		CertPath                  string   `json:"certPath"`
+		RenewalFingerprintsSHA256 []string `json:"renewalFingerprintsSha256"`
+	} `json:"publicLeaf"`
+	StaticRecord struct {
+		Name string `json:"name"`
+		Type string `json:"type"`
+	} `json:"staticRecord"`
+} {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
+	if err != nil {
+		t.Fatalf("C3-D41-vector-unreadable: %v", err)
+	}
+	var vector struct {
+		TLS struct {
+			Zone          string `json:"zone"`
+			RootStoreHost string `json:"rootStoreHost"`
+			IdentityLeaf  struct {
+				CertPath          string `json:"certPath"`
+				FingerprintSHA256 string `json:"fingerprintSha256"`
+			} `json:"identityLeaf"`
+			PublicLeaf struct {
+				CertPath                  string   `json:"certPath"`
+				RenewalFingerprintsSHA256 []string `json:"renewalFingerprintsSha256"`
+			} `json:"publicLeaf"`
+			StaticRecord struct {
+				Name string `json:"name"`
+				Type string `json:"type"`
+			} `json:"staticRecord"`
+		} `json:"tls"`
+	}
+	if err := json.Unmarshal(raw, &vector); err != nil {
+		t.Fatalf("C3-D41-vector-invalid: %v", err)
+	}
+	return vector.TLS
+}
+
+func c3D41RootStoreLicenseMint(t *testing.T) string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vector struct {
+		StoreHost struct {
+			PassOne struct {
+				IdentityInputs struct {
+					LicenseNFTMint string `json:"licenseNftMint"`
+				} `json:"identityInputs"`
+			} `json:"passOne"`
+		} `json:"storeHost"`
+	}
+	if err := json.Unmarshal(raw, &vector); err != nil {
+		t.Fatal(err)
+	}
+	if vector.StoreHost.PassOne.IdentityInputs.LicenseNFTMint == "" {
+		t.Fatal("C3-D41-root-store-license-mint-missing")
+	}
+	return vector.StoreHost.PassOne.IdentityInputs.LicenseNFTMint
+}
+
+func c3D41SignedProfile(t *testing.T) estateprofile.EstateProfileV1 {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vector struct {
+		StoreHost struct {
+			PassTwo struct {
+				SignedFinalProfile       json.RawMessage `json:"signedFinalProfile"`
+				SignedFinalProfileSHA256 string          `json:"signedFinalProfileSha256"`
+			} `json:"passTwo"`
+		} `json:"storeHost"`
+	}
+	if err := json.Unmarshal(raw, &vector); err != nil {
+		t.Fatal(err)
+	}
+	profile, err := estateprofile.DecodeProfile(vector.StoreHost.PassTwo.SignedFinalProfile)
+	if err != nil {
+		t.Fatalf("C3-D41-signed-profile-unreadable: %v", err)
+	}
+	digest, err := estateprofile.VerifyProfile(profile)
+	if err != nil || digest != vector.StoreHost.PassTwo.SignedFinalProfileSHA256 {
+		t.Fatalf("C3-D41-signed-profile-unverified: digest=%q err=%v", digest, err)
+	}
+	if profile.Store.RootDomain != c3D41TLSVector(t).RootStoreHost {
+		t.Fatalf("C3-D41-signed-profile-public-route-drift: %q", profile.Store.RootDomain)
+	}
+	return profile
+}
+
+func c3D41ChainID(t *testing.T, profile estateprofile.EstateProfileV1) string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vector struct {
+		StoreHost struct {
+			PassOne struct {
+				IdentityInputs struct {
+					ChainID   string `json:"chainId"`
+					ProgramID string `json:"programId"`
+					Domain    string `json:"domain"`
+				} `json:"identityInputs"`
+			} `json:"passOne"`
+		} `json:"storeHost"`
+	}
+	if err := json.Unmarshal(raw, &vector); err != nil {
+		t.Fatal(err)
+	}
+	inputs := vector.StoreHost.PassOne.IdentityInputs
+	if inputs.ChainID == "" || inputs.Domain != profile.Store.RootDomain || inputs.ProgramID != profileProgramID(t, profile, estateprofile.ProgramRoleLicenseRegistry) {
+		t.Fatalf("C3-D41-renderer-identity-inputs-drift: %+v", inputs)
+	}
+	return inputs.ChainID
+}
+
+func TestC3D41RendererSeparatesIdentityAndPublicLeaf(t *testing.T) {
+	c3D41PinSharedHelpers(t)
+	vector := c3D41TLSVector(t)
+	if vector.RootStoreHost != "store."+vector.Zone || vector.StaticRecord.Name != vector.RootStoreHost || vector.StaticRecord.Type != "A" || len(vector.PublicLeaf.RenewalFingerprintsSHA256) != 2 {
+		t.Fatal("C3-D41-public-route-vector-invalid")
+	}
+	profile := c3D41SignedProfile(t)
+	input := storeConfigRenderInput{
+		LicenseNFTMint: c3D41RootStoreLicenseMint(t),
+		RPCURL:         "https://rpc.rehearsal.invalid/v1", RPCAttempts: 1,
+		ChainID: c3D41ChainID(t, profile), OperatorDomain: "operator.rehearsal.invalid",
+	}
+	config, err := buildStoreConfigRenderCandidate(profile, input)
+	if err != nil {
+		t.Fatalf("C3-D41-renderer-refused-valid-input: %v", err)
+	}
+	if config.BootIdentity.TLSCertPath == "" || config.BootIdentity.TLSCertPath == config.TLS.CertPath {
+		t.Fatalf("store-config-render-identity-is-served: identity=%q public=%q", config.BootIdentity.TLSCertPath, config.TLS.CertPath)
+	}
+	if config.BootIdentity.TLSCertPath != vector.IdentityLeaf.CertPath || config.TLS.CertPath != vector.PublicLeaf.CertPath {
+		t.Fatalf("C3-D41-rendered-paths-not-vector: identity=%q public=%q", config.BootIdentity.TLSCertPath, config.TLS.CertPath)
+	}
+	// A constant pre-baked config cannot satisfy a second, valid input. The
+	// distinct RPC setting is an operator input, never a certificate path.
+	changed := input
+	changed.RPCURL = "https://rpc.second.invalid/v2"
+	second, err := buildStoreConfigRenderCandidate(profile, changed)
+	if err != nil || second.RPCURL != changed.RPCURL || second.BootIdentity.TLSCertPath != config.BootIdentity.TLSCertPath || second.TLS.CertPath != config.TLS.CertPath {
+		t.Fatalf("C3-D41-renderer-hardcoded-input-or-drifting-leaf-path: second=%+v err=%v", second, err)
+	}
+	wrongRoot := profile
+	wrongRoot.Store.IsRoot = false
+	if _, err := buildStoreConfigRenderCandidate(wrongRoot, input); err == nil || !strings.Contains(err.Error(), "store-config-render-profile-not-root") {
+		t.Fatalf("C3-D41-renderer-accepted-non-root-profile: %v", err)
+	}
+}
+
+func TestC3D41TwoPublicRenewalsAndTwoRestartsKeepIdentity(t *testing.T) {
+	c3D41PinSharedHelpers(t)
+	vector := c3D41TLSVector(t)
+	if vector.IdentityLeaf.CertPath == vector.PublicLeaf.CertPath || vector.IdentityLeaf.FingerprintSHA256 == vector.PublicLeaf.RenewalFingerprintsSHA256[0] || vector.PublicLeaf.RenewalFingerprintsSHA256[0] == vector.PublicLeaf.RenewalFingerprintsSHA256[1] {
+		t.Fatal("C3-D41-identity-public-vector-not-split")
+	}
+	root := newServedTLSTestRoot(t, "C3 development test issuer")
+	dir := t.TempDir()
+	cfg := servedTLSTestConfig(dir)
+	cfg.BootIdentity.TLSCertPath = filepath.Join(dir, "identity.pem")
+	identity := root.validLeaf(t)
+	writeServedTLSTestFile(t, cfg.BootIdentity.TLSCertPath, identity.certPEM())
+	bound := servedTLSBoundIdentity(identity)
+	initial := root.validLeaf(t)
+	writeServedTLSTestPair(t, cfg.TLS.CertPath, cfg.TLS.KeyPath, initial)
+
+	served, err := newServedTLSCertificate(cfg, bound, time.Now, t.Logf)
+	if err != nil {
+		t.Fatalf("C3-D41-initial-boot: %v", err)
+	}
+	if served.pin != nil {
+		t.Fatal("C3-D41-public-leaf-was-identity-pinned")
+	}
+	for renewal := 1; renewal <= 2; renewal++ {
+		public := root.validLeaf(t)
+		writeServedTLSTestPair(t, cfg.TLS.CertPath, cfg.TLS.KeyPath, public)
+		if !served.reload() {
+			t.Fatalf("C3-D41-public-renewal-%d-not-loaded", renewal)
+		}
+		if got := served.current.Load().Leaf; got == nil || sha256.Sum256(got.Raw) != public.fingerprint() {
+			t.Fatalf("C3-D41-public-renewal-%d-not-served", renewal)
+		}
+		// A restart must verify the same bound identity yet serve the renewed
+		// public pair, without requiring a new SidecarIdentityEntry.
+		served, err = newServedTLSCertificate(cfg, bound, time.Now, t.Logf)
+		if err != nil || served.pin != nil {
+			t.Fatalf("C3-D41-restart-%d-changed-identity: served=%v err=%v", renewal, served, err)
+		}
+		identityAfter, err := tlsCertFingerprint(cfg.BootIdentity.TLSCertPath)
+		if err != nil || identityAfter != identity.fingerprint() {
+			t.Fatalf("C3-D41-restart-%d-identity-fingerprint-drift: %x err=%v", renewal, identityAfter, err)
+		}
+	}
+}
+
+func TestC3D41MutatedIdentityLeafRefusedAtBoot(t *testing.T) {
+	c3D41PinSharedHelpers(t)
+	dir := t.TempDir()
+	writeTestShards(t, dir)
+	identityPath, identityFP := writeTestTLSCert(t, dir)
+	cfg := Config{
+		LicenseNFTMint: randPubkeyB58(t), ReleaseMasterNftMint: randPubkeyB58(t),
+		Domain:       "store.example.org",
+		TLS:          TLSConfig{CertPath: filepath.Join(dir, "public.pem"), KeyPath: filepath.Join(dir, "public.key")},
+		BootIdentity: BootIdentityConfig{ShardsDir: dir, SidecarID: "store", ChainID: "solana:devnet", KeyVersion: 1, TLSCertPath: identityPath},
+	}
+	licenseMint, err := primitives.PubkeyFromBase58(cfg.LicenseNFTMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sidecarPDA, _, err := pda.SidecarIdentity(licenseMint, "store", 1, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shards, err := loadSidecarShards(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	op, err := derive.DeriveSidecar(sidecarIdentityRef(cfg, "store", 1, sidecarPDA.Base58()), shards)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signPub, _ := signPubkey32(op.Public())
+	boxPub, _ := boxPubkey32(op.Public())
+	binHash, err := sha256OfFile(shardExeProc)
+	if err != nil {
+		t.Fatalf("C3-D41-test-executable-hash-unavailable: %v", err)
+	}
+	chain := newMockChainReader()
+	chain.sidecarIdentity[sidecarPDA.Base58()] = mockSidecarIdentity{sid: verify.SidecarIdentity{
+		BinaryHash: binHash, DomainHash: primitives.StoreDomainHash(cfg.Domain),
+		TLSCertFingerprint: identityFP, SigningPubkey: signPub, EncryptionPubkey: boxPub,
+		Status: verify.AttestationStatusActive,
+	}}
+	cascade := newRootStoreBootCascade("store", licenseMint, mustPubkey(randPubkeyB58(t)), mustPubkey(cfg.ReleaseMasterNftMint), binHash)
+	cascade.seed(t, chain)
+	if _, err := deriveVerifiedBootIdentity(context.Background(), cfg, chain); err != nil {
+		t.Fatalf("C3-D41-bound-identity-startup: %v", err)
+	}
+	_, changedFP := writeTestTLSCert(t, dir)
+	if changedFP == identityFP {
+		t.Fatal("C3-D41-mutated-identity-control-invalid")
+	}
+	if _, err := deriveVerifiedBootIdentity(context.Background(), cfg, chain); err == nil || !strings.Contains(err.Error(), "tls_cert_fingerprint") {
+		t.Fatalf("C3-D41-mutated-identity-leaf-accepted-at-boot: %v", err)
+	}
+}
+
+func c3D41PinSharedHelpers(t *testing.T) {
+	t.Helper()
+	for path, want := range map[string]string{
+		"boot_identity_test.go":           "277cf814b5859f84267a843f94a7cd656cd1ad097e06c2b438cf42a73b4e390b",
+		"estate_profile_check_test.go":    "705f0e900e7c288359b83588378850759cb91e16a6f7c5470b5796e06dba39e5",
+		"root_store_boot_cascade_test.go": "50c7928e636742d6cdab275b92b317a5ff45ceca308f6e7c5a330bb5a9682b18",
+		"served_tls_test.go":              "8af0d48f0c117b558db337f02ade282a98a1e3b5784b16626620766173c1ec49",
+		"testhelpers_test.go":             "43724f7eb3bd815ef95b2c3c0a9eba3c5e60d8933bd634f42dc899760f2d0f0b",
+	} {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("C3-D41-shared-helper-pin: %s: %v", path, err)
+		}
+		sum := sha256.Sum256(raw)
+		if got := hex.EncodeToString(sum[:]); got != want {
+			t.Fatalf("C3-D41-shared-helper-pin: %s is %s, pinned %s", path, got, want)
+		}
+	}
+}

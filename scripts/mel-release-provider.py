@@ -3092,7 +3092,7 @@ def next_index(multisig: str, vault: str) -> int:
     authority = require_shared_squads_authority()
     if multisig != authority["multisig"] or vault != authority["vault"]:
         raise ProviderError("next-index authority does not match the catalog-pinned shared authority")
-    raw = run_register_helper(["next-index"], register_executor_env()).strip()
+    raw = run_register_helper(["next-index"], policy_executor_env()).strip()
     try:
         index = int(raw)
     except ValueError as exc:
@@ -3422,6 +3422,16 @@ def reject_register(app_id: str, app_hash: str, release_hash: str, version: str,
             state.get("multisigPda") != authority["multisig"] or
             state.get("licenseSquadsVault") != authority["vault"]):
         raise ProviderError("rejection ceremony state does not bind the catalog-pinned shared authority")
+    # Fail-closed runner gate: rejection votes sign with member keys, so the
+    # ceremony may only proceed once a separately approved runner has been
+    # delivered and recorded.  This fires before any member keypair is
+    # resolved and before any helper invocation can send.
+    runner = state.get("approvedRunner")
+    if not isinstance(runner, dict) or not runner.get("approved"):
+        raise ProviderError(
+            "RUNNER_NOT_APPROVED: reject-register requires a separately approved runner "
+            "recorded in the candidate state before any member key is resolved or any vote is sent"
+        )
     raw = run_register_helper(["reject-proposed", str(context["statePath"])], register_executor_env())
     result = last_json(raw)
     if (result.get("status") != "Rejected" or result.get("transactionPda") != transaction_pda or
@@ -3529,11 +3539,36 @@ def release_status(pda: str) -> None:
     print(json.dumps(decode_release_entry(raw, pda), separators=(",", ":")))
 
 
+def approved_runner_executor() -> Path:
+    """Resolve the executor only through the approved-runner gate.
+
+    The revocation ceremony signs with member keys, so the generic executor
+    is consulted only here: any failure to resolve a delivered runner is
+    converted into a named refusal before any chain read or keypair
+    resolution.
+    """
+    try:
+        executor = generic_executor()
+    except ProviderError as exc:
+        raise ProviderError(
+            "RUNNER_NOT_APPROVED: revoke requires a separately approved runner "
+            "before any member key is resolved or any send"
+        ) from exc
+    except Exception as exc:
+        raise ProviderError(
+            "RUNNER_NOT_APPROVED: revoke requires a separately approved runner "
+            "before any member key is resolved or any send"
+        ) from exc
+    return executor
+
+
 def revoke(pda: str, receipt_out: Path) -> None:
     authority = require_shared_squads_authority()
-    # Resolve the executor before any chain read, so a revoke that cannot run
-    # is refused by name before it does anything.
-    executor = generic_executor()
+    # Fail-closed runner gate before anything else: a revoke without a
+    # delivered runner is refused by name before any keypair resolution,
+    # chain read, or send.  The gate consults only the runner delivery
+    # resolution, never member keys.
+    executor = approved_runner_executor()
     status_doc_path = state_root("_revoke") / (hashlib.sha256(pda.encode()).hexdigest() + ".json")
     # Read first; an already revoked entry is a durable idempotent success.
     try:

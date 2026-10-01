@@ -1,0 +1,7 @@
+{
+  "contentHash": "0877ca535be2b69c8b5d8f5683c37456aba7542c472eb2f4fc1efe52dff4855e",
+  "docJson": "{\"schema\":\"melusina.sidecar-classes.v1\",\"storeId\":\"genparity-rehearsal-store\",\"operatorPubkey\":\"6NZhMNkbGuWAb94fg661oR8xsBCvhczzMosEFP5fLPZM\",\"signedAtUnix\":1789000000,\"rows\":[{\"id\":\"mermail\",\"class\":\"sidecar_cascade\",\"keyCustody\":\"none\",\"declaredAt\":\"2026-09-27T00:00:00Z\",\"source\":\"registry.go@0c695588+chaingate.go:262\"},{\"id\":\"swaprail\",\"class\":\"sidecar_cascade\",\"keyCustody\":\"none\",\"declaredAt\":\"2026-09-27T00:00:00Z\",\"source\":\"registry.go@0c695588+repos:no-sidecaridentityentry-read\"}],\"operatorSignature\":\"4hnMoTkS1NjNCQ84J3RAkt2X1vM5QKTmtsJL3vZgxpv8mt5ByFJ6QQwVbGdoFRrB1BCqin4sKds6h8VCVLSmMaEk\"}",
+  "pubkeyB58": "6NZhMNkbGuWAb94fg661oR8xsBCvhczzMosEFP5fLPZM",
+  "pubkeyRawB64": "T9CZzNR9eJPf6ewkQU7LDZtUICMqrTDZHEZb4zy+ZcQ=",
+  "signatureB58": "4hnMoTkS1NjNCQ84J3RAkt2X1vM5QKTmtsJL3vZgxpv8mt5ByFJ6QQwVbGdoFRrB1BCqin4sKds6h8VCVLSmMaEk"
+}

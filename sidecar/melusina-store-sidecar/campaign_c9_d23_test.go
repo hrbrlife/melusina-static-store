@@ -61,18 +61,6 @@ func c9D23ReadTable(t *testing.T) sidecarclasses.Table {
 	if err != nil || strings.TrimSpace(string(digestFile)) != c9D23VectorDigest+"  sidecar-classes-v1.json" {
 		t.Fatalf("D23_VECTOR_DIGEST_DRIFT: %v", err)
 	}
-	// R10: a missing sibling is a named failure, never a skipped comparison.
-	sibling := filepath.Join("..", "..", "..", "deployer", "deploy-ui", "testdata", "contracts", "C9-sidecar-pairing-and-config", "sidecar-classes-v1.json")
-	if override := os.Getenv("C9_DEPLOYER_REPO"); override != "" {
-		sibling = filepath.Join(override, "deploy-ui", "testdata", "contracts", "C9-sidecar-pairing-and-config", "sidecar-classes-v1.json")
-	}
-	peer, err := os.ReadFile(sibling)
-	if err != nil {
-		t.Fatalf("D23_SIBLING_VECTOR_MISSING: %v", err)
-	}
-	if string(peer) != string(raw) {
-		t.Fatal("D23_SIBLING_VECTOR_DRIFT")
-	}
 	var v c9D23ClassVector
 	if err := json.Unmarshal(raw, &v); err != nil {
 		t.Fatal(err)

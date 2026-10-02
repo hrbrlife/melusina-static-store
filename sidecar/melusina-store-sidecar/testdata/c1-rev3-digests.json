@@ -1,0 +1,18 @@
+{
+  "schema": "melusina.c1-estate.canonical-digests.v1",
+  "sha256": {
+    "approval": "beee05d3515f3d973014db198b4e567bb9bc0b837dce8f87cc9663a8e5d685ed",
+    "ceremony": "4f1b00bf471ef65d02fc4aca7e79c7a6098bb4ded9405e1653d61e34daa42e73",
+    "estate": "b58b661e4540cee6870fbe804c6e13c2f0f91e53ef0f095870a759df1d4694af",
+    "example": "6c0dd66444d26d1761133fe2d394bb87e277b97790109e3305bca9f2a4843f46",
+    "feature": "bce884bba492aa6dce881ca45ce101a44ccd95d9fe286a4d17a5192e884597a5",
+    "foundation": "b42382ae75b1608ce7bb6c693e38935d051a4b532a31d5f03520aa36c31a02d2",
+    "foundation-statement": "3e027696561284ea924f73bef3d98f4653cec598e7e9a0f9958dca9506ab3568",
+    "kyc-abi": "8088ee7b16dc8c819549f808bf9d2a2134e5aba36fc225c46589eadd76a37cf4",
+    "lineage": "8dd70f5c47f1533e89a5ff4d4787f8240df945309fc0192925723f7ebedd81fc",
+    "owner": "a776a6e86effd462650ac4ce8f7138fa946722a4d08a7cb2dc3fd9b3ad9bab53",
+    "profile": "dedce90d01c3998590e60a5310d9bcae4b40452e0c64333d91d95d8817538c94",
+    "projection": "df0fda8f621c480da6c3a0f9e95abf6ab8d504d500707761d5a0630a8f9033a3",
+    "rehearsal": "a9e165e891bd44885b6328b3805340c994648241914871801cb3ee8bbee89c62"
+  }
+}

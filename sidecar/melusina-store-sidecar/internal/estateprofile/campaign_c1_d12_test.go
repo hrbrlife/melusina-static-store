@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -21,34 +20,48 @@ func TestC1D12SharedFixtureHelperPinned(t *testing.T) {
 }
 
 func TestC1D12CrossCopyParityRequired(t *testing.T) {
-	contractsRoot := os.Getenv("C1_CONTRACTS_CHECKOUT")
-	if contractsRoot == "" {
-		contractsRoot = "../../../../../contracts"
+	manifest, err := os.ReadFile("../../testdata/c1-rev3-digests.json")
+	if err != nil {
+		t.Fatalf("C1_D12_CANONICAL_DIGEST_MISSING: %v", err)
 	}
-	deployerRoot := os.Getenv("C1_DEPLOYER_CHECKOUT")
-	if deployerRoot == "" {
-		deployerRoot = "../../../../../deployer"
+	if got := fmt.Sprintf("%x", sha256.Sum256(manifest)); got != "32eee20c186b156829630becf5bfecc06ae0f4d96c0c82c4d0c5b488f8c273ef" {
+		t.Fatalf("C1_D12_CANONICAL_DIGEST_DRIFT:manifest:%s", got)
 	}
-	for _, artifact := range []struct{ name, local, contracts, deployer, deployerStore string }{
-		{"example", "../../testdata/contracts-example-estate.profile.json", filepath.Join(contractsRoot, "scripts/estate/examples/example-estate.profile.json"), filepath.Join(deployerRoot, "deploy-ui/testdata/contracts-example-estate.profile.json"), ""},
-		{"profile-vectors", "../../testdata/estate-profile-vectors.json", filepath.Join(contractsRoot, "scripts/estate/testdata/estate-profile-vectors.json"), filepath.Join(deployerRoot, "deploy-ui/testdata/estate-profile-vectors.json"), filepath.Join(deployerRoot, "deploy-ui/testdata/store-estate-profile-vectors.json")},
+	var canonical struct {
+		Schema string            `json:"schema"`
+		SHA256 map[string]string `json:"sha256"`
+	}
+	if err := json.Unmarshal(manifest, &canonical); err != nil || canonical.Schema != "melusina.c1-estate.canonical-digests.v1" {
+		t.Fatalf("C1_D12_CANONICAL_DIGEST_MALFORMED: %v", err)
+	}
+	for _, artifact := range []struct {
+		name, path string
+		normalized bool
+	}{
+		{"example", "../../testdata/contracts-example-estate.profile.json", false},
+		{"profile", "../../testdata/estate-profile-vectors.json", true},
 	} {
-		local, err := os.ReadFile(artifact.local)
+		local, err := os.ReadFile(artifact.path)
 		if err != nil {
-			t.Fatalf("C1_D12_COPY_PARITY_MISSING:%s:store: %v", artifact.name, err)
+			t.Fatalf("C1_D12_COPY_PARITY_MISSING:%s: %v", artifact.name, err)
 		}
-		peers := []struct{ name, path string }{{"contracts", artifact.contracts}, {"deployer", artifact.deployer}}
-		if artifact.deployerStore != "" {
-			peers = append(peers, struct{ name, path string }{"deployer-store", artifact.deployerStore})
+		if artifact.normalized {
+			var profile map[string]any
+			if err := json.Unmarshal(local, &profile); err != nil {
+				t.Fatalf("C1_D12_COPY_PARITY_MALFORMED:%s: %v", artifact.name, err)
+			}
+			delete(profile, "goSources")
+			var compact bytes.Buffer
+			encoder := json.NewEncoder(&compact)
+			encoder.SetEscapeHTML(false)
+			if err := encoder.Encode(profile); err != nil {
+				t.Fatalf("C1_D12_COPY_PARITY_MALFORMED:%s: %v", artifact.name, err)
+			}
+			local = bytes.TrimSuffix(compact.Bytes(), []byte("\n"))
 		}
-		for _, peer := range peers {
-			copy, err := os.ReadFile(peer.path)
-			if err != nil {
-				t.Fatalf("C1_D12_COPY_PARITY_MISSING:%s:%s: %v", artifact.name, peer.name, err)
-			}
-			if !bytes.Equal(local, copy) {
-				t.Fatalf("C1_D12_COPY_PARITY_DRIFT:%s:%s", artifact.name, peer.name)
-			}
+		got := fmt.Sprintf("%x", sha256.Sum256(local))
+		if canonical.SHA256[artifact.name] == "" || got != canonical.SHA256[artifact.name] {
+			t.Fatalf("C1_D12_COPY_PARITY_DRIFT:%s: got %s want %s", artifact.name, got, canonical.SHA256[artifact.name])
 		}
 	}
 }

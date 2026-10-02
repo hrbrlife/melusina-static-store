@@ -95,9 +95,10 @@
       "authority": "3LTyNL98UKczNJdsW6W5A3G5PyyV2sNCbpcQUdHqVJvZ",
       "name": "Example Reseller",
       "territory": "EXAMPLE",
-      "issuanceLimit": 2,
+      "issuanceLimit": 10,
       "category": null,
-      "licensePriceLamports": "1000000"
+      "licensePriceLamports": "1000000",
+      "maxSupply": 32
     },
     "rootStoreLicense": {
       "mint": "BeSunPxiNitjYE6UKbwV7663NGEokx6GsCWYYYKDdiNB",

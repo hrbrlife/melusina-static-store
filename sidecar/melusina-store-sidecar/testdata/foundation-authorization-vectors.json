@@ -8,7 +8,7 @@
   "authorizations": [
     {
       "name": "new-estate-foundation",
-      "description": "A fictitious new-estate authorization, signed by exactly the 2-of-3 self-certifying genesis owner policy and valid only from 01:00 to 02:00 UTC.",
+      "description": "D50: the regenerated new-estate-foundation document is the charter-bound statement-v1 form; the owners sign the rebuilt statement bytes, never the bare digest. Digest preimage extends the owner policy with signingForm=statement-v1 and estateCharterSha256; ownerStatement is transport metadata excluded from the digest.",
       "authorization": {
         "schema": "melusina.estate.foundation-authorization.v1",
         "kind": "estate-foundation-authorization",

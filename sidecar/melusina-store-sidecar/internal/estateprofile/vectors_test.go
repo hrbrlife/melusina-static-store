@@ -169,6 +169,18 @@ func buildVectors(t *testing.T) vectorsDocument {
 	migrate := newEstateMigrate(t, rehearsal, false)
 	recalling := newEstateMigrate(t, rehearsal, true)
 	paype := paypeDevnetProfile(t)
+	firstSigned := rehearsal
+	firstSigned.Predecessor = PredecessorV1{Kind: PredecessorKindNone}
+	firstSigned = signProfile(t, firstSigned, "owner-a", "owner-b")
+	paypeDigest, err := ProfileSHA256(paype)
+	if err != nil {
+		t.Fatalf("digest predecessor profile: %v", err)
+	}
+	successorOfPaype := rehearsal
+	successorOfPaype.Predecessor = PredecessorV1{
+		Kind: PredecessorKindEstate, EstateID: paype.EstateID, ProfileSHA256: paypeDigest,
+	}
+	successorOfPaype = signProfile(t, successorOfPaype, "owner-a", "owner-b")
 
 	document := vectorsDocument{
 		Schema: vectorsSchema,
@@ -192,8 +204,13 @@ func buildVectors(t *testing.T) vectorsDocument {
 	}{
 		{
 			name:        "new-estate-revision-1",
-			description: "A fictitious new estate at revision 1: owner policy 2 of 3, no succession, no recalls, prev unstated.",
+			description: "The original signed fictitious estate at revision 1: predecessor absent in this legacy document, original digest retained. It verifies but cannot claim first-estate admission.",
 			profile:     rehearsal,
+		},
+		{
+			name:        "new-estate-first-signed",
+			description: "A separately owner-signed fictitious first estate with explicit predecessor:none in its digest preimage; this is the new first-estate admission fixture.",
+			profile:     firstSigned,
 		},
 		{
 			name:        "new-estate-revision-2-migrate",
@@ -216,6 +233,11 @@ func buildVectors(t *testing.T) vectorsDocument {
 			illustrative: true,
 			fields:       paypeIllustrativeFields,
 			profile:      paype,
+		},
+		{
+			name:        "new-estate-successor-of-paype",
+			description: "A FICTITIOUS successor estate (D07): the rehearsal shape with an estate predecessor naming the paype vector's revision 1 — its own estateId and the exact profileSha256 its owners signed — so the estate branch bytes of the preimage (W(\"estate\") ‖ W(estateId) ‖ W(profileSha256) after prev.sha256) are recorded and a second implementation must reproduce them.",
+			profile:     successorOfPaype,
 		},
 	} {
 		preimage, err := ProfilePreimage(item.profile)
@@ -247,6 +269,14 @@ func buildVectors(t *testing.T) vectorsDocument {
 	}
 
 	raw := marshalProfile(t, rehearsal)
+	firstRaw := marshalProfile(t, firstSigned)
+	predecessorObjectFromFirst := func(value string) string {
+		return string(mutateJSON(t, firstRaw, `"predecessor":"none"`, value))
+	}
+	legacyDigest, err := ProfileSHA256(rehearsal)
+	if err != nil {
+		t.Fatalf("digest legacy profile: %v", err)
+	}
 	governedAuthority := rehearsal.Programs[0].UpgradeAuthority
 	thresholdChanged := rehearsal
 	thresholdChanged.OwnerPolicy.Threshold = 3
@@ -367,6 +397,76 @@ func buildVectors(t *testing.T) vectorsDocument {
 			Name: "owner-signatures-insufficient", Stage: "verify", Refusal: RefusalSignaturesInsufficient,
 			Description: "One valid signature under a threshold of two.",
 			Document:    string(marshalProfile(t, signProfile(t, rehearsal, "owner-a"))),
+		},
+		{
+			Name: "predecessor-dropped-after-signing-none", Stage: "verify", Refusal: RefusalSignatureInvalid + ":owner-a",
+			Description: "D07: removing explicit predecessor:none from a newly signed profile leaves a valid legacy shape but fails its owner signature.",
+			Document:    string(mutateJSON(t, firstRaw, `,"predecessor":"none"`, ``)),
+		},
+		{
+			Name: "predecessor-injected-into-legacy", Stage: "verify", Refusal: RefusalSignatureInvalid + ":owner-a",
+			Description: "D07: injecting predecessor:none into an existing signed legacy profile changes its digest and fails its owner signature.",
+			Document:    string(mutateJSON(t, raw, `,"signatures":`, `,"predecessor":"none","signatures":`)),
+		},
+		{
+			Name: "predecessor-zero-object", Stage: "decode", Refusal: RefusalJSONMissingField + ":$.predecessor.estateId",
+			Description: "D07: the explicit all-empty object is not the legacy absent member and cannot default to none.",
+			Document:    predecessorObjectFromFirst(`"predecessor":{}`),
+		},
+		{
+			Name: "predecessor-estate-extra-kind", Stage: "decode", Refusal: RefusalJSONUnknownField + ":$.predecessor.kind",
+			Description: "D07: an object carrying the obsolete kind key cannot override the exact two-key estate relationship or claim none.",
+			Document:    predecessorObjectFromFirst(`"predecessor":{"estateId":"` + paype.EstateID + `","profileSha256":"` + paypeDigest + `","kind":"none"}`),
+		},
+		{
+			Name: "predecessor-estate-incomplete", Stage: "decode", Refusal: RefusalIncomplete + ":predecessor.profileSha256",
+			Description: "D07: an estate predecessor states both digests; an empty profileSha256 is a half-profile, refused as incomplete before its form is judged.",
+			Document:    predecessorObjectFromFirst(`"predecessor":{"estateId":"` + paype.EstateID + `","profileSha256":""}`),
+		},
+		{
+			Name: "predecessor-wrong-string", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor",
+			Description: "D07: none is the only predecessor string; a third spelling is malformed at predecessor.",
+			Document:    predecessorObjectFromFirst(`"predecessor":"successor"`),
+		},
+		{
+			Name: "predecessor-estate-missing-profile-key", Stage: "decode", Refusal: RefusalJSONMissingField + ":$.predecessor.profileSha256",
+			Description: "D07: a named predecessor object requires profileSha256; absence cannot default to an empty digest.",
+			Document:    predecessorObjectFromFirst(`"predecessor":{"estateId":"` + paype.EstateID + `"}`),
+		},
+		{
+			Name: "predecessor-estate-missing-id-key", Stage: "decode", Refusal: RefusalJSONMissingField + ":$.predecessor.estateId",
+			Description: "D07: a named predecessor object requires estateId; absence cannot default to an empty digest.",
+			Document:    predecessorObjectFromFirst(`"predecessor":{"profileSha256":"` + paypeDigest + `"}`),
+		},
+		{
+			Name: "predecessor-estate-id-non-hex", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.estateId",
+			Description: "D07: an estate predecessor id that is not 64 lowercase hex is malformed at that member.",
+			Document:    predecessorObjectFromFirst(`"predecessor":{"estateId":"` + strings.Repeat("g", 64) + `","profileSha256":"` + legacyDigest + `"}`),
+		},
+		{
+			Name: "predecessor-profile-sha256-non-hex", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.profileSha256",
+			Description: "D07: an estate predecessor digest that is not 64 lowercase hex is malformed at that member.",
+			Document:    predecessorObjectFromFirst(`"predecessor":{"estateId":"` + paype.EstateID + `","profileSha256":"` + strings.Repeat("g", 64) + `"}`),
+		},
+		{
+			Name: "predecessor-estate-id-uppercase", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.estateId",
+			Description: "D07: an estate predecessor id in uppercase hex is malformed at that member; digests are lowercase.",
+			Document:    predecessorObjectFromFirst(`"predecessor":{"estateId":"` + strings.ToUpper(paype.EstateID) + `","profileSha256":"` + legacyDigest + `"}`),
+		},
+		{
+			Name: "predecessor-profile-sha256-uppercase", Stage: "decode", Refusal: RefusalFieldMalformed + ":predecessor.profileSha256",
+			Description: "D07: an estate predecessor digest in uppercase hex is malformed at that member; digests are lowercase.",
+			Document:    predecessorObjectFromFirst(`"predecessor":{"estateId":"` + paype.EstateID + `","profileSha256":"` + strings.ToUpper(legacyDigest) + `"}`),
+		},
+		{
+			Name: "predecessor-estate-id-null", Stage: "decode", Refusal: RefusalJSONNull + ":$.predecessor.estateId",
+			Description: "D07: a null predecessor member is refused as null at the member, never read as an absent or empty digest.",
+			Document:    predecessorObjectFromFirst(`"predecessor":{"estateId":null,"profileSha256":"` + legacyDigest + `"}`),
+		},
+		{
+			Name: "owner-signatures-empty", Stage: "verify", Refusal: RefusalSignaturesInsufficient,
+			Description: "D07: a profile with zero owner signatures reaches the verifier and is refused as insufficient.",
+			Document:    string(mutateJSON(t, firstRaw, `,"signatures":[{"keyId":"owner-a","signature":"`+firstSigned.Signatures[0].Signature+`"},{"keyId":"owner-b","signature":"`+firstSigned.Signatures[1].Signature+`"}]`, `,"signatures":[]`)),
 		},
 	}
 

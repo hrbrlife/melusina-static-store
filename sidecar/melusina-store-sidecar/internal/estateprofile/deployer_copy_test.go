@@ -62,7 +62,7 @@ var deployerCopyTests = map[string]string{
 	"store_host_authorization_test.go":       "14cc6a99bfb14a5ae6fe9ebad4cb9477dfb5a1bc46cd4b951c6fbc702ba8e18d",
 	"strictjson_test.go":                     "ad4755613a3a9bc41fb7b596827417165a5b866a6342066baf7a558a188731d7",
 	"validate_test.go":                       "394423bda7dc3ad6d78197afb3e88a4294505f4c7dcd1e43f80709f4cac08b5f",
-	"vectors_test.go":                        "89cad49b795152fc1c945477cfb6eafba6b55b25b85ae284d77f44dd199beb52",
+	"vectors_test.go":                        "d4231f5ff1f6cc30fa220e58c34aa973f3a4bdd782cf02f8794e7fd038dc7753",
 	"verify_test.go":                         "34838f35b6b642919bc4207dc922aa5e78a795ed15975ee3cc5dea8175803a2b",
 }
 

@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
@@ -491,6 +492,9 @@ func certHashes(tlsCertPath, caChainPath string) ([32]byte, [32]byte, error) {
 	leaf, err := x509.ParseCertificate(leafDER)
 	if err != nil {
 		return [32]byte{}, [32]byte{}, fmt.Errorf("%s: parse tls identity leaf: %v", RefusalIdentityLeafSelfSignatureInvalid, err)
+	}
+	if !bytes.Equal(leaf.RawSubject, leaf.RawIssuer) {
+		return [32]byte{}, [32]byte{}, fmt.Errorf("%s: issuer differs from subject", RefusalIdentityLeafSelfSignatureInvalid)
 	}
 	if err := leaf.CheckSignature(leaf.SignatureAlgorithm, leaf.RawTBSCertificate, leaf.Signature); err != nil {
 		return [32]byte{}, [32]byte{}, fmt.Errorf("%s: %v", RefusalIdentityLeafSelfSignatureInvalid, err)

@@ -2,15 +2,20 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Campaign D18 producer-owned controls: the TLS identity leaf must be
@@ -104,5 +109,28 @@ func TestCampaignD18TwoPassStableIdentityFingerprintOverSameCert(t *testing.T) {
 		a.IdentityRef.ChainID != b.IdentityRef.ChainID ||
 		a.IdentityRef.Domain != b.IdentityRef.Domain {
 		t.Fatalf("identity fingerprint drifted between passes: first=%+v second=%+v", a, b)
+	}
+}
+
+func TestCampaignD18SameKeyDifferentIssuerIsNotSelfSigned(t *testing.T) {
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaf := &x509.Certificate{SerialNumber: big.NewInt(7), Subject: pkix.Name{CommonName: "leaf"},
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour)}
+	issuer := *leaf
+	issuer.Subject = pkix.Name{CommonName: "different issuer"}
+	issuer.PublicKey = public
+	der, err := x509.CreateCertificate(rand.Reader, leaf, &issuer, public, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "not-self-issued.pem")
+	if err := os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := certHashes(path, ""); err == nil || !strings.Contains(err.Error(), RefusalIdentityLeafSelfSignatureInvalid) {
+		t.Fatalf("D18_ISSUER_MISMATCH_ACCEPTED: %v", err)
 	}
 }

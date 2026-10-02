@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,11 +67,14 @@ type d41ProbeFixture struct {
 	systemRes *d41FakeSystemResolver
 }
 
-func newD41ProbeFixture(t *testing.T) *d41ProbeFixture {
+func newD41ProbeFixture(t *testing.T, hosts ...string) *d41ProbeFixture {
 	t.Helper()
 	root := newServedTLSTestRoot(t, "D41 public probe test issuer")
 	dir := t.TempDir()
-	public := root.validLeaf(t)
+	if len(hosts) == 0 {
+		hosts = []string{"store.example.test"}
+	}
+	public := root.validLeaf(t, hosts...)
 	certPath := filepath.Join(dir, "cert.pem")
 	keyPath := filepath.Join(dir, "key.pem")
 	writeServedTLSTestPair(t, certPath, keyPath, public)
@@ -91,7 +95,7 @@ func newD41ProbeFixture(t *testing.T) *d41ProbeFixture {
 	})
 	return &d41ProbeFixture{
 		root: root, public: public, certPath: certPath, keyPath: keyPath,
-		addr: listener.Addr().String(),
+		addr:      listener.Addr().String(),
 		publicRes: &d41FakePublicResolver{addresses: []string{"198.51.100.10"}},
 		systemRes: &d41FakeSystemResolver{addresses: []string{"198.51.100.10"}},
 	}
@@ -298,5 +302,35 @@ func TestD41VerifyPublicFetchesHealthzAndIndexAndPinsServedLeaf(t *testing.T) {
 	}
 	if result.leafFingerprint != want {
 		t.Fatalf("D41-probe-did-not-pin-served-leaf: %x != %x", result.leafFingerprint, want)
+	}
+}
+
+func TestD41VerifyPublicRefusesWrongHostname(t *testing.T) {
+	fixture := newD41ProbeFixture(t, "other.example.test")
+	_, err := probePublicRoute(context.Background(), fixture.inputs("store.example.test", fixture.certPath))
+	if err == nil || !strings.Contains(err.Error(), storePublicProbeLeafMismatch) {
+		t.Fatalf("D41-wrong-hostname-accepted: %v", err)
+	}
+}
+
+func TestD41RenewalRefusesWrongHostname(t *testing.T) {
+	root := newServedTLSTestRoot(t, "D41 renewal test issuer")
+	wrong := root.validLeaf(t, "other.example.test")
+	wrongKey := string(wrong.keyPEM(t))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"schema": publicLeafRenewalSchema, "domain": "store.example.test",
+			"certPem": string(wrong.certPEM()), "keyPem": wrongKey,
+		})
+	}))
+	defer server.Close()
+	dir := t.TempDir()
+	opts := publicLeafRenewalOptions{responderURL: server.URL, token: "test", domain: "store.example.test", certPath: filepath.Join(dir, "cert.pem"), keyPath: filepath.Join(dir, "key.pem")}
+	_, err := renewPublicLeaf(opts, server.Client())
+	if err == nil || !strings.Contains(err.Error(), publicLeafRenewInvalid) {
+		t.Fatalf("D41-renewal-wrong-hostname-accepted: %v", err)
+	}
+	if _, err := os.Stat(opts.certPath); !os.IsNotExist(err) {
+		t.Fatalf("D41-renewal-wrote-wrong-hostname: %v", err)
 	}
 }

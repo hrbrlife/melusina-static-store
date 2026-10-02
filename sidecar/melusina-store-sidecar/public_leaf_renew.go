@@ -35,6 +35,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
@@ -199,6 +200,9 @@ func renewPublicLeaf(opts publicLeafRenewalOptions, client *http.Client) (time.T
 	if now.Before(pair.Leaf.NotBefore) || now.After(pair.Leaf.NotAfter) {
 		return time.Time{}, fmt.Errorf("%s: leaf not valid now (not before %s, not after %s)", publicLeafRenewInvalid, pair.Leaf.NotBefore.UTC().Format(time.RFC3339), pair.Leaf.NotAfter.UTC().Format(time.RFC3339))
 	}
+	if err := pair.Leaf.VerifyHostname(opts.domain); err != nil {
+		return time.Time{}, fmt.Errorf("%s: %w", publicLeafRenewInvalid, err)
+	}
 	if err := writePublicLeafPair(opts.certPath, opts.keyPath, []byte(leaf.CertPEM), []byte(leaf.KeyPEM)); err != nil {
 		return time.Time{}, err
 	}
@@ -279,14 +283,14 @@ func runStoreHostVerifyPublicSubcommand(args []string) {
 		log.Fatalf("verify-public: config tls.cert_path is required to pin the served leaf")
 	}
 	result, err := probePublicRoute(context.Background(), probePublicRouteInputs{
-		host:      host,
-		paths:     strings.Split(storePublicProbePaths, ","),
-		resolver:  opts.resolver,
-		certPath:  cfg.TLS.CertPath,
-		timeout:   opts.timeout,
-		public:    net.DefaultResolver,
-		system:    net.DefaultResolver,
-		dialer:    &net.Dialer{Timeout: opts.timeout},
+		host:     host,
+		paths:    strings.Split(storePublicProbePaths, ","),
+		resolver: opts.resolver,
+		certPath: cfg.TLS.CertPath,
+		timeout:  opts.timeout,
+		public:   net.DefaultResolver,
+		system:   net.DefaultResolver,
+		dialer:   &net.Dialer{Timeout: opts.timeout},
 		lookupHost: func(ctx context.Context, r publicResolver, name string) ([]string, error) {
 			return r.LookupHost(ctx, name)
 		},
@@ -336,7 +340,9 @@ type dialContext interface {
 // not hash to the public leaf file on disk.
 func probePublicRoute(ctx context.Context, in probePublicRouteInputs) (probePublicRouteResult, error) {
 	if in.lookupHost == nil {
-		in.lookupHost = func(ctx context.Context, r publicResolver, name string) ([]string, error) { return r.LookupHost(ctx, name) }
+		in.lookupHost = func(ctx context.Context, r publicResolver, name string) ([]string, error) {
+			return r.LookupHost(ctx, name)
+		}
 	}
 	ctx, cancel := context.WithTimeout(ctx, in.timeout)
 	defer cancel()
@@ -353,10 +359,14 @@ func probePublicRoute(ctx context.Context, in probePublicRouteInputs) (probePubl
 		return probePublicRouteResult{}, fmt.Errorf("%s: the local resolver answers %v for %s while the public resolver answers %v; the probe only trusts the public answer", storePublicProbeSplitHorizon, systemAddresses, in.host, publicAddresses)
 	}
 
-	wantFingerprint, err := tlsCertFingerprint(in.certPath)
+	publicLeaf, err := parsePublicLeafCertFile(in.certPath)
 	if err != nil {
 		return probePublicRouteResult{}, fmt.Errorf("%s: %w", storePublicProbeLeafMismatch, err)
 	}
+	if err := publicLeaf.VerifyHostname(in.host); err != nil {
+		return probePublicRouteResult{}, fmt.Errorf("%s: %w", storePublicProbeLeafMismatch, err)
+	}
+	wantFingerprint := sha256.Sum256(publicLeaf.Raw)
 
 	client := publicProbeHTTPClient(in, publicAddresses)
 	var fingerprint [32]byte
@@ -458,9 +468,15 @@ func parsePublicLeafCertFile(path string) (*x509.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	pair, err := tls.X509KeyPair(raw, raw)
-	if err == nil && pair.Leaf != nil {
-		return pair.Leaf, nil
+	for len(raw) > 0 {
+		block, rest := pem.Decode(raw)
+		if block == nil {
+			break
+		}
+		if block.Type == "CERTIFICATE" {
+			return x509.ParseCertificate(block.Bytes)
+		}
+		raw = rest
 	}
 	return nil, fmt.Errorf("no certificate leaf in %s", path)
 }

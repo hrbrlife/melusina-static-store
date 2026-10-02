@@ -1,7 +1,6 @@
 package estateprofile
 
 import (
-	"errors"
 	"fmt"
 	"time"
 )
@@ -253,7 +252,7 @@ func VerifyFoundationAuthorization(value FoundationAuthorizationV1, now time.Tim
 			value.OwnerStatement.Kind, value.OwnerStatement.EstateWords,
 			value.OwnerStatement.Expiry, value.OwnerStatement.Digest)
 		if err := verifyThresholdSignatures(value.GenesisOwnerPolicy, statement, value.Signatures); err != nil {
-			return "", errors.New("owner-signature-invalid")
+			return "", refuse("owner-signature-invalid")
 		}
 	} else if err := verifyThresholdSignatures(value.GenesisOwnerPolicy, digest, value.Signatures); err != nil {
 		return "", foundationAuthorizationRefusal(err)

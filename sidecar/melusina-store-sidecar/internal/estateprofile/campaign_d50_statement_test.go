@@ -133,8 +133,8 @@ func TestD50StatementFormSignatureVerifiedAndDigestFormRefused(t *testing.T) {
 		}
 		doc["signatures"] = changed
 	})
-	if err := c1D50VerifyAtFixtureTime(t, tampered); err == nil || err.Error() != "owner-signature-invalid" {
-		t.Fatalf("D50_DIGEST_FORM_SIGNATURE_ACCEPTED: got %v", err)
+	if err := c1D50VerifyAtFixtureTime(t, tampered); err == nil || err.Error() != "owner-signature-invalid" || RefusalName(err) != "owner-signature-invalid" {
+		t.Fatalf("D50_DIGEST_FORM_SIGNATURE_ACCEPTED: got %v, refusal %q", err, RefusalName(err))
 	}
 }
 

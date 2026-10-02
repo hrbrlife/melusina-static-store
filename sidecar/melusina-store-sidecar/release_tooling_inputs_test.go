@@ -726,7 +726,10 @@ func TestReleaseToolingEntryPointsRefuseMissingInputsByName(t *testing.T) {
 			"generic_executor":    "release-input-missing:MEL_RELEASE_SQUADS_EXECUTOR:",
 			"pearl_tool":          "release-input-missing:MEL_RELEASE_PEARL_TOOL:",
 			"policy_executor_env": "release-input-missing:MEL_RELEASE_SQUADS_NODE_MODULES:",
-			"revoke":              "release-input-missing:MEL_RELEASE_SQUADS_EXECUTOR:",
+			// D14 refuses a revoke at the runner boundary before any chain read
+			// or member-key resolution. The direct executor helper still names
+			// the missing input above.
+			"revoke": "RUNNER_NOT_APPROVED:",
 		} {
 			if !strings.HasPrefix(results[call], want) {
 				t.Fatalf("provider %s: %q, want %q", call, results[call], want)

@@ -8,8 +8,11 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -67,6 +70,22 @@ type d41ProbeFixture struct {
 	systemRes *d41FakeSystemResolver
 }
 
+func d41Leaf(t *testing.T, issuer *servedTLSTestIssuer, host string) servedTLSTestPair {
+	t.Helper()
+	key := servedTLSTestKey(t)
+	now := time.Now()
+	template := &x509.Certificate{
+		SerialNumber: servedTLSTestSerial(t), Subject: pkix.Name{CommonName: host}, DNSNames: []string{host},
+		NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour),
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, issuer.cert, &key.PublicKey, issuer.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return servedTLSTestPair{chain: [][]byte{der}, key: key}
+}
+
 func newD41ProbeFixture(t *testing.T, hosts ...string) *d41ProbeFixture {
 	t.Helper()
 	root := newServedTLSTestRoot(t, "D41 public probe test issuer")
@@ -74,7 +93,7 @@ func newD41ProbeFixture(t *testing.T, hosts ...string) *d41ProbeFixture {
 	if len(hosts) == 0 {
 		hosts = []string{"store.example.test"}
 	}
-	public := root.validLeaf(t, hosts...)
+	public := d41Leaf(t, root, hosts[0])
 	certPath := filepath.Join(dir, "cert.pem")
 	keyPath := filepath.Join(dir, "key.pem")
 	writeServedTLSTestPair(t, certPath, keyPath, public)
@@ -315,7 +334,7 @@ func TestD41VerifyPublicRefusesWrongHostname(t *testing.T) {
 
 func TestD41RenewalRefusesWrongHostname(t *testing.T) {
 	root := newServedTLSTestRoot(t, "D41 renewal test issuer")
-	wrong := root.validLeaf(t, "other.example.test")
+	wrong := d41Leaf(t, root, "other.example.test")
 	wrongKey := string(wrong.keyPEM(t))
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{

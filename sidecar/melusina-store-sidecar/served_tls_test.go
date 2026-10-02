@@ -109,14 +109,14 @@ func (issuer *servedTLSTestIssuer) intermediate(t *testing.T, name string, notBe
 	return &servedTLSTestIssuer{cert: cert, key: key}
 }
 
-// leaf issues a server leaf for localhost, 127.0.0.1, and any extra hosts.
-// The chain is the leaf alone; withIntermediates appends the issuers a client needs.
-func (issuer *servedTLSTestIssuer) leaf(t *testing.T, notBefore, notAfter time.Time, hosts ...string) servedTLSTestPair {
+// leaf issues a server leaf for localhost and 127.0.0.1. The chain is the
+// leaf alone; withIntermediates appends the issuers a client needs.
+func (issuer *servedTLSTestIssuer) leaf(t *testing.T, notBefore, notAfter time.Time) servedTLSTestPair {
 	t.Helper()
 	key := servedTLSTestKey(t)
 	template := &x509.Certificate{
 		SerialNumber: servedTLSTestSerial(t), Subject: pkix.Name{CommonName: servedTLSTestHost},
-		DNSNames: append([]string{servedTLSTestHost}, hosts...), IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1)},
+		DNSNames: []string{servedTLSTestHost}, IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1)},
 		NotBefore: notBefore, NotAfter: notAfter,
 		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
@@ -127,10 +127,10 @@ func (issuer *servedTLSTestIssuer) leaf(t *testing.T, notBefore, notAfter time.T
 	return servedTLSTestPair{chain: [][]byte{der}, key: key}
 }
 
-func (issuer *servedTLSTestIssuer) validLeaf(t *testing.T, hosts ...string) servedTLSTestPair {
+func (issuer *servedTLSTestIssuer) validLeaf(t *testing.T) servedTLSTestPair {
 	t.Helper()
 	now := time.Now()
-	return issuer.leaf(t, now.Add(-time.Hour), now.Add(time.Hour), hosts...)
+	return issuer.leaf(t, now.Add(-time.Hour), now.Add(time.Hour))
 }
 
 func (pair servedTLSTestPair) withIntermediates(intermediates ...*servedTLSTestIssuer) servedTLSTestPair {

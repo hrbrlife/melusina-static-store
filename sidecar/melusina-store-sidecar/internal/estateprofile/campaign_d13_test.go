@@ -85,6 +85,17 @@ func TestD13ProducerAccepted(t *testing.T) {
 	}
 }
 
+func TestD13OwnerApprovedTenThirtyTwoNeedsNoLowLimitAcknowledgment(t *testing.T) {
+	raw, err := os.ReadFile("../../testdata/contracts-example-estate.profile.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := CheckPermanentParameters(raw, 4, 32)
+	if err != nil || got.ResellerIssuanceLimit != 10 || got.ProfileMaxSupply != 32 || got.RemainingEditionHeadroom != 28 {
+		t.Fatalf("D13_N853_EXAMPLE_REFUSED: got %+v, %v", got, err)
+	}
+}
+
 func TestD13ProducerRefusals(t *testing.T) {
 	raw := d13ProducerCeremonyRaw(t)
 	_, supply, _ := d13ProducerReadReseller(t, raw)

@@ -25,9 +25,7 @@ const (
 	RefusalPermanentEditionHeadroomInsufficnt = "edition-headroom-insufficient"
 )
 
-// resellerIssuanceLimitFloor is the reviewed floor for the ceremony reseller's
-// issuance limit: the boundary value the C1 vectors call out (2) as passing;
-// anything below it, including an unacknowledged limit, is refused.
+// Store requires at least 2; the boundary value also needs acknowledgment.
 const resellerIssuanceLimitFloor = 2
 
 // d13CeremonyReseller carries the subset of the ceremony profile the permanent
@@ -54,7 +52,7 @@ func CheckPermanentParameters(rawCeremonyProfile []byte, plannedEditions uint64,
 		return PermanentParametersV1{}, fmt.Errorf("permanent-parameters-ceremony-unreadable: %w", err)
 	}
 	reseller := parsed.Ceremony.Reseller
-	if !reseller.IssuanceAcknowledged || reseller.IssuanceLimit < resellerIssuanceLimitFloor {
+	if reseller.IssuanceLimit < resellerIssuanceLimitFloor || (reseller.IssuanceLimit == resellerIssuanceLimitFloor && !reseller.IssuanceAcknowledged) {
 		return PermanentParametersV1{}, errors.New(RefusalPermanentIssuanceLimitBelowFloor)
 	}
 	if reseller.MaxSupply != masterEditionCap {

@@ -1,6 +1,10 @@
 package estateprofile
 
-import "time"
+import (
+	"errors"
+	"fmt"
+	"time"
+)
 
 // FoundationAuthorizationSchema and FoundationAuthorizationKind name the
 // one owner-authorized pre-profile document. It exists because a complete
@@ -56,7 +60,36 @@ type FoundationAuthorizationV1 struct {
 	ExpiresAt             string        `json:"expiresAt"`
 	AuthorizationNonce    string        `json:"authorizationNonce"`
 	Signatures            []SignatureV1 `json:"signatures"`
+	// D50 statement-v1 wire. SigningForm names the form the signatures were
+	// made over: the legacy hex digest, or the rebuilt owner statement. An
+	// absent SigningForm keeps the legacy digest form byte for byte.
+	SigningForm string `json:"signingForm"`
+	// EstateCharterSHA256 binds the document to the independently reviewed
+	// estate charter by digest. It is part of the digest preimage in the
+	// statement-v1 form only.
+	EstateCharterSHA256 string `json:"estateCharterSha256"`
+	// OwnerStatement is the owner's signed sentence about this document: it
+	// is transport metadata OUTSIDE the digest preimage, so the digest it
+	// names must be re-derived from the document itself.
+	OwnerStatement OwnerStatementV1 `json:"ownerStatement"`
 }
+
+// OwnerStatementV1 is the owner's signed sentence about one estate document.
+// Its exact statement bytes are rebuilt as
+// "Melusina owner document\nkind=<kind>\nestate=<estateWords>\nexpires=<expiry>\ndigest=<digest>"
+// where digest is the document's own legacy digest; a statement that names a
+// digest the document does not produce is refused.
+type OwnerStatementV1 struct {
+	Kind        string `json:"kind"`
+	EstateWords string `json:"estateWords"`
+	Expiry      string `json:"expiry"`
+	Digest      string `json:"digest"`
+}
+
+// OwnerStatementSigningForm names the statement-v1 signing form. There is no
+// other named form; every other value, including an unknown future one, is
+// refused rather than verified as the legacy digest form.
+const OwnerStatementSigningForm = "statement-v1"
 
 // DecodeFoundationAuthorization strictly decodes a single authorization. It
 // shares the profile decoder's duplicate-key, exact-field, safe-integer and
@@ -64,7 +97,7 @@ type FoundationAuthorizationV1 struct {
 // authorization just because it happens to contain matching fields.
 func DecodeFoundationAuthorization(raw []byte) (FoundationAuthorizationV1, error) {
 	var authorization FoundationAuthorizationV1
-	err := decodeStrict(raw, MaxProfileJSONBytes, &authorization, func(tree any) error {
+	err := decodeStrictFoundationAuthorization(raw, MaxProfileJSONBytes, &authorization, func(tree any) error {
 		schema, kind := peekStrictJSONKind(tree)
 		if schema != FoundationAuthorizationSchema || kind != FoundationAuthorizationKind {
 			return refuse(RefusalFoundationAuthorizationSchemaUnsupported)
@@ -150,6 +183,14 @@ func foundationAuthorizationPreimage(value FoundationAuthorizationV1) []byte {
 	writer.string(value.EstateID)
 	writer.string(value.EstateNonce)
 	writer.bytes(ownerPolicyEncoding(value.GenesisOwnerPolicy))
+	// D50: the statement-v1 digest binds the signing form and the charter
+	// digest after the owner policy. A legacy document names no signing
+	// form, so its preimage stays byte for byte what it always was; an
+	// empty form is never written.
+	if value.SigningForm != "" {
+		writer.string(value.SigningForm)
+		writer.string(value.EstateCharterSHA256)
+	}
 	writer.string(value.CeremonyProfileSchema)
 	writer.string(value.CeremonyProfileSHA256)
 	writer.string(value.ReleaseSetSHA256)
@@ -187,7 +228,34 @@ func VerifyFoundationAuthorization(value FoundationAuthorizationV1, now time.Tim
 		return "", refuse(RefusalFoundationAuthorizationIDNotSelfCertifying)
 	}
 	digest := sha256Hex(foundationAuthorizationPreimage(value))
-	if err := verifyThresholdSignatures(value.GenesisOwnerPolicy, digest, value.Signatures); err != nil {
+	if value.SigningForm != "" && value.SigningForm != OwnerStatementSigningForm {
+		return "", refuse(RefusalFoundationAuthorizationFieldMalformed)
+	}
+	if value.SigningForm == OwnerStatementSigningForm {
+		// D50 statement-v1: the owners signed the rebuilt owner statement
+		// over this exact document, not a digest anyone can recompute. The
+		// statement's digest member must be the digest this document
+		// produces, the kind must be this document's kind, and the
+		// signatures must verify over the exact rebuilt statement bytes.
+		// A missing statement and a mismatched one refuse identically:
+		// absence is never a legacy fallback.
+		if value.OwnerStatement == (OwnerStatementV1{}) {
+			return "", refuse(RefusalOwnerStatementMismatch)
+		}
+		if value.OwnerStatement.Kind != value.Kind {
+			return "", refuse(RefusalOwnerDocumentKindUnknown)
+		}
+		if value.OwnerStatement.Digest != digest {
+			return "", refuse(RefusalOwnerStatementMismatch)
+		}
+		statement := fmt.Sprintf(
+			"Melusina owner document\nkind=%s\nestate=%s\nexpires=%s\ndigest=%s",
+			value.OwnerStatement.Kind, value.OwnerStatement.EstateWords,
+			value.OwnerStatement.Expiry, value.OwnerStatement.Digest)
+		if err := verifyThresholdSignatures(value.GenesisOwnerPolicy, statement, value.Signatures); err != nil {
+			return "", errors.New("owner-signature-invalid")
+		}
+	} else if err := verifyThresholdSignatures(value.GenesisOwnerPolicy, digest, value.Signatures); err != nil {
 		return "", foundationAuthorizationRefusal(err)
 	}
 	if now.IsZero() {
@@ -203,6 +271,24 @@ func VerifyFoundationAuthorization(value FoundationAuthorizationV1, now time.Tim
 		return "", refuse(RefusalFoundationAuthorizationExpired)
 	}
 	return digest, nil
+}
+
+// FoundationOwnerStatementBytes rebuilds the exact owner-document sentence a
+// statement-v1 authorization's signatures cover: the ASCII bytes
+// "Melusina owner document\nkind=<kind>\nestate=<estateWords>\nexpires=<expiry>\ndigest=<digest>".
+// It is exported so every producer test and consumer tool rebuilds the SAME
+// bytes instead of reserialising them independently.
+func FoundationOwnerStatementBytes(value FoundationAuthorizationV1) string {
+	return fmt.Sprintf(
+		"Melusina owner document\nkind=%s\nestate=%s\nexpires=%s\ndigest=%s",
+		value.OwnerStatement.Kind, value.OwnerStatement.EstateWords,
+		value.OwnerStatement.Expiry, value.OwnerStatement.Digest)
+}
+
+// FoundationOwnerStatementSHA256 is the SHA-256 of the rebuilt statement
+// bytes. It is a transport diagnostic, never a signing digest.
+func FoundationOwnerStatementSHA256(value FoundationAuthorizationV1) string {
+	return sha256Hex([]byte(FoundationOwnerStatementBytes(value)))
 }
 
 // RequireFoundationInputs binds a verified authorization to the exact static

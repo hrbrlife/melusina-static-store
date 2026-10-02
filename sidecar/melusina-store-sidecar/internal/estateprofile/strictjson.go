@@ -39,6 +39,15 @@ func decodeStrictProfile(raw []byte, limit int, destination *EstateProfileV1, pr
 	return decodeStrictWithProfilePredecessor(raw, limit, destination, precheck, true)
 }
 
+// decodeStrictFoundationAuthorization keeps all the strict JSON rules with one
+// D50 exception: a statement-v1 authorization may omit ownerStatement. A
+// missing owner statement is not a legacy fallback — VerifyFoundationAuthorization
+// refuses it as owner-statement-mismatch, so omission is still fail-closed at
+// verification; the decoder only keeps absent distinct from mismatched.
+func decodeStrictFoundationAuthorization(raw []byte, limit int, destination *FoundationAuthorizationV1, precheck func(tree any) error) error {
+	return decodeStrictWithProfilePredecessor(raw, limit, destination, precheck, true)
+}
+
 func decodeStrictWithProfilePredecessor(raw []byte, limit int, destination any, precheck func(tree any) error, profilePredecessor bool) error {
 	if len(raw) == 0 {
 		return refuse(RefusalJSONEmpty)
@@ -201,6 +210,9 @@ func checkStrictJSONShape(value any, typeOf reflect.Type, path string, profilePr
 			child, present := object[name]
 			if !present {
 				if profilePredecessor && path == "$" && typeOf == reflect.TypeOf(EstateProfileV1{}) && name == "predecessor" {
+					continue
+				}
+				if profilePredecessor && path == "$" && typeOf == reflect.TypeOf(FoundationAuthorizationV1{}) && name == "ownerStatement" {
 					continue
 				}
 				return refuseSubject(RefusalJSONMissingField, path+"."+name)

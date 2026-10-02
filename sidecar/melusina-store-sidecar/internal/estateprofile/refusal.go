@@ -65,6 +65,13 @@ const (
 	RefusalFoundationAuthorizationTargetBindingMismatch   = "estate-foundation-authorization-target-binding-mismatch"
 	RefusalFoundationAuthorizationGenesisMismatch         = "estate-foundation-authorization-genesis-mismatch"
 
+	// D50 statement-v1 owner documents. The rebuilt owner statement is the
+	// only thing the signatures of a statement-v1 authorization cover; the
+	// charter digest binds the independently reviewed charter.
+	RefusalOwnerStatementMismatch   = "owner-statement-mismatch"
+	RefusalOwnerDocumentKindUnknown = "owner-document-kind-unknown"
+	RefusalCharterDigestMismatch    = "charter-digest-mismatch"
+
 	// Root-Store enrollment. This is a separate, post-foundation contract: a
 	// final EstateProfileV1 names the public estate, while this document binds
 	// the Store's root-only facts that exist only after foundation read-back.

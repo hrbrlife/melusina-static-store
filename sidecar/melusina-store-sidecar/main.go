@@ -194,6 +194,20 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "public-leaf-renew" {
+		runPublicLeafRenewSubcommand(os.Args[2:])
+		return
+	}
+	// --store-host=verify-public: an outside-in probe of the Store's public
+	// route. It resolves through the configured public resolver only, refuses
+	// a split-horizon answer by name, fetches /healthz and /apps/index.json,
+	// and pins the served leaf against the public leaf on disk. It reads the
+	// chain and serves nothing: it is a probe, never a listener.
+	if len(os.Args) > 1 && os.Args[1] == "verify-public" {
+		runStoreHostVerifyPublicSubcommand(os.Args[2:])
+		return
+	}
+
 	configPath := flag.String("config", "store.config.json", "path to operator config (JSON; store.yaml support pending dep wiring)")
 	listenOverride := flag.String("listen", "", "override listen_addr from config")
 	distOverride := flag.String("dist", "", "override dist_dir from config")

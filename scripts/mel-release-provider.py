@@ -2586,6 +2586,13 @@ def write_staged_metadata(source_metadata: Path, destination: Path, staged_metad
     }
     unexpected_new_fields = set(staged_metadata) - set(source) - derived
     if missing_product_fields or changed_product_fields or unexpected_new_fields:
+        app_id = str(source.get("appId", "unknown-app"))
+        for key in sorted(missing_product_fields):
+            raise ProviderError(f"metadata-not-bound-to-release:{app_id}:{key}: source product field missing from staged metadata")
+        for key in sorted(changed_product_fields):
+            raise ProviderError(f"metadata-not-bound-to-release:{app_id}:{key}: staged metadata alters a product-owned field")
+        for key in sorted(unexpected_new_fields):
+            raise ProviderError(f"metadata-not-bound-to-release:{app_id}:{key}: staged metadata adds an unknown field")
         raise ProviderError("candidate staging attempted to alter product-owned metadata fields")
 
     marker = object()
@@ -2671,6 +2678,41 @@ def write_unsigned_provisional_release(path: Path) -> None:
         "signedAtUnix": 0,
         "quorumPolicy": {"threshold": 0, "memberCount": 0, "multisigPda": ""},
     })
+
+
+def emit_portable_release_input_receipt(
+    receipt_out: Path,
+    app_id: str,
+    source_commit: str,
+    source_selection_receipt_sha256: str,
+    spk_path: Path,
+    metadata_path: Path,
+    runtime_contract_path: Path,
+    assets: list[dict[str, Any]] | None = None,
+) -> None:
+    """Write the portable A32/H04 digest receipt for one produced candidate.
+
+    Every digest is computed from the exact produced bytes, never an operator
+    argument, so a later served-artifact comparison is source-bound even when
+    the receiving host has no source checkout. `assets` carries authored
+    presentation bytes (icons, screenshots) as {"kind","path","sha256"}.
+    """
+    portable = {
+        "schema": "melusina-release-input-receipt.v1",
+        "appId": app_id,
+        "sourceCommit": source_commit,
+        "sourceSelectionReceiptSha256": source_selection_receipt_sha256,
+        "spkSha256": hex_sha(spk_path),
+        "metadataSha256": hex_sha(metadata_path),
+        "runtimeContractSha256": hex_sha(runtime_contract_path),
+    }
+    document = {
+        "schema": "melusina.release-metadata-artwork-receipt.v1",
+        "appId": app_id,
+        "portableEvidence": portable,
+        "assets": assets or [],
+    }
+    write_json(receipt_out, document)
 
 
 def build(app_id: str, version: str, receipt_out: Path) -> None:
@@ -2763,6 +2805,15 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "catalogBootstrap": catalog_bootstrap,
     }
     write_json(context_path(app_id), context)
+    emit_portable_release_input_receipt(
+        work / "portable-release-input-receipt.json",
+        app_id,
+        spec["source_commit"].strip().lower(),
+        source_selection["receiptSha256"],
+        spk,
+        metadata,
+        runtime_contract,
+    )
     write_json(receipt_out, {
         "schema": "melusina-app-candidate-receipt-v1",
         "app": {"appId": app_id, "version": version},

@@ -30,12 +30,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 	"filippo.io/edwards25519"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 )
 
 const (
@@ -86,11 +86,11 @@ func (device publisherDeviceReference) normalized() (string, string, bool) {
 // front door reads. Field names and JSON spelling match
 // deploy-ui/internal/releaseset/releaseset.go so one file verifies under both.
 type releaseSetDocument struct {
-	Schema          string `json:"schema"`
-	Stage           string `json:"stage"`
-	Sequence        uint64 `json:"sequence"`
-	CreatedAt       string `json:"createdAt"`
-	Foundation      struct {
+	Schema     string `json:"schema"`
+	Stage      string `json:"stage"`
+	Sequence   uint64 `json:"sequence"`
+	CreatedAt  string `json:"createdAt"`
+	Foundation struct {
 		Sequence uint64 `json:"sequence"`
 		SHA256   string `json:"sha256"`
 	} `json:"foundation"`
@@ -101,8 +101,8 @@ type releaseSetDocument struct {
 			Ed25519PublicKey string `json:"ed25519PublicKey"`
 		} `json:"keys"`
 	} `json:"publisherKeyset"`
-	Recalls        []json.RawMessage `json:"recalls"`
-	PhaseEndpoints map[string][]string `json:"phaseEndpoints"`
+	Recalls        []json.RawMessage    `json:"recalls"`
+	PhaseEndpoints map[string][]string  `json:"phaseEndpoints"`
 	Artifacts      []releaseSetArtifact `json:"artifacts"`
 	Completeness   string               `json:"completeness"`
 	DeclaredAbsent []json.RawMessage    `json:"declaredAbsent"`
@@ -282,13 +282,21 @@ func publisherKeyInGroup(publicKey []byte) bool {
 // must be present. One bad signature refuses the whole set; a key outside the
 // keyset refuses by name.
 func verifyReleaseSetSignatures(document releaseSetDocument, trusted map[string]string) (string, error) {
+	if document.PublisherKeyset.Threshold == 0 || int(document.PublisherKeyset.Threshold) > len(trusted) {
+		return "", errors.New("release_publisher_threshold_invalid")
+	}
 	_, digest, err := releaseSetDigest(document)
 	if err != nil {
 		return "", err
 	}
 	message := []byte(digest)
 	valid := 0
+	seen := make(map[string]bool, len(document.Signatures))
 	for _, signature := range document.Signatures {
+		if seen[signature.KeyID] {
+			return "", fmt.Errorf("release_signature_duplicate:%s", signature.KeyID)
+		}
+		seen[signature.KeyID] = true
 		publicKeyHex, member := trusted[signature.KeyID]
 		if !member {
 			return "", fmt.Errorf("release_signature_unknown_key:%s", signature.KeyID)
@@ -371,6 +379,9 @@ func deriveReleaseDocumentInputs(profilePath, releaseSetPath, publisherDevicePat
 			return releaseDocumentInputs{}, fmt.Errorf("--release-set has a duplicate publisher keyId %q", key.KeyID)
 		}
 		embedded[key.KeyID] = key.Ed25519PublicKey
+	}
+	if uint32(document.PublisherKeyset.Threshold) != profile.ReleaseTrust.Threshold {
+		return releaseDocumentInputs{}, errors.New("release_publisher_threshold_mismatch: signed estate profile")
 	}
 	releaseSetSHA256, err := verifyReleaseSetSignatures(document, embedded)
 	if err != nil {
@@ -511,6 +522,7 @@ func loadTypedPreflightConfig(profilePath, releaseSetPath, publisherDevicePath s
 	// to an operator-chosen helper.
 	return c, inputs, errors.New("RELEASE_PROVIDER_UNPINNED: the signed release set carries no " + releaseToolsRole + " member")
 }
+
 // funcAtoi is strconv.Atoi under a non-colliding name (strconv is already
 // imported by config.go in this package).
 func funcAtoi(value string) (int, error) { return strconv.Atoi(value) }

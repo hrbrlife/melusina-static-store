@@ -331,4 +331,3 @@ type releaseDocumentInputs struct {
 	ReleaseToolsRole     string
 	ArtifactPins         json.RawMessage
 }
-

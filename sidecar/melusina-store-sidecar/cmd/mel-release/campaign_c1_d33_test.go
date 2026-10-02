@@ -209,3 +209,58 @@ func TestC1D33LegacyOverrideCannotReplaceProfile(t *testing.T) {
 		t.Fatalf("D33_PROFILE_PROJECTION_MISMATCH: got %v", err)
 	}
 }
+
+func TestD33DuplicatePublisherSignatureRefused(t *testing.T) {
+	raw, err := os.ReadFile("../../testdata/contracts/C1-estate/d33-signed-manifest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document releaseSetDocument
+	if err := json.Unmarshal(raw, &document); err != nil {
+		t.Fatal(err)
+	}
+	trusted := map[string]string{}
+	for _, key := range document.PublisherKeyset.Keys {
+		trusted[key.KeyID] = key.Ed25519PublicKey
+	}
+	if len(document.Signatures) == 0 {
+		t.Fatal("D33_SIGNED_MANIFEST_FIXTURE_DRIFT")
+	}
+	one := document.Signatures[0]
+	document.Signatures = append(document.Signatures[:0], one, one, one)
+	if _, err := verifyReleaseSetSignatures(document, trusted); err == nil || !strings.Contains(err.Error(), "release_signature_duplicate") {
+		t.Fatalf("D33_DUPLICATE_SIGNATURE_COUNTED: %v", err)
+	}
+}
+
+func TestD33ZeroThresholdReleaseSetRefusedAgainstProfile(t *testing.T) {
+	manifest, err := filepath.Abs("../../testdata/contracts/C1-estate/d33-signed-manifest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	device, err := filepath.Abs("../../testdata/contracts/C1-estate/d33-publisher-device.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile := c1D33FixtureProfile(t, manifest)
+	raw, err := os.ReadFile(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document releaseSetDocument
+	if err := json.Unmarshal(raw, &document); err != nil {
+		t.Fatal(err)
+	}
+	document.PublisherKeyset.Threshold, document.Signatures = 0, nil
+	changed, err := json.Marshal(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "unsigned-release-set.json")
+	if err := os.WriteFile(path, changed, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deriveReleaseDocumentInputs(profile, path, device); err == nil || !strings.Contains(err.Error(), "release_publisher_threshold_mismatch") {
+		t.Fatalf("D33_ZERO_THRESHOLD_REACHED_PROVIDER: %v", err)
+	}
+}

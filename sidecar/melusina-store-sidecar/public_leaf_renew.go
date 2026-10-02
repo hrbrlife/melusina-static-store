@@ -43,6 +43,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,11 +53,13 @@ import (
 // Refusal names for the public probe and the renewal path. Every refusal is
 // reported by its exact name so an operator log is greppable.
 const (
-	storePublicProbeSplitHorizon = "store_public_probe_split_horizon"
-	storePublicProbeUnresolved   = "store_public_probe_unresolved"
-	storePublicProbeLeafMismatch = "store_public_probe_leaf_mismatch"
-	storePublicProbeFetchFailed  = "store_public_probe_fetch_failed"
-	storePublicProbeStatus       = "store_public_probe_status"
+	storePublicProbeSplitHorizon     = "store_public_probe_split_horizon"
+	storePublicProbeUnresolved       = "store_public_probe_unresolved"
+	storePublicProbeLeafMismatch     = "store_public_probe_leaf_mismatch"
+	storePublicProbeFetchFailed      = "store_public_probe_fetch_failed"
+	storePublicProbeStatus           = "store_public_probe_status"
+	storePublicProbeResolverRequired = "store_public_probe_resolver_required"
+	storePublicProbeResolverInvalid  = "store_public_probe_resolver_invalid"
 
 	publicLeafRenewRefused  = "public-leaf-renew-responder-refused"
 	publicLeafRenewInvalid  = "public-leaf-renew-invalid-leaf"
@@ -266,7 +269,11 @@ func runStoreHostVerifyPublicSubcommand(args []string) {
 		log.Fatalf("verify-public: unexpected positional arguments: %v", fs.Args())
 	}
 	if strings.TrimSpace(opts.resolver) == "" {
-		log.Fatalf("verify-public: --resolver is required (the configured public resolver, never /etc/hosts)")
+		log.Fatalf("verify-public: %s: --resolver is required", storePublicProbeResolverRequired)
+	}
+	public, err := newConfiguredPublicResolver(opts.resolver, opts.timeout)
+	if err != nil {
+		log.Fatalf("verify-public: %s: %v", storePublicProbeResolverInvalid, err)
 	}
 	cfg, err := LoadConfig(opts.configPath)
 	if err != nil {
@@ -285,10 +292,9 @@ func runStoreHostVerifyPublicSubcommand(args []string) {
 	result, err := probePublicRoute(context.Background(), probePublicRouteInputs{
 		host:     host,
 		paths:    strings.Split(storePublicProbePaths, ","),
-		resolver: opts.resolver,
 		certPath: cfg.TLS.CertPath,
 		timeout:  opts.timeout,
-		public:   net.DefaultResolver,
+		public:   public,
 		system:   net.DefaultResolver,
 		dialer:   &net.Dialer{Timeout: opts.timeout},
 		lookupHost: func(ctx context.Context, r publicResolver, name string) ([]string, error) {
@@ -315,7 +321,6 @@ type probePublicRouteResult struct {
 type probePublicRouteInputs struct {
 	host       string
 	paths      []string
-	resolver   string
 	certPath   string
 	timeout    time.Duration
 	public     publicResolver
@@ -346,6 +351,9 @@ func probePublicRoute(ctx context.Context, in probePublicRouteInputs) (probePubl
 	}
 	ctx, cancel := context.WithTimeout(ctx, in.timeout)
 	defer cancel()
+	if in.public == nil {
+		return probePublicRouteResult{}, fmt.Errorf("%s: no public resolver configured", storePublicProbeUnresolved)
+	}
 
 	// Split-horizon guard FIRST: the host's own resolver (/etc/hosts and the
 	// local resolver's view) must agree with the public answer, or the probe
@@ -354,6 +362,12 @@ func probePublicRoute(ctx context.Context, in probePublicRouteInputs) (probePubl
 	publicAddresses, publicErr := in.lookupHost(ctx, in.public, in.host)
 	if publicErr != nil || len(publicAddresses) == 0 {
 		return probePublicRouteResult{}, fmt.Errorf("%s: public resolution of %s failed: %v", storePublicProbeUnresolved, in.host, publicErr)
+	}
+	for _, address := range publicAddresses {
+		ip, err := netip.ParseAddr(address)
+		if err != nil || !ip.Unmap().IsGlobalUnicast() || ip.Unmap().IsPrivate() {
+			return probePublicRouteResult{}, fmt.Errorf("%s: the public resolver answered with a local or private address %q for %s", storePublicProbeSplitHorizon, address, in.host)
+		}
 	}
 	if systemErr == nil && len(systemAddresses) > 0 && !sameAddressSet(systemAddresses, publicAddresses) {
 		return probePublicRouteResult{}, fmt.Errorf("%s: the local resolver answers %v for %s while the public resolver answers %v; the probe only trusts the public answer", storePublicProbeSplitHorizon, systemAddresses, in.host, publicAddresses)

@@ -124,7 +124,7 @@ func newD41ProbeFixture(t *testing.T, hosts ...string) *d41ProbeFixture {
 func (f *d41ProbeFixture) inputs(host, certPath string) probePublicRouteInputs {
 	return probePublicRouteInputs{
 		host: host, paths: []string{"/healthz", "/apps/index.json"},
-		resolver: "resolver.estate.test:53", certPath: certPath, timeout: 10 * time.Second,
+		certPath: certPath, timeout: 10 * time.Second,
 		public: f.publicRes,
 		system: f.systemRes,
 		dialer: d41FakeDialer{address: f.addr},

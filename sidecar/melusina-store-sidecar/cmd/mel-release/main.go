@@ -66,6 +66,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -87,6 +88,20 @@ func run(args []string) error {
 		err error
 	)
 	if sub == "preflight" {
+		// The typed document front door: when the three release documents are
+		// given, they are the ONLY estate source — no MEL_RELEASE_* env is
+		// required, contradicting overrides are refused by name, and provider
+		// selection refuses RELEASE_PROVIDER_UNPINNED while the signed release
+		// set carries no release-tools member.
+		var documents []string
+		documents, rest, err = typedDocumentFlags(rest)
+		if err != nil {
+			return err
+		}
+		if documents != nil {
+			cfg, _, err = loadTypedPreflightConfig(documents[0], documents[1], documents[2])
+			return err
+		}
 		cfg, err = loadPreflightConfig()
 	} else {
 		cfg, err = loadConfig()
@@ -226,6 +241,59 @@ func run(args []string) error {
 	default:
 		return fmt.Errorf("unknown subcommand %q (want preflight|publish|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed)", sub)
 	}
+}
+
+// typedDocumentFlags scans preflight flags for the two spellings of the typed
+// release-document front door. The long spelling is --estate-profile,
+// --release-set and --publisher-device; the second spelling (the C1 estate
+// manifest view) is --profile, --manifest and --device. Mixing spellings, or
+// supplying one document without all three, refuses. When none is present the
+// flags pass through untouched so the legacy environment entry point is
+// unchanged.
+func typedDocumentFlags(args []string) ([]string, []string, error) {
+	long := map[string]string{"--estate-profile": "", "--release-set": "", "--publisher-device": ""}
+	short := map[string]string{"--profile": "", "--manifest": "", "--device": ""}
+	rest := make([]string, 0, len(args))
+	for index := 0; index < len(args); index++ {
+		name, value, hasValue := strings.Cut(args[index], "=")
+		longest := name == "--estate-profile" || name == "--release-set" || name == "--publisher-device"
+		if !longest {
+			shortest := name == "--profile" || name == "--manifest" || name == "--device"
+			if !shortest {
+				rest = append(rest, args[index])
+				continue
+			}
+			if hasValue {
+				short[name] = value
+			} else if index+1 < len(args) {
+				index++
+				short[name] = args[index]
+			} else {
+				return nil, nil, fmt.Errorf("%s requires a value", name)
+			}
+			continue
+		}
+		if hasValue {
+			long[name] = value
+		} else if index+1 < len(args) {
+			index++
+			long[name] = args[index]
+		} else {
+			return nil, nil, fmt.Errorf("%s requires a value", name)
+		}
+	}
+	if long["--estate-profile"] == "" && long["--release-set"] == "" && long["--publisher-device"] == "" &&
+		short["--profile"] == "" && short["--manifest"] == "" && short["--device"] == "" {
+		return nil, args, nil
+	}
+	documents := []string{long["--estate-profile"], long["--release-set"], long["--publisher-device"]}
+	if documents[0] == "" || documents[1] == "" || documents[2] == "" {
+		documents = []string{short["--profile"], short["--manifest"], short["--device"]}
+		if documents[0] == "" || documents[1] == "" || documents[2] == "" {
+			return nil, nil, fmt.Errorf("the typed document front door needs --estate-profile, --release-set and --publisher-device together (or --profile, --manifest and --device)")
+		}
+	}
+	return documents, rest, nil
 }
 
 func usageErr() error {

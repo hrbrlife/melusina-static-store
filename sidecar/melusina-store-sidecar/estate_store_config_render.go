@@ -47,6 +47,13 @@ const (
 	storeConfigRenderTLSCert   = "/etc/melusina/store/tls/cert.pem"
 	storeConfigRenderTLSKey    = "/etc/melusina/store/tls/key.pem"
 	storeConfigRenderShardDir  = "/etc/melusina/store/shards"
+	// The root Store's boot-identity certificate is the chain-bound,
+	// self-issued leaf its SidecarIdentityEntry fingerprints. It is a
+	// DIFFERENT file from the self-renewing public leaf the ACME responder
+	// keeps fresh at the tls paths; one file must never serve both roles
+	// (store-config-render-identity-is-served).
+	storeConfigRenderIdentityCert = "/etc/melusina/store/identity/cert.pem"
+	storeConfigRenderIdentityKey  = "/etc/melusina/store/identity/key.pem"
 	// The gated routes' private snapshots: a dedicated directory under the
 	// state root, on the same disk, created by the Store at start-up.
 	storeConfigRenderServedSnapshotDir = "/var/lib/melusina-store/served-snapshots"
@@ -477,8 +484,15 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 			KeyVersion:         1,
 			OperatorKeyVersion: 1,
 			OperatorDomain:     input.OperatorDomain,
-			TLSCertPath:        storeConfigRenderTLSCert,
+			// The chain-bound identity leaf is deliberately a separate file
+			// from the public, self-renewing leaf above: the ACME responder
+			// may rotate tls/cert.pem freely only because the SidecarIdentity
+			// fingerprint pins identity/cert.pem instead.
+			TLSCertPath: storeConfigRenderIdentityCert,
 		},
+	}
+	if filepath.Clean(config.BootIdentity.TLSCertPath) == filepath.Clean(config.TLS.CertPath) {
+		return Config{}, fmt.Errorf("store-config-render-identity-is-served: identity=%q public=%q", config.BootIdentity.TLSCertPath, config.TLS.CertPath)
 	}
 	return config, nil
 }

@@ -52,6 +52,8 @@ var enrollmentExemptStoreSubcommands = map[string]string{
 	"store-identity-restore":              "rebuilds the shards on a replacement host and proves them against an explicit operator key; acts with no release authority, and the restored Store passes this gate at startup",
 	"genesis-dist-init":                   "creates the empty first-install dist snapshot before enrollment exists; derives no operator and reads no chain state",
 	"provider-pairing-attest":             "client of the provider pairing signer socket; derives no operator and verifies the returned attestation against -expect-keyid",
+	"public-leaf-renew":                   "renews the public TLS leaf through the estate ACME responder; derives no operator and writes no chain or enrollment state",
+	"verify-public":                       "outside-in public-route probe; derives no operator and writes nothing",
 }
 
 // enrollmentGatedEntryPoint is one process entry point that acts with this

@@ -223,7 +223,7 @@ func refuseEstateOverrides(estate estateBinding) error {
 			supplied = strings.TrimRight(supplied, "/")
 		}
 		if supplied != "" && supplied != item.want {
-			return fmt.Errorf("%s=%q is not the estate profile's %q; it cannot override the owner-signed estate profile", item.name, supplied, item.want)
+			return fmt.Errorf("PROFILE_PROJECTION_MISMATCH: %s=%q is not the estate profile's %q; it cannot override the owner-signed estate profile", item.name, supplied, item.want)
 		}
 	}
 	return nil
@@ -332,6 +332,3 @@ type releaseDocumentInputs struct {
 	ArtifactPins         json.RawMessage
 }
 
-func deriveReleaseDocumentInputs(profilePath, releaseSetPath, publisherDevicePath string) (releaseDocumentInputs, error) {
-	return releaseDocumentInputs{}, errors.New("RELEASE_DOCUMENT_INPUTS_UNWIRED")
-}

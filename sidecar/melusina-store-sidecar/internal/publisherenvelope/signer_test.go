@@ -17,8 +17,10 @@ import (
 )
 
 func TestClientUsesOnlyTheOwnerOnlySignerSocket(t *testing.T) {
-	directory := filepath.Join(t.TempDir(), "socket")
-	if err := os.Mkdir(directory, directoryMode); err != nil {
+	// Keep the filesystem socket path below AF_UNIX's 108-byte limit even
+	// when the test suite runs from a deeply nested workspace or TMPDIR.
+	directory, err := os.MkdirTemp(os.TempDir(), "pps")
+	if err != nil {
 		t.Fatal(err)
 	}
 	publisher := signerIdentity(t, 1, false)
@@ -27,7 +29,7 @@ func TestClientUsesOnlyTheOwnerOnlySignerSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	socket := filepath.Join(directory, "publisher-envelope.sock")
+	socket := filepath.Join(directory, "s")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)

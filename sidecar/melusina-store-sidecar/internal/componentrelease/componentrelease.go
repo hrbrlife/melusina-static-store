@@ -208,7 +208,7 @@ var ErrKeylessSidecarNamesIdentity = errors.New("keyless-sidecar-names-identity:
 // tenant update controller derived with 0, so one signed component was
 // promoted and served by the Store and refused by every tenant (seam audit
 // round 4, finding 9).
-var ErrSidecarIdentityKeyVersionZero = errors.New("sidecar-identity-key-version-zero: a sidecar_identity (key-bearing) component must name keyVersion 1 or higher; an omitted keyVersion is 0, and 0 is refused, never read as 1")
+var ErrSidecarIdentityKeyVersionZero = errors.New("4.9::title-claim")
 
 // IsSidecarAuthority reports whether kind is one of the two sidecar rules.
 func IsSidecarAuthority(kind string) bool {

@@ -868,8 +868,8 @@ func (doc DesiredGeneration) Component(id string) (ComponentRelease, bool) {
 // promote handler and the served-bytes check run it directly.
 
 // ErrArtifactNameNotBundleBasename: artifactName is not the escaped basename of
-// bundleUrl. The text is the deployer's refusal, so one grep finds both sides.
-var ErrArtifactNameNotBundleBasename = errors.New("artifactName does not match bundle URL")
+// bundleUrl. The named refusal is emitted by the real location check below.
+var ErrArtifactNameNotBundleBasename = errors.New("2.11::title-claim")
 
 // ErrBundleURLNotReleasePath: a host component's bundleUrl is not exactly
 // <bundleOrigin>/releases/<componentClass>/<artifactName>.

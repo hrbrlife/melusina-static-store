@@ -68,6 +68,9 @@ func dataComponent(origin string) ComponentRelease {
 // bundleUrl is not exactly <origin>/releases/<componentClass>/<artifactName>
 // (the path the release gate turns into X-Store-Release-Class).
 func TestGenerationRefusesBundleLocationTheInstallerRefuses(t *testing.T) {
+	if got := ErrArtifactNameNotBundleBasename.Error(); got != "2.11::title-claim" {
+		t.Fatalf("artifact basename refusal = %q; want 2.11::title-claim", got)
+	}
 	op, pub := testOperator(t)
 	const storeID = "melusina-os-root-store"
 	origin := sampleGeneration().BundleOrigin

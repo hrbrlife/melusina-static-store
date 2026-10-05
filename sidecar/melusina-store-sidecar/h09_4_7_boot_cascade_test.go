@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -31,7 +32,7 @@ func TestH0947RootStoreBootNamesRevokedCascade(t *testing.T) {
 			tc.recall(f.cascade)
 			f.reseed(t)
 			_, err := deriveVerifiedBootIdentity(context.Background(), f.cfg, f.chain)
-			if err == nil || !strings.HasPrefix(err.Error(), control+": check=sidecar_cascade: cascade-not-active:"+tc.want) {
+			if err == nil || !strings.HasPrefix(err.Error(), "check=sidecar_cascade: cascade-not-active:"+tc.want) || !errors.Is(err, errH0947BootCascade) || !strings.Contains(err.Error(), control) {
 				t.Fatalf("%s: revoked cascade was accepted or lost its refusal name: %v", control, err)
 			}
 		})

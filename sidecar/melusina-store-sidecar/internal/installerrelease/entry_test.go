@@ -105,8 +105,8 @@ func TestLayoutIsTheRustStruct(t *testing.T) {
 	if got := rustStructFields(t, src, AccountName); !reflect.DeepEqual(got, Layout) {
 		t.Fatalf("Layout != Rust struct\n got  %v\n rust %v", Layout, got)
 	}
-	if got := rustLen(t, src, AccountName); got != Len || Len != 319 {
-		t.Fatalf("Len = %d, Rust LEN = %d, contracts K3 records 319", Len, got)
+	if got := rustLen(t, src, AccountName); got != Len || Len != 1795 {
+		t.Fatalf("Len = %d, Rust LEN = %d, contracts V2 records 1795", Len, got)
 	}
 	if m := regexp.MustCompile(`pub const MAX_RELEASE_VERSION_LEN: usize = (\d+);`).FindStringSubmatch(src); m == nil || m[1] != strconv.Itoa(MaxVersionLen) {
 		t.Fatalf("MaxVersionLen %d != excerpt %v", MaxVersionLen, m)
@@ -120,7 +120,7 @@ func TestLayoutIsTheRustStruct(t *testing.T) {
 	if len(variants) != 3 {
 		t.Fatalf("AttestationStatus has %d variants, decoder knows 3", len(variants))
 	}
-	wantPreimage := []string{`b"` + PayloadDomain + `"`, "master_nft_mint.as_ref()", "installer_hash.as_ref()", "version.as_bytes()", "publisher_squads_vault.as_ref()", "publisher_ed25519_pubkey.as_ref()"}
+	wantPreimage := []string{`b"` + PayloadDomainV2 + `"`, "master_nft_mint.as_ref()", "installer_hash.as_ref()", "version.as_bytes()", "publisher_squads_vault.as_ref()", "publisher_ed25519_pubkey.as_ref()", "estate_profile_sha256.as_ref()"}
 	if got := rustPayloadPreimage(t, src); !reflect.DeepEqual(got, wantPreimage) {
 		t.Fatalf("payload preimage\n got  %v\n want %v", got, wantPreimage)
 	}
@@ -240,10 +240,10 @@ func TestDecodeReadsTheRustVectorsExactly(t *testing.T) {
 	src := rustSource(t)
 	fields := rustStructFields(t, src, AccountName)
 	v := loadVectors(t)
-	if v.Len != Len || v.DiscriminatorHex != "25e0b4bac29dadf4" {
+	if v.Len != LegacyLen || v.DiscriminatorHex != "25e0b4bac29dadf4" {
 		t.Fatalf("vector len %d disc %s", v.Len, v.DiscriminatorHex)
 	}
-	for i, f := range fields {
+	for i, f := range fields[:len(v.FieldOrder)] {
 		if v.FieldOrder[i] != [2]string{f.Name, f.Type} {
 			t.Fatalf("vector field order %v != Rust %v", v.FieldOrder, fields)
 		}
@@ -251,15 +251,15 @@ func TestDecodeReadsTheRustVectorsExactly(t *testing.T) {
 	disc := Discriminator()
 	for _, vec := range v.Vectors {
 		t.Run(vec.Name, func(t *testing.T) {
-			account := mustHex(t, vec.AccountHex, Len)
+			account := mustHex(t, vec.AccountHex, LegacyLen)
 			encoded := append([]byte(nil), disc[:]...)
-			for _, f := range fields {
+			for _, f := range fields[:len(v.FieldOrder)] {
 				encoded = append(encoded, borshByRustType(t, f.Type, vec.Fields[f.Name], v.StatusVariants)...)
 			}
 			if len(encoded) != vec.SerializedLength {
 				t.Fatalf("serialized %d, vector says %d", len(encoded), vec.SerializedLength)
 			}
-			encoded = append(encoded, make([]byte, Len-len(encoded))...)
+			encoded = append(encoded, make([]byte, LegacyLen-len(encoded))...)
 			if hex.EncodeToString(encoded) != vec.AccountHex {
 				t.Fatalf("Rust-typed re-encoding differs from the committed account bytes")
 			}
@@ -305,6 +305,7 @@ func TestDecodeReadsTheRustVectorsExactly(t *testing.T) {
 				SignedPayloadHash:      h32("signed_payload_hash"),
 				RevokedAt:              revokedAt,
 				Bump:                   bump,
+				Legacy:                 true,
 			}
 			if !reflect.DeepEqual(e, want) {
 				t.Fatalf("decoded\n %+v\nwant\n %+v", e, want)
@@ -329,7 +330,7 @@ func vectorPublisher(t *testing.T) ed25519.PrivateKey {
 
 func activeVector(t *testing.T) ([]byte, Entry) {
 	t.Helper()
-	account := mustHex(t, loadVectors(t).Vectors[0].AccountHex, Len)
+	account := mustHex(t, loadVectors(t).Vectors[0].AccountHex, LegacyLen)
 	e, err := Decode(account)
 	if err != nil {
 		t.Fatal(err)
@@ -398,7 +399,7 @@ func TestDecodeRefusesAnythingButTheExactLayout(t *testing.T) {
 		{"wrong discriminator", mutate(func(b []byte) []byte { b[0] ^= 1; return b }), "discriminator"},
 		{"empty", nil, "discriminator"},
 		{"pre-K3 191-byte layout", preK3Account(e), "size"},
-		{"one byte short", account[:Len-1], "size"},
+		{"one byte short", account[:LegacyLen-1], "size"},
 		{"one byte long", append(append([]byte(nil), account...), 0), "size"},
 		{"version longer than MAX_RELEASE_VERSION_LEN", mutate(func(b []byte) []byte {
 			binary.LittleEndian.PutUint32(b[versionOffset:], MaxVersionLen+1)
@@ -407,7 +408,7 @@ func TestDecodeRefusesAnythingButTheExactLayout(t *testing.T) {
 		{"version not UTF-8", mutate(func(b []byte) []byte { b[versionOffset+4] = 0xff; return b }), "version"},
 		{"unknown status", mutate(func(b []byte) []byte { b[statusOffset] = 3; return b }), "status"},
 		{"Option tag 2", mutate(func(b []byte) []byte { b[revokedOffset] = 2; return b }), "revoked_at"},
-		{"non-zero padding", mutate(func(b []byte) []byte { b[Len-1] = 1; return b }), "padding"},
+		{"non-zero padding", mutate(func(b []byte) []byte { b[LegacyLen-1] = 1; return b }), "padding"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -455,7 +456,7 @@ func TestAdmitRefusesAnUntrustedPublisher(t *testing.T) {
 
 func TestAdmitRefusesAnEntryThatIsNotActive(t *testing.T) {
 	v := loadVectors(t)
-	superseded, err := Decode(mustHex(t, v.Vectors[1].AccountHex, Len))
+	superseded, err := Decode(mustHex(t, v.Vectors[1].AccountHex, LegacyLen))
 	if err != nil {
 		t.Fatal(err)
 	}

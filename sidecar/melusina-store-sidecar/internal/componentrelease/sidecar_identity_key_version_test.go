@@ -10,7 +10,6 @@ package componentrelease
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 	"testing"
 )
 
@@ -80,8 +79,8 @@ func TestSidecarIdentityKeyVersionZeroIsRefusedByName(t *testing.T) {
 	doc.Components[i] = omitted
 
 	err = omitted.validate()
-	if !errors.Is(err, ErrSidecarIdentityKeyVersionZero) || !strings.Contains(err.Error(), "sidecar-identity-key-version-zero") {
-		t.Fatalf("sidecar-identity-key-version-zero-accepted-at-validate: %v", err)
+	if !errors.Is(err, ErrSidecarIdentityKeyVersionZero) || ErrSidecarIdentityKeyVersionZero.Error() != "4.9::title-claim" {
+		t.Fatalf("4.9::title-claim: omitted keyVersion accepted at validate: %v", err)
 	}
 	if _, err := Sign(op, doc); !errors.Is(err, ErrSidecarIdentityKeyVersionZero) {
 		t.Fatalf("sidecar-identity-key-version-zero-accepted-at-sign: %v", err)

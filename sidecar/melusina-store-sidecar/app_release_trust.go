@@ -88,11 +88,11 @@ func bindAppReleaseTrust(cfg *Config, state *storeEnrollmentState) error {
 // admits it before every promote: the estate master mint, the release
 // custodian, the recorded digest, a publisher key the owners enrolled in
 // releaseTrust, the threshold and that key's signature. Every refusal names
-// check=release_entry_admission and the releaseentry refusal.
+// 4.19::title-claim, check=release_entry_admission and the releaseentry refusal.
 func admitReleaseEntryForPublish(cfg Config, appHash [32]byte, meta releaseEntryMeta, rel ReleaseJSON, appIDText string) error {
 	releaseHash, err := hash32FromHex(strings.ToLower(strings.TrimSpace(rel.ReleaseHash)))
 	if err != nil {
-		return fmt.Errorf("check=release_entry_admission: release.releaseHash is not 32-byte hex: %w", err)
+		return fmt.Errorf("4.19::title-claim: check=release_entry_admission: release.releaseHash is not 32-byte hex: %w", err)
 	}
 	want := releaseentry.Expectation{
 		AppHash:     appHash,
@@ -103,15 +103,15 @@ func admitReleaseEntryForPublish(cfg Config, appHash [32]byte, meta releaseEntry
 	entry := meta.entry()
 	if cfg.appReleaseTrust != nil {
 		if err := cfg.appReleaseTrust.Admit(entry, want); err != nil {
-			return fmt.Errorf("check=release_entry_admission: ReleaseEntry %s: %w", meta.PDA, err)
+			return fmt.Errorf("4.19::title-claim: check=release_entry_admission: ReleaseEntry %s: %w", meta.PDA, err)
 		}
 		return nil
 	}
 	if err := unboundAppReleaseTrustRefusal(cfg); err != nil {
-		return fmt.Errorf("check=release_entry_admission: ReleaseEntry %s: %w", meta.PDA, err)
+		return fmt.Errorf("4.19::title-claim: check=release_entry_admission: ReleaseEntry %s: %w", meta.PDA, err)
 	}
 	if err := entry.Attests(want); err != nil {
-		return fmt.Errorf("check=release_entry_admission: ReleaseEntry %s: %w", meta.PDA, err)
+		return fmt.Errorf("4.19::title-claim: check=release_entry_admission: ReleaseEntry %s: %w", meta.PDA, err)
 	}
 	return nil
 }

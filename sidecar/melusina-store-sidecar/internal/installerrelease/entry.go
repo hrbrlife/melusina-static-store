@@ -22,6 +22,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"unicode/utf8"
@@ -37,9 +38,11 @@ const (
 	MaxVersionLen = 32
 	// Len is InstallerReleaseEntry::LEN, the exact size of every entry: the
 	// program creates it with `space = LEN` and no instruction reallocates it.
-	Len = 8 + 32 + 32 + (4 + MaxVersionLen) + 32 + 32 + 8 + 1 + 32 + 64 + 32 + (1 + 8) + 1
+	LegacyLen = 8 + 32 + 32 + (4 + MaxVersionLen) + 32 + 32 + 8 + 1 + 32 + 64 + 32 + (1 + 8) + 1
+	Len       = LegacyLen + 32 + 4 + 15*(32+64)
 	// PayloadDomain is the first hashv input of installer_release_payload_hash.
-	PayloadDomain = "melusina-installer-release-v1"
+	PayloadDomain   = "melusina-installer-release-v1"
+	PayloadDomainV2 = "melusina-installer-release-v2"
 )
 
 // Field is one struct field as the Rust source declares it.
@@ -63,6 +66,8 @@ var Layout = []Field{
 	{"signed_payload_hash", "[u8; 32]"},
 	{"revoked_at", "Option<i64>"},
 	{"bump", "u8"},
+	{"release_trust_profile_hash", "[u8; 32]"},
+	{"additional_publisher_signatures", "Vec<InstallerPublisherSignature>"},
 }
 
 // Refusals. Every error Decode or Admit returns wraps exactly one of these,
@@ -78,7 +83,14 @@ var (
 	ErrThresholdUnmet      = errors.New("installer-release-publisher-threshold-unmet")
 	ErrSignatureInvalid    = errors.New("installer-release-signature-invalid")
 	ErrTrustUnconfigured   = errors.New("installer-release-trust-unconfigured")
+	ErrPublisherDuplicate  = errors.New("installer-release-publisher-duplicate")
+	ErrProfileMismatch     = errors.New("installer-release-trust-profile-mismatch")
 )
+
+type PublisherSignature struct {
+	PublisherEd25519Pubkey [32]byte
+	Signature              [64]byte
+}
 
 // Entry is a decoded InstallerReleaseEntry, every field.
 type Entry struct {
@@ -93,8 +105,11 @@ type Entry struct {
 	PublisherSignature     [64]byte
 	SignedPayloadHash      [32]byte
 	// RevokedAt is nil for None.
-	RevokedAt *int64
-	Bump      uint8
+	RevokedAt                     *int64
+	Bump                          uint8
+	ReleaseTrustProfileHash       [32]byte
+	AdditionalPublisherSignatures []PublisherSignature
+	Legacy                        bool
 }
 
 // Discriminator returns sha256("account:InstallerReleaseEntry")[:8].
@@ -152,8 +167,8 @@ func Decode(data []byte) (Entry, error) {
 	if len(data) < len(disc) || !bytes.Equal(data[:len(disc)], disc[:]) {
 		return e, fmt.Errorf("%w:discriminator: account is not an %s", ErrMalformed, AccountName)
 	}
-	if len(data) != Len {
-		return e, fmt.Errorf("%w:size: account is %d bytes, not the %d-byte %s::LEN (another account layout)", ErrMalformed, len(data), Len, AccountName)
+	if len(data) != Len && len(data) != LegacyLen {
+		return e, fmt.Errorf("%w:size: account is %d bytes, not a supported %s::LEN", ErrMalformed, len(data), AccountName)
 	}
 	r := &reader{data: data, offset: len(disc)}
 	if err := r.fixed("master_nft_mint", e.MasterNFTMint[:]); err != nil {
@@ -222,6 +237,31 @@ func Decode(data []byte) (Entry, error) {
 	if e.Bump, err = r.byteValue("bump"); err != nil {
 		return Entry{}, err
 	}
+	if len(data) == LegacyLen {
+		e.Legacy = true
+	} else {
+		if err := r.fixed("release_trust_profile_hash", e.ReleaseTrustProfileHash[:]); err != nil {
+			return Entry{}, err
+		}
+		countRaw, err := r.take("additional_publisher_signatures", 4)
+		if err != nil {
+			return Entry{}, err
+		}
+		count := binary.LittleEndian.Uint32(countRaw)
+		if count > 15 {
+			return Entry{}, fmt.Errorf("%w:additional_publisher_signatures: count %d exceeds 15", ErrMalformed, count)
+		}
+		for i := uint32(0); i < count; i++ {
+			var signer PublisherSignature
+			if err := r.fixed("additional_publisher_signatures.publisher_ed25519_pubkey", signer.PublisherEd25519Pubkey[:]); err != nil {
+				return Entry{}, err
+			}
+			if err := r.fixed("additional_publisher_signatures.signature", signer.Signature[:]); err != nil {
+				return Entry{}, err
+			}
+			e.AdditionalPublisherSignatures = append(e.AdditionalPublisherSignatures, signer)
+		}
+	}
 	// The program serializes the struct from offset 0 of a zeroed LEN-byte
 	// account and no field ever shrinks, so everything after the last field
 	// is zero. Anything else was not written by this layout.
@@ -249,6 +289,22 @@ func PayloadHash(masterNFTMint, installerHash [32]byte, version string, publishe
 	return out
 }
 
+// PayloadHashV2 is the exact preimage used by new license-registry entries.
+// Every signer signs the same digest, including the pinned estate profile hash.
+func PayloadHashV2(masterNFTMint, installerHash [32]byte, version string, publisherSquadsVault, primaryPublisher, profileHash [32]byte) [32]byte {
+	h := sha256.New()
+	h.Write([]byte(PayloadDomainV2))
+	h.Write(masterNFTMint[:])
+	h.Write(installerHash[:])
+	h.Write([]byte(version))
+	h.Write(publisherSquadsVault[:])
+	h.Write(primaryPublisher[:])
+	h.Write(profileHash[:])
+	var out [32]byte
+	copy(out[:], h.Sum(nil))
+	return out
+}
+
 // Trust is what an estate's owners decided about installer releases: the
 // master mint that seeds every entry, the master NFT custodian (the profile's
 // core vault) that alone registers one, and the publisher keys and threshold
@@ -258,6 +314,7 @@ type Trust struct {
 	custodian     [32]byte
 	publishers    map[[32]byte]struct{}
 	threshold     uint32
+	profileSha256 [32]byte
 }
 
 // NewTrust builds a Trust. Every argument is required; an empty publisher set
@@ -272,7 +329,7 @@ func NewTrust(masterNFTMint, custodian [32]byte, publisherKeys [][32]byte, thres
 	if len(publisherKeys) == 0 {
 		return nil, fmt.Errorf("%w: no publisher key", ErrTrustUnconfigured)
 	}
-	if threshold == 0 {
+	if threshold == 0 || threshold > uint32(len(publisherKeys)) {
 		return nil, fmt.Errorf("%w: zero publisher threshold", ErrTrustUnconfigured)
 	}
 	publishers := make(map[[32]byte]struct{}, len(publisherKeys))
@@ -281,6 +338,9 @@ func NewTrust(masterNFTMint, custodian [32]byte, publisherKeys [][32]byte, thres
 			return nil, fmt.Errorf("%w: zero publisher key", ErrTrustUnconfigured)
 		}
 		publishers[key] = struct{}{}
+	}
+	if len(publishers) != len(publisherKeys) {
+		return nil, fmt.Errorf("%w: repeated publisher key", ErrTrustUnconfigured)
 	}
 	return &Trust{masterNFTMint: masterNFTMint, custodian: custodian, publishers: publishers, threshold: threshold}, nil
 }
@@ -317,17 +377,52 @@ func (t *Trust) Admit(e Entry, installerHash [32]byte) error {
 	if e.PublisherSquadsVault != t.custodian {
 		return fmt.Errorf("%w: publisher_squads_vault %x is not the estate core vault %x", ErrCustodianMismatch, e.PublisherSquadsVault[:], t.custodian[:])
 	}
-	if want := PayloadHash(e.MasterNFTMint, e.InstallerHash, e.Version, e.PublisherSquadsVault, e.PublisherEd25519Pubkey); e.SignedPayloadHash != want {
+	if !e.Legacy && t.profileSha256 != ([32]byte{}) && e.ReleaseTrustProfileHash != t.profileSha256 {
+		return fmt.Errorf("%w: entry %x is not pinned profile %x", ErrProfileMismatch, e.ReleaseTrustProfileHash, t.profileSha256)
+	}
+	want := PayloadHash(e.MasterNFTMint, e.InstallerHash, e.Version, e.PublisherSquadsVault, e.PublisherEd25519Pubkey)
+	if !e.Legacy {
+		want = PayloadHashV2(e.MasterNFTMint, e.InstallerHash, e.Version, e.PublisherSquadsVault, e.PublisherEd25519Pubkey, e.ReleaseTrustProfileHash)
+	}
+	if e.SignedPayloadHash != want {
 		return fmt.Errorf("%w: signed_payload_hash %x != recomputed %x", ErrPayloadHashMismatch, e.SignedPayloadHash[:], want[:])
 	}
 	if _, ok := t.publishers[e.PublisherEd25519Pubkey]; !ok {
 		return fmt.Errorf("%w: publisher key %x is not in the estate profile's releaseTrust.publisherKeys", ErrPublisherUntrusted, e.PublisherEd25519Pubkey[:])
 	}
-	if t.threshold > 1 {
-		return fmt.Errorf("%w: the entry records one publisher signature; releaseTrust.threshold is %d", ErrThresholdUnmet, t.threshold)
+	if e.Legacy && t.threshold > 1 {
+		return fmt.Errorf("%w: legacy entry records one publisher signature; releaseTrust.threshold is %d", ErrThresholdUnmet, t.threshold)
+	}
+	previous := e.PublisherEd25519Pubkey
+	for _, signer := range e.AdditionalPublisherSignatures {
+		if bytes.Compare(signer.PublisherEd25519Pubkey[:], previous[:]) <= 0 {
+			return fmt.Errorf("%w: key %x", ErrPublisherDuplicate, signer.PublisherEd25519Pubkey)
+		}
+		if _, ok := t.publishers[signer.PublisherEd25519Pubkey]; !ok {
+			return fmt.Errorf("%w: publisher key %x is not in the estate profile", ErrPublisherUntrusted, signer.PublisherEd25519Pubkey)
+		}
+		previous = signer.PublisherEd25519Pubkey
+	}
+	if 1+uint32(len(e.AdditionalPublisherSignatures)) < t.threshold {
+		return fmt.Errorf("%w: %d distinct signatures below profile threshold %d", ErrThresholdUnmet, 1+len(e.AdditionalPublisherSignatures), t.threshold)
 	}
 	if !ed25519.Verify(ed25519.PublicKey(e.PublisherEd25519Pubkey[:]), e.SignedPayloadHash[:], e.PublisherSignature[:]) {
 		return fmt.Errorf("%w: publisher %x", ErrSignatureInvalid, e.PublisherEd25519Pubkey[:])
 	}
+	for _, signer := range e.AdditionalPublisherSignatures {
+		if !ed25519.Verify(ed25519.PublicKey(signer.PublisherEd25519Pubkey[:]), e.SignedPayloadHash[:], signer.Signature[:]) {
+			return fmt.Errorf("%w: publisher %x", ErrSignatureInvalid, signer.PublisherEd25519Pubkey)
+		}
+	}
+	return nil
+}
+
+// BindProfile pins the on-chain entry extension to the verified owner profile.
+func (t *Trust) BindProfile(digest string) error {
+	raw, err := hex.DecodeString(digest)
+	if err != nil || len(raw) != 32 {
+		return fmt.Errorf("%w: invalid profile digest", ErrTrustUnconfigured)
+	}
+	copy(t.profileSha256[:], raw)
 	return nil
 }

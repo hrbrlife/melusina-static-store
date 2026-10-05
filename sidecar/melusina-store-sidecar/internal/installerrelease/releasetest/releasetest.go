@@ -172,6 +172,7 @@ func Entry(t testing.TB, profile estateprofile.EstateProfileV1, installerHash [3
 		RegisteredAt:         1790000000,
 		Status:               0, // Active
 		Bump:                 254,
+		Legacy:               true,
 	}, key)
 }
 
@@ -206,8 +207,21 @@ func Encode(e installerrelease.Entry) []byte {
 		b = binary.LittleEndian.AppendUint64(b, uint64(*e.RevokedAt))
 	}
 	b = append(b, e.Bump)
-	if len(b) < installerrelease.Len {
-		b = append(b, make([]byte, installerrelease.Len-len(b))...)
+	legacy := e.Legacy || (e.ReleaseTrustProfileHash == [32]byte{} && len(e.AdditionalPublisherSignatures) == 0)
+	if !legacy {
+		b = append(b, e.ReleaseTrustProfileHash[:]...)
+		b = binary.LittleEndian.AppendUint32(b, uint32(len(e.AdditionalPublisherSignatures)))
+		for _, signer := range e.AdditionalPublisherSignatures {
+			b = append(b, signer.PublisherEd25519Pubkey[:]...)
+			b = append(b, signer.Signature[:]...)
+		}
+	}
+	want := installerrelease.LegacyLen
+	if !legacy {
+		want = installerrelease.Len
+	}
+	if len(b) < want {
+		b = append(b, make([]byte, want-len(b))...)
 	}
 	return b
 }

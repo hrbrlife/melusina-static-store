@@ -445,7 +445,7 @@ func TestEveryReleaseAuthorityEntryPointVerifiesItsEnrollment(t *testing.T) {
 		{"foreign-executable", "estate enrollment: " + estateprofile.RefusalStoreEnrollmentFactsMismatch + ":binarySha256"},
 		// The owners revoked this Store's Global approval; its identity entry,
 		// which nothing revokes, is unchanged. No entry point starts.
-		{"recalled-global", "boot identity: check=sidecar_cascade: cascade-not-active:GlobalSidecarApproval: status Revoked"},
+		{"recalled-global", "boot identity: 4.7::title-claim: check=sidecar_cascade: cascade-not-active:GlobalSidecarApproval: status Revoked"},
 	}
 	for _, entry := range entryPoints {
 		name := entry.name

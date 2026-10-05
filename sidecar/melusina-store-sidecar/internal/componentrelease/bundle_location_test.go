@@ -71,6 +71,9 @@ func TestGenerationRefusesBundleLocationTheInstallerRefuses(t *testing.T) {
 	if got := ErrArtifactNameNotBundleBasename.Error(); got != "2.11::title-claim" {
 		t.Fatalf("artifact basename refusal = %q; want 2.11::title-claim", got)
 	}
+	if got := ErrBundleURLNotReleasePath.Error(); got != "2.12::title-claim" {
+		t.Fatalf("release class refusal = %q; want 2.12::title-claim", got)
+	}
 	op, pub := testOperator(t)
 	const storeID = "melusina-os-root-store"
 	origin := sampleGeneration().BundleOrigin

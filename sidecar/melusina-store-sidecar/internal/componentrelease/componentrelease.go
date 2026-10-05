@@ -873,7 +873,7 @@ var ErrArtifactNameNotBundleBasename = errors.New("2.11::title-claim")
 
 // ErrBundleURLNotReleasePath: a host component's bundleUrl is not exactly
 // <bundleOrigin>/releases/<componentClass>/<artifactName>.
-var ErrBundleURLNotReleasePath = errors.New("bundleUrl is not <bundleOrigin>/releases/<componentClass>/<artifactName>")
+var ErrBundleURLNotReleasePath = errors.New("2.12::title-claim")
 
 // ReleaseBundleURL is the one served location of a host component: the release
 // gate's /releases/<class>/<name> under the Store's bundle origin.

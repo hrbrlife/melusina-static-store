@@ -20,7 +20,7 @@ func v2Fixture(t *testing.T, threshold uint32) (Entry, *Trust, []ed25519.Private
 	e.ReleaseTrustProfileHash = sha256.Sum256([]byte("owner-signed rehearsal estate profile"))
 	keys := make([]ed25519.PrivateKey, 3)
 	for i, label := range []string{"rehearsal/publisher-1", "rehearsal/publisher-2", "rehearsal/publisher-3"} {
-		seed := sha256.Sum256([]byte(label))
+		seed := sha256.Sum256([]byte("melusina-estate-profile-vector-key:" + label))
 		keys[i] = ed25519.NewKeyFromSeed(seed[:])
 	}
 	sort.Slice(keys, func(i, j int) bool {
@@ -95,14 +95,27 @@ func TestV2TwoOfThreeRealSignaturesAndNamedMutations(t *testing.T) {
 		want   error
 	}{
 		{"one-signature-at-threshold-two", func(x *Entry) { x.AdditionalPublisherSignatures = nil }, ErrThresholdUnmet},
-		{"same-key-twice", func(x *Entry) { x.AdditionalPublisherSignatures[0].PublisherEd25519Pubkey = x.PublisherEd25519Pubkey }, ErrPublisherDuplicate},
+		{"same-key-twice", func(x *Entry) {
+			x.AdditionalPublisherSignatures[0].PublisherEd25519Pubkey = x.PublisherEd25519Pubkey
+			x.AdditionalPublisherSignatures[0].Signature = x.PublisherSignature
+		}, ErrPublisherDuplicate},
 		{"untrusted-key", func(x *Entry) {
 			seed := sha256.Sum256([]byte("rehearsal/untrusted"))
 			foreign := ed25519.NewKeyFromSeed(seed[:])
+			for bytes.Compare(foreign.Public().(ed25519.PublicKey), x.PublisherEd25519Pubkey[:]) <= 0 {
+				seed = sha256.Sum256(seed[:])
+				foreign = ed25519.NewKeyFromSeed(seed[:])
+			}
 			copy(x.AdditionalPublisherSignatures[0].PublisherEd25519Pubkey[:], foreign.Public().(ed25519.PublicKey))
 			copy(x.AdditionalPublisherSignatures[0].Signature[:], ed25519.Sign(foreign, x.SignedPayloadHash[:]))
 		}, ErrPublisherUntrusted},
-		{"entry-keyset-cannot-replace-profile", func(x *Entry) { x.ReleaseTrustProfileHash[0] ^= 1 }, ErrProfileMismatch},
+		{"entry-keyset-cannot-replace-profile", func(x *Entry) {
+			x.ReleaseTrustProfileHash[0] ^= 1
+			x.SignedPayloadHash = PayloadHashV2(x.MasterNFTMint, x.InstallerHash, x.Version,
+				x.PublisherSquadsVault, x.PublisherEd25519Pubkey, x.ReleaseTrustProfileHash)
+			copy(x.PublisherSignature[:], ed25519.Sign(keys[0], x.SignedPayloadHash[:]))
+			copy(x.AdditionalPublisherSignatures[0].Signature[:], ed25519.Sign(keys[1], x.SignedPayloadHash[:]))
+		}, ErrProfileMismatch},
 		{"payload-byte-flipped-after-signing", func(x *Entry) { x.Version = "1.0.65" }, ErrPayloadHashMismatch},
 		{"signature-byte-flipped", func(x *Entry) { x.AdditionalPublisherSignatures[0].Signature[0] ^= 1 }, ErrSignatureInvalid},
 	} {

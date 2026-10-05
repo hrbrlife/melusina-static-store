@@ -625,7 +625,10 @@ func checkSidecarCascade(ctx context.Context, rr rawAccountReader, c componentRe
 	// truncation, and a status byte that is neither Active nor Revoked.
 	reStatus, err := verify.ReadResellerEntryStatus(reData)
 	if err != nil {
-		return cascadeRefusal(errCascadeResellerOptions, "ResellerEntry", "parse ResellerEntry: %v", err)
+		if strings.Contains(err.Error(), "category:") {
+			return cascadeRefusal(errCascadeResellerOptions, "ResellerEntry", "parse ResellerEntry: %v", err)
+		}
+		return cascadeRefusal(errCascadeAccountMalformed, "ResellerEntry", "parse ResellerEntry: %v", err)
 	}
 	var entryReseller primitives.Pubkey
 	copy(entryReseller[:], reData[8:8+32]) // ReadResellerEntryStatus walked past it

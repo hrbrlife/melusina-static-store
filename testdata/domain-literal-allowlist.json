@@ -1,0 +1,305 @@
+{
+  "entries": [
+    {
+      "file": "build-store.sh",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "cc17fa8d8363292c4aed351584d718718ad928e65b21bb6fda3ac37880f83d9b",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "build-store.sh",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "d44c001a237c49499146c2c2e2d93942f1cb7a4de91a26e3ac5d8002fd4c4c65",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "build-store.sh",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "e6ff859f9f3219dea05e0c9a9162d3b64ad5c0851fae243757f591b81eeb7a65",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "schemas/melusina-app-runtime-contract-v1.schema.json",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "658898ba7467afb92a8b5aff5a2283c069e7ac7a909766a93d04e543684b5c90",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "schemas/melusina-app-runtime-contract-v1.schema.json",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "7b729705024af7f0a3ffd71c6423902dd9588fa5dd41bcc665ac0848bc36613f",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "schemas/melusina-release-v1.schema.json",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "3ef153128740ae8d15d558c3da4de5443c7a8e98f400c44f2739ff5d11147d86",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "scripts/default-bazaar-release.sh",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "3d97112ed2ee947c7be64a3c7305c499a4ae0e26e47fd55d19f482687b58a8f6",
+      "count": 2,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "scripts/default-bazaar-release.sh",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "5a694fb89a59099d338447b806080b61265cadcb027445e69d9098bc61999731",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "scripts/default-bazaar-release.sh",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "630d62903c9bed1ed2b3ad93f6aeaab0defacf99428def0049e46151fc36437a",
+      "count": 2,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "scripts/default-bazaar-release.sh",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "d6854fc22cb2c6a5aae3f3142531bced2fa127a4c8cbfc11aa8a664518f51de8",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "scripts/doctor.sh",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "b32055c224bf4cad47c6b9537db31efc54697938c16b7ee76713def1d0ab00e1",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "scripts/generate-app-icon-lock.py",
+      "literal": "store.example",
+      "lineSha256": "621143ccc1503b7b9522c4bac00748dcb359d5580d198bb53d9bc2f60ee89ec2",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "scripts/materialize-governed-cohort.py",
+      "literal": "store.example",
+      "lineSha256": "7d3bbb82a0bb300793ce835876398f3743f07a522f9b630ad59b195b410622c7",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "scripts/preflight.sh",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "b32055c224bf4cad47c6b9537db31efc54697938c16b7ee76713def1d0ab00e1",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "scripts/validate-runtime-contract.py",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "7312be93a27acb80b0fe70435762a2d16e5212ccaf5f8d2865106ef6ffc9b4b4",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/cmd/submit/main.go",
+      "literal": "store.example",
+      "lineSha256": "dbe796077beb4c55c011b75f0636f5b23aca79da92bda2c975cad890f7bd23b0",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/config.go",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "cd32c9708df135329c66ca41441f9c75daedb9ba23ac5aaae5b54d3bf56b27df",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/config.go",
+      "literal": "melusina-os.org",
+      "lineSha256": "66d27e92220b4fbaa999729c6328bcf714acd6b8f1d5351fd8a4ba2b909ca64d",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/config.go",
+      "literal": "melusina-os.org",
+      "lineSha256": "d63a62cec95d85941e1df5cb4de40348fcde27909c1ae9b867834babc8920611",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/config.go",
+      "literal": "store.yaml.example",
+      "lineSha256": "82fcbb4afd294c079a985e1967a51300d9b52595c59d43a9631276fe56adfb6e",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/generation_promote_handler.go",
+      "literal": "melusina-os.org",
+      "lineSha256": "08b7472232b105c0672a866f98834c5dce4d6656e393caec37f3ef75bf8befc3",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/internal/runtimecontract/schema_url_legacy.go",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "ce4a0c8853e5ea79a3ab3ba07a65bff9e66e5523be88ee1a3d24b0c7cb8e864f",
+      "count": 1,
+      "reason": "retiring standard build exception pending Store lock owner decision; excluded from estatebootstrap"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/main.go",
+      "literal": "melusina-os.org",
+      "lineSha256": "3644b7a2d2b5370da723c01e28fadc3099166e5f86d066f76769c42f8ca02907",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/root_mirror.go",
+      "literal": "melusina-os.org",
+      "lineSha256": "488c2f998154ac9648b269b6e68942dc88bc8c5dfae6df18befb3e5aacc21a94",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/squads_authority_legacy.go",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "4da7bf6e7da44400fe8c6765deccd30f1cda502fcda021a0605d04305c7b327e",
+      "count": 1,
+      "reason": "retiring standard build exception pending Store lock owner decision; excluded from estatebootstrap"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/squads_authority_legacy_test.go",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "aef704dcdea4253cfe66c0380aa315d33901d2de68384c7634f9ad938795a132",
+      "count": 1,
+      "reason": "positive control: locked test fixture literal"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/store.config.example.json",
+      "literal": "root-store.example",
+      "lineSha256": "e5f93b9c8e5cdb334e72752cb935b1f1fc9448eba849251af38b8cf41f93991f",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/store.config.example.json",
+      "literal": "store-control.internal.example",
+      "lineSha256": "ce0612d54e23431acf3a23e771e48af758672e274aeba4166b2eaccb5fc494c7",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/store.config.example.json",
+      "literal": "store.example",
+      "lineSha256": "ab4c235b69133170e5f373ed376c95cfc30523d364a9039a2fed1e5b22dffc0c",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/store.config.example.json",
+      "literal": "store.example",
+      "lineSha256": "c9bbb6565e0309e11543dc5fae667861c4f21fe64f6b985a02ddcc7ee1cc7f7d",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/store.config.example.json",
+      "literal": "store.example",
+      "lineSha256": "e94c99388420769e5dc1c0b7beed17709da4e257661373cca816455e399282cf",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/ui/assets/index-C5SMNmPA.js",
+      "literal": "melusina-os.org",
+      "lineSha256": "e2d4bf20a87c5b25212f3fae5913d274378d674eef7e86c8f5440541c090c046",
+      "count": 2,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/ui/update/install.sh",
+      "literal": "foo.example",
+      "lineSha256": "108af04d2e278e164a0812447d24d06c72ff74caf37def326ce85e91e585ecd5",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/ui/update/install.sh",
+      "literal": "foo.example",
+      "lineSha256": "8195ba90efc85586cc249ee2bf533552b78c64f4fdc492ccdd293b791ccc569c",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "sidecar/melusina-store-sidecar/ui/update/install.sh",
+      "literal": "foo.example",
+      "lineSha256": "c2f173ca3e9126e2c4e623c27046144a5e0918b4fe9e15730e92131481eec2c8",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "src/main.jsx",
+      "literal": "melusina-os.org",
+      "lineSha256": "82a285bf999b66ee6c4ae8c87a3532482a5f37634a2c5da6df5ff6aa98031bf0",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "src/main.jsx",
+      "literal": "melusina-os.org",
+      "lineSha256": "e5583f273bcd87b6316584fd95631d76853572838c65c85218f9a559272406a6",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "update/install.sh",
+      "literal": "foo.example",
+      "lineSha256": "108af04d2e278e164a0812447d24d06c72ff74caf37def326ce85e91e585ecd5",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "update/install.sh",
+      "literal": "foo.example",
+      "lineSha256": "8195ba90efc85586cc249ee2bf533552b78c64f4fdc492ccdd293b791ccc569c",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "update/install.sh",
+      "literal": "foo.example",
+      "lineSha256": "c2f173ca3e9126e2c4e623c27046144a5e0918b4fe9e15730e92131481eec2c8",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "verifier/index.html",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "5a0518702fa5229351931d34627df8f5a99232e4b36ce9057f982f27697e1e93",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "verifier/index.html",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "830e971d74bf45ce345dfd447de08c9c9cf0d133d0eb80d2642f9214134c06fc",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    },
+    {
+      "file": "verifier/index.html",
+      "literal": "bazaar.melusina-os.org",
+      "lineSha256": "874c9edb154c33d74443b309fa0d4a54b3c500fdc08dde8ef245bf9640b3c641",
+      "count": 1,
+      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
+    }
+  ]
+}

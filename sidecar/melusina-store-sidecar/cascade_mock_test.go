@@ -509,6 +509,9 @@ func TestVerifyFiveFactCascadeDecodesResellerEntryOptions(t *testing.T) {
 
 			svc := &publishService{cr: m}
 			err := svc.verifyFiveFactCascade(context.Background(), componentReleaseChainView{sidecarID: sidecarID, licenseMint: license}, artifact)
+			if tc.name == "category_option_tag_2_is_malformed" && (err == nil || !strings.Contains(err.Error(), "2.0::title-claim")) {
+				t.Fatalf("2.0::title-claim: malformed reseller category was accepted or refused under another name: %v", err)
+			}
 			if tc.want == "" {
 				if err != nil {
 					t.Fatalf("cascade refused an Active ResellerEntry in the contracts layout: %v", err)

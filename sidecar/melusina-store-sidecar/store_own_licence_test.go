@@ -173,6 +173,15 @@ func TestStoreOwnLicenceRefusesByNameEveryRuleVerifyLicenseApplies(t *testing.T)
 			account[resellerParentTagOffset()] = 2
 			fx.m.rawAccounts[fx.resellerPDA] = account
 		}, refusalStoreResellerMalformed},
+		{"reseller category Option tag 2", func(t *testing.T, fx ownLicenceFixture) {
+			account := mkResellerEntryAccount(testStoreOwnReseller(), fx.master)
+			offset := resellerParentTagOffset() + 1 + 32 + 4 + 4
+			if account[offset] != 1 {
+				t.Fatalf("2.15::title-claim: fixture category tag is %d, want Some", account[offset])
+			}
+			account[offset] = 2
+			fx.m.rawAccounts[fx.resellerPDA] = account
+		}, refusalStoreResellerMalformed},
 		{"reseller status neither Active nor Revoked", func(t *testing.T, fx ownLicenceFixture) {
 			parent, category := seedResellerParent, seedResellerCategory
 			fx.m.rawAccounts[fx.resellerPDA] = mkResellerEntryAccountWith(testStoreOwnReseller(), fx.master, resellerEntryFields{parent: &parent, category: &category, status: 2})
@@ -197,6 +206,9 @@ func TestStoreOwnLicenceRefusesByNameEveryRuleVerifyLicenseApplies(t *testing.T)
 			fx := newOwnLicenceFixture(t)
 			tc.mutate(t, fx)
 			err := fx.verify()
+			if tc.name == "reseller category Option tag 2" && (err == nil || !strings.Contains(err.Error(), "2.15::title-claim")) {
+				t.Fatalf("2.15::title-claim: malformed reseller category was accepted or refused under another name: %v", err)
+			}
 			if tc.want == "" {
 				if err != nil {
 					t.Fatalf("own-licence-positive-control: an accepted licence was refused: %v", err)

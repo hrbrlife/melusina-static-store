@@ -78,7 +78,7 @@ const (
 	refusalStoreLicenseRevoked         = "store-license-revoked"
 	refusalStoreNoReseller             = "store-no-reseller"
 	refusalStoreResellerAbsent         = "store-reseller-absent"
-	refusalStoreResellerMalformed      = "store-reseller-malformed"
+	refusalStoreResellerMalformed      = "2.15::title-claim"
 	refusalStoreResellerMismatch       = "store-reseller-mismatch"
 	refusalStoreResellerMasterMismatch = "store-reseller-master-mismatch"
 	refusalStoreResellerInactive       = "store-reseller-inactive"

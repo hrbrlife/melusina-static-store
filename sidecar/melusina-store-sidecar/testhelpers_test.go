@@ -414,7 +414,6 @@ func (m *mockChainReader) FetchInstallerReleaseEntryMeta(_ context.Context, addr
 		RegisteredAt:         1790000000,
 		Status:               e.status,
 		Bump:                 254,
-		Legacy:               true,
 	}
 	if e.status != verify.AttestationStatusActive {
 		revokedAt := int64(1790000500)

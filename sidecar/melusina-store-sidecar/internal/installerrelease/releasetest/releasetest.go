@@ -207,7 +207,8 @@ func Encode(e installerrelease.Entry) []byte {
 		b = binary.LittleEndian.AppendUint64(b, uint64(*e.RevokedAt))
 	}
 	b = append(b, e.Bump)
-	if !e.Legacy {
+	legacy := e.Legacy || (e.ReleaseTrustProfileHash == [32]byte{} && len(e.AdditionalPublisherSignatures) == 0)
+	if !legacy {
 		b = append(b, e.ReleaseTrustProfileHash[:]...)
 		b = binary.LittleEndian.AppendUint32(b, uint32(len(e.AdditionalPublisherSignatures)))
 		for _, signer := range e.AdditionalPublisherSignatures {
@@ -216,7 +217,7 @@ func Encode(e installerrelease.Entry) []byte {
 		}
 	}
 	want := installerrelease.LegacyLen
-	if !e.Legacy {
+	if !legacy {
 		want = installerrelease.Len
 	}
 	if len(b) < want {

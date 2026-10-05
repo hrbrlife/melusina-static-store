@@ -287,7 +287,7 @@ func c3D41PinSharedHelpers(t *testing.T) {
 		"estate_profile_check_test.go":    "705f0e900e7c288359b83588378850759cb91e16a6f7c5470b5796e06dba39e5",
 		"root_store_boot_cascade_test.go": "50c7928e636742d6cdab275b92b317a5ff45ceca308f6e7c5a330bb5a9682b18",
 		"served_tls_test.go":              "8af0d48f0c117b558db337f02ade282a98a1e3b5784b16626620766173c1ec49",
-		"testhelpers_test.go":             "6753de9695df78c0fe6e0b1f4ad11c46c495ba27a457c578d8b75217d92b62ff",
+		"testhelpers_test.go":             "43724f7eb3bd815ef95b2c3c0a9eba3c5e60d8933bd634f42dc899760f2d0f0b",
 	} {
 		raw, err := os.ReadFile(path)
 		if err != nil {

@@ -233,6 +233,8 @@ var (
 	// errCascadeAccountMalformed: the account does not decode in the program's
 	// layout.
 	errCascadeAccountMalformed = errors.New("cascade-account-malformed")
+	// The ResellerEntry Option walk is the sidecar cascade's distinct guard.
+	errCascadeResellerOptions = errors.New("2.0::title-claim")
 	// errCascadeNotActive: the account's status is not Active (Revoked, or a
 	// RevokingCascadeInProgress approval).
 	errCascadeNotActive = errors.New("cascade-not-active")
@@ -623,7 +625,7 @@ func checkSidecarCascade(ctx context.Context, rr rawAccountReader, c componentRe
 	// truncation, and a status byte that is neither Active nor Revoked.
 	reStatus, err := verify.ReadResellerEntryStatus(reData)
 	if err != nil {
-		return cascadeRefusal(errCascadeAccountMalformed, "ResellerEntry", "parse ResellerEntry: %v", err)
+		return cascadeRefusal(errCascadeResellerOptions, "ResellerEntry", "parse ResellerEntry: %v", err)
 	}
 	var entryReseller primitives.Pubkey
 	copy(entryReseller[:], reData[8:8+32]) // ReadResellerEntryStatus walked past it

@@ -83,6 +83,9 @@ func verifyRootStoreBootCascade(ctx context.Context, cr chainReader, sidecarID s
 		masterMint:  masterMint,
 	}
 	if err := checkSidecarCascade(ctx, rr, view, binaryHash); err != nil {
+		if strings.Contains(err.Error(), "cascade-not-active:") {
+			return fmt.Errorf("4.7::title-claim: check=sidecar_cascade: %w", err)
+		}
 		return fmt.Errorf("check=sidecar_cascade: %w", err)
 	}
 	return nil

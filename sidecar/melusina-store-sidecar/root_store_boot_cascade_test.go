@@ -637,7 +637,10 @@ func TestRootStoreBootCascadeRefusesEachBootGateCaseByItsName(t *testing.T) {
 			if err == nil {
 				t.Fatalf("root-store-boot-cascade-accepted: %q, which the boot gate refuses as %q", name, reason)
 			}
-			got, ok := strings.CutPrefix(err.Error(), "check=sidecar_cascade: ")
+			if strings.HasPrefix(reason, "cascade-not-active:") && !strings.HasPrefix(err.Error(), "4.7::title-claim: ") {
+				t.Fatalf("4.7::title-claim: revoked cascade must refuse under its clause name: %v", err)
+			}
+			got, ok := strings.CutPrefix(strings.TrimPrefix(err.Error(), "4.7::title-claim: "), "check=sidecar_cascade: ")
 			if !ok || !strings.HasPrefix(got, reason) {
 				t.Fatalf("root-store-boot-cascade-refusal-differs: %q: the Store refuses %q, the boot gate %q", name, err, reason)
 			}
@@ -888,8 +891,8 @@ func TestRootStoreBootRefusesARecalledBuild(t *testing.T) {
 			tc.recall(f.cascade)
 			f.reseed(t)
 			_, err := deriveVerifiedBootIdentity(context.Background(), f.cfg, f.chain)
-			if err == nil || !strings.HasPrefix(err.Error(), "check=sidecar_cascade: "+tc.want) {
-				t.Fatalf("root-store-boot-accepted-a-recall: %s: %v", tc.name, err)
+			if err == nil || !strings.HasPrefix(err.Error(), "4.7::title-claim: check=sidecar_cascade: "+tc.want) {
+				t.Fatalf("4.7::title-claim: root-store-boot-accepted-a-recall: %s: %v", tc.name, err)
 			}
 		})
 	}
@@ -1127,7 +1130,7 @@ func TestRootStoreBootCascadeOverContractsCommittedBytes(t *testing.T) {
 				t.Fatalf("contracts-cascade-status-offset-wrong: the boot gate's decoder reads %s as %q (%v)", account, status, err)
 			}
 			m.rawAccounts[addrs[row]] = revoked
-			if err := boot(m, master); err == nil || !strings.HasPrefix(err.Error(), "check=sidecar_cascade: cascade-not-active:"+account+": status Revoked") {
+			if err := boot(m, master); err == nil || !strings.HasPrefix(err.Error(), "4.7::title-claim: check=sidecar_cascade: cascade-not-active:"+account+": status Revoked") {
 				t.Fatalf("contracts-cascade-root-store-boot-accepted-a-revoked-%s: %v", account, err)
 			}
 		})

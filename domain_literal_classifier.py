@@ -16,19 +16,19 @@ SOURCE_EXT = {'.go', '.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.py',
               '.rs', '.sh', '.bash', '.html', '.css', '.json', '.yaml', '.yml',
               '.toml', '.conf', '.service', '.env', '.xml', '.capnp', '.c',
               '.cc', '.cpp', '.h', '.hpp', '.c++', '.h++'}
-EXCLUDED_PARTS = {'test', 'tests', 'testdata', 'fixtures', 'fixture', 'vendor',
+EXCLUDED_PARTS = {'test', 'tests', 'testdata', 'testvector', 'fixtures', 'fixture', 'vendor',
                   'node_modules', 'third_party', 'upstream', 'generated',
-                  '.git', '.github', 'docs', 'documentation', 'examples',
-                  'archive', 'reports', 'release', 'dist', 'build', 'fleet',
-                  'packages', 'riker-test-deploys', 'schemas', 'deps', 'qa',
-                  'e2e', 'ci', 'dev-publish-keys', '__conformance__',
+                  '.git', 'docs', 'documentation', 'examples',
+                  'archive', 'reports', 'dist', 'fleet',
+                  'packages', 'riker-test-deploys', 'deps', 'qa',
+                  'e2e', 'dev-publish-keys', '__conformance__',
                   'async-mutations', 'async-codemod', 'test-fixtures',
                   'nft-assets', 'approval-manifests'}
 EXCLUDED_NAMES = {'domain_literal_classifier.py', 'domain-host-allowlist.json',
                   'domain-tlds.txt', 'domain-literal-allowlist.json',
                   'home-literal-allowlist.json', 'metadata.json',
                   'sandstorm-pkgdef.capnp'}
-TEST_NAME = re.compile(r'(?:^test[_-]|[_-]test[.]|[.]test[.]|[.]spec[.]|fixture)', re.I)
+TEST_NAME = re.compile(r'(?:^test[_-]|[_-]test[.]|[.]test[.]|[.]spec[.]|fixture|(?:^|[-_.])smoke(?:[-_.]|$))', re.I)
 LITERAL = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`(?:\\.|[^`\\])*`')
 DNS = re.compile(r'(?iu)(?<![\w.-])(?:[a-z0-9\u0080-\uffff](?:[a-z0-9\u0080-\uffff-]{0,61}[a-z0-9\u0080-\uffff])?\.)+[a-z0-9\u0080-\uffff-]{2,63}(?![\w.-])')
 URL = re.compile(r'(?i)https?://[^\s"\'`<>]+')
@@ -41,6 +41,8 @@ def is_source(path):
     return (p.suffix.lower() in SOURCE_EXT or p.name in {'Makefile', 'Dockerfile'}) and not (
         set(p.parts) & EXCLUDED_PARTS or p.name in EXCLUDED_NAMES or
         TEST_NAME.search(p.name) or 'staging-grant' in p.name or
+        ('ci' in p.parts and p.name.endswith(('-vectors.rs', '-vectors.go'))) or
+        any(part.startswith('.native-fixture-producer-') for part in p.parts) or
         any(part.lower().endswith('test') for part in p.parts[:-1]) or
         p.name.endswith(('.min.js', '.map')) or
         '/ui/assets/' in '/' + path)

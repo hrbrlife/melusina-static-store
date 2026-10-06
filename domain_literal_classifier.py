@@ -30,7 +30,7 @@ EXCLUDED_NAMES = {'domain_literal_classifier.py', 'domain-host-allowlist.json',
 TEST_NAME = re.compile(r'(?:^test[_-]|[_-]test[.]|[.]test[.]|[.]spec[.]|fixture|(?:^|[-_.])smoke(?:[-_.]|$))', re.I)
 LITERAL = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`(?:\\.|[^`\\])*`')
 DNS = re.compile(r'(?iu)(?<![\w.-])(?:[a-z0-9\u0080-\uffff](?:[a-z0-9\u0080-\uffff-]{0,61}[a-z0-9\u0080-\uffff])?\.)+[a-z0-9\u0080-\uffff-]{2,63}(?![\w.-])')
-URL = re.compile(r'(?i)https?://[^\s"\'`<>]+')
+URL = re.compile(r'(?i)[a-z][a-z0-9+.-]*://[^\s"\'`<>]+')
 FILE_SUFFIX = set('ico png svg jpg jpeg gif pdf csv txt zip exe cc c h hpp c++ go rs py js mjs cjs ts tsx jsx css html xml json yaml yml toml sh bash so a lib out pem crt key b58 capnp spk md lock sum proto mk gypi bzl bp cmake gni wasm sha256 ini cfg sql log patch map service env bin target network'.split())
 TLDS = None
 
@@ -97,7 +97,8 @@ def hosts_in(value):
     hosts = set()
     for match in URL.finditer(value):
         try:
-            host = canonical(urlsplit(match.group()).hostname or '')
+            parsed = urlsplit(match.group())
+            host = canonical(parsed.hostname or '') if parsed.scheme.lower() != 'file' else None
         except ValueError:
             host = None
         if host:

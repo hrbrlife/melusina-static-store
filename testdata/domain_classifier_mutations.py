@@ -11,6 +11,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 HOST = 'fresh-root' + chr(46) + 'site'
 OTHER = 'reviewer-crest' + chr(46) + 'site'
+FILELIKE = 'fresh-root' + chr(46) + 'zip'
 
 
 def classify():
@@ -80,6 +81,12 @@ def main():
         if result.returncode == 0 or marker not in result.stderr:
             raise AssertionError('BARE_HOST_UNKNOWN_EXTENSION: expected ' + marker)
         print('BARE_HOST_UNKNOWN_EXTENSION: ' + marker)
+        probe.write_text(FILELIKE + '\n')
+        result = classify()
+        marker = 'DOMAIN_CLASSIFIER_UNREVIEWED_HOST:' + FILELIKE
+        if result.returncode == 0 or marker not in result.stderr:
+            raise AssertionError('BARE_HOST_FILENAME_TLD: expected ' + marker)
+        print('BARE_HOST_FILENAME_TLD: ' + marker)
     finally:
         probe.unlink(missing_ok=True)
     available = tracked_types()

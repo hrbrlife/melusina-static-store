@@ -15,7 +15,6 @@ from urllib.parse import urlsplit
 LITERAL = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`(?:\\.|[^`\\])*`')
 DNS = re.compile(r'(?iu)(?<![\w.-])(?:[a-z0-9\u0080-\uffff](?:[a-z0-9\u0080-\uffff-]{0,61}[a-z0-9\u0080-\uffff])?\.)+[a-z0-9\u0080-\uffff-]{2,63}(?![\w.-])')
 URL = re.compile(r'(?i)[a-z][a-z0-9+.-]*://[^\s"\'`<>]+')
-FILE_SUFFIX = set('ico png svg jpg jpeg gif pdf csv txt zip exe cc c h hpp c++ go rs py js mjs cjs ts tsx jsx css html xml json yaml yml toml sh bash so a lib out pem crt key b58 capnp spk md lock sum proto mk gypi bzl bp cmake gni wasm sha256 ini cfg sql log patch map service env bin target network'.split())
 TLDS = None
 
 
@@ -84,10 +83,11 @@ def hosts_in(value):
         if host:
             hosts.add(host)
     # Search the whole text, including unquoted attributes, CSS, assignments,
-    # Makefiles and comments. Suffix filtering only rejects filename-like tokens.
+    # Makefiles and comments. A filename-like suffix can also be a real TLD,
+    # so any exception belongs in the reviewed allowlist.
     for match in DNS.finditer(value):
         host = canonical(match.group())
-        if host and host.rsplit('.', 1)[-1] in TLDS and host.rsplit('.', 1)[-1] not in FILE_SUFFIX:
+        if host and host.rsplit('.', 1)[-1] in TLDS:
             hosts.add(host)
     return hosts
 

@@ -148,9 +148,8 @@ that `releaseHash` and the tenant's authorization daemon refuses a receipt whose
 release hash or app is not the entry's. An enrolled Store admits the entry
 exactly as `mel-release approve` does (below): the estate master mint, the
 release custodian, the recorded digest, a `releaseTrust` publisher key and its
-signature, projected at startup from the enrolled profile. The estate-bootstrap
-build admits nothing without that trust; the standard build's unenrolled Store,
-which has no profile, applies the release checks alone. Then (single
+signature, projected at startup from the enrolled profile. The standard build
+admits nothing without that trust. It then (single
 writer, under a mutex) runs `build-store.sh` as a convenience assembler and
 returns a store-signed provenance receipt over the raw
 96-byte `appHash||releaseHash||servingDomainHash` (contract C-2). The Go verify
@@ -301,8 +300,7 @@ value, before it opens a chain reader. A mirroring reseller likewise names its
 `TestBootstrapComponentBinariesCarryNoRetiringEstateValue` builds the four
 Store component programs with the build lines and environment of
 `scripts/build-store-generation-release.sh` and searches the built bytes for
-every retiring-estate value as text, raw 32 bytes, hex and base64: the whole
-retiring set in the estate-bootstrap build, and the license registry in the
+every retiring-estate value as text, raw 32 bytes, hex and base64 in the
 standard build.
 
 The same rule covers every other Store program and production file. The
@@ -324,7 +322,7 @@ unless `--catalog-origin` pins one.
 checks:
 
 - It searches every compiled string literal and embedded file of all the
-  module's programs, in both flavors.
+  module's programs in the standard build.
 - It searches all 18 programs built with `-trimpath -buildvcs=false`, as text,
   raw 32 bytes, hex and base64.
 - It searches every production file in the repository, comments included.
@@ -333,20 +331,14 @@ It fails by field and file:line. The forbid set is the retiring profile
 vector, the catalog ledger, and the retiring facts the profile does not
 project: the root domain `melusina-os.org` and its hash, `dev.paype.cc`, the
 `-v2` sidecar ID, the operator box key and identity PDA, and the earlier
-Store licence mint. Only three kinds of exception exist, all declared in the
-test:
+Store licence mint. The retiring estate's own tooling has the only declared
+exceptions:
 
-- **Build-tagged Go files.** `squads_authority_legacy.go` and
-  `schema_url_legacy.go` are compiled only into the standard (retiring
-  Bazaar) build.
 - **The retiring estate's own tooling.** `build-store.sh` and its
   helpers/schemas, `default-bazaar-release.sh`, and the two legacy
   `deploy/store-generation` config templates. The bootstrap component
   strips those templates, and `TestStoreRetiringPathsAreNotShipped` proves
   the component ships none of these paths.
-- **One UI placeholder.** `example.melusina-os.org` appears in `src/main.jsx`
-  and its committed bundle, and is due for removal at the next UI rebuild.
-
 Each exception must still occur where it is declared, so a stale one fails.
 
 The enrolled configuration must also spell out every
@@ -360,12 +352,9 @@ structurally valid but different quorum does not authorize a Store.
 A release's `RELEASE.json` must carry the same quorum as a complete
 `quorumPolicy` claim (`multisigPda`, `threshold`, `memberCount`). No build
 publishes a release without one: it is refused as
-`release-quorum-claim-absent`. The estate-bootstrap build also refuses to serve
-such a release, by the same name, on the serve gate, its cached re-check and
-the package route. Only the standard build still serves one. That exception is
-for the retiring Bazaar's releases attested before the claim existed, and it
-applies only once the served and on-chain publisher vaults both match the
-configured vault.
+`release-quorum-claim-absent`. The standard build also refuses to serve such a
+release, by the same name, on the serve gate, its cached re-check and the
+package route.
 
 #### Render a profile-bound candidate instead of editing the legacy template
 
@@ -793,19 +782,13 @@ name. Its default state directory holds release state written before estate
 binding, so it is refused as well.
 
 `TestReleaseToolsSourceCarriesNoRetiringEstateValue` and
-`TestReleaseToolBinariesCarryNoRetiringEstateValue` scan these tools in both
-build flavors for every retiring-estate value (the retiring profile vector plus
+`TestReleaseToolBinariesCarryNoRetiringEstateValue` scan these tools in the
+standard build for every retiring-estate value (the retiring profile vector plus
 the catalog ledger's own Store and release authority): compiled Go string
 literals, every byte of the provider scripts, and the built programs as text,
-raw bytes, hex and base64. The single permitted exception is the standard
-(untagged) build's legacy runtime-contract `$schema` identifier, read from
-`internal/runtimecontract/schema_url_legacy.go`.
-
-That identifier is the remaining binding between these tools and a Store
-flavor. An estate-bootstrap Store requires `urn:melusina:runtime-contract:v1`,
-but the provider builds `submit` without build tags and copies each app's
-declared `$schema` unchanged, so a runtime-contract-bearing release does not
-yet validate against a new estate's Store.
+raw bytes, hex and base64. The runtime-contract `$schema` is the stable
+protocol identifier `urn:melusina:runtime-contract:v1`; it carries no estate
+hostname. Store origins used by the provider come from signed estate inputs.
 
 Pending (post-C2.3): reseller root-mirror worker hardening, sealed-v3
 submit-client (C3).

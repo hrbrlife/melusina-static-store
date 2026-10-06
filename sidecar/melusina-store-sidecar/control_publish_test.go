@@ -122,7 +122,6 @@ func stageControlCandidate(t *testing.T, svc *publishService, publisher *identit
 }
 
 func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.T) {
-	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ProgramID = programID.Base58()
@@ -139,6 +138,10 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	releaseMeta.appID = appID
 	m.releaseEntry[f.relPDA] = releaseMeta
 	svc := newTestService(t, cfg, m, op)
+	// The nonce ledger sets its high-water during service construction. Capture
+	// this test's fixed clock afterwards so farm load cannot put it behind that
+	// durable value.
+	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	svc.now = func() time.Time { return clock }
 	publisher := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}

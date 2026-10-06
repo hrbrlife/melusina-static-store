@@ -87,7 +87,6 @@ var retiringEstatePaths = map[string]string{
 	"schemas/melusina-release-v1.schema.json":                        "the Bazaar release-attestation schema pinning its Squads authority, used by build-store.sh",
 	"deploy/store-generation/store.config.template.json":             "the retiring Store's update-path config template; the bootstrap component strips it",
 	"deploy/store-generation/update-controller.config.template.json": "the retiring Store's controller config template; the bootstrap component strips it",
-	"verifier/index.html":                                            "the Bazaar's static verifier page that build-store.sh copies into its dist-publish",
 }
 
 // No retiring-value exception is permitted in shipped Store bytes.

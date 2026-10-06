@@ -146,27 +146,6 @@
       "lineSha256": "c2f173ca3e9126e2c4e623c27046144a5e0918b4fe9e15730e92131481eec2c8",
       "count": 1,
       "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
-    },
-    {
-      "file": "verifier/index.html",
-      "literal": "bazaar.melusina-os.org",
-      "lineSha256": "5a0518702fa5229351931d34627df8f5a99232e4b36ce9057f982f27697e1e93",
-      "count": 1,
-      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
-    },
-    {
-      "file": "verifier/index.html",
-      "literal": "bazaar.melusina-os.org",
-      "lineSha256": "830e971d74bf45ce345dfd447de08c9c9cf0d133d0eb80d2642f9214134c06fc",
-      "count": 1,
-      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
-    },
-    {
-      "file": "verifier/index.html",
-      "literal": "bazaar.melusina-os.org",
-      "lineSha256": "874c9edb154c33d74443b309fa0d4a54b3c500fdc08dde8ef245bf9640b3c641",
-      "count": 1,
-      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
     }
   ]
 }

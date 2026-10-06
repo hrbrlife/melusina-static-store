@@ -203,7 +203,7 @@ func TestReleaseToolsSourceCarriesNoRetiringEstateValue(t *testing.T) {
 	wrapper := retiringValueHits(t, []componentSource{{path: "../../scripts/default-bazaar-release.sh"}}, forbidden)
 	joined := strings.Join(wrapper, "\n")
 	for _, field := range []string{
-		retiringLicenseRegistryField, "retiring/store.rootDomain", "retiring/store.storeId",
+		retiringLicenseRegistryField, "retiring/store.storeId",
 		"retiring/anchors.masterMint", "catalog-ledger/release_squads_authority.vault",
 	} {
 		if !strings.Contains(joined, field+" in ") {

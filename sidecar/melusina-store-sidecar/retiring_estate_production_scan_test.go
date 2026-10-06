@@ -84,10 +84,6 @@ var retiringOnlyGoFiles = map[string]string{}
 var retiringEstatePaths = map[string]string{
 	"build-store.sh":                                                 "the retiring Bazaar's static catalog assembler (make build/plan); its publish and deploy writers are already retired",
 	"scripts/default-bazaar-release.sh":                              "the retiring Bazaar's release wrapper; it pins that Store so it can drive only a profile for it",
-	"scripts/preflight.sh":                                           "gate for build-store.sh's dist-publish against the live Bazaar catalog",
-	"scripts/doctor.sh":                                              "readiness report for the static Bazaar pipeline",
-	"scripts/validate-runtime-contract.py":                           "validates legacy runtime contracts against the Bazaar schema identifier for build-store.sh",
-	"schemas/melusina-app-runtime-contract-v1.schema.json":           "the legacy runtime-contract schema with the Bazaar $id that build-store.sh serves",
 	"schemas/melusina-release-v1.schema.json":                        "the Bazaar release-attestation schema pinning its Squads authority, used by build-store.sh",
 	"deploy/store-generation/store.config.template.json":             "the retiring Store's update-path config template; the bootstrap component strips it",
 	"deploy/store-generation/update-controller.config.template.json": "the retiring Store's controller config template; the bootstrap component strips it",
@@ -100,7 +96,6 @@ var retiringEstatePaths = map[string]string{
 var retiringValueExceptions = []struct {
 	name, glob, text, reason string
 }{
-	{"ui-source", "src/main.jsx", retiringUIPlaceholder, "an input placeholder in the Store UI source; remove it with the next UI rebuild"},
 	{"ui-bundle", sidecarModuleDir + "ui/assets/index-*.js", retiringUIPlaceholder, "the same placeholder in the committed UI bundle the sidecar embeds"},
 }
 
@@ -300,10 +295,10 @@ func TestStoreProductionFilesCarryNoRetiringEstateValue(t *testing.T) {
 	if hits := textHits("plant", []byte("DEFAULT="+registry), forbidden); strings.Join(hits, "|") != retiringLicenseRegistryField+" in plant" {
 		t.Fatalf("matcher control: hits %q", hits)
 	}
-	if data, used := blankExceptions("src/main.jsx", []byte("placeholder=\"https://"+retiringUIPlaceholder+"\"")); len(used) != 1 || len(textHits("placeholder", data, forbidden)) != 0 {
+	if data, used := blankExceptions(sidecarModuleDir+"ui/assets/index-C5SMNmPA.js", []byte("placeholder=\"https://"+retiringUIPlaceholder+"\"")); len(used) != 1 || len(textHits("placeholder", data, forbidden)) != 0 {
 		t.Fatalf("exception control: the declared placeholder was not excepted (used %v)", used)
 	}
-	if data, _ := blankExceptions("src/main.jsx", []byte(retiringUIPlaceholder+" https://melusina-os.org")); !strings.Contains(strings.Join(textHits("mixed", data, forbidden), "|"), retiringRootDomainField+" in mixed") {
+	if data, _ := blankExceptions(sidecarModuleDir+"ui/assets/index-C5SMNmPA.js", []byte(retiringUIPlaceholder+" https://melusina-os.org")); !strings.Contains(strings.Join(textHits("mixed", data, forbidden), "|"), retiringRootDomainField+" in mixed") {
 		t.Fatal("exception control: the root domain outside the placeholder was excepted too")
 	}
 

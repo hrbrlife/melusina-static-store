@@ -1,13 +1,412 @@
 {
-  "schema": "domain-host-allowlist-v1",
   "hosts": [
+    {
+      "host": "a.author",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/github[.]com/hrbrlife/melusina-identity-gate/verify/global_app_approval[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "a.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "a.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/hermetic_harness_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "a.global",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "a.group",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/catalog[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "a.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "a.local",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "a.name",
+      "reason": "Tracked test, fixture, or documentation text in e2e/tests/all_apps[.]spec[.]ts; it is not an estate endpoint."
+    },
+    {
+      "host": "a.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "a.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "acceptance.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cascade_mock_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "account.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "acct.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/list-active-releases/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "acme.estate.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "activegeneration.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/handler[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "ad.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/poller[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "admin.group",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/catalog_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "ae.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "aead.open",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/storerecovery/keys[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "after.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/listing_registration_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "afterfault.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/listing_registration_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "afterretry.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/listing_registration_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "ailagoon.example.com",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/melusina-binhash/cascade_test[.]go[.]src; it is not an estate endpoint."
+    },
+    {
+      "host": "ailagoon.sidecar.host",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/AI_Lagoon/ai-lagoon/RUNTIME-CONTRACT[.]json; reviewed as outside the estate origin."
+    },
+    {
+      "host": "ailagoon.sidecar.local",
+      "reason": "Tracked explanatory text in packages/hrbrlife/AI_Lagoon/ai-lagoon/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "aitx.pro",
+      "reason": "Tracked external endpoint or dotted identifier in packages/58c45de8c72c6b6588bb3611c7fe1d1d/metadata[.]json; reviewed as outside the estate origin."
+    },
+    {
+      "host": "aitx.sidecar.local",
+      "reason": "Tracked test, fixture, or documentation text in MELUSINA-ATTEST-KILL-LIST[.]md; it is not an estate endpoint."
+    },
     {
       "host": "alpha-api-df09d5faefd551337b59659de8ae7207.sandstorm.io",
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/ui/update/install.sh; unrelated to the estate origin."
     },
     {
+      "host": "another.store.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/store_identity_escrow_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "anthropic.com",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/authz-store-receipt/git-objects/3e14223e84782f3da2ee2408d79768ff1e9c194a[.]commit; it is not an estate endpoint."
+    },
+    {
+      "host": "api.anthropic.com",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/Claude-Melusina/claude-melusina/RUNTIME-CONTRACT[.]json; reviewed as outside the estate origin."
+    },
+    {
       "host": "api.devnet.solana.com",
       "reason": "External service, documentation, or dotted protocol identifier in scripts/default-bazaar-release.sh; unrelated to the estate origin."
+    },
+    {
+      "host": "api.openai.com",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/AI_Lagoon/ai-lagoon/capabilities[.]json; reviewed as outside the estate origin."
+    },
+    {
+      "host": "app.author",
+      "reason": "Tracked external endpoint or dotted identifier in src/main[.]jsx; reviewed as outside the estate origin."
+    },
+    {
+      "host": "app.author.name",
+      "reason": "Tracked external endpoint or dotted identifier in src/main[.]jsx; reviewed as outside the estate origin."
+    },
+    {
+      "host": "app.cca.sh",
+      "reason": "Tracked explanatory text in PEARL_ONBOARDING_PLAYBOOK[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "app.group",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/catalog_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "app.hrbr.life",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/contracts/C1-estate/known-estate-lineage-vectors[.]json; it is not an estate endpoint."
+    },
+    {
+      "host": "app.name",
+      "reason": "Tracked test, fixture, or documentation text in e2e/tests/all_apps[.]spec[.]ts; it is not an estate endpoint."
+    },
+    {
+      "host": "apply.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/authorized_once[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "apps.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/genesis_dist_init[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "args.app",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/refresh-source-selection[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "artifact.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/release_tools_config[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "artifact.origins",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/release_tools_config[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "at.global",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "at.local",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "at.test",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "attachments.memstore.save",
+      "reason": "Tracked explanatory text in packages/hrbrlife/ccash_go_htmx/popaye/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "author.name",
+      "reason": "Tracked explanatory text in PEARL_ONBOARDING_PLAYBOOK[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "author.pgp.pub",
+      "reason": "Tracked explanatory text in FIX-PROGRESS[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "authz-identity.pub",
+      "reason": "Tracked external endpoint or dotted identifier in fleet/bazaar-catalog[.]yaml; reviewed as outside the estate origin."
+    },
+    {
+      "host": "b.install.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_trust_bundle_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "b.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "b.top",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "basepointnaftableprecomp.initonce.do",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/scalarmult[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "basepointtableprecomp.initonce.do",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/scalarmult[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "bazaar.elsewhere.invalid",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-project-estate-catalog[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "bazaar.estate.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/contracts-example-estate[.]profile[.]json; it is not an estate endpoint."
+    },
+    {
+      "host": "bazaar.estate.example.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/authz-store-receipt/shell_store_receipt_vectors[.]json; it is not an estate endpoint."
+    },
+    {
+      "host": "bazaar.estate.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/store_host_authorization_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "bazaar.example",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-project-estate-catalog[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "bazaar.example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/bazaar-store-link/store_link_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "bazaar.melusina-os.org",
+      "reason": "Historical Store or estate value in KEEP - COMPONENTS FOR APPS[.]md; retained as explicit legacy reference for regression review."
+    },
+    {
+      "host": "bazaar.other-retiring.invalid",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-project-estate-catalog[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "bazaar.rehearsal.invalid",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-mel-release-provider-cli-contract[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "before.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/listing_registration_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "big.int",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/estateprofile/encoding[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "blob.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/vendor_provenance_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "blog.existentialize.com",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/update/install[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "bloom.community",
+      "reason": "Tracked explanatory text in KILL-LIST[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "bootstrap.nonce.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/store_state_backup_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "bundle.open",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/mel-release-provider[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "bureaudoc.read",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/pr_ninja/telescreen/capabilities[.]json; reviewed as outside the estate origin."
+    },
+    {
+      "host": "byid.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/catalog_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "bytes.compare",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/installerrelease/entry[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "c.app",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/runtimecontract/c3_contract_a34_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "c.build",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/componentrelease/componentrelease[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "c.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/store_rpc_genesis[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "c.channel",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/hermetic_cases_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "c.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/installerrelease/entry_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "c.estate",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/config[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "c.fail",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cascade_gate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "c.got",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/boot_identity[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "c.httpclient.do",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/store_account_batch[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "c.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/boot_identity_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "c.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "c.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/pkg/controllerupgrade/receipt[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "c.open",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/github[.]com/melusina-os/melusina-artifact-vault/unix[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "c.pin",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/installerrelease/profile_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "c.r.read",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/statetar_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "c.rpcclient.httpclient.do",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cascade_gate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "c.trust",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/releaseentry/entry_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "caches.open",
+      "reason": "Tracked external endpoint or dotted identifier in public/sw[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "call.fun",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/enrolled_release_info_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "callee.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "callee.sel.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "candidate.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/catalog_rehydrate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "candidate.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/vectors_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "candidate.snapshot.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_recovery[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "canonical.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/squadsproof/squadsproof_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "canonical.int",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/github[.]com/hrbrlife/melusina-attest/envelope/envelope[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "canvas.save",
+      "reason": "Tracked explanatory text in fleet/DEFAULT_BAZAAR_SOURCE_VERIFICATION_LOG[.]md; it is not an estate endpoint."
     },
     {
       "host": "catalog-genesis.json.next",
@@ -18,12 +417,616 @@
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/catalog_bootstrap.go; unrelated to the estate origin."
     },
     {
+      "host": "catalog.select",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/abandon_init[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "catalogstate.enrolledreleaseinfo.report",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "ccash-demo.ch",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/melusina_ccashconfig_app/cca-sh-config/app/domains/ccash/datasets/site-profile-v1[.]json; reviewed as outside the estate origin."
+    },
+    {
+      "host": "ccash.services",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/fineract-setup/fineract-setup/metadata[.]json; reviewed as outside the estate origin."
+    },
+    {
+      "host": "cdn.jsdelivr.net",
+      "reason": "Tracked explanatory text in PUBLISH_QC[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "cdn.tailwindcss.com",
+      "reason": "Tracked explanatory text in PUBLISH_QC[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "cdnjs.cloudflare.com",
+      "reason": "Tracked explanatory text in PUBLISH_QC[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "cfg.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/publish_admission_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "change.new",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/catalog_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "check.got",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/estate_config_render[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "check.read",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/host_apply_plan_store[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "client.do",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/deps[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "cmd.run",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/signer[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "committedgeneration.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/handler[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "conn.read",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/public_dns_resolver[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "connections.store",
+      "reason": "Tracked explanatory text in packages/hrbrlife/AI_Lagoon/ai-lagoon/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "contacts.contact",
+      "reason": "Tracked explanatory text in packages/hrbrlife/ccash_go_htmx/popaye/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "contract.app",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/validate-runtime-contract[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "contract.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/sidecar_identity_key_version_parity_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "control.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/boot-identity-prep/c3_contract_d18_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "counting.reads.store",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/serve_gate_pointer_amplifier_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "crand.read",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_mirror_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "creeper.sidecar.host",
+      "reason": "Tracked explanatory text in packages/hrbrlife/melusina-app-creeper/creeper/description[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "crypto.exchange",
+      "reason": "Tracked explanatory text in packages/hrbrlife/ccash_go_htmx/popaye/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "current.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "current.open",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "d.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/squadsproof/squadsproof[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "d.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "d.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/coordinator[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "date.now",
+      "reason": "Tracked test, fixture, or documentation text in MELUSINA-ATTEST-DESIGN[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "datetime.datetime.now",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/manifest-merge[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "de.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/wal[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "deb.debian.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/contracts/C1-estate/d33-signed-manifest[.]json; it is not an estate endpoint."
+    },
+    {
+      "host": "defaults.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/publish_nonce[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "deps.apply.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/hostupdate/authorized_once_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "deps.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/catalog_rehydrate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "deps.state.store",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "deps.wal.open",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/coordinator[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "dest.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/tables[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "dest.zero",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/tables[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "destination.name",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/mel-release-provider[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "dev.pbay.app",
+      "reason": "Tracked explanatory text in packages/hrbrlife/ccash_go_htmx/popaye/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "devnet.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/config_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "devnet.helius-rpc.com",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/publish[.]env[.]example; reviewed as outside the estate origin."
+    },
+    {
+      "host": "dir.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/host_apply_issue[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "doc.channel",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/componentrelease/componentrelease[.]go; reviewed as outside the estate origin."
+    },
+    {
       "host": "docs.sandstorm.io",
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/ui/update/install.sh; unrelated to the estate origin."
     },
     {
+      "host": "dossierretention.open",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/dossier-retention/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.author",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.author.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.events",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.id-t.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.info",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/componentrelease/adapter_binary_replace[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/componentrelease/adapter_binary_replace[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/releasefinalizer/engine[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.run",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/signer[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.runtimeevidence.pid",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/wal[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.search",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.style",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "e.test",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "edge.estate.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "elem.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "elsewhere.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/generation_promote_handler_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "engine.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/releasefinalizer/engine_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "enrolled.report",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/enrolled_release_info_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "entry.header.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/statetar_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "entry.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "entry.info",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/genesis_writer_lock_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "entry.name",
+      "reason": "Tracked test, fixture, or documentation text in e2e/tests/all_apps[.]spec[.]ts; it is not an estate endpoint."
+    },
+    {
+      "host": "eprint.iacr.org",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "error.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/scripts/mel-release-squads-errors[.]mjs; reviewed as outside the estate origin."
+    },
+    {
+      "host": "errors.as",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/campaign_d12_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "errors.is",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_generation[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "errors.new",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/bazaar-store-link/config[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "estate.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "estateprofile.pin",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/estate_enrollment_state[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "ev.pid",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/poller[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "evil.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/hostupdate/fetch_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "evil.example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/submit/main_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "exact-current.store.example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/exact_current_g2_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "example.com",
+      "reason": "Tracked explanatory text in packages/hrbrlife/DueProcess/dueprocess/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "example.estate",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/campaign_c1_d12_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "example.invalid",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-build-store-attest-shape[.]sh; it is not an estate endpoint."
+    },
+    {
+      "host": "example.melusina-os.org",
+      "reason": "Historical Store or estate value in sidecar/melusina-store-sidecar/retiring_estate_production_scan_test[.]go; retained as explicit legacy reference for regression review."
+    },
+    {
+      "host": "example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_sidecar_vectors_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "example.test",
+      "reason": "Tracked test, fixture, or documentation text in packages/hrbrlife/melusina_ccashconfig_app/cca-sh-config/app/domains/popaye/datasets/ccash-msb-test-scenario-profile[.]json; it is not an estate endpoint."
+    },
+    {
+      "host": "exc.name",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-project-estate-catalog[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "exception.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/retiring_estate_production_scan_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "excluded.search",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-domain-literals[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "expiredgate.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_rollout_test[.]go; it is not an estate endpoint."
+    },
+    {
       "host": "explorer.solana.com",
       "reason": "External service, documentation, or dotted protocol identifier in src/main.jsx; unrelated to the estate origin."
+    },
+    {
+      "host": "extra.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/statetar_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "extracted.read",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/build-store-bootstrap-component[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "f.at.global",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "f.at.local",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "f.build",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/bazaar-store-link/jobs[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "f.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/chainrpc_failover[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "f.client.do",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/root_mirror[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "f.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/persist[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "f.help",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/release_tooling_pinned_use_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "f.http.do",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/bazaar-store-link/store_link[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "f.info",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/golang[.]org/x/crypto/hkdf/hkdf[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "f.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/boot_identity[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "f.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/controller_upgrade_http_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "f.read",
+      "reason": "Tracked external endpoint or dotted identifier in build-store[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "f.recipients.author",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/identity_escrow_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "f.run",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/installer_gate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "f.seek",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/apply-store-update/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "f.sel.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/promote_admission_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "facts.host",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/controller_upgrade_plan_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "failureonce.do",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/serve_gate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "fallback.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/config_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fh.read",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/validate-runtime-contract[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "field.got",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/estate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "field.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/estate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "file.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_stage[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "file.name",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/audit-spk-icon[.]cjs; reviewed as outside the estate origin."
+    },
+    {
+      "host": "filippo.io",
+      "reason": "Tracked explanatory text in KILL-LIST[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "finalizer.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/releasefinalizer/tls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fineract-v2.example.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/chaingate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fineract-v2.extra.sidecar.host",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/chaingate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fineract-v2.sidecar.host",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/chaingate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fineract-v2.sidecar.local",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/chaingate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fineract.sidecar.host",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/cyberteller/cyberteller/app/etc/hosts; reviewed as outside the estate origin."
+    },
+    {
+      "host": "first.build",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "firstcardimage.click",
+      "reason": "Tracked test, fixture, or documentation text in e2e/tests/static_store[.]spec[.]ts; it is not an estate endpoint."
+    },
+    {
+      "host": "fixture.app",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-campaign-d33-release-inputs[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "fixture.governance.runner.vote",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/campaign_c1_d14_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "flavor.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/retiring_estate_artifact_scan_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fn.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/served_tls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fn.name.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/promote_admission_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fn.sel.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/served_tls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fonts.googleapis.com",
+      "reason": "Tracked explanatory text in PUBLISH_QC[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "fonts.gstatic.com",
+      "reason": "Tracked explanatory text in PUBLISH_QC[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "foo.example",
+      "reason": "Tracked test, fixture, or documentation text in testdata/domain-literal-allowlist[.]json; it is not an estate endpoint."
+    },
+    {
+      "host": "foreign.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/estate_config_render_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "foreign.rehearsal.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/store_enrollment_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "foureyes.store",
+      "reason": "Tracked explanatory text in packages/hrbrlife/melusina-namedcoin-admin-app/namedcoin-admin/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "fresh-store.example.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/squads_authority_enrolled_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fsf.org",
+      "reason": "Tracked test, fixture, or documentation text in LICENSE; it is not an estate endpoint."
+    },
+    {
+      "host": "fun.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/publish_admission_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "fun.sel.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/publish_admission_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "g.cr",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/serve_gate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "g.name",
+      "reason": "Tracked external endpoint or dotted identifier in src/main[.]jsx; reviewed as outside the estate origin."
+    },
+    {
+      "host": "g.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/serve_gate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "gate.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/sidecar_identity_key_version_parity_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "gate.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_rollout_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "gate.run",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/sidecar_identity_key_version_parity_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "genesis.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/catalog_genesis_bootstrap_provisional_test[.]go; it is not an estate endpoint."
     },
     {
       "host": "github.com",
@@ -38,60 +1041,1860 @@
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/internal/componentrelease/componentrelease.go; unrelated to the estate origin."
     },
     {
+      "host": "gleif.org",
+      "reason": "Tracked explanatory text in packages/hrbrlife/ccash_go_htmx/popaye/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "globalappapproval.author",
+      "reason": "Tracked test, fixture, or documentation text in MELUSINA-ATTEST-DESIGN[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "go.googlesource.com",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/pull[.]sh; it is not an estate endpoint."
+    },
+    {
+      "host": "golang.org",
+      "reason": "Tracked test, fixture, or documentation text in MELUSINA-ATTEST-DESIGN[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "got.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "got.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_recovery_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "got.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/storerecovery/statetar[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "got.pid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/deps_release_info_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "got.store",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/submit/main_test[.]go; it is not an estate endpoint."
+    },
+    {
       "host": "groups.google.com",
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/ui/update/install.sh; unrelated to the estate origin."
+    },
+    {
+      "host": "gzip.open",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-build-store-bootstrap-component[.]sh; it is not an estate endpoint."
+    },
+    {
+      "host": "h.catalog.select",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/abandon_init_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "h.jobs",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/bazaar-store-link/jobs[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "h.runner.run",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/releasefinalizer/http[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "handle.read",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/build-store-bootstrap-component[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "hdevalence.ca",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "hdr.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/apply-store-update/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "header.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/storerecovery/statetar[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "heading.click",
+      "reason": "Tracked test, fixture, or documentation text in e2e/tests/all_apps[.]spec[.]ts; it is not an estate endpoint."
+    },
+    {
+      "host": "hit.at",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "hit.group",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-domain-literals[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "hit.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "hkdf.new",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/canary-emit/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "hmac.new",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/golang[.]org/x/crypto/hkdf/hkdf[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "hrbr.life",
+      "reason": "Tracked explanatory text in PUBLISH_QC[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "hrbrlife.github.io",
+      "reason": "Tracked explanatory text in HANDOFF[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "http.defaultclient.do",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/list-active-releases/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "http.post",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/canary_dryrun_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "i.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "i.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "i.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "i.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "i.one",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "i.test",
+      "reason": "Tracked test, fixture, or documentation text in e2e/tests/admin_store[.]spec[.]ts; it is not an estate endpoint."
+    },
+    {
+      "host": "icons.market",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/audit-spk-icon[.]cjs; reviewed as outside the estate origin."
+    },
+    {
+      "host": "ident.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/enrolled_operator_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "ids.id",
+      "reason": "Tracked explanatory text in packages/hrbrlife/ccash_go_htmx/popaye/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "ids.new",
+      "reason": "Tracked explanatory text in packages/hrbrlife/ccash_go_htmx/popaye/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "images.example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/contracts/C1-estate/d33-signed-manifest[.]json; it is not an estate endpoint."
+    },
+    {
+      "host": "in.host",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/public_leaf_renew[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "in.read",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_generation[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "info.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/generation_http[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "info.pid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/runtime_release_info_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "inner.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/host_apply_squads_verify[.]go; reviewed as outside the estate origin."
     },
     {
       "host": "instaco.app",
       "reason": "External service, documentation, or dotted protocol identifier in recolor_icons.py; unrelated to the estate origin."
     },
     {
+      "host": "install.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_trust_bundle_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "install.sandstorm.io",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/update/install[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "installbtn.click",
+      "reason": "Tracked test, fixture, or documentation text in e2e/tests/static_store[.]spec[.]ts; it is not an estate endpoint."
+    },
+    {
+      "host": "installer.melusina.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "installerrelease.trust",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/chaingate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "instruction.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/squadsproof/squadsproof[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "invalid.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/catalog_bootstrap_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "it.name",
+      "reason": "Tracked external endpoint or dotted identifier in src/main[.]jsx; reviewed as outside the estate origin."
+    },
+    {
+      "host": "item.account.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/store_rpc_reader[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "item.call",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/foundation_authorization_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "item.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/store_account_batch[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "item.got",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/vectors_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "item.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/config[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "ix.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/host_apply_squads_verify[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "j.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/releasefinalizer/engine[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "je.test",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "jf.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "job.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/releasefinalizer/http_test[.]go; it is not an estate endpoint."
+    },
+    {
       "host": "json-schema.org",
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/runtime-contract-schema/melusina-app-runtime-contract-v1.schema.template.json; unrelated to the estate origin."
+    },
+    {
+      "host": "l.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "l.claims",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/publish_nonce[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "l.memoizedprops.style",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "l.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "later.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/publish_nonce_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "latest.json.build",
+      "reason": "Tracked explanatory text in STORE-SYNC-MEGA-KILL-LIST[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "ledger.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/publish_nonce[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "ledgeropts.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/handler_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "leftstat.dev",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_generation[.]go; reviewed as outside the estate origin."
     },
     {
       "host": "letsencrypt.org",
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/ui/update/install.sh; unrelated to the estate origin."
     },
     {
+      "host": "lhs.sel.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/served_tls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "licensed.example",
+      "reason": "Tracked test, fixture, or documentation text in MELUSINA-ATTEST-DESIGN[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "local.sandstorm.io",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/cyberteller/cyberteller/app/etc/hosts; reviewed as outside the estate origin."
+    },
+    {
+      "host": "m.build",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "m.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "m.channel",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "m.group",
+      "reason": "Tracked external endpoint or dotted identifier in recolor_icons[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "m.mu",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/store_chain_memo[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "makefile.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/release_tooling_inputs_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "manifest.build",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "manifest.json.build",
+      "reason": "Tracked explanatory text in STORE-SYNC-MEGA-KILL-LIST[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "match.group",
+      "reason": "Tracked external endpoint or dotted identifier in domain_literal_classifier[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "measuredspec.bridge.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/boot-identity-prep/c3_contract_d18_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "measuredspec.container.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/boot-identity-prep/c3_contract_d18_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "melusina-os.org",
+      "reason": "Historical Store or estate value in FEDERATED-MVP-PROGRESS[.]md; retained as explicit legacy reference for regression review."
+    },
+    {
+      "host": "melusina.io",
+      "reason": "Tracked explanatory text in packages/hrbrlife/DueProcess/dueprocess/changelog[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "member.name",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/build-store-bootstrap-component[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "member.read",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-build-store-bootstrap-component[.]sh; it is not an estate endpoint."
+    },
+    {
+      "host": "mermail.sidecar.host",
+      "reason": "Tracked test, fixture, or documentation text in docs/RUNTIME_CONTRACT_V1[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "mirror.publisher.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/contracts/C1-estate/d33-signed-manifest[.]json; it is not an estate endpoint."
+    },
+    {
+      "host": "mirror.run",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "mkt.group",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/stage-into-catalog[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "mode.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/genesis_dist_init_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "modernc.org",
+      "reason": "Tracked explanatory text in HANDOFF[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "mutation.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "n.bg",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "n.call",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/served_tls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "n.compare",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "n.day",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "n.fun",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/enrolled_release_info_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "n.green",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "n.media",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "n.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "n.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "n.property",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "n.search",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "nacl.box",
+      "reason": "Tracked test, fixture, or documentation text in MELUSINA-ATTEST-DESIGN[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "name.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "named.conf.local",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "newsnapshot.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "next.build",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "nn.test",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "nonzero.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/squadsproof/squadsproof_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "ns1.estate.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "o.events",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "o.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/state_estate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "o.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/submit-installer/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "o.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "o.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "o.store",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/submit-generation/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "o.style",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "object.is",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "object.prototype.hasownproperty.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "object.prototype.tostring.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "old.build",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "old.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "old.open",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "once.do",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/generation_http_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "one.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/estate_profile_check_test[.]go; it is not an estate endpoint."
+    },
+    {
       "host": "opencollective.com",
       "reason": "External service, documentation, or dotted protocol identifier in package-lock.json; unrelated to the estate origin."
+    },
+    {
+      "host": "openrouter.ai",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/AI_Lagoon/ai-lagoon/capabilities[.]json; reviewed as outside the estate origin."
+    },
+    {
+      "host": "opensanctions.sidecar.host",
+      "reason": "Tracked explanatory text in packages/hrbrlife/melusina-app-opensanctions/opensanctions/description[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "operator-chosen.example.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/c3_contract_d33_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "operator.first.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/campaign_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "operator.rehearsal.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/c3_contract_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "operator.state-backup.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/store_state_backup_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "opts.host",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/public_leaf_renew[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "opts.nonce.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_retention_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "opts.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/handler_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "origin.host",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/bazaar-store-link/store_link[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "os.link",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/materialize-governed-cohort[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "os.open",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/project-estate-catalog[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "other-operator.rehearsal.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/store_enrollment_successor_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "other-store-link.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/releasefinalizer/tls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "other-store.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/hostupdate/fetch_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "other.example.org",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-store-script-estate-bindings[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "other.example.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/campaign_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "other.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/control_mtls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "out.name",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/materialize-governed-cohort[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "output.open",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/generate-app-icon-lock[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "overlap.author",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/identity_escrow_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "p.box",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/github[.]com/hrbrlife/melusina-attest/identity/identity[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "p.build",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "p.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/state_estate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "p.name",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/materialize-governed-cohort[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "p.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "package.name",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/generate-app-icon-lock[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "package.open",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/generate-app-icon-lock[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "page.keyboard.press",
+      "reason": "Tracked test, fixture, or documentation text in e2e/tests/static_store[.]spec[.]ts; it is not an estate endpoint."
+    },
+    {
+      "host": "parent.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/genesis_dist_init[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "parsed.host",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/deps_release_info_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "parsed.result.value.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cascade_gate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "parsedrpc.host",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/apply-store-update/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "path.name",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/mel-release-provider[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "path.open",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/generate-app-icon-lock[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "pattern.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/release_tooling_inputs_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "performance.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "pinned.pin",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/estateprofile/accept[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "pkg.go.dev",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/README[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "pkg.group",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/stage-into-catalog[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "pkg.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/served_snapshot_store_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "pkix.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/bazaar-store-link/worker_mtls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "policy.channel",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/generation_compose[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "popay.app",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/melusina_ccashconfig_app/cca-sh-config/app/domains/popaye/stations/simple-kyc[.]yaml; reviewed as outside the estate origin."
+    },
+    {
+      "host": "popaye.group",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/catalog_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "pr.id",
+      "reason": "Tracked external endpoint or dotted identifier in src/main[.]jsx; reviewed as outside the estate origin."
+    },
+    {
+      "host": "prepared.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "primary.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/config_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "process.env.ci",
+      "reason": "Tracked test, fixture, or documentation text in e2e/playwright[.]config[.]ts; it is not an estate endpoint."
+    },
+    {
+      "host": "processstation.app",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/welcome-pearl/welcome-pearl/metadata[.]json; reviewed as outside the estate origin."
+    },
+    {
+      "host": "profile.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/estate_profile_store_release_core_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "profile.store",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/estateprofile/validate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "program.final",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/estateprofile/digest[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "programs.license-registry.final",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/strictjson_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "programs.witness-verifier.final",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/strictjson_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "prov.build",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/preflight[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "provider.build",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-c3-d33-metadata[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "provider.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/provider_pairing_signer[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "provider.run",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-mel-release-provider-cli-contract[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "provider.subprocess.run",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/release_tooling_inputs_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "provideronce.do",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/hermetic_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "proxy.example.test",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-mel-release-provider-cli-contract[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "publicsuffix.org",
+      "reason": "Tracked explanatory text in domain-tlds[.]txt; it is not an estate endpoint."
+    },
+    {
+      "host": "publisher.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/bootstrap-legacy-manifest/main_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "publisher.example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "publisher.example.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/hermetic_harness_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "qe.test",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "qu.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.account.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/list-active-releases/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.author",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/storerecovery/identity_escrow[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.body.store",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/releasefinalizer/runner[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/listing_bootstrap[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.client.do",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/listing_bootstrap[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.cr",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/listing_registration[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/installerrelease/entry[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.events",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/listing_registration_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "r.exchange",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/public_dns_resolver[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.fail",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/github[.]com/hrbrlife/melusina-identity-gate/verify/sidecar_cascade[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "r.is",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.job.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/releasefinalizer/engine[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.jobs",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/releasefinalizer/repository[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.media",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/hostupdate/wal_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "r.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/releasefinalizer/repository[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.pid",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/deps[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "r.reachone.do",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/serve_gate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rand.int",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/served_tls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rand.read",
+      "reason": "Tracked explanatory text in HANDOFF-V2GATE[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "raw.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/host_apply_squads_verify[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "re.search",
+      "reason": "Tracked external endpoint or dotted identifier in domain_literal_classifier[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "re.test",
+      "reason": "Tracked external endpoint or dotted identifier in public/sw[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "react.dev",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "rebuilt.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_quarantine_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rec.data",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/github[.]com/hrbrlife/melusina-identity-gate/bundle/dane[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "record.job.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/releasefinalizer/repository[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "records.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/releasefinalizer/http_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "recovery.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_quarantine_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "refusal.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/estateprofile/refusal[.]go; reviewed as outside the estate origin."
     },
     {
       "host": "registry.npmjs.org",
       "reason": "External service, documentation, or dotted protocol identifier in package-lock.json; unrelated to the estate origin."
     },
     {
+      "host": "rehearsal-sidecar.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/estate_config_render_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rel.parts",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/mel-release-provider[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "relative.parts",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/mel-release-provider[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "relay.estate.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "release-assets.githubusercontent.com",
+      "reason": "Tracked explanatory text in HANDOFF[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "releaseentry.trust",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/mel-release/readback[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "remotebak.sidecar.host",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/cyberteller/cyberteller/app/etc/hosts; reviewed as outside the estate origin."
+    },
+    {
+      "host": "repository.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/releasefinalizer/repository_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "req.channel",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/generation_promote[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "req.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/handler[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "request.channel",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/submit-generation/c3_contract_d42_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "request.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/enrolled_operator_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "reseller.example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_mirror_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "reseller.test.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/melusina-binhash/cascade_test[.]go[.]src; it is not an estate endpoint."
+    },
+    {
+      "host": "resolvefilename.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/scripts/node-module-confinement[.]cjs; reviewed as outside the estate origin."
+    },
+    {
+      "host": "response.read",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/materialize-governed-cohort[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "result.build",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/bootstrap-legacy-manifest/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "result.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/submit-installer/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "revokedgate.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_rollout_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rightstat.dev",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_generation[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "rolledback.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/publish_nonce_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "root-store.example",
+      "reason": "Tracked test, fixture, or documentation text in testdata/domain-literal-allowlist[.]json; it is not an estate endpoint."
+    },
+    {
       "host": "root-store.example.org",
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/store.config.example.json; unrelated to the estate origin."
+    },
+    {
+      "host": "root.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/genesis_dist_init[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "root.root.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/storerecovery/statetar[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "route.post",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/generation_floor_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "row.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/campaign_c1_d33_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc-fallback.rehearsal.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/estate_config_render_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc-second-fallback.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/campaign_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/list-active-releases/program_id_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc.example.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/apply-store-update/main_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc.example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/submit/main_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc.example.test",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-mel-release-provider-cli-contract[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc.first.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/campaign_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc.invalid",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test_campaign_c1_d14[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc.rehearsal.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/c3_contract_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc.second.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/c3_contract_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rr.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/field/fe[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rrs-store-pilot.melusina-os.org",
+      "reason": "Historical Store or estate value in sidecar/melusina-store-sidecar/internal/componentrelease/adapter_binary_replace_probe_test[.]go; retained as explicit legacy reference for regression review."
+    },
+    {
+      "host": "rtmp.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/reconcile-stage-finalization/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "runner.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/releasefinalizer/http_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "runner.run",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/recover[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "runtimecontract.app",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/runtimecontract/runtimecontract_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "s.closeonce.do",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/github[.]com/melusina-os/melusina-artifact-vault/unix[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "s.cr",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/control_publish[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.current.store",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/served_tls[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/config_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "s.fail",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_generation[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.host",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/runtimecontract/runtimecontract[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/runtimecontract/runtimecontract[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/hermetic_cases_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "s.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.now",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/handler[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.once.do",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/served_snapshot[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.pin",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/served_tls[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.run",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/hermetic_cases_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "s.store",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/publisherenvelope/signer[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.tls.trust",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/runtimecontract/runtimecontract[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.vault.store",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/github[.]com/melusina-os/melusina-artifact-vault/unix[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "sails.to",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/melusina_cybertellerconfig_app/cybertellerconfig/metadata[.]json; reviewed as outside the estate origin."
     },
     {
       "host": "sandcats.io",
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/ui/update/install.sh; unrelated to the estate origin."
     },
     {
+      "host": "sandstorm.io",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/update/install[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "sandstormapi.save",
+      "reason": "Tracked explanatory text in packages/hrbrlife/AI_Lagoon/ai-lagoon/description[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "schema.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/runtime_contract_schema_static_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "second.build",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "sel.sel.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/enrolled_release_info_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "selected.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "selector.sel.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/program_id_startup_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "self.fail",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-c3-d33-metadata[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "self.name",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/project-estate-catalog[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "self.temp.name",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test_campaign_c1_d33[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "served.current.store",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/served_tls[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "served.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/melusina-binhash/cascade_test[.]go[.]src; it is not an estate endpoint."
+    },
+    {
+      "host": "served.pin",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/c3_contract_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "served.seek",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/serve_gate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "served.watch",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/served_tls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "servedtls.watch",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "service.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/publisherenvelope/signer_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "sha1.new",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_sidecar_vectors_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "sha256.new",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_stage[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "shadowat.global",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "shared.open",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/artifactvault/vault_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "sidecar.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/control_mtls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "sink.directory",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/storerecovery/statetar[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "snapshot.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_generation[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "snapshot.open",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_generation[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "sodipodi.sourceforge.net",
+      "reason": "Tracked external endpoint or dotted identifier in public/icons/melulogo-cyan[.]svg; reviewed as outside the estate origin."
+    },
+    {
+      "host": "sort.search",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/validate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "source.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/catalog_rehydrate[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "source.read",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/generate-app-icon-lock[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "spec.pin",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/release_tooling_inputs_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "sql.open",
+      "reason": "Tracked explanatory text in HANDOFF[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "sqlitestore.store",
+      "reason": "Tracked explanatory text in KILL-LIST[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "src.read",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/generate-app-icon-lock[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "stale.invalid",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-stage-into-catalog[.]sh; it is not an estate endpoint."
+    },
+    {
+      "host": "state-backup.store.example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/store_state_backup_test[.]go; it is not an estate endpoint."
+    },
+    {
       "host": "state.json.next",
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/publish_nonce.go; unrelated to the estate origin."
+    },
+    {
+      "host": "state.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/publish_admission_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "step.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/genesis_writer_lock[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "step.run",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/genesis_writer_lock[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "stop.store",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/serve_gate_snapshot_test[.]go; it is not an estate endpoint."
     },
     {
       "host": "store-control.internal.example",
       "reason": "Reserved illustrative host in sidecar/melusina-store-sidecar/store.config.example.json; it is not a deployable estate endpoint."
     },
     {
+      "host": "store-link.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/control_mtls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "store.estate.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/store_host_authorization_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "store.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_stage_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "store.example.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/boot-identity-prep/chain_id_test[.]go; it is not an estate endpoint."
+    },
+    {
       "host": "store.example.org",
       "reason": "Illustrative URL in scripts/generate-app-icon-lock.py help text; it is not an estate origin."
+    },
+    {
+      "host": "store.example.test",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-mel-release-provider-cli-contract[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "store.internal.example.org",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/store[.]yaml[.]example; reviewed as outside the estate origin."
     },
     {
       "host": "store.invalid",
       "reason": "Reserved illustrative host in src/main.jsx; it cannot name an estate endpoint."
     },
     {
+      "host": "store.melusina.dev",
+      "reason": "Tracked explanatory text in PUBLISHER_TRUST[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "store.other.example.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/boot-identity-prep/c3_contract_d18_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "store.pub",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/scripts/test-mel-release-provider[.]sh; it is not an estate endpoint."
+    },
+    {
+      "host": "store.recovery.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/identity_escrow_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "store.rehearsal.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/boot-identity-prep/root_store_sidecar_vector_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "store.rig.estate.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/store_host_authorization_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "store.rootdomain",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/README[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "store.sidecar.host",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/config[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "store.store",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/statestore_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "store.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/public_listener_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "store.yaml.example",
+      "reason": "Tracked explanatory text in FEDERATED-MVP-PROGRESS[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "store2.estate.test",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/store_host_authorization_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "stranger.example.org",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/canary_gate_proof_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "stream.read",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/materialize-governed-cohort[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "strings.compare",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/componentrelease/adapter_binary_replace[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "subprocess.run",
+      "reason": "Tracked external endpoint or dotted identifier in build-store[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "svc.cr",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/generation_floor_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "svc.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/control_authority_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "syscall.open",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_generation[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.as",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.author",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.bg",
+      "reason": "Tracked external endpoint or dotted identifier in src/main[.]jsx; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.date",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.events",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.green",
+      "reason": "Tracked external endpoint or dotted identifier in src/main[.]jsx; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.id",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.media",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/hostupdate/authorized_once_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "t.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "t.run",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/bazaar-store-link/store_link_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "t.search",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "tarfile.open",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/build-store-bootstrap-component[.]sh; reviewed as outside the estate origin."
+    },
+    {
+      "host": "target.http.do",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/bazaar-store-link/jobs[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "target.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/bazaar-store-link/preflight[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "tc.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "tc.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/componentrelease/bundle_location_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "tc.is",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/keyless_sidecar_gate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "tc.local",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/keyless_sidecar_gate_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "tc.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/bazaar-store-link/store_link_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "tc.next",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/generation_floor_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "tc.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/hostupdate/wal_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "tc.stream",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/statetar_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "telescreen.sidecar.host",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/cyberteller/cyberteller/app/etc/hosts; reviewed as outside the estate origin."
+    },
+    {
+      "host": "temporary.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/releasefinalizer/repository[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "tenant.c3-forbidden.invalid",
+      "reason": "Tracked test, fixture, or documentation text in testdata/contracts/C3-release-and-store-host/C3-release-and-store-host[.]json; it is not an estate endpoint."
+    },
+    {
+      "host": "tenant.estate.example",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/testdata/contracts-example-estate[.]profile[.]json; it is not an estate endpoint."
+    },
+    {
+      "host": "test-only.pub",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/dossier-retention/main_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "test.call",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/squadsproof/squadsproof_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "test.host",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/public_resolver_command_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "test.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/squadsproof/squadsproof_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "this.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
       "host": "tidelift.com",
       "reason": "External service, documentation, or dotted protocol identifier in package-lock.json; unrelated to the estate origin."
     },
     {
+      "host": "time.date",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/boot-identity-prep/c3_contract_d18_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "time.now",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/bazaar-store-link/worker_mtls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "tmp.name",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-project-estate-catalog[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "tmp2.zero",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/extra[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "tr.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/apply-store-update/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "tt.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/config_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "twice.author",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/identity_escrow_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "two.invalid",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/estate_profile_check_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "u.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "u.host",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/bootstrap-legacy-manifest/main[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "u.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "unpkg.com",
+      "reason": "Tracked explanatory text in PUBLISH_QC[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "update.build",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/generation_apps_excluded_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "url.search",
+      "reason": "Tracked external endpoint or dotted identifier in src/main[.]jsx; reviewed as outside the estate origin."
+    },
+    {
+      "host": "user.email",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-build-store-bootstrap-component[.]sh; it is not an estate endpoint."
+    },
+    {
+      "host": "user.name",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-build-store-bootstrap-component[.]sh; it is not an estate endpoint."
+    },
+    {
+      "host": "v.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/store_account_batch_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.host",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/domainhash_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/installerrelease/profile_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.now",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/github[.]com/hrbrlife/melusina-attest/sidecarresult/verify[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/extra[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.t.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/extra[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.t2d.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.t2d.zero",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.x.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/extra[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.x.zero",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.y.one",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.y.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/extra[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.yminusx.one",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.yminusx.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.yplusx.one",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.yplusx.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.z.one",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "v.z.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "valid.id",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/catalog_bootstrap_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "value.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/host_apply_squads_rpc[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "vaulttransactionaccount.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/squadsproof/squadsproof_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "vec.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/installerrelease/entry_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "vector.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/boot-identity-prep/chain_id_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "vector.pin",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/vectors_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "vector.report",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/enrolled_release_info_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "vector.staticrecord.name",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/c3_contract_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "vector.zone",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/c3_contract_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "vg.doc.channel",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/deps[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "vintage.sidecar.host",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/cyberteller/cyberteller/app/etc/hosts; reviewed as outside the estate origin."
+    },
+    {
+      "host": "w.call",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "w.open",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/hostupdate/wal_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "wal.open",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/statestore_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "want.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/storerecovery/statetar[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "watchdog.sidecar.host",
+      "reason": "Tracked external endpoint or dotted identifier in packages/hrbrlife/cyberteller/cyberteller/app/etc/hosts; reviewed as outside the estate origin."
+    },
+    {
+      "host": "window.location.search",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "window.open",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "witness.final",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/vectors_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "wrapped.name",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/scripts/mel-release-squads-errors[.]mjs; reviewed as outside the estate origin."
+    },
+    {
+      "host": "wronglength.data",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/squadsproof/squadsproof_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "ws.open",
+      "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/hostupdate/coordinator_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "www.gnu.org",
+      "reason": "Tracked test, fixture, or documentation text in LICENSE; it is not an estate endpoint."
+    },
+    {
+      "host": "www.inkscape.org",
+      "reason": "Tracked external endpoint or dotted identifier in public/icons/melulogo-cyan[.]svg; reviewed as outside the estate origin."
+    },
+    {
       "host": "www.w3.org",
       "reason": "External service, documentation, or dotted protocol identifier in scripts/make-placeholder-icon.py; unrelated to the estate origin."
+    },
+    {
+      "host": "x.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "x.invalid",
+      "reason": "Tracked test, fixture, or documentation text in scripts/test-mel-release-provider-cli-contract[.]py; it is not an estate endpoint."
+    },
+    {
+      "host": "xx.select",
+      "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/edwards25519[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "xz.stderr.read",
+      "reason": "Tracked external endpoint or dotted identifier in scripts/generate-app-icon-lock[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "y.data",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "z.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "zi.next",
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
     }
   ]
 }

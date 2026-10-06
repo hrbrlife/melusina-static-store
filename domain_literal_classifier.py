@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Classify DNS literals in tracked and new production source files.
+"""Classify DNS literals in every tracked text file and new text file.
 
 This file is copied byte-for-byte into each repository. A repo may approve a
 non-estate host only in domain-host-allowlist.json, with a reason for the host.
@@ -12,22 +12,6 @@ import subprocess
 import sys
 from urllib.parse import urlsplit
 
-SOURCE_EXT = {'.go', '.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.py',
-              '.rs', '.sh', '.bash', '.html', '.css', '.json', '.yaml', '.yml',
-              '.toml', '.conf', '.service', '.env', '.xml', '.capnp', '.c',
-              '.cc', '.cpp', '.h', '.hpp', '.c++', '.h++'}
-EXCLUDED_PARTS = {'test', 'tests', 'testdata', 'testvector', 'fixtures', 'fixture', 'vendor',
-                  'node_modules', 'third_party', 'upstream', 'generated',
-                  '.git', 'docs', 'documentation', 'examples',
-                  'archive', 'reports', 'dist', 'fleet',
-                  'packages', 'riker-test-deploys', 'deps', 'qa',
-                  'e2e', 'dev-publish-keys', '__conformance__',
-                  'async-mutations', 'async-codemod', 'test-fixtures',
-                  'nft-assets', 'approval-manifests'}
-EXCLUDED_NAMES = {'domain_literal_classifier.py', 'domain-host-allowlist.json',
-                  'domain-tlds.txt', 'domain-literal-allowlist.json',
-                  'home-literal-allowlist.json'}
-TEST_NAME = re.compile(r'(?:^test[_-]|[_-]test[.]|[.]test[.]|[.]spec[.]|fixture|(?:^|[-_.])smoke(?:[-_.]|$))', re.I)
 LITERAL = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`(?:\\.|[^`\\])*`')
 DNS = re.compile(r'(?iu)(?<![\w.-])(?:[a-z0-9\u0080-\uffff](?:[a-z0-9\u0080-\uffff-]{0,61}[a-z0-9\u0080-\uffff])?\.)+[a-z0-9\u0080-\uffff-]{2,63}(?![\w.-])')
 URL = re.compile(r'(?i)[a-z][a-z0-9+.-]*://[^\s"\'`<>]+')
@@ -35,16 +19,12 @@ FILE_SUFFIX = set('ico png svg jpg jpeg gif pdf csv txt zip exe cc c h hpp c++ g
 TLDS = None
 
 
-def is_source(path):
-    p = Path(path)
-    return (p.suffix.lower() in SOURCE_EXT or p.name in {'Makefile', 'Dockerfile'}) and not (
-        set(p.parts) & EXCLUDED_PARTS or p.name in EXCLUDED_NAMES or
-        TEST_NAME.search(p.name) or 'staging-grant' in p.name or
-        ('ci' in p.parts and p.name.endswith(('-vectors.rs', '-vectors.go'))) or
-        any(part.startswith('.native-fixture-producer-') for part in p.parts) or
-        any(part.lower().endswith('test') for part in p.parts[:-1]) or
-        p.name.endswith(('.min.js', '.map')) or
-        '/ui/assets/' in '/' + path)
+def is_text(data):
+    """Use bytes rather than a filename suffix to identify binary content."""
+    if b'\0' in data:
+        return False
+    controls = sum(byte < 32 and byte not in (9, 10, 12, 13) for byte in data)
+    return controls * 100 <= len(data)
 
 
 def canonical(host):
@@ -103,11 +83,10 @@ def hosts_in(value):
             host = None
         if host:
             hosts.add(host)
-    # A literal containing just a host (optionally with a port or final dot)
-    # is also executable input even when it has no URL scheme.
-    bare = value.strip().rstrip('.')
-    if re.fullmatch(r'[^\s/:]+(?::[0-9]{1,5})?', bare):
-        host = canonical(bare.rsplit(':', 1)[0] if ':' in bare else bare)
+    # Search the whole text, including unquoted attributes, CSS, assignments,
+    # Makefiles and comments. Suffix filtering only rejects filename-like tokens.
+    for match in DNS.finditer(value):
+        host = canonical(match.group())
         if host and host.rsplit('.', 1)[-1] in TLDS and host.rsplit('.', 1)[-1] not in FILE_SUFFIX:
             hosts.add(host)
     return hosts
@@ -123,24 +102,23 @@ def inventory(root):
     found = {}
     scanned = 0
     for name in sorted(set(names)):
-        if not name or not is_source(name):
+        if not name:
             continue
         path = root / name
         if not path.is_file() or path.is_symlink():
             continue
         data = path.read_bytes()
-        if b'\0' in data:
+        if not is_text(data):
             continue
         scanned += 1
         source = data.decode('utf-8', errors='replace')
         tokens = []
         offset = 0
         for number, line in enumerate(source.split('\n'), 1):
-            if line.lstrip().startswith(('//', '#', '*')):
-                offset += len(line) + 1
-                continue
             for match in LITERAL.finditer(line):
                 tokens.append((offset + match.start(), offset + match.end(), match.group()[1:-1], number))
+            for host in hosts_in(line):
+                found.setdefault(host, []).append(f'{name}:{number}')
             for value in line_literals(line):
                 for host in hosts_in(value):
                     found.setdefault(host, []).append(f'{name}:{number}')
@@ -174,7 +152,11 @@ def check(root):
     for host, locations in sorted(found.items()):
         if host not in allowed:
             failures.append(f'DOMAIN_CLASSIFIER_UNREVIEWED_HOST:{host}:{locations[0]}')
-    for host in sorted(allowed.keys() - found.keys()):
+    # Allowlist entries are scanned too; they do not justify themselves.
+    for host in sorted(allowed):
+        locations = found.get(host, [])
+        if any(not location.startswith('testdata/domain-host-allowlist.json:') for location in locations):
+            continue
         failures.append(f'DOMAIN_CLASSIFIER_ALLOWLIST_STALE:{host}')
     if failures:
         print('\n'.join(failures), file=sys.stderr)

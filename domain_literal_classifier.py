@@ -26,8 +26,7 @@ EXCLUDED_PARTS = {'test', 'tests', 'testdata', 'testvector', 'fixtures', 'fixtur
                   'nft-assets', 'approval-manifests'}
 EXCLUDED_NAMES = {'domain_literal_classifier.py', 'domain-host-allowlist.json',
                   'domain-tlds.txt', 'domain-literal-allowlist.json',
-                  'home-literal-allowlist.json', 'metadata.json',
-                  'sandstorm-pkgdef.capnp'}
+                  'home-literal-allowlist.json'}
 TEST_NAME = re.compile(r'(?:^test[_-]|[_-]test[.]|[.]test[.]|[.]spec[.]|fixture|(?:^|[-_.])smoke(?:[-_.]|$))', re.I)
 LITERAL = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`(?:\\.|[^`\\])*`')
 DNS = re.compile(r'(?iu)(?<![\w.-])(?:[a-z0-9\u0080-\uffff](?:[a-z0-9\u0080-\uffff-]{0,61}[a-z0-9\u0080-\uffff])?\.)+[a-z0-9\u0080-\uffff-]{2,63}(?![\w.-])')

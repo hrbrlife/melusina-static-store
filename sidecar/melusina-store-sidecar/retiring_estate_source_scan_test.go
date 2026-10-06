@@ -239,7 +239,7 @@ func TestBootstrapComponentSourceCompilesNoRetiringEstateValue(t *testing.T) {
 	} {
 		t.Run(flavor.name, func(t *testing.T) {
 			sources := bootstrapComponentSources(t, flavor.tags)
-			for _, required := range []string{"/verify.go", "/config.go", "/cmd/boot-identity-prep/main.go", "/ui/assets/index-C5SMNmPA.js"} {
+			for _, required := range []string{"/verify.go", "/config.go", "/cmd/boot-identity-prep/main.go", "/ui/assets/index-CcjOkH_x.js"} {
 				if !sourceSetIncludes(sources, required) {
 					t.Fatalf("scan never reached %s; it cannot vouch for the component", required)
 				}

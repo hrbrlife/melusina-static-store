@@ -106,13 +106,6 @@
       "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
     },
     {
-      "file": "sidecar/melusina-store-sidecar/ui/assets/index-C5SMNmPA.js",
-      "literal": "melusina-os.org",
-      "lineSha256": "e2d4bf20a87c5b25212f3fae5913d274378d674eef7e86c8f5440541c090c046",
-      "count": 2,
-      "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
-    },
-    {
       "file": "sidecar/melusina-store-sidecar/ui/update/install.sh",
       "literal": "foo.example",
       "lineSha256": "108af04d2e278e164a0812447d24d06c72ff74caf37def326ce85e91e585ecd5",

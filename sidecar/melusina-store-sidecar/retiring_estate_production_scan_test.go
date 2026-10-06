@@ -90,14 +90,10 @@ var retiringEstatePaths = map[string]string{
 	"verifier/index.html":                                            "the Bazaar's static verifier page that build-store.sh copies into its dist-publish",
 }
 
-// retiringValueExceptions are exact texts, in named files, that are blanked
-// before the search. Each must still occur where it is declared, so a fixed
-// source forces its exception out.
+// No retiring-value exception is permitted in shipped Store bytes.
 var retiringValueExceptions = []struct {
 	name, glob, text, reason string
-}{
-	{"ui-bundle", sidecarModuleDir + "ui/assets/index-*.js", retiringUIPlaceholder, "the same placeholder in the committed UI bundle the sidecar embeds"},
-}
+}{}
 
 // nonProductionReason says why a repository path is not production source,
 // or returns "" when it is.
@@ -289,17 +285,13 @@ func TestStoreProductionFilesCarryNoRetiringEstateValue(t *testing.T) {
 		return true
 	})
 
-	// Matcher controls: a planted value is found by its field, the declared
-	// placeholder is not, and the root domain outside it still is.
+	// Matcher controls: a planted value and the old UI placeholder both fail.
 	registry := forbidden[retiringLicenseRegistryField]
 	if hits := textHits("plant", []byte("DEFAULT="+registry), forbidden); strings.Join(hits, "|") != retiringLicenseRegistryField+" in plant" {
 		t.Fatalf("matcher control: hits %q", hits)
 	}
-	if data, used := blankExceptions(sidecarModuleDir+"ui/assets/index-C5SMNmPA.js", []byte("placeholder=\"https://"+retiringUIPlaceholder+"\"")); len(used) != 1 || len(textHits("placeholder", data, forbidden)) != 0 {
-		t.Fatalf("exception control: the declared placeholder was not excepted (used %v)", used)
-	}
-	if data, _ := blankExceptions(sidecarModuleDir+"ui/assets/index-C5SMNmPA.js", []byte(retiringUIPlaceholder+" https://melusina-os.org")); !strings.Contains(strings.Join(textHits("mixed", data, forbidden), "|"), retiringRootDomainField+" in mixed") {
-		t.Fatal("exception control: the root domain outside the placeholder was excepted too")
+	if data, used := blankExceptions(sidecarModuleDir+"ui/assets/index-C5SMNmPA.js", []byte("placeholder=\"https://"+retiringUIPlaceholder+"\"")); len(used) != 0 || !strings.Contains(strings.Join(textHits("placeholder", data, forbidden), "|"), retiringRootDomainField+" in placeholder") {
+		t.Fatalf("placeholder control: the old UI hostname was not forbidden (used %v)", used)
 	}
 
 	scanned := map[string]bool{}
@@ -585,10 +577,9 @@ func TestStoreProgramsCarryNoRetiringEstateValueInBuiltBytes(t *testing.T) {
 					t.Fatalf("%s does not name %s; the scan is not reading the built program", binary, importPath)
 				}
 				if pkg == "." {
-					if !bytes.Contains(raw, []byte(retiringUIPlaceholder)) {
-						t.Fatalf("%s sidecar lacks the declared UI placeholder; the exception is stale or the UI is not embedded", flavor.name)
+					if bytes.Contains(raw, []byte(retiringUIPlaceholder)) {
+						t.Fatalf("%s sidecar embeds the retired UI hostname", flavor.name)
 					}
-					raw = bytes.ReplaceAll(raw, []byte(retiringUIPlaceholder), bytes.Repeat([]byte{' '}, len(retiringUIPlaceholder)))
 				}
 				scanned := binary + ".scanned"
 				if err := os.WriteFile(scanned, raw, 0o600); err != nil {

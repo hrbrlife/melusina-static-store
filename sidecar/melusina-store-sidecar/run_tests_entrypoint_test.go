@@ -8,11 +8,9 @@ package main
 // about itself: a variable the script assigns but does not export never
 // reaches go test, and only the recorded environment shows that.
 //
-// A plain `go test ./...` compiles only the standard flavor. The estatebootstrap
-// flavor is the build the Store bootstrap component ships, and 116 of its
-// failures once went unnoticed because nothing ran it. Every entry point is
-// therefore required to reach go test with -tags estatebootstrap, and fails as
-// test-entrypoint-bootstrap-flavor-missing when it does not.
+// The standard build is the enrolled build the Store bootstrap component
+// ships. Every entry point must reach its Go suite and fails by name when it
+// does not.
 
 import (
 	"bytes"

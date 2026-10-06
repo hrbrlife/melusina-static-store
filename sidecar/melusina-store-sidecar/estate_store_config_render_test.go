@@ -75,6 +75,20 @@ func TestEstateProfileReviewReturnsTheCanonicalSignedProfilePin(t *testing.T) {
 	}
 }
 
+func TestH09_1_12StoreConfigRejectsFoundationDraft(t *testing.T) {
+	_, profilePath, _, _, _ := newStoreConfigRenderFixture(t)
+	if _, digest, err := loadVerifiedStoreConfigRenderProfile(profilePath); err != nil || digest == "" {
+		t.Fatalf("1.12::title-claim: signed estate profile refused: digest=%q err=%v", digest, err)
+	}
+	if err := os.WriteFile(profilePath, []byte(`{"schema":"melusina.estate-profile/v1"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadVerifiedStoreConfigRenderProfile(profilePath); err == nil ||
+		!strings.Contains(err.Error(), "1.12::title-claim") || !strings.Contains(err.Error(), estateprofile.RefusalDraftNotEnrollable) {
+		t.Fatalf("1.12::title-claim: Store config admitted foundation draft: %v", err)
+	}
+}
+
 func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.T) {
 	profile, profilePath, inputPath, outputPath, input := newStoreConfigRenderFixture(t)
 	writeStoreConfigRenderInput(t, inputPath, input)

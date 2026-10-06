@@ -46,4 +46,10 @@ def main():
   print('\n'.join(failures),file=sys.stderr); return 1
  print(f'DOMAIN_LITERAL_GUARD_OK files={scanned} reviewed={len(expected)}')
  return 0
-if __name__=='__main__': sys.exit(main())
+def run_domain_guard():
+    legacy = main()
+    root = __import__('pathlib').Path(__file__).resolve().parent.parent
+    classifier = __import__('subprocess').run([sys.executable, str(root / 'domain_literal_classifier.py')], cwd=root).returncode
+    return legacy or classifier
+
+if __name__=='__main__': sys.exit(run_domain_guard())

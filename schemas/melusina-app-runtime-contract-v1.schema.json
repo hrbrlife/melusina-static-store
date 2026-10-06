@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "$id": "urn:melusina:runtime-contract:v1",
   "title": "Melusina app runtime contract v1",
   "description": "A release-bound declaration of the visible launch and sidecar functionality that must be proven after installation. This is not itself a test result.",
   "type": "object",
   "additionalProperties": false,
   "required": ["$schema", "schema", "app", "sidecars", "launchProbe", "fixtures", "cleanup"],
   "properties": {
-    "$schema": { "const": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json" },
+    "$schema": { "const": "urn:melusina:runtime-contract:v1" },
     "schema": { "const": "melusina-app-runtime-contract-v1" },
     "app": {
       "type": "object",

@@ -624,6 +624,32 @@ func releaseProviderCatalog(t *testing.T, dir string) (string, []string) {
 	}
 }
 
+func signedOriginFixture(t *testing.T) (string, string) {
+	t.Helper()
+	raw, err := os.ReadFile("testdata/estate-profile-vectors.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vectors struct {
+		Profiles []struct {
+			Name          string          `json:"name"`
+			Profile       json.RawMessage `json:"profile"`
+			ProfileSHA256 string          `json:"profileSha256"`
+		} `json:"profiles"`
+	}
+	if err := json.Unmarshal(raw, &vectors); err != nil {
+		t.Fatal(err)
+	}
+	for _, vector := range vectors.Profiles {
+		if vector.Name == "new-estate-revision-1" {
+			path := writeReleaseFixture(t, filepath.Join(t.TempDir(), "estate-profile.json"), string(vector.Profile), 0o600)
+			return path, vector.ProfileSHA256
+		}
+	}
+	t.Fatal("signed estate profile fixture missing")
+	return "", ""
+}
+
 const pythonProviderDriver = `
 import importlib.util, json, os, sys
 from pathlib import Path
@@ -669,7 +695,13 @@ func TestReleaseToolingEntryPointsRefuseMissingInputsByName(t *testing.T) {
 		requireRefusals(t, "an unpinned runtime module",
 			runReleaseTool(t, hermeticReleaseEnv(t, "MEL_RELEASE_RUNTIME_ENV="+runtimeEnv), root, "", "bash", script("scripts/default-bazaar-release.sh"), "publish"),
 			"release-input-sha256-missing:MEL_RELEASE_RUNTIME_ENV")
-		pinnedRuntime := []string{"MEL_RELEASE_RUNTIME_ENV=" + runtimeEnv, "MEL_RELEASE_RUNTIME_ENV_SHA256=" + releaseDigest(t, runtimeEnv)}
+		profilePath, profilePin := signedOriginFixture(t)
+		pinnedRuntime := []string{
+			"MEL_RELEASE_RUNTIME_ENV=" + runtimeEnv,
+			"MEL_RELEASE_RUNTIME_ENV_SHA256=" + releaseDigest(t, runtimeEnv),
+			"MEL_RELEASE_ESTATE_PROFILE=" + profilePath,
+			"MEL_RELEASE_ESTATE_PROFILE_SHA256=" + profilePin,
+		}
 		requireRefusals(t, "a pinned runtime module that names nothing",
 			runReleaseTool(t, hermeticReleaseEnv(t, pinnedRuntime...), root, "", "bash", script("scripts/default-bazaar-release.sh"), "publish"),
 			"release-input-missing:MEL_RELEASE_STORE_PUBKEY", "release-input-missing:MEL_RELEASE_PUBLISHER_KEY",

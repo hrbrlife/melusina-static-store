@@ -1,0 +1,97 @@
+{
+  "schema": "domain-host-allowlist-v1",
+  "hosts": [
+    {
+      "host": "alpha-api-df09d5faefd551337b59659de8ae7207.sandstorm.io",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/ui/update/install.sh; unrelated to the estate origin."
+    },
+    {
+      "host": "api.devnet.solana.com",
+      "reason": "External service, documentation, or dotted protocol identifier in scripts/default-bazaar-release.sh; unrelated to the estate origin."
+    },
+    {
+      "host": "catalog-genesis.json.next",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/catalog_bootstrap.go; unrelated to the estate origin."
+    },
+    {
+      "host": "catalog-v104.json.next",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/catalog_bootstrap.go; unrelated to the estate origin."
+    },
+    {
+      "host": "docs.sandstorm.io",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/ui/update/install.sh; unrelated to the estate origin."
+    },
+    {
+      "host": "explorer.solana.com",
+      "reason": "External service, documentation, or dotted protocol identifier in src/main.jsx; unrelated to the estate origin."
+    },
+    {
+      "host": "github.com",
+      "reason": "External service, documentation, or dotted protocol identifier in build-store.sh; unrelated to the estate origin."
+    },
+    {
+      "host": "github.io",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/internal/componentrelease/componentrelease.go; unrelated to the estate origin."
+    },
+    {
+      "host": "githubusercontent.com",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/internal/componentrelease/componentrelease.go; unrelated to the estate origin."
+    },
+    {
+      "host": "groups.google.com",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/ui/update/install.sh; unrelated to the estate origin."
+    },
+    {
+      "host": "instaco.app",
+      "reason": "External service, documentation, or dotted protocol identifier in recolor_icons.py; unrelated to the estate origin."
+    },
+    {
+      "host": "json-schema.org",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/runtime-contract-schema/melusina-app-runtime-contract-v1.schema.template.json; unrelated to the estate origin."
+    },
+    {
+      "host": "letsencrypt.org",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/ui/update/install.sh; unrelated to the estate origin."
+    },
+    {
+      "host": "opencollective.com",
+      "reason": "External service, documentation, or dotted protocol identifier in package-lock.json; unrelated to the estate origin."
+    },
+    {
+      "host": "registry.npmjs.org",
+      "reason": "External service, documentation, or dotted protocol identifier in package-lock.json; unrelated to the estate origin."
+    },
+    {
+      "host": "root-store.example.org",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/store.config.example.json; unrelated to the estate origin."
+    },
+    {
+      "host": "sandcats.io",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/ui/update/install.sh; unrelated to the estate origin."
+    },
+    {
+      "host": "state.json.next",
+      "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/publish_nonce.go; unrelated to the estate origin."
+    },
+    {
+      "host": "store-control.internal.example",
+      "reason": "Reserved illustrative host in sidecar/melusina-store-sidecar/store.config.example.json; it is not a deployable estate endpoint."
+    },
+    {
+      "host": "store.example.org",
+      "reason": "Illustrative URL in scripts/generate-app-icon-lock.py help text; it is not an estate origin."
+    },
+    {
+      "host": "store.invalid",
+      "reason": "Reserved illustrative host in src/main.jsx; it cannot name an estate endpoint."
+    },
+    {
+      "host": "tidelift.com",
+      "reason": "External service, documentation, or dotted protocol identifier in package-lock.json; unrelated to the estate origin."
+    },
+    {
+      "host": "www.w3.org",
+      "reason": "External service, documentation, or dotted protocol identifier in scripts/make-placeholder-icon.py; unrelated to the estate origin."
+    }
+  ]
+}

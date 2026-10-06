@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bazaar.melusina-os.org/schemas/melusina-release-v1.schema.json",
+  "$id": "urn:melusina:release:v1",
   "title": "Melusina governed release attestation v1",
   "type": "object",
   "required": [

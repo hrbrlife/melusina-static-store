@@ -37,7 +37,6 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT"
 
 # --- Configuration -----------------------------------------------------------
-LIVE_CATALOG_URL="${MELUSINA_LIVE_CATALOG_URL:-https://bazaar.melusina-os.org/apps/index.json}"
 LOCAL_BUILD="dist-publish/apps/index.json"
 # The deployer approval manifest is named, never defaulted: Gate 2 runs only
 # when MELUSINA_DEPLOYER_MANIFEST names it, and only after
@@ -46,6 +45,12 @@ DEPLOYER_MANIFEST="${MELUSINA_DEPLOYER_MANIFEST:-}"
 if [[ -n "$DEPLOYER_MANIFEST" ]]; then
   python3 "$ROOT/scripts/release-inputs.py" check MELUSINA_DEPLOYER_MANIFEST || exit 1
 fi
+SIGNED_STORE_ORIGIN="$(go -C "$ROOT/sidecar/melusina-store-sidecar" run ./cmd/estate-origin --origin)"
+LIVE_CATALOG_URL="$SIGNED_STORE_ORIGIN/apps/index.json"
+[[ -z "${MELUSINA_LIVE_CATALOG_URL:-}" || "$MELUSINA_LIVE_CATALOG_URL" == "$LIVE_CATALOG_URL" ]] || {
+  echo "MELUSINA_LIVE_CATALOG_URL differs from the signed estate origin" >&2
+  exit 2
+}
 PACKAGES_DIR="packages"
 
 # --- Colors / log helpers ----------------------------------------------------

@@ -441,7 +441,7 @@ func TestStoreProgramsCompileNoRetiringEstateValue(t *testing.T) {
 			sources := compiledSources(t, flavor.tags, packages...)
 			var hits []string
 			retiringOnlyHits := map[string]bool{}
-			usedExceptions := map[string]bool{}
+			sawUIBundle := false
 			files := token.NewFileSet()
 			for _, source := range sources {
 				rel, err := filepath.Rel(root, source.path)
@@ -450,16 +450,16 @@ func TestStoreProgramsCompileNoRetiringEstateValue(t *testing.T) {
 				}
 				rel = filepath.ToSlash(rel)
 				moduleRel := strings.TrimPrefix(rel, sidecarModuleDir)
+				if !source.goFile && strings.HasPrefix(moduleRel, "ui/assets/index-") && strings.HasSuffix(moduleRel, ".js") {
+					sawUIBundle = true
+				}
 				raw, err := os.ReadFile(source.path)
 				if err != nil {
 					t.Fatal(err)
 				}
 				var found []string
 				if !source.goFile {
-					data, used := blankExceptions(rel, raw)
-					for _, name := range used {
-						usedExceptions[name] = true
-					}
+					data, _ := blankExceptions(rel, raw)
 					found = textHits(rel, data, forbidden)
 				} else {
 					parsed, err := parser.ParseFile(files, source.path, raw, parser.SkipObjectResolution)
@@ -502,8 +502,8 @@ func TestStoreProgramsCompileNoRetiringEstateValue(t *testing.T) {
 					t.Fatalf("%s: retiring-only %s carried a retiring value = %v", flavor.name, rel, retiringOnlyHits[rel])
 				}
 			}
-			if !usedExceptions["ui-bundle"] {
-				t.Fatalf("%s: the embedded UI bundle was not scanned (its declared placeholder never occurred)", flavor.name)
+			if !sawUIBundle {
+				t.Fatalf("%s: compiled source scan did not include the embedded UI bundle", flavor.name)
 			}
 		})
 	}

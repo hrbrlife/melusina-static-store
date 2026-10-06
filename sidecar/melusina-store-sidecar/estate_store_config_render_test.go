@@ -108,6 +108,25 @@ func TestH09_1_5StoreAcceptsFinalWitnessWithoutAuthority(t *testing.T) {
 	}
 }
 
+func TestH09_1_8StoreRepresentsFinalWitness(t *testing.T) {
+	profile, profilePath, _, _, _ := newStoreConfigRenderFixture(t)
+	if _, digest, err := loadVerifiedStoreConfigRenderProfile(profilePath); err != nil || digest == "" {
+		t.Fatalf("1.8::title-claim: final witness profile refused: digest=%q err=%v", digest, err)
+	}
+	profile.Programs[1].Final = false
+	raw, err := json.Marshal(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profilePath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadVerifiedStoreConfigRenderProfile(profilePath); err == nil ||
+		!strings.Contains(err.Error(), "1.8::title-claim") || !strings.Contains(err.Error(), estateprofile.RefusalProgramMustBeFinal) {
+		t.Fatalf("1.8::title-claim: Store accepted final witness stated governed: %v", err)
+	}
+}
+
 func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.T) {
 	profile, profilePath, inputPath, outputPath, input := newStoreConfigRenderFixture(t)
 	writeStoreConfigRenderInput(t, inputPath, input)

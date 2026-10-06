@@ -260,6 +260,9 @@ func loadVerifiedStoreConfigRenderProfile(path string) (estateprofile.EstateProf
 		if estateprofile.RefusalName(err) == estateprofile.RefusalProgramMustBeFinal && strings.HasSuffix(err.Error(), ".upgradeAuthority") {
 			return estateprofile.EstateProfileV1{}, "", fmt.Errorf("1.5::title-claim: %w", err)
 		}
+		if estateprofile.RefusalName(err) == estateprofile.RefusalProgramMustBeFinal && strings.HasSuffix(err.Error(), ".final") {
+			return estateprofile.EstateProfileV1{}, "", fmt.Errorf("1.8::title-claim: %w", err)
+		}
 		return estateprofile.EstateProfileV1{}, "", fmt.Errorf("store-config-render-profile-invalid: %w", err)
 	}
 	digest, err := estateprofile.VerifyProfile(profile)

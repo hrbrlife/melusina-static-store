@@ -1,5 +1,3 @@
-//go:build estatebootstrap
-
 package main
 
 import (

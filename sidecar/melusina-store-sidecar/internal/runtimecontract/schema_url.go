@@ -1,5 +1,3 @@
-//go:build estatebootstrap
-
 package runtimecontract
 
 // SchemaURL is a stable protocol identifier, not an endpoint selected by an

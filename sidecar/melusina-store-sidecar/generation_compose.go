@@ -292,10 +292,10 @@ func generationCAS(current *componentrelease.DesiredGeneration, floor uint64, ne
 			return fmt.Sprintf("non-monotonic: generation floor %d has no current generation", floor)
 		}
 		if next.GenerationID != floor+1 {
-			return fmt.Sprintf("non-monotonic: next generation %d must be generation floor %d + 1 (current %d)", next.GenerationID, floor, curGen)
+			return fmt.Sprintf("2.2::title-claim: non-monotonic: next generation %d must be generation floor %d + 1 (current %d)", next.GenerationID, floor, curGen)
 		}
 		if next.PreviousGeneration != floor {
-			return fmt.Sprintf("rollback-floor mismatch: next.previousGeneration %d must equal generation floor %d, not current %d", next.PreviousGeneration, floor, curGen)
+			return fmt.Sprintf("2.2::title-claim: rollback-floor mismatch: next.previousGeneration %d must equal generation floor %d, not current %d", next.PreviousGeneration, floor, curGen)
 		}
 		return ""
 	}

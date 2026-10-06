@@ -59,6 +59,9 @@ func TrustFromProfile(profile estateprofile.EstateProfileV1) (*Trust, string, er
 	if err != nil {
 		return nil, "", fmt.Errorf("%w: %v", ErrProfile, err)
 	}
+	if err := trust.BindProfile(digest); err != nil {
+		return nil, "", fmt.Errorf("%w: %v", ErrProfile, err)
+	}
 	return trust, digest, nil
 }
 

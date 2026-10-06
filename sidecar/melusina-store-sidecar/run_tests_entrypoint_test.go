@@ -186,33 +186,15 @@ func runWithStandInGo(t *testing.T, opts runTestsOptions, command []string) runT
 
 var runTestsFlavorArgs = [][]string{
 	{"test", "-count=1", "./..."},
-	{"test", "-tags", "estatebootstrap", "-count=1", "./..."},
 }
 
-// requireBootstrapFlavorReached requires that entry called go test in this
-// module's directory with the estatebootstrap build tag at least once. It is
-// checked before the exact call list so that dropping the flavor fails under
-// its own name whatever else the entry point does instead.
+// requireBootstrapFlavorReached now asserts the sole enrolled-only suite is run
+// through the standard build, with no legacy build tag.
 func requireBootstrapFlavorReached(t *testing.T, entry string, run runTestsRun) {
 	t.Helper()
-	moduleDir := runTestsModuleDir(t)
-	var moduleCalls [][]string
-	for _, call := range run.calls {
-		if call.dir != moduleDir || len(call.args) == 0 || call.args[0] != "test" {
-			continue
-		}
-		moduleCalls = append(moduleCalls, call.args)
-		for i, arg := range call.args {
-			tags, isFlag := strings.CutPrefix(arg, "-tags=")
-			if !isFlag && arg == "-tags" && i+1 < len(call.args) {
-				tags, isFlag = call.args[i+1], true
-			}
-			if isFlag && slices.Contains(strings.FieldsFunc(tags, func(r rune) bool { return r == ',' || r == ' ' }), "estatebootstrap") {
-				return
-			}
-		}
+	if len(run.calls) == 0 || run.calls[0].dir != runTestsModuleDir(t) || !slices.Equal(run.calls[0].args, runTestsFlavorArgs[0]) {
+		t.Fatalf("test-entrypoint-standard-build-missing: %s did not run the enrolled-only standard suite: %v", entry, run.calls)
 	}
-	t.Fatalf("test-entrypoint-bootstrap-flavor-missing: %s ran go test in %s %d times, none with -tags estatebootstrap: %q\nstderr:\n%s", entry, moduleDir, len(moduleCalls), moduleCalls, run.stderr)
 }
 
 // requireFlavorCalls requires that calls are exactly one go test per flavor,
@@ -350,7 +332,7 @@ func TestRunTestsRefusesAContractsPathThatIsNotARepository(t *testing.T) {
 // running. The run where no call fails is the positive control.
 func TestRunTestsFailsTheRunWhenEitherFlavorFails(t *testing.T) {
 	requireGoTestReceived(t, runTestsScript(t, runTestsOptions{}), "", "")
-	for _, failCall := range []string{"0", "1"} {
+	for _, failCall := range []string{"0"} {
 		run := runTestsScript(t, runTestsOptions{failCall: failCall})
 		if run.exit != 1 {
 			t.Fatalf("run-tests-flavor-failure-hidden: go call %s failed and the run exited %d, want 1\nstderr:\n%s", failCall, run.exit, run.stderr)

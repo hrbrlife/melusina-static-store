@@ -148,13 +148,6 @@
       "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
     },
     {
-      "file": "sidecar/melusina-store-sidecar/internal/runtimecontract/schema_url_legacy.go",
-      "literal": "bazaar.melusina-os.org",
-      "lineSha256": "ce4a0c8853e5ea79a3ab3ba07a65bff9e66e5523be88ee1a3d24b0c7cb8e864f",
-      "count": 1,
-      "reason": "retiring standard build exception pending Store lock owner decision; excluded from estatebootstrap"
-    },
-    {
       "file": "sidecar/melusina-store-sidecar/main.go",
       "literal": "melusina-os.org",
       "lineSha256": "3644b7a2d2b5370da723c01e28fadc3099166e5f86d066f76769c42f8ca02907",
@@ -167,20 +160,6 @@
       "lineSha256": "488c2f998154ac9648b269b6e68942dc88bc8c5dfae6df18befb3e5aacc21a94",
       "count": 1,
       "reason": "reviewed comment, example, build input, or retiring estate path; see N-936/N-978 Store scan"
-    },
-    {
-      "file": "sidecar/melusina-store-sidecar/squads_authority_legacy.go",
-      "literal": "bazaar.melusina-os.org",
-      "lineSha256": "4da7bf6e7da44400fe8c6765deccd30f1cda502fcda021a0605d04305c7b327e",
-      "count": 1,
-      "reason": "retiring standard build exception pending Store lock owner decision; excluded from estatebootstrap"
-    },
-    {
-      "file": "sidecar/melusina-store-sidecar/squads_authority_legacy_test.go",
-      "literal": "bazaar.melusina-os.org",
-      "lineSha256": "aef704dcdea4253cfe66c0380aa315d33901d2de68384c7634f9ad938795a132",
-      "count": 1,
-      "reason": "positive control: locked test fixture literal"
     },
     {
       "file": "sidecar/melusina-store-sidecar/store.config.example.json",

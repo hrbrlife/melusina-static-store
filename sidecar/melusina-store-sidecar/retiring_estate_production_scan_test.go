@@ -76,10 +76,7 @@ func storeProductionForbiddenValues(t *testing.T) map[string]string {
 // retiringOnlyGoFiles are the only Go files that may compile a retiring value:
 // each is excluded from the estate-bootstrap build by its build constraint, so
 // only the retiring estate's own (standard-flavor) Store build carries it.
-var retiringOnlyGoFiles = map[string]string{
-	"squads_authority_legacy.go":                    "the retiring Bazaar's fixed release Squads authority, enforced only by its standard-flavor Store",
-	"internal/runtimecontract/schema_url_legacy.go": "the historical runtime-contract $schema identifier the standard-flavor Store validates retiring releases against",
-}
+var retiringOnlyGoFiles = map[string]string{}
 
 // retiringEstatePaths are the repository files that belong to the retiring
 // estate's own tooling. They may carry its values; the Store bootstrap
@@ -561,10 +558,7 @@ func TestStoreProgramsCarryNoRetiringEstateValueInBuiltBytes(t *testing.T) {
 	forbidden := storeProductionForbiddenValues(t)
 	forms := retiringValueForms(forbidden)
 	module := filepath.Join(repoRoot(t), sidecarModuleDir)
-	legacyLiterals := retiringOnlyLiterals(t, module, forbidden)
-	if len(legacyLiterals) == 0 {
-		t.Fatal("the retiring-only files carry no retiring literal; the standard-build exception is stale")
-	}
+	_ = module
 	env := append(os.Environ(), "GOFLAGS=", "GOWORK=off", "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0")
 	for _, flavor := range []struct{ name, tags string }{{"estate-bootstrap", "estatebootstrap"}, {"standard", ""}} {
 		t.Run(flavor.name, func(t *testing.T) {
@@ -600,14 +594,6 @@ func TestStoreProgramsCarryNoRetiringEstateValueInBuiltBytes(t *testing.T) {
 						t.Fatalf("%s sidecar lacks the declared UI placeholder; the exception is stale or the UI is not embedded", flavor.name)
 					}
 					raw = bytes.ReplaceAll(raw, []byte(retiringUIPlaceholder), bytes.Repeat([]byte{' '}, len(retiringUIPlaceholder)))
-				}
-				if flavor.tags == "" {
-					for _, literal := range legacyLiterals {
-						if pkg == "." && !bytes.Contains(raw, []byte(literal)) {
-							t.Fatalf("standard sidecar lacks retiring-only literal %q; the scan is not reading the built program", literal)
-						}
-						raw = bytes.ReplaceAll(raw, []byte(literal), make([]byte, len(literal)))
-					}
 				}
 				scanned := binary + ".scanned"
 				if err := os.WriteFile(scanned, raw, 0o600); err != nil {

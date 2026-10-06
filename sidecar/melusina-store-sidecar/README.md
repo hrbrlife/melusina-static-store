@@ -935,24 +935,20 @@ go build -o bin/melusina-store-sidecar .
 
 ## Test
 
-Run the suite in both build flavors. The bootstrap component ships the
-`estatebootstrap` flavor, which accepts a release authority only in the
-enrolled form, so a green standard run says nothing about it, and a plain
-`go test ./...` runs only the standard flavor. `scripts/run-tests.sh` runs
-both, and `make test` at the repository root runs the script and then the
+Run the suite in the enrolled standard build shipped by the bootstrap
+component. `scripts/run-tests.sh` runs that suite, and `make test` at the repository root runs the script and then the
 `sidecar/bazaar-store-link` suite:
 
 ```sh
 make test                                 # from the repository root
-scripts/run-tests.sh                      # go test ./... and go test -tags estatebootstrap ./...
+scripts/run-tests.sh                      # go test ./...
 scripts/run-tests.sh --release --contracts-git-dir /path/to/melusina-os-smartcontract
 ```
 
-Both run every flavor and suite even when one fails, and exit non-zero if any
-failed. `run_tests_entrypoint_test.go` runs `make test` and the script with a
-stand-in `go` first on `PATH` and fails as
-`test-entrypoint-bootstrap-flavor-missing` if either stops reaching go test
-with `-tags estatebootstrap`. `make test` passes its environment through, so a
+Both run every suite even when one fails, and exit non-zero if any failed.
+`run_tests_entrypoint_test.go` runs `make test` and the script with a stand-in
+`go` first on `PATH` and fails by name if either stops reaching the standard
+enrolled suite. `make test` passes its environment through, so a
 release run from the root is
 `CI=true MELUSINA_CONTRACTS_GIT_DIR=/abs/path make test`.
 
@@ -972,8 +968,7 @@ release or CI run. The script then refuses to start without a clone, and the
 Go test fails rather than skips if it is run without one (or with a clone whose
 `origin` is not the contracts repository, or that has no `origin/main`).
 
-Fixtures that model a running Store take their release-authority form from
-`configureReleaseAuthorityFixtureForBuild` (and, for config documents,
-`releaseAuthorityFixtureConfigJSON`): unenrolled in the standard flavor, the
-enrolled form in the bootstrap flavor. Rules that exist in only one flavor live
-in `squads_authority_legacy_test.go` and `squads_authority_estatebootstrap_test.go`.
+Fixtures that model a running Store take their enrolled release-authority form
+from `configureReleaseAuthorityFixtureForBuild` (and, for config documents,
+`releaseAuthorityFixtureConfigJSON`). The standard suite proves unenrolled and
+quorum-free requests refuse by name.

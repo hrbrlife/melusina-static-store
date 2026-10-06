@@ -7,13 +7,13 @@ import (
 )
 
 // The estate-bootstrap build accepts a release authority only in the enrolled
-// form: LoadConfig refuses any other, so every Config a shipped bootstrap
+// form: LoadConfig refuses any other, so every Config a shipped standard
 // Store runs with names its enrollment state path and an explicit quorum.
 // Fixtures that model a running Store are given that same form here, so the
 // publish, serve, catalog and control tests assert their own rule in the
-// flavor that ships in the bootstrap component instead of all stopping at the
+// standard build instead of all stopping at the
 // enrollment refusal. The refusal itself stays proven by name in
-// squads_authority_estatebootstrap_test.go.
+// squads_authority_enrolled_test.go.
 //
 // The state path is never read by these code paths; server startup verifies
 // the state file separately (verifyConfiguredStoreEnrollment), and its own

@@ -111,7 +111,7 @@ func signedSetDigest(set servedReleaseSet) (string, error) {
 		}
 	}
 	u32(uint32(len(set.Artifacts)))
-	for _, a := range set.Artifacts {
+	for i, a := range set.Artifacts {
 		str(a.Role)
 		str(a.Name)
 		str(a.SHA256)
@@ -119,8 +119,8 @@ func signedSetDigest(set servedReleaseSet) (string, error) {
 		str(a.SourceRepo)
 		str(a.SourceCommit)
 		str(a.Toolchain)
-		u32(uint32(len(a.Origins)))
-		for _, origin := range a.Origins {
+		u32(uint32(len(set.Artifacts[i].Origins)))
+		for _, origin := range set.Artifacts[i].Origins {
 			str(origin)
 		}
 		str(a.Phase)

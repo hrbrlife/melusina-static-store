@@ -50,30 +50,30 @@ func TestH09_3_1PublisherSignedSetBindsInstallerReleaseBytes(t *testing.T) {
 		t.Fatalf("signed set refused: %s: %v", digest, err)
 	}
 	var shell struct {
-		Role, Name, SHA256 string
+		Role, File, SHA256 string
 		SizeBytes          int64
 	}
 	for _, artifact := range set.Artifacts {
 		if artifact.Role == "shell-bundle" {
-			shell.Role, shell.Name, shell.SHA256, shell.SizeBytes = artifact.Role, artifact.Name, artifact.SHA256, artifact.SizeBytes
+			shell.Role, shell.File, shell.SHA256, shell.SizeBytes = artifact.Role, artifact.Name, artifact.SHA256, artifact.SizeBytes
 		}
 	}
-	if shell.Name == "" {
+	if shell.File == "" {
 		t.Fatal("signed shell artifact absent")
 	}
-	if err := requireSignedSetArtifact(set, "shell", shell.Name, shell.SHA256, shell.SizeBytes); err != nil {
+	if err := requireSignedSetArtifact(set, "shell", shell.File, shell.SHA256, shell.SizeBytes); err != nil {
 		t.Fatalf("publisher signed shell refused: %v", err)
 	}
 	for _, negative := range []struct {
-		name, hash string
+		label, hash string
 		size       int64
 		want       string
 	}{
 		{"different hash", strings.Repeat("0", 64), shell.SizeBytes, "release-set-artifact-mismatch"},
 		{"different size", shell.SHA256, shell.SizeBytes + 1, "release-set-artifact-mismatch"},
 	} {
-		if err := requireSignedSetArtifact(set, "shell", shell.Name, negative.hash, negative.size); err == nil || !strings.Contains(err.Error(), negative.want) {
-			t.Fatalf("3.1::title-claim: %s: want %s, got %v", negative.name, negative.want, err)
+		if err := requireSignedSetArtifact(set, "shell", shell.File, negative.hash, negative.size); err == nil || !strings.Contains(err.Error(), negative.want) {
+			t.Fatalf("3.1::title-claim: %s: want %s, got %v", negative.label, negative.want, err)
 		}
 	}
 	var changed map[string]any

@@ -106,6 +106,22 @@ d = json.load(open(sys.argv[1]))
 assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/dev-publish", d
 PY
 
+# A hidden candidate ref proves remote publication without creating another
+# GitHub feature branch. The source must be unreachable from every head.
+git -C "$NARROW" checkout -qb rehearsal-candidate
+printf 'hidden-ref-only\n' > "$NARROW/hidden-ref-only.txt"
+git -C "$NARROW" add hidden-ref-only.txt
+git -C "$NARROW" commit -qm hidden-ref-only
+git -C "$NARROW" push -q origin HEAD:refs/velocity/V-CUT-REHEARSAL/namedcoin
+git -C "$NARROW" config remote.origin.fetch '+refs/heads/main:refs/remotes/origin/main'
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$NARROW" --receipt-out "$WORK/hidden-receipt.json"
+python3 - "$WORK/hidden-receipt.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/velocity/V-CUT-REHEARSAL/namedcoin", d
+PY
+
 # Refreshing source history must not fetch gitlinks from unrelated archive
 # branches. The current selected submodule is real and initialized; only the
 # archive points to an unavailable commit, as in the live DueProcess failure.
@@ -237,10 +253,12 @@ PY
 git -C "$APP" add metadata.json
 git -C "$APP" commit -qm namedcoin-profile
 git -C "$APP" push -qu origin HEAD:main
+rm -f "$APP/app.spk"
 BUILD_LOG="$WORK/namedcoin-profile.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
   MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet \
-  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/namedcoin-profile-receipt.json"
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --spk-out "$WORK/namedcoin-profile-output.spk" --receipt-out "$WORK/namedcoin-profile-receipt.json"
 [[ "$(cat "$WORK/namedcoin-profile.log")" == "namedcoin-msb-test" ]]
+[[ -f "$WORK/namedcoin-profile-output.spk" && ! -e "$APP/app.spk" ]]
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
 python3 - "$APP/metadata.json" <<'PY'

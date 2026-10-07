@@ -51,8 +51,13 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     # This refresh proves source-ref reachability, not archived submodule
     # availability. The selected checkout's initialized submodules remain
     # build inputs; unrelated historical gitlinks must not be fetched here.
-    git -C "$source_root" fetch --prune --recurse-submodules=no "$remote" "+refs/heads/*:refs/remotes/$remote/*" || {
-      echo "cannot refresh source remote heads: $remote" >&2
+    # Reviewed candidate jobs publish under refs/velocity, not GitHub heads.
+    # Fetch that remote namespace explicitly, then apply the same committed
+    # revision reachability check to both kinds of remote ref.
+    git -C "$source_root" fetch --prune --recurse-submodules=no "$remote" \
+      "+refs/heads/*:refs/remotes/$remote/*" \
+      "+refs/velocity/*:refs/remotes/$remote/velocity/*" || {
+      echo "cannot refresh source remote refs: $remote" >&2
       exit 2
     }
   done
@@ -241,7 +246,7 @@ case "$PACK_PROFILE" in
       exit 2
     }
     PACK_TARGET="pack-msb-test"
-    make -C "$APP_DIR" "${MAKE_VARS[@]}" "$PACK_TARGET"
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" "SPK_OUT=$SPK_OUT" "$PACK_TARGET"
     ;;
 esac
 [[ -f "$SPK_OUT" ]] || { echo "$PACK_TARGET did not create $SPK_OUT" >&2; exit 2; }

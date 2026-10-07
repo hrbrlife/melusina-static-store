@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -18,8 +19,8 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
-	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -719,14 +720,82 @@ func releaseSetup(t *testing.T) (Config, *mockChainReader, *serveGate, []byte, [
 	t.Helper()
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
-	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	profile, enrollment := validStoreEnrollmentStateInput(t)
+	state, err := newStoreEnrollmentState(profile, enrollment, storeEnrollmentStateNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.ReleaseMasterNftMint = profile.Anchors.MasterMint
+	root := t.TempDir()
+	if err := os.Chmod(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	cfg.EstateEnrollmentStatePath = filepath.Join(root, "enrollment.json")
+	if err := writeStoreEnrollmentStateNew(cfg.EstateEnrollmentStatePath, state, uint32(os.Geteuid())); err != nil {
+		t.Fatal(err)
+	}
+	cfg.releaseSetDir = filepath.Join(root, "sets")
+	if err := os.Mkdir(cfg.releaseSetDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := bindInstallerReleaseTrust(&cfg, &state); err != nil {
+		t.Fatal(err)
+	}
+	cfg.releaseSetDir = filepath.Join(root, "sets")
 	class := "shell"
 	name := "melusina-bundle-v42.tar.zst"
 	body := []byte("chain-pinned release artifact bytes")
 	hash := writeReleaseArtifact(t, cfg.DistDir, class, name, body)
+	keys := []map[string]any{}
+	for i, key := range profile.ReleaseTrust.PublisherKeys {
+		keys = append(keys, map[string]any{"keyId": "publisher-" + string(rune('a'+i)), "ed25519PublicKey": key})
+	}
+	value := map[string]any{
+		"schema": "melusina.bootstrap-release-set.v2", "stage": "deployable", "sequence": uint64(19),
+		"createdAt": "2026-09-20T01:00:00Z", "foundation": map[string]any{"sequence": uint64(1), "sha256": strings.Repeat("0", 64)},
+		"publisherKeyset": map[string]any{"threshold": profile.ReleaseTrust.Threshold, "keys": keys},
+		"recalls":         []any{}, "phaseEndpoints": map[string]any{}, "artifacts": []any{map[string]any{
+			"role": "shell-bundle", "name": name, "sha256": hex.EncodeToString(hash[:]), "sizeBytes": int64(len(body)),
+			"sourceRepo": "rehearsal", "sourceCommit": strings.Repeat("1", 40), "toolchain": "rehearsal", "origins": []any{}, "phase": "p0-verify"}},
+		"completeness": "complete", "declaredAbsent": []any{}, "signatures": []any{},
+	}
+	unsigned, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var set servedReleaseSet
+	if err := json.Unmarshal(unsigned, &set); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := signedSetDigest(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signatures := []any{}
+	for _, label := range []string{"rehearsal/publisher-1", "rehearsal/publisher-2"} {
+		private := releasetest.VectorKey(label)
+		public := hex.EncodeToString(private.Public().(ed25519.PublicKey))
+		for _, key := range keys {
+			if key["ed25519PublicKey"] == public {
+				signatures = append(signatures, map[string]any{"keyId": key["keyId"], "signature": hex.EncodeToString(ed25519.Sign(private, []byte(digest)))})
+			}
+		}
+	}
+	if len(signatures) < int(profile.ReleaseTrust.Threshold) {
+		t.Fatal("test profile lacks threshold publishers")
+	}
+	value["signatures"] = signatures
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.releaseSetDir, "release-set-"+digest+".json"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	pda := installerReleasePDA(t, cfg.ReleaseMasterNftMint, hash)
 	m := newMockChainReader()
-	bindTestInstallerReleaseEstate(t, m, &cfg)
+	m.installerMaster = cfg.installerReleaseTrust.MasterNFTMint()
+	m.installerVault = releasetest.CoreVault(t, profile)
 	g := newServeGate(cfg, m, http.FileServer(http.Dir(cfg.DistDir)))
 	return cfg, m, g, body, hash, pda, class, name
 }
@@ -875,8 +944,8 @@ func TestServeGate_InstallerReleaseRefusals(t *testing.T) {
 				m.installerEntry[pda] = mockInstallerEntry{installerHash: hash, status: verify.AttestationStatusActive}
 				cfg.installerReleaseTrust = nil
 			},
-			wantCode: http.StatusServiceUnavailable,
-			wantBody: "installer-release-trust-unconfigured",
+			wantCode: http.StatusForbidden,
+			wantBody: "release-set-unconfigured",
 		},
 		{
 			name: "installer_hash_mismatch",

@@ -149,6 +149,25 @@ func TestH09_1_4StoreReleaseNeedsTwoVoters(t *testing.T) {
 	}
 }
 
+func TestH09_1_18StoreStateNamespaceFits(t *testing.T) {
+	profile, profilePath, _, _, _ := newStoreConfigRenderFixture(t)
+	if _, digest, err := loadVerifiedStoreConfigRenderProfile(profilePath); err != nil || digest == "" {
+		t.Fatalf("1.18::title-claim: valid signed Store ID refused: digest=%q err=%v", digest, err)
+	}
+	profile.Store.StoreID = strings.Repeat("a", estateprofile.MaxStoreIDLength+1)
+	raw, err := json.Marshal(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profilePath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadVerifiedStoreConfigRenderProfile(profilePath); err == nil ||
+		!strings.Contains(err.Error(), "1.18::title-claim") || !strings.Contains(err.Error(), ":store.storeId") {
+		t.Fatalf("1.18::title-claim: overlong Store ID was not refused by name: %v", err)
+	}
+}
+
 func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.T) {
 	profile, profilePath, inputPath, outputPath, input := newStoreConfigRenderFixture(t)
 	writeStoreConfigRenderInput(t, inputPath, input)

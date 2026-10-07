@@ -266,6 +266,9 @@ func loadVerifiedStoreConfigRenderProfile(path string) (estateprofile.EstateProf
 		if estateprofile.RefusalName(err) == estateprofile.RefusalFieldMalformed && strings.HasSuffix(err.Error(), ":roles.store-release.threshold") {
 			return estateprofile.EstateProfileV1{}, "", fmt.Errorf("1.4::title-claim: %w", err)
 		}
+		if estateprofile.RefusalName(err) == estateprofile.RefusalFieldMalformed && strings.HasSuffix(err.Error(), ":store.storeId") {
+			return estateprofile.EstateProfileV1{}, "", fmt.Errorf("1.18::title-claim: %w", err)
+		}
 		return estateprofile.EstateProfileV1{}, "", fmt.Errorf("store-config-render-profile-invalid: %w", err)
 	}
 	digest, err := estateprofile.VerifyProfile(profile)

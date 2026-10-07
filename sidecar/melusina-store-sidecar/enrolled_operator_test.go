@@ -77,7 +77,7 @@ func enrollmentGatedEntryPoints(indexSHA256, cohortDir string) []enrollmentGated
 		{name: "catalog-reconcile-retirement", args: []string{"-dry-run"}, after: "open existing writer.lock"},
 		{name: "catalog-reconcile-unserved", args: []string{"-app-id", "gate-probe", "-reason", "enrollment gate probe", "-expected-index-sha256", indexSHA256, "-expected-app-count", "1", "-dry-run"}, after: "catalog-reconcile-unserved writer exclusion: open existing writer.lock"},
 		{name: "catalog-rehydrate", args: []string{"-cohort-dir", cohortDir, "-expected-app-count", "1", "-expected-rollout-count", "1", "-dry-run"}, after: "catalog-rehydrate writer exclusion: open existing writer.lock"},
-		{name: "store-state-export", args: []string{"-out", filepath.Join(filepath.Dir(cohortDir), "store-state.tar")}, after: "store-state-export: " + refusalStoreStateWriterExclusion + ":open existing writer.lock"},
+		{name: "store-state-export", args: []string{"-generation", "1", "-out", filepath.Join(filepath.Dir(cohortDir), "store-state.tar")}, after: "store-state-export: " + refusalStoreStateWriterExclusion + ":open existing writer.lock"},
 		{name: "store-identity-escrow-seal", args: []string{"-recipients", filepath.Join(filepath.Dir(cohortDir), "absent-recipients.json"), "-out-dir", filepath.Join(filepath.Dir(cohortDir), "escrow")}, after: "store-identity-escrow-seal: read recipients"},
 		{name: "store-generation-floor", args: []string{"-floor", "9", "-expected-current-generation", "5", "-reason", "enrollment gate probe", "-evidence-sha256", indexSHA256, "-dry-run"}, after: "store-generation-floor writer exclusion: open existing writer.lock"},
 	}
@@ -439,13 +439,14 @@ func TestEveryReleaseAuthorityEntryPointVerifiesItsEnrollment(t *testing.T) {
 	refusals := []struct {
 		scenario string
 		named    string
+		control  string
 	}{
-		{"not-enrolled", "estate enrollment: store-estate-profile-not-enrolled: enrollment state is absent"},
-		{"foreign-network", "estate enrollment: " + estateprofile.RefusalStoreRPCGenesisMismatch},
-		{"foreign-executable", "estate enrollment: " + estateprofile.RefusalStoreEnrollmentFactsMismatch + ":binarySha256"},
+		{"not-enrolled", "estate enrollment: store-estate-profile-not-enrolled: enrollment state is absent", ""},
+		{"foreign-network", "estate enrollment: " + estateprofile.RefusalStoreRPCGenesisMismatch, ""},
+		{"foreign-executable", "estate enrollment: " + estateprofile.RefusalStoreEnrollmentFactsMismatch + ":binarySha256", ""},
 		// The owners revoked this Store's Global approval; its identity entry,
 		// which nothing revokes, is unchanged. No entry point starts.
-		{"recalled-global", "boot identity: check=sidecar_cascade: cascade-not-active:GlobalSidecarApproval: status Revoked"},
+		{"recalled-global", "boot identity: check=sidecar_cascade: cascade-not-active:GlobalSidecarApproval: status Revoked", "4.7::title-claim"},
 	}
 	for _, entry := range entryPoints {
 		name := entry.name
@@ -472,8 +473,8 @@ func TestEveryReleaseAuthorityEntryPointVerifiesItsEnrollment(t *testing.T) {
 			for _, refusal := range refusals {
 				t.Run(refusal.scenario, func(t *testing.T) {
 					code, out := run(t, refusal.scenario)
-					if code == 0 || !strings.Contains(out, refusal.named) {
-						t.Fatalf("%s (%s) exited %d without the gate's named refusal %q:\n%s", name, refusal.scenario, code, refusal.named, out)
+					if code == 0 || !strings.Contains(out, refusal.named) || (refusal.control != "" && !strings.Contains(out, refusal.control)) {
+						t.Fatalf("%s (%s) exited %d without the gate's refusal %q and control %q:\n%s", name, refusal.scenario, code, refusal.named, refusal.control, out)
 					}
 					if strings.Contains(out, enrollmentVerifiedLog) || strings.Contains(out, entry.after) {
 						t.Fatalf("%s (%s) acted past the enrollment gate before refusing:\n%s", name, refusal.scenario, out)

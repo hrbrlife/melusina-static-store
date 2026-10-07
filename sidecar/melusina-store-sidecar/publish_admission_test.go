@@ -211,7 +211,7 @@ func entryAttestsOnly(meta releaseEntryMeta, f publishFixture, appIDText string)
 // nonce unspent. Once the entry attests that release hash the very same
 // request is promoted, and the receipt and pointer carry the entry's
 // release_hash.
-func TestPublishRefusesAMismatchedReleaseHashBeforeSigningAnything(t *testing.T) {
+func TestH09_4_19_PublishRefusesAMismatchedReleaseHashBeforeSigningAnything(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
@@ -242,8 +242,8 @@ func TestPublishRefusesAMismatchedReleaseHashBeforeSigningAnything(t *testing.T)
 	promote := jsonPublishBody(t, signPublish(t, pub, op.Public(), f.spk, release), release, f.spk, f.metadata)
 	promoteBytes := append([]byte(nil), promote.Bytes()...)
 	w := doPublish(t, svc, promote)
-	if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "check=release_entry_admission") || !strings.Contains(w.Body.String(), releaseentry.ErrReleaseHashMismatch.Error()) {
-		t.Fatalf("a RELEASE.json releaseHash its entry does not attest must be refused 403 by the admission, got %d: %s", w.Code, w.Body.String())
+	if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "4.19::title-claim") || !strings.Contains(w.Body.String(), "check=release_entry_admission") || !strings.Contains(w.Body.String(), releaseentry.ErrReleaseHashMismatch.Error()) {
+		t.Fatalf("4.19::title-claim: a RELEASE.json releaseHash its entry does not attest must be refused 403 by the admission, got %d: %s", w.Code, w.Body.String())
 	}
 	var refusedReceipt Receipt
 	if json.Unmarshal(w.Body.Bytes(), &refusedReceipt) == nil && refusedReceipt.OperatorSignature != "" {

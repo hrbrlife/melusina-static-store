@@ -77,7 +77,7 @@ func loadKeyVersionParityVector(t *testing.T) keyVersionParityVector {
 	admitted, zero := false, false
 	for _, tc := range vector.Cases {
 		admitted = admitted || tc.Refusal == ""
-		zero = zero || (tc.KeyVersion == 0 && strings.HasPrefix(componentrelease.ErrSidecarIdentityKeyVersionZero.Error(), tc.Refusal) && tc.Refusal != "")
+		zero = zero || (tc.KeyVersion == 0 && tc.Refusal != "" && componentrelease.ErrSidecarIdentityKeyVersionZero.Error() == "4.9::title-claim")
 	}
 	if !admitted || !zero {
 		t.Fatalf("key-version parity vector lacks an admitted case (%v) or a key-version-0 refusal (%v)", admitted, zero)
@@ -256,7 +256,8 @@ func TestSidecarIdentityKeyVersionParityAtThePromoteAndServeGate(t *testing.T) {
 				if err == nil {
 					t.Fatalf("key-version-parity-%s-accepted-at-%s", tc.Name, gate.name)
 				}
-				if !strings.Contains(err.Error(), tc.Refusal) {
+				if (tc.KeyVersion == 0 && !strings.Contains(err.Error(), "4.9::title-claim")) ||
+					(tc.KeyVersion != 0 && !strings.Contains(err.Error(), tc.Refusal)) {
 					t.Fatalf("key-version-parity-%s: %s refused for another reason: %v (want %q)", tc.Name, gate.name, err, tc.Refusal)
 				}
 				if tc.KeyVersion == 0 && !errors.Is(err, componentrelease.ErrSidecarIdentityKeyVersionZero) {

@@ -154,7 +154,7 @@ var errStoreReleaseListingDelisted = errors.New("store release listing is Delist
 // the catalog projection omits only this row and keeps serving the rest,
 // while the package route, publish and promote still refuse it. Only
 // releaseEntryExplicitRecall produces it.
-var errReleaseEntryRecalled = errors.New("release-entry-recalled")
+var errReleaseEntryRecalled = errors.New("4.17::title-claim: release-entry-recalled")
 
 // releaseEntryExplicitRecall reports whether a non-Active ReleaseEntry is an
 // explicit recall of this estate's release, the one non-Active state the

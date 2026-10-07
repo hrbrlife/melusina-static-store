@@ -371,6 +371,23 @@ func TestGenerationCASWithFloor(t *testing.T) {
 	}
 }
 
+func TestH09_2_2RestoredGenerationFloorServesBeyondTenantCursor(t *testing.T) {
+	s := newRestoredBehindTenant(t)
+	recordFloor(t, s.svc, 8, 5)
+	current := componentrelease.DesiredGeneration{GenerationID: 5}
+	if refusal := generationCAS(&current, 8, componentrelease.DesiredGeneration{GenerationID: 9, PreviousGeneration: 5}, 5); !strings.Contains(refusal, "2.2::title-claim") {
+		t.Fatalf("2.2::title-claim: a fork from the restored current was accepted: %q", refusal)
+	}
+	promoteShellBuild(t, s.svc, 5, "build-9-h09")
+	served := mustTenantFetch(t, s.svc)
+	if served.Doc.GenerationID != 9 || served.Doc.PreviousGeneration != 8 {
+		t.Fatalf("2.2::title-claim: served generation %d from %d, want 9 from floor 8", served.Doc.GenerationID, served.Doc.PreviousGeneration)
+	}
+	if err := hostupdate.AcceptAgainstCursor(*s.aheadCursor, served); err != nil {
+		t.Fatalf("2.2::title-claim: tenant at 7 refused the signed post-restore generation: %v", err)
+	}
+}
+
 // The recording refusals, each by name, and none of them writes the journal.
 func TestFloorAtOrBelowCurrentRefused(t *testing.T) {
 	s := newRestoredBehindTenant(t)

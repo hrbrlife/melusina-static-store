@@ -75,6 +75,99 @@ func TestEstateProfileReviewReturnsTheCanonicalSignedProfilePin(t *testing.T) {
 	}
 }
 
+func TestH09_1_12StoreConfigRejectsFoundationDraft(t *testing.T) {
+	_, profilePath, _, _, _ := newStoreConfigRenderFixture(t)
+	if _, digest, err := loadVerifiedStoreConfigRenderProfile(profilePath); err != nil || digest == "" {
+		t.Fatalf("1.12::title-claim: signed estate profile refused: digest=%q err=%v", digest, err)
+	}
+	if err := os.WriteFile(profilePath, []byte(`{"schema":"melusina.estate-profile/v1"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadVerifiedStoreConfigRenderProfile(profilePath); err == nil ||
+		!strings.Contains(err.Error(), "1.12::title-claim") || !strings.Contains(err.Error(), estateprofile.RefusalDraftNotEnrollable) {
+		t.Fatalf("1.12::title-claim: Store config admitted foundation draft: %v", err)
+	}
+}
+
+func TestH09_1_5StoreAcceptsFinalWitnessWithoutAuthority(t *testing.T) {
+	profile, profilePath, _, _, _ := newStoreConfigRenderFixture(t)
+	if _, digest, err := loadVerifiedStoreConfigRenderProfile(profilePath); err != nil || digest == "" {
+		t.Fatalf("1.5::title-claim: final witness profile refused: digest=%q err=%v", digest, err)
+	}
+	profile.Programs[1].UpgradeAuthority = profile.Programs[0].UpgradeAuthority
+	raw, err := json.Marshal(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profilePath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadVerifiedStoreConfigRenderProfile(profilePath); err == nil ||
+		!strings.Contains(err.Error(), "1.5::title-claim") || !strings.Contains(err.Error(), estateprofile.RefusalProgramMustBeFinal) {
+		t.Fatalf("1.5::title-claim: Store accepted witness upgrade authority: %v", err)
+	}
+}
+
+func TestH09_1_8StoreRepresentsFinalWitness(t *testing.T) {
+	profile, profilePath, _, _, _ := newStoreConfigRenderFixture(t)
+	if _, digest, err := loadVerifiedStoreConfigRenderProfile(profilePath); err != nil || digest == "" {
+		t.Fatalf("1.8::title-claim: final witness profile refused: digest=%q err=%v", digest, err)
+	}
+	profile.Programs[1].Final = false
+	raw, err := json.Marshal(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profilePath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadVerifiedStoreConfigRenderProfile(profilePath); err == nil ||
+		!strings.Contains(err.Error(), "1.8::title-claim") || !strings.Contains(err.Error(), estateprofile.RefusalProgramMustBeFinal) {
+		t.Fatalf("1.8::title-claim: Store accepted final witness stated governed: %v", err)
+	}
+}
+
+func TestH09_1_4StoreReleaseNeedsTwoVoters(t *testing.T) {
+	profile, profilePath, _, _, _ := newStoreConfigRenderFixture(t)
+	if profile.Roles[2].Role != estateprofile.AuthorityRoleStoreRelease || profile.Roles[2].Threshold < estateprofile.StoreReleaseMinThreshold {
+		t.Fatalf("1.4::title-claim: fixture has no valid Store release role: %+v", profile.Roles[2])
+	}
+	if _, digest, err := loadVerifiedStoreConfigRenderProfile(profilePath); err != nil || digest == "" {
+		t.Fatalf("1.4::title-claim: signed 2-of-N Store release profile refused: digest=%q err=%v", digest, err)
+	}
+	profile.Roles[2].Threshold = 1
+	raw, err := json.Marshal(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profilePath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadVerifiedStoreConfigRenderProfile(profilePath); err == nil ||
+		!strings.Contains(err.Error(), "1.4::title-claim") || !strings.Contains(err.Error(), ":roles.store-release.threshold") {
+		t.Fatalf("1.4::title-claim: 1-of-N Store release profile was not refused by name: %v", err)
+	}
+}
+
+func TestH09_1_18StoreStateNamespaceFits(t *testing.T) {
+	profile, profilePath, _, _, _ := newStoreConfigRenderFixture(t)
+	if _, digest, err := loadVerifiedStoreConfigRenderProfile(profilePath); err != nil || digest == "" {
+		t.Fatalf("1.18::title-claim: valid signed Store ID refused: digest=%q err=%v", digest, err)
+	}
+	profile.Store.StoreID = strings.Repeat("a", estateprofile.MaxStoreIDLength+1)
+	raw, err := json.Marshal(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profilePath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadVerifiedStoreConfigRenderProfile(profilePath); err == nil ||
+		!strings.Contains(err.Error(), "1.18::title-claim") || !strings.Contains(err.Error(), ":store.storeId") {
+		t.Fatalf("1.18::title-claim: overlong Store ID was not refused by name: %v", err)
+	}
+}
+
 func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.T) {
 	profile, profilePath, inputPath, outputPath, input := newStoreConfigRenderFixture(t)
 	writeStoreConfigRenderInput(t, inputPath, input)

@@ -16,6 +16,7 @@ import (
 // trust stays nil, and every InstallerReleaseEntry gate refuses by name.
 func bindInstallerReleaseTrust(cfg *Config, state *storeEnrollmentState) error {
 	cfg.installerReleaseTrust = nil
+	cfg.releaseSetDir = ""
 	if state == nil {
 		return nil
 	}
@@ -35,5 +36,6 @@ func bindInstallerReleaseTrust(cfg *Config, state *storeEnrollmentState) error {
 		return fmt.Errorf("installer-release trust: %w:masterNftMint: the configured release master %q is not the enrolled profile's anchors.masterMint %s", installerrelease.ErrEstateMismatch, masterB58, state.Profile.Anchors.MasterMint)
 	}
 	cfg.installerReleaseTrust = trust
+	cfg.releaseSetDir = "/etc/melusina/store"
 	return nil
 }

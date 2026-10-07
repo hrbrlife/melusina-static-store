@@ -42,6 +42,11 @@ const (
 // so the cascade cannot be checked. Every production reader can.
 var errBootCascadeReaderUnsupported = errors.New("boot-cascade-reader-unsupported: the chain reader cannot read the raw sidecar approval accounts")
 
+// The named H09 refusal is joined to the legacy cascade error so callers can
+// inspect its exact control identity while existing boot-gate prefix consumers
+// continue to read the underlying account and status that failed.
+var errH0947BootCascade = errors.New("4.7::title-claim")
+
 // rootStoreBootMasterMint parses the estate master mint the boot cascade pins.
 // It reads release_master_nft_mint only: mirror.root_master_nft_mint is a
 // mirror's upstream, not this estate's anchor, and there is no compiled or
@@ -83,6 +88,9 @@ func verifyRootStoreBootCascade(ctx context.Context, cr chainReader, sidecarID s
 		masterMint:  masterMint,
 	}
 	if err := checkSidecarCascade(ctx, rr, view, binaryHash); err != nil {
+		if strings.Contains(err.Error(), "cascade-not-active:") {
+			return errors.Join(fmt.Errorf("check=sidecar_cascade: %w", err), errH0947BootCascade)
+		}
 		return fmt.Errorf("check=sidecar_cascade: %w", err)
 	}
 	return nil

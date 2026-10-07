@@ -145,10 +145,10 @@ func TestReleaseRecallProjection_OmitsOnlyTheRecalledApp(t *testing.T) {
 
 	after := serveGet(t, gate, http.MethodGet, "/apps/index.json")
 	if after.Code != http.StatusOK {
-		t.Fatalf("release-recall-omission-missing: a governed recall of one app took the catalog down: %d %s", after.Code, after.Body.String())
+		t.Fatalf("4.17::title-claim: a governed recall of one app took the catalog down: %d %s", after.Code, after.Body.String())
 	}
 	if ids := catalogAppIDs(t, after.Body.Bytes()); len(ids) != 1 || ids[0] != fx.survivorAppID {
-		t.Fatalf("release-recall-omission-missing: projected catalog ids = %v, want only %s", ids, fx.survivorAppID)
+		t.Fatalf("4.17::title-claim: projected catalog ids = %v, want only %s", ids, fx.survivorAppID)
 	}
 
 	survivorPointer := serveGet(t, gate, http.MethodGet, "/apps/pointers/"+fx.survivorAppID+".json")
@@ -180,8 +180,8 @@ func TestReleaseRecallProjection_OmitsOnlyTheRecalledApp(t *testing.T) {
 		t.Fatalf("release-recall-survivor-package: %d %s", got.Code, got.Body.String())
 	}
 	got := serveGet(t, gate, http.MethodGet, "/packages/"+fx.recalledPackage)
-	if got.Code != http.StatusForbidden || !strings.Contains(got.Body.String(), "check=release_entry: status Revoked not Active") || !strings.Contains(got.Body.String(), errReleaseEntryRecalled.Error()) {
-		t.Fatalf("release-recall-package-served: the recalled package must be refused as %s, got %d: %s", errReleaseEntryRecalled, got.Code, got.Body.String())
+	if got.Code != http.StatusForbidden || !strings.Contains(got.Body.String(), "check=release_entry: status Revoked not Active") || !strings.Contains(got.Body.String(), "4.17::title-claim") {
+		t.Fatalf("4.17::title-claim: the recalled package must be refused by name, got %d: %s", got.Code, got.Body.String())
 	}
 	err = VerifyServeHash(context.Background(), fx.mock, fx.cfg, fx.recalled.rel.AppHash, fx.recalled.appIDText, fx.recalled.rel)
 	if !errors.Is(err, errReleaseEntryRecalled) || !errors.Is(err, verify.ErrStatusNotActive) {

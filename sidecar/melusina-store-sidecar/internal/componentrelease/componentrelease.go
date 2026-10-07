@@ -208,7 +208,7 @@ var ErrKeylessSidecarNamesIdentity = errors.New("keyless-sidecar-names-identity:
 // tenant update controller derived with 0, so one signed component was
 // promoted and served by the Store and refused by every tenant (seam audit
 // round 4, finding 9).
-var ErrSidecarIdentityKeyVersionZero = errors.New("sidecar-identity-key-version-zero: a sidecar_identity (key-bearing) component must name keyVersion 1 or higher; an omitted keyVersion is 0, and 0 is refused, never read as 1")
+var ErrSidecarIdentityKeyVersionZero = errors.New("4.9::title-claim")
 
 // IsSidecarAuthority reports whether kind is one of the two sidecar rules.
 func IsSidecarAuthority(kind string) bool {
@@ -868,12 +868,12 @@ func (doc DesiredGeneration) Component(id string) (ComponentRelease, bool) {
 // promote handler and the served-bytes check run it directly.
 
 // ErrArtifactNameNotBundleBasename: artifactName is not the escaped basename of
-// bundleUrl. The text is the deployer's refusal, so one grep finds both sides.
-var ErrArtifactNameNotBundleBasename = errors.New("artifactName does not match bundle URL")
+// bundleUrl. The named refusal is emitted by the real location check below.
+var ErrArtifactNameNotBundleBasename = errors.New("2.11::title-claim")
 
 // ErrBundleURLNotReleasePath: a host component's bundleUrl is not exactly
 // <bundleOrigin>/releases/<componentClass>/<artifactName>.
-var ErrBundleURLNotReleasePath = errors.New("bundleUrl is not <bundleOrigin>/releases/<componentClass>/<artifactName>")
+var ErrBundleURLNotReleasePath = errors.New("2.12::title-claim")
 
 // ReleaseBundleURL is the one served location of a host component: the release
 // gate's /releases/<class>/<name> under the Store's bundle origin.

@@ -87,6 +87,13 @@ def main():
         if result.returncode == 0 or marker not in result.stderr:
             raise AssertionError('BARE_HOST_FILENAME_TLD: expected ' + marker)
         print('BARE_HOST_FILENAME_TLD: ' + marker)
+        for label, encoding in (('UTF16_HTML_URL', 'utf-16'), ('UTF32_HTML_URL', 'utf-32')):
+            probe.write_bytes(f'<img src=https://{HOST}/pixel>\n'.encode(encoding))
+            result = classify()
+            marker = 'DOMAIN_CLASSIFIER_UNREVIEWED_HOST:' + HOST
+            if result.returncode == 0 or marker not in result.stderr:
+                raise AssertionError(label + ': expected ' + marker)
+            print(label + ': ' + marker)
     finally:
         probe.unlink(missing_ok=True)
     available = tracked_types()

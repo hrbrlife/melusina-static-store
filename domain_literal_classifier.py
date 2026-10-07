@@ -18,12 +18,24 @@ URL = re.compile(r'(?i)[a-z][a-z0-9+.-]*://[^\s"\'`<>]+')
 TLDS = None
 
 
-def is_text(data):
-    """Use bytes rather than a filename suffix to identify binary content."""
+def text_encoding(data):
+    """Identify text from its bytes, including Unicode files with a BOM."""
+    if data.startswith((b'\xff\xfe\x00\x00', b'\x00\x00\xfe\xff')):
+        try:
+            data.decode('utf-32')
+            return 'utf-32'
+        except UnicodeError:
+            return None
+    if data.startswith((b'\xff\xfe', b'\xfe\xff')):
+        try:
+            data.decode('utf-16')
+            return 'utf-16'
+        except UnicodeError:
+            return None
     if b'\0' in data:
-        return False
+        return None
     controls = sum(byte < 32 and byte not in (9, 10, 12, 13) for byte in data)
-    return controls * 100 <= len(data)
+    return 'utf-8' if controls * 100 <= len(data) else None
 
 
 def canonical(host):
@@ -108,10 +120,11 @@ def inventory(root):
         if not path.is_file() or path.is_symlink():
             continue
         data = path.read_bytes()
-        if not is_text(data):
+        encoding = text_encoding(data)
+        if encoding is None:
             continue
         scanned += 1
-        source = data.decode('utf-8', errors='replace')
+        source = data.decode(encoding, errors='replace')
         tokens = []
         offset = 0
         for number, line in enumerate(source.split('\n'), 1):

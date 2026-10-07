@@ -738,7 +738,7 @@ func (g *serveGate) serveRelease(w http.ResponseWriter, r *http.Request, class, 
 		// weakening neither authority model.
 		hashHex, err = g.gateSignedSidecarGeneration(r.Context(), class, name, fileHash, servedSize)
 	} else {
-		hashHex, err = g.gateInstallerRelease(r.Context(), fileHash)
+		hashHex, err = g.gateInstallerRelease(r.Context(), class, name, fileHash, servedSize)
 	}
 	if err != nil {
 		code := http.StatusForbidden
@@ -855,8 +855,16 @@ func (g *serveGate) gateWith(ctx context.Context, cr chainReader, appHash string
 	return nil
 }
 
-func (g *serveGate) gateInstallerRelease(ctx context.Context, installerHash [32]byte) (string, error) {
+func (g *serveGate) gateInstallerRelease(ctx context.Context, class, name string, installerHash [32]byte, size int64) (string, error) {
 	h := hex.EncodeToString(installerHash[:])
+	// A production Store has an enrolled estate state. Its publisher-signed
+	// release-set check is fresh on every request, including when the chain
+	// verdict is cached. The unsigned config cannot select another keyset.
+	if g.cfg.EstateEnrollmentStatePath != "" {
+		if err := verifyServedReleaseSet(g.cfg, class, name, h, size); err != nil {
+			return h, fmt.Errorf("3.1::title-claim: %w", err)
+		}
+	}
 	if g.releaseVerdictFresh(h) {
 		return h, nil
 	}

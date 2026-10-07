@@ -232,6 +232,10 @@ type Config struct {
 	// (bindInstallerReleaseTrust); every InstallerReleaseEntry gate admits
 	// through it, and a Store with no enrolled profile has none and refuses.
 	installerReleaseTrust *installerrelease.Trust
+	// releaseSetDir is the fixed, root-owned directory of publisher-signed
+	// release sets accepted by the Store-host executor. It is never read from
+	// config JSON; an enrolled runtime sets it while binding the signed estate.
+	releaseSetDir string
 
 	// appReleaseTrust is never read from the config document either. Startup
 	// projects it from the same enrolled profile (bindAppReleaseTrust): the

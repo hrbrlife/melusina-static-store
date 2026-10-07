@@ -127,6 +127,28 @@ func TestH09_1_8StoreRepresentsFinalWitness(t *testing.T) {
 	}
 }
 
+func TestH09_1_4StoreReleaseNeedsTwoVoters(t *testing.T) {
+	profile, profilePath, _, _, _ := newStoreConfigRenderFixture(t)
+	if profile.Roles[2].Role != estateprofile.AuthorityRoleStoreRelease || profile.Roles[2].Threshold < estateprofile.StoreReleaseMinThreshold {
+		t.Fatalf("1.4::title-claim: fixture has no valid Store release role: %+v", profile.Roles[2])
+	}
+	if _, digest, err := loadVerifiedStoreConfigRenderProfile(profilePath); err != nil || digest == "" {
+		t.Fatalf("1.4::title-claim: signed 2-of-N Store release profile refused: digest=%q err=%v", digest, err)
+	}
+	profile.Roles[2].Threshold = 1
+	raw, err := json.Marshal(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profilePath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadVerifiedStoreConfigRenderProfile(profilePath); err == nil ||
+		!strings.Contains(err.Error(), "1.4::title-claim") || !strings.Contains(err.Error(), ":roles.store-release.threshold") {
+		t.Fatalf("1.4::title-claim: 1-of-N Store release profile was not refused by name: %v", err)
+	}
+}
+
 func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.T) {
 	profile, profilePath, inputPath, outputPath, input := newStoreConfigRenderFixture(t)
 	writeStoreConfigRenderInput(t, inputPath, input)

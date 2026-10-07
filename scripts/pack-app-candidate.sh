@@ -7,6 +7,7 @@ METADATA=""
 RECEIPT_OUT=""
 SPK_OUT=""
 METADATA_OUT=""
+SOURCE_REF=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -14,6 +15,7 @@ while [[ $# -gt 0 ]]; do
     --receipt-out) RECEIPT_OUT="$2"; shift 2 ;;
     --spk-out) SPK_OUT="$2"; shift 2 ;;
     --metadata-out) METADATA_OUT="$2"; shift 2 ;;
+    --source-ref) SOURCE_REF="$2"; shift 2 ;;
     *) [[ -z "$APP_DIR" ]] || { echo "unknown argument: $1" >&2; exit 2; }; APP_DIR="$1"; shift ;;
   esac
 done
@@ -42,7 +44,14 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   source_revision="$(git -C "$APP_DIR" rev-parse HEAD)"
   mapfile -t source_remotes < <(git -C "$source_root" remote | LC_ALL=C sort)
   [[ ${#source_remotes[@]} -gt 0 ]] || { echo "candidate source has no remote" >&2; exit 2; }
+  usable_remotes=0
   for remote in "${source_remotes[@]}"; do
+    # Git permits a URL-shaped remote *name*. It cannot be embedded in a
+    # refs/remotes/<name>/... destination: the colon makes that fetchspec
+    # invalid. Require a ref-safe name and prove reachability through one of
+    # those remotes (normally origin).
+    [[ "$remote" =~ ^[a-zA-Z0-9._-]+$ ]] || continue
+    usable_remotes=$((usable_remotes + 1))
     # A source cohort may have been created with --single-branch. Its default
     # remote fetchspec then omits dev-publish even when that exact committed
     # revision was pushed moments ago, causing a false "unpushed" refusal.
@@ -56,6 +65,26 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       exit 2
     }
   done
+  [[ $usable_remotes -gt 0 ]] || { echo "candidate source has no ref-safe remote" >&2; exit 2; }
+  if [[ -n "$SOURCE_REF" ]]; then
+    [[ "$SOURCE_REF" =~ ^refs/velocity/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$ ]] || {
+      echo "candidate source ref must be a hidden velocity work ref" >&2
+      exit 2
+    }
+    hidden_found=0
+    for remote in "${source_remotes[@]}"; do
+      [[ "$remote" =~ ^[a-zA-Z0-9._-]+$ ]] || continue
+      if git -C "$source_root" ls-remote --exit-code "$remote" "$SOURCE_REF" >/dev/null 2>&1; then
+        git -C "$source_root" fetch --recurse-submodules=no "$remote" \
+          "+$SOURCE_REF:refs/remotes/$remote/${SOURCE_REF#refs/}" || {
+          echo "candidate source ref fetch failed: $SOURCE_REF" >&2
+          exit 2
+        }
+        hidden_found=1
+      fi
+    done
+    [[ $hidden_found -eq 1 ]] || { echo "candidate source ref unavailable: $SOURCE_REF" >&2; exit 2; }
+  fi
   pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
     | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
   [[ -n "$pushed_ref" ]] || { echo "candidate revision is not reachable from any fetched remote ref: $source_revision" >&2; exit 2; }
@@ -103,6 +132,10 @@ PY
     }
     [[ -z "${MEL_RELEASE_PACK_TARGET:-}" ]] || {
       echo "NamedCoin MSB devnet profile owns its pack target; MEL_RELEASE_PACK_TARGET is forbidden" >&2
+      exit 2
+    }
+    [[ -n "$METADATA_OUT" && ! -e "$METADATA_OUT" && ! -L "$METADATA_OUT" ]] || {
+      echo "NamedCoin candidate metadata output must be new" >&2
       exit 2
     }
     ;;
@@ -241,7 +274,7 @@ case "$PACK_PROFILE" in
       exit 2
     }
     PACK_TARGET="pack-msb-test"
-    make -C "$APP_DIR" "${MAKE_VARS[@]}" "$PACK_TARGET"
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" "SPK_OUT=$SPK_OUT" "$PACK_TARGET"
     ;;
 esac
 [[ -f "$SPK_OUT" ]] || { echo "$PACK_TARGET did not create $SPK_OUT" >&2; exit 2; }
@@ -313,6 +346,26 @@ spk_sha="$(sha256sum "$SPK_OUT" | awk '{print $1}')"
   echo "packageId $package_id does not match sha256 prefix ${spk_sha:0:32}" >&2
   exit 2
 }
+
+# NamedCoin's committed catalog metadata names an older package. Stage a
+# separate metadata document from the verified package bytes. Only these two
+# derived identity fields change; the signed SPK and committed source remain
+# the authority for every other field.
+if [[ "$PACK_PROFILE" == namedcoin-msb-devnet ]]; then
+  mkdir -p "$(dirname "$METADATA_OUT")"
+  python3 - "$METADATA" "$METADATA_OUT" "$package_id" "$spk_sha" <<'PY'
+import json, os, sys
+source, output, package_id, digest = sys.argv[1:]
+with open(source, encoding='utf-8') as stream:
+    metadata = json.load(stream)
+metadata['packageId'] = package_id
+metadata['sha256'] = digest
+fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+    json.dump(metadata, stream, indent=2, ensure_ascii=False)
+    stream.write('\n')
+PY
+fi
 
 candidate_metadata="$METADATA"
 if [[ -n "$METADATA_OUT" && -f "$METADATA_OUT" ]]; then

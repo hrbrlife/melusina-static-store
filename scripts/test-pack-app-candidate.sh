@@ -84,6 +84,22 @@ assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
+# A URL-shaped Git remote name is legal local configuration but cannot be a
+# refs/remotes destination. It must not stop a valid origin proof, and it
+# cannot become the only proof of a pushed source revision.
+git -C "$APP" config --local 'remote.https://example.invalid/fineract.git.promisor' true
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/url-remote-positive.json"
+git -C "$APP" remote remove origin
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" >"$WORK/url-only-remote.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate source has no ref-safe remote' "$WORK/url-only-remote.log"
+git -C "$APP" remote add origin "$WORK/origin.git"
+
 # A single-branch source cohort must still prove a just-pushed dev-publish
 # revision. The normal remote fetchspec would only refresh main and make this
 # real remote tip falsely appear local-only.
@@ -237,11 +253,35 @@ PY
 git -C "$APP" add metadata.json
 git -C "$APP" commit -qm namedcoin-profile
 git -C "$APP" push -qu origin HEAD:main
+rm -f "$APP/app.spk"
 BUILD_LOG="$WORK/namedcoin-profile.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
   MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet \
-  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/namedcoin-profile-receipt.json"
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --spk-out "$WORK/namedcoin-candidate.spk" \
+  --metadata-out "$WORK/namedcoin-candidate-metadata.json" --receipt-out "$WORK/namedcoin-profile-receipt.json"
 [[ "$(cat "$WORK/namedcoin-profile.log")" == "namedcoin-msb-test" ]]
+[[ -f "$WORK/namedcoin-candidate.spk" && ! -e "$APP/app.spk" ]] || {
+  echo namedcoin-candidate-output-not-used >&2
+  exit 2
+}
+python3 - "$WORK/namedcoin-candidate-metadata.json" "$WORK/namedcoin-profile-receipt.json" "$APP/metadata.json" <<'PY'
+import json, sys
+staged, receipt, source = (json.load(open(path, encoding='utf-8')) for path in sys.argv[1:])
+assert staged['packageId'] == receipt['app']['packageId']
+assert staged['sha256'] == receipt['artifact']['sha256']
+assert staged['appId'] == source['appId']
+assert source.get('packageId') != staged['packageId']
+PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+set +e
+BUILD_LOG="$WORK/namedcoin-profile.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/namedcoin-candidate-metadata.json" \
+  >"$WORK/namedcoin-metadata-reuse.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'NamedCoin candidate metadata output must be new' "$WORK/namedcoin-metadata-reuse.log"
 
 python3 - "$APP/metadata.json" <<'PY'
 import json, sys
@@ -273,6 +313,24 @@ rc=$?
 set -e
 [[ $rc -ne 0 ]]
 grep -q 'not reachable from any fetched remote ref' "$WORK/unpushed.log"
+git -C "$APP" push -qu origin HEAD:refs/velocity/V-M2-DRESS2/test-app
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+  --source-ref refs/velocity/V-M2-DRESS2/test-app \
+  --receipt-out "$WORK/hidden-source-receipt.json"
+python3 - "$WORK/hidden-source-receipt.json" <<'PY'
+import json, sys
+receipt = json.load(open(sys.argv[1], encoding='utf-8'))
+assert receipt['source']['pushedRemoteRef'] == 'refs/remotes/origin/velocity/V-M2-DRESS2/test-app'
+PY
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+  --source-ref refs/velocity/V-M2-DRESS2/absent >"$WORK/hidden-source-absent.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate source ref unavailable' "$WORK/hidden-source-absent.log"
 git -C "$APP" reset -q --hard refs/remotes/origin/main
 
 cp "$APP/metadata.json" "$APP/ignored-metadata.json"

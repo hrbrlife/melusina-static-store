@@ -40,6 +40,7 @@ readonly RELEASE_INPUTS="$ROOT/scripts/release-inputs.py"
 die() { printf 'default-bazaar-release: %s\n' "$*" >&2; exit 2; }
 # Resolve named inputs; every refusal is printed by name before the exit.
 release_inputs() { python3 "$RELEASE_INPUTS" "$@" || exit 2; }
+signed_origin() { go -C "$ROOT/sidecar/melusina-store-sidecar" run ./cmd/estate-origin --origin; }
 
 pin() {
   local name="$1" want="$2" got=""
@@ -60,8 +61,9 @@ pin() {
 if [[ "${1:-}" = preflight ]]; then
   release_inputs check MEL_RELEASE_SOURCE_ROOT MEL_RELEASE_STATE_DIR
   [[ "$MEL_RELEASE_SOURCE_ROOT" = /* && "$MEL_RELEASE_SOURCE_ROOT" != *'/../'* && -d "$MEL_RELEASE_SOURCE_ROOT" && ! -L "$MEL_RELEASE_SOURCE_ROOT" ]] || die 'MEL_RELEASE_SOURCE_ROOT must be a canonical non-symlink directory'
-  pin MEL_RELEASE_STORE_URL 'https://bazaar.melusina-os.org'
-  pin MEL_RELEASE_BUNDLE_ORIGIN 'https://bazaar.melusina-os.org'
+  SIGNED_ORIGIN="$(signed_origin)" || die 'signed estate origin is required'
+  pin MEL_RELEASE_STORE_URL "$SIGNED_ORIGIN"
+  pin MEL_RELEASE_BUNDLE_ORIGIN "$SIGNED_ORIGIN"
   pin MEL_RELEASE_STORE_ID 'melusina-os-root-store'
   pin MEL_RELEASE_RPC_URL 'https://api.devnet.solana.com'
   pin MEL_RELEASE_CHANNEL 'dev'
@@ -83,9 +85,10 @@ runtime_env="$(release_inputs resolve MEL_RELEASE_RUNTIME_ENV)"
 # shellcheck disable=SC1090
 source "$runtime_env"
 
-pin MEL_RELEASE_STORE_URL 'https://bazaar.melusina-os.org'
-pin MEL_RELEASE_BUNDLE_ORIGIN 'https://bazaar.melusina-os.org'
-pin MEL_RELEASE_STORE_DOMAIN 'bazaar.melusina-os.org'
+SIGNED_ORIGIN="$(signed_origin)" || die 'signed estate origin is required'
+pin MEL_RELEASE_STORE_URL "$SIGNED_ORIGIN"
+pin MEL_RELEASE_BUNDLE_ORIGIN "$SIGNED_ORIGIN"
+pin MEL_RELEASE_STORE_DOMAIN "${SIGNED_ORIGIN#https://}"
 pin MEL_RELEASE_STORE_ID 'melusina-os-root-store'
 pin MEL_RELEASE_STORE_LICENSE_MINT '9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J'
 pin MEL_RELEASE_MASTER_NFT_MINT 'B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe'
@@ -112,6 +115,7 @@ export MEL_RELEASE_STATE_DIR MEL_RELEASE_AUTHOR_KEYPAIR MEL_RELEASE_SQUADS_MEMBE
 
 python3 - "$MEL_RELEASE_STORE_PUBKEY" <<'PY'
 import json
+import os
 import sys
 
 path = sys.argv[1]
@@ -122,7 +126,7 @@ expected = {
     'chain_id': 'solana:devnet',
     'program_id': '7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb',
     'license_mint': '9yfmmcTG8BBiSPHf6kZC77tUzm46VMnfyrLzd3E2ii9J',
-    'domain': 'bazaar.melusina-os.org',
+    'domain': os.environ['MEL_RELEASE_STORE_DOMAIN'],
     'pda': '7eESnZ9hvVAVTDCwSq73FGygqhp9bQZ5jF672NZsSKr6',
     'sidecar_id': 'melusina-os-root-store-v2',
     'key_version': 1,

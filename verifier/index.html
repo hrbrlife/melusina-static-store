@@ -111,11 +111,13 @@
       <h2>Verify with the CLI</h2>
       <p>The reference verifier is <code>melusina-pearl-tool</code>. Build from <a href="https://github.com/hrbrlife/melusina-attestdeployer-tool">hrbrlife/melusina-attestdeployer-tool</a> or grab a release binary, then:</p>
       <pre><code># Pull the app's RELEASE.json + the .spk
-curl -sLO https://bazaar.melusina-os.org/attest/&lt;appId&gt;/RELEASE.json
-curl -sLO https://bazaar.melusina-os.org/packages/&lt;packageId&gt;.spk
+# Set STORE_ORIGIN to the Store origin in the owner-signed estate profile.
+: "${STORE_ORIGIN:?set the signed estate Store origin}"
+curl -sLO "$STORE_ORIGIN/attest/&lt;appId&gt;/RELEASE.json"
+curl -sLO "$STORE_ORIGIN/packages/&lt;packageId&gt;.spk"
 
 # Save the matching metadata.json from /signatures/&lt;appId&gt;/metadata.json
-curl -sLO https://bazaar.melusina-os.org/signatures/&lt;appId&gt;/metadata.json
+curl -sLO "$STORE_ORIGIN/signatures/&lt;appId&gt;/metadata.json"
 
 # Verify against the on-chain ReleaseEntry
 melusina-pearl-tool verify-release \

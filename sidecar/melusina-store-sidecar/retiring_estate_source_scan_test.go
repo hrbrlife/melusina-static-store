@@ -235,11 +235,11 @@ func TestBootstrapComponentSourceCompilesNoRetiringEstateValue(t *testing.T) {
 		forbidden map[string]string
 	}{
 		{name: "estate-bootstrap", tags: "estatebootstrap", forbidden: retiring},
-		{name: "standard", forbidden: registryOnly},
+		{name: "standard", forbidden: retiring},
 	} {
 		t.Run(flavor.name, func(t *testing.T) {
 			sources := bootstrapComponentSources(t, flavor.tags)
-			for _, required := range []string{"/verify.go", "/config.go", "/cmd/boot-identity-prep/main.go", "/ui/assets/index-C5SMNmPA.js"} {
+			for _, required := range []string{"/verify.go", "/config.go", "/cmd/boot-identity-prep/main.go", "/ui/assets/index-CcjOkH_x.js"} {
 				if !sourceSetIncludes(sources, required) {
 					t.Fatalf("scan never reached %s; it cannot vouch for the component", required)
 				}
@@ -251,11 +251,9 @@ func TestBootstrapComponentSourceCompilesNoRetiringEstateValue(t *testing.T) {
 		})
 	}
 
-	// Coverage control: the standard build does reach the legacy Bazaar pins,
-	// so the estate-bootstrap result above is an exclusion, not a blind spot.
+	// The standard build is now enrolled-only too.
 	legacy := retiringValueHits(t, bootstrapComponentSources(t, ""), retiring)
-	t.Logf("standard build, full retiring set (expected legacy pins):\n%s", strings.Join(legacy, "\n"))
-	if !strings.Contains(strings.Join(legacy, "\n"), "squads_authority_legacy.go") {
-		t.Fatalf("standard build scan found no legacy Bazaar pin; the scan is not reaching tagged files: %q", legacy)
+	if len(legacy) != 0 {
+		t.Fatalf("standard build carries retiring estate values: %q", legacy)
 	}
 }

@@ -3,14 +3,10 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -24,7 +20,6 @@ var releaseToolPackages = []string{"./cmd/mel-release", "./cmd/submit"}
 const (
 	catalogLedgerPath       = "../../fleet/bazaar-catalog.yaml"
 	catalogSnapshotPath     = "../../fleet/retiring-bazaar-snapshot.yaml"
-	legacySchemaURLFile     = "internal/runtimecontract/schema_url_legacy.go"
 	releaseToolsStandard    = "standard"
 	releaseToolsEstateBuild = "estate-bootstrap"
 )
@@ -144,7 +139,7 @@ func releaseToolForbiddenValues(t *testing.T) map[string]string {
 		values[field] = value
 	}
 	for field, value := range map[string]string{
-		"catalog-ledger/catalog_origin":      origin,
+		"catalog-ledger/catalog_origin":       origin,
 		"catalog-ledger/catalog_index_sha256": digest,
 	} {
 		if existing, ok := values[field]; ok && existing != value {
@@ -155,45 +150,12 @@ func releaseToolForbiddenValues(t *testing.T) map[string]string {
 	return values
 }
 
-// legacyRuntimeContractSchemaURL is the one retiring-estate text the standard
-// (legacy) build of submit may carry: the historical runtime-contract $schema
-// identifier, a protocol value the legacy Store validates releases against
-// and the estate-bootstrap build replaces with a URN. It is read from its
-// build-tagged source rather than restated, so the exception cannot widen.
-func legacyRuntimeContractSchemaURL(t *testing.T) string {
-	t.Helper()
-	file, err := parser.ParseFile(token.NewFileSet(), legacySchemaURLFile, nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var literals []string
-	ast.Inspect(file, func(node ast.Node) bool {
-		if literal, ok := node.(*ast.BasicLit); ok && literal.Kind == token.STRING {
-			value, err := strconv.Unquote(literal.Value)
-			if err != nil {
-				t.Fatal(err)
-			}
-			literals = append(literals, value)
-		}
-		return true
-	})
-	if len(literals) != 1 || !strings.HasPrefix(literals[0], "https://") {
-		t.Fatalf("%s holds %q; the exception expects exactly the legacy schema URL", legacySchemaURLFile, literals)
-	}
-	return literals[0]
-}
-
 // The tools' source names no retiring value: every Go string literal and
 // embedded file the toolchain compiles into mel-release and submit, in both
 // build flavors, and every byte of the provider scripts, comments included.
 func TestReleaseToolsSourceCarriesNoRetiringEstateValue(t *testing.T) {
 	forbidden := releaseToolForbiddenValues(t)
 	scripts := releaseToolScripts(t)
-	legacyURL := legacyRuntimeContractSchemaURL(t)
-	legacyFile, err := filepath.Abs(legacySchemaURLFile)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	// Known-positive control: a provider-shaped script carrying the retiring
 	// Store in text is found, by the field it came from.
@@ -229,24 +191,9 @@ func TestReleaseToolsSourceCarriesNoRetiringEstateValue(t *testing.T) {
 				}
 			}
 			t.Logf("%s: %d files scanned for %d retiring values", flavor.name, len(sources), len(forbidden))
-			var hits, excepted []string
-			for _, hit := range retiringValueHits(t, sources, forbidden) {
-				// Excepted: a value inside the legacy identifier, found in its
-				// one-literal file, in the build that compiles it.
-				field, _, _ := strings.Cut(hit, " in ")
-				if flavor.tags == "" && strings.Contains(hit, " in "+legacyFile+":") && strings.Contains(legacyURL, forbidden[field]) {
-					excepted = append(excepted, hit)
-					continue
-				}
-				hits = append(hits, hit)
-			}
+			hits := retiringValueHits(t, sources, forbidden)
 			if len(hits) != 0 {
 				t.Fatalf("the %s release tools carry retiring-estate values:\n%s", flavor.name, strings.Join(hits, "\n"))
-			}
-			// The exception is live only where it applies: the standard build
-			// reaches the legacy identifier, the estate-bootstrap build never does.
-			if (flavor.tags == "") != (len(excepted) != 0) || sourceSetIncludes(sources, "/"+legacySchemaURLFile) != (flavor.tags == "") {
-				t.Fatalf("%s: legacy runtime-contract schema exception hits %q; want exactly the standard build", flavor.name, excepted)
 			}
 		})
 	}
@@ -256,7 +203,7 @@ func TestReleaseToolsSourceCarriesNoRetiringEstateValue(t *testing.T) {
 	wrapper := retiringValueHits(t, []componentSource{{path: "../../scripts/default-bazaar-release.sh"}}, forbidden)
 	joined := strings.Join(wrapper, "\n")
 	for _, field := range []string{
-		retiringLicenseRegistryField, "retiring/store.rootDomain", "retiring/store.storeId",
+		retiringLicenseRegistryField, "retiring/store.storeId",
 		"retiring/anchors.masterMint", "catalog-ledger/release_squads_authority.vault",
 	} {
 		if !strings.Contains(joined, field+" in ") {
@@ -272,7 +219,6 @@ func TestReleaseToolsSourceCarriesNoRetiringEstateValue(t *testing.T) {
 func TestReleaseToolBinariesCarryNoRetiringEstateValue(t *testing.T) {
 	forbidden := releaseToolForbiddenValues(t)
 	forms := retiringValueForms(forbidden)
-	legacy := []byte(legacyRuntimeContractSchemaURL(t))
 	env := append(os.Environ(), "GOFLAGS=", "GOWORK=off", "CGO_ENABLED=0")
 	for _, flavor := range []struct{ name, tags string }{
 		{name: releaseToolsEstateBuild, tags: "estatebootstrap"},
@@ -281,7 +227,6 @@ func TestReleaseToolBinariesCarryNoRetiringEstateValue(t *testing.T) {
 		t.Run(flavor.name, func(t *testing.T) {
 			dir := t.TempDir()
 			var hits []string
-			legacySeen := false
 			for _, pkg := range releaseToolPackages {
 				binary := filepath.Join(dir, filepath.Base(pkg))
 				args := []string{"build", "-mod=vendor", "-trimpath", "-buildvcs=false"}
@@ -303,10 +248,6 @@ func TestReleaseToolBinariesCarryNoRetiringEstateValue(t *testing.T) {
 				if !bytes.Contains(raw, []byte(marker)) {
 					t.Fatalf("%s does not contain %q; the scan is not reading the built program", binary, marker)
 				}
-				if bytes.Contains(raw, legacy) {
-					legacySeen = true
-					raw = bytes.ReplaceAll(raw, legacy, make([]byte, len(legacy)))
-				}
 				scanned := binary + ".scanned"
 				if err := os.WriteFile(scanned, raw, 0o600); err != nil {
 					t.Fatal(err)
@@ -316,9 +257,6 @@ func TestReleaseToolBinariesCarryNoRetiringEstateValue(t *testing.T) {
 			t.Logf("%s: %d programs scanned for %d retiring values in %d forms", flavor.name, len(releaseToolPackages), len(forbidden), len(forms))
 			if len(hits) != 0 {
 				t.Fatalf("the built %s release tools carry retiring-estate values:\n%s", flavor.name, strings.Join(hits, "\n"))
-			}
-			if legacySeen != (flavor.tags == "") {
-				t.Fatalf("%s: legacy runtime-contract schema identifier present=%v; want only in the standard build", flavor.name, legacySeen)
 			}
 		})
 	}

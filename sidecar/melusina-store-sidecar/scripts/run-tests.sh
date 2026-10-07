@@ -105,17 +105,6 @@ else
   mode=dev
 fi
 
-flavors=("" "estatebootstrap")
-
 cd "$MODULE_DIR"
-status=0
-for tags in "${flavors[@]}"; do
-  if [[ -n "$tags" ]]; then
-    echo "== go test -tags $tags ${go_args[*]} ./... (mode=$mode)" >&2
-    go test -tags "$tags" "${go_args[@]}" ./... || status=1
-  else
-    echo "== go test ${go_args[*]} ./... (mode=$mode)" >&2
-    go test "${go_args[@]}" ./... || status=1
-  fi
-done
-exit "$status"
+echo "== go test ${go_args[*]} ./... (mode=$mode)" >&2
+go test "${go_args[@]}" ./...

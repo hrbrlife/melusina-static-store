@@ -42,12 +42,9 @@ Static app store and update host for Melusina. Hosted on GitHub Pages from the `
 make test
 ```
 
-Runs the Store's Go suites and exits non-zero if any fails: the store sidecar
-in both build flavors, the standard build and the `estatebootstrap` build the
-Store bootstrap component ships, through
-`sidecar/melusina-store-sidecar/scripts/run-tests.sh`, then
-`sidecar/bazaar-store-link`. A plain `go test ./...` in the sidecar runs only
-the standard flavor. For a release or CI run, see the sidecar README's Test
+Runs the Store's Go suites and exits non-zero if any fails: the enrolled
+standard sidecar build through `sidecar/melusina-store-sidecar/scripts/run-tests.sh`,
+then `sidecar/bazaar-store-link`. For a release or CI run, see the sidecar README's Test
 section. This target does not run the release-tooling script tests under
 `scripts/test-*`.
 

@@ -13,7 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -43,7 +42,7 @@ func releaseComponentBuilds(t *testing.T) ([]releaseComponentBuild, []string) {
 		t.Fatal(err)
 	}
 	script := string(raw)
-	for _, flavor := range []string{"BUILD_TAGS=()", "BUILD_TAGS=(-tags estatebootstrap)"} {
+	for _, flavor := range []string{"BUILD_TAGS=()"} {
 		if !strings.Contains(script, flavor) {
 			t.Fatalf("release script no longer selects %s; the artifact scan must follow it", flavor)
 		}
@@ -267,7 +266,7 @@ func TestBootstrapComponentBinariesCarryNoRetiringEstateValue(t *testing.T) {
 		forbidden map[string]string
 	}{
 		{name: "estate-bootstrap", tags: "estatebootstrap", forbidden: retiring},
-		{name: "standard", forbidden: registryOnly},
+		{name: "standard", forbidden: retiring},
 	} {
 		t.Run(flavor.name, func(t *testing.T) {
 			dir := filepath.Join(buildRoot, flavor.name)
@@ -294,19 +293,15 @@ func TestBootstrapComponentBinariesCarryNoRetiringEstateValue(t *testing.T) {
 		})
 	}
 
-	// Coverage control: the standard build keeps the legacy Bazaar pins, and
-	// the scan must see them in the built sidecar when asked for the full
-	// retiring set; a scan of the wrong bytes would see nothing.
+	// The standard artifact must be free of the retiring estate values too.
 	t.Run("coverage", func(t *testing.T) {
 		sidecar := built["standard"]["melusina-store-sidecar"]
 		if sidecar == "" {
 			t.Fatal("standard sidecar was not built")
 		}
 		hits := retiringArtifactHits(t, sidecar, retiringValueForms(retiring))
-		t.Logf("standard sidecar, full retiring set (expected legacy pins):\n%s", strings.Join(hits, "\n"))
-		want := "retiring/" + estateprofile.FieldStoreRootDomain + " (text) in melusina-store-sidecar"
-		if !strings.Contains(strings.Join(hits, "\n"), want) {
-			t.Fatalf("artifact scan found no legacy root-domain pin in the standard sidecar (%q); it is not reading the built program", hits)
+		if len(hits) != 0 {
+			t.Fatalf("standard sidecar carries retiring estate values: %q", hits)
 		}
 	})
 }

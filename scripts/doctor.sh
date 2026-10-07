@@ -138,7 +138,12 @@ fi
 # --- 4. gh-pages reachable ---------------------------------------------------
 section "4. Live catalog reachable"
 
-LIVE_CATALOG_URL="${MELUSINA_LIVE_CATALOG_URL:-https://bazaar.melusina-os.org/apps/index.json}"
+SIGNED_STORE_ORIGIN="$(go -C "$SCRIPT_DIR/../sidecar/melusina-store-sidecar" run ./cmd/estate-origin --origin)" || exit 2
+LIVE_CATALOG_URL="$SIGNED_STORE_ORIGIN/apps/index.json"
+[[ -z "${MELUSINA_LIVE_CATALOG_URL:-}" || "$MELUSINA_LIVE_CATALOG_URL" == "$LIVE_CATALOG_URL" ]] || {
+  fail "MELUSINA_LIVE_CATALOG_URL differs from the signed estate origin"
+  exit 2
+}
 LIVE_TMP=$(mktemp /tmp/doctor-live.XXXXXX.json)
 trap 'rm -f "$LIVE_TMP"' EXIT
 

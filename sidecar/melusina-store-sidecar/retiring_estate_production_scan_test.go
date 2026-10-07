@@ -76,10 +76,7 @@ func storeProductionForbiddenValues(t *testing.T) map[string]string {
 // retiringOnlyGoFiles are the only Go files that may compile a retiring value:
 // each is excluded from the estate-bootstrap build by its build constraint, so
 // only the retiring estate's own (standard-flavor) Store build carries it.
-var retiringOnlyGoFiles = map[string]string{
-	"squads_authority_legacy.go":                    "the retiring Bazaar's fixed release Squads authority, enforced only by its standard-flavor Store",
-	"internal/runtimecontract/schema_url_legacy.go": "the historical runtime-contract $schema identifier the standard-flavor Store validates retiring releases against",
-}
+var retiringOnlyGoFiles = map[string]string{}
 
 // retiringEstatePaths are the repository files that belong to the retiring
 // estate's own tooling. They may carry its values; the Store bootstrap
@@ -87,25 +84,15 @@ var retiringOnlyGoFiles = map[string]string{
 var retiringEstatePaths = map[string]string{
 	"build-store.sh":                                                 "the retiring Bazaar's static catalog assembler (make build/plan); its publish and deploy writers are already retired",
 	"scripts/default-bazaar-release.sh":                              "the retiring Bazaar's release wrapper; it pins that Store so it can drive only a profile for it",
-	"scripts/preflight.sh":                                           "gate for build-store.sh's dist-publish against the live Bazaar catalog",
-	"scripts/doctor.sh":                                              "readiness report for the static Bazaar pipeline",
-	"scripts/validate-runtime-contract.py":                           "validates legacy runtime contracts against the Bazaar schema identifier for build-store.sh",
-	"schemas/melusina-app-runtime-contract-v1.schema.json":           "the legacy runtime-contract schema with the Bazaar $id that build-store.sh serves",
 	"schemas/melusina-release-v1.schema.json":                        "the Bazaar release-attestation schema pinning its Squads authority, used by build-store.sh",
 	"deploy/store-generation/store.config.template.json":             "the retiring Store's update-path config template; the bootstrap component strips it",
 	"deploy/store-generation/update-controller.config.template.json": "the retiring Store's controller config template; the bootstrap component strips it",
-	"verifier/index.html":                                            "the Bazaar's static verifier page that build-store.sh copies into its dist-publish",
 }
 
-// retiringValueExceptions are exact texts, in named files, that are blanked
-// before the search. Each must still occur where it is declared, so a fixed
-// source forces its exception out.
+// No retiring-value exception is permitted in shipped Store bytes.
 var retiringValueExceptions = []struct {
 	name, glob, text, reason string
-}{
-	{"ui-source", "src/main.jsx", retiringUIPlaceholder, "an input placeholder in the Store UI source; remove it with the next UI rebuild"},
-	{"ui-bundle", sidecarModuleDir + "ui/assets/index-*.js", retiringUIPlaceholder, "the same placeholder in the committed UI bundle the sidecar embeds"},
-}
+}{}
 
 // nonProductionReason says why a repository path is not production source,
 // or returns "" when it is.
@@ -297,17 +284,13 @@ func TestStoreProductionFilesCarryNoRetiringEstateValue(t *testing.T) {
 		return true
 	})
 
-	// Matcher controls: a planted value is found by its field, the declared
-	// placeholder is not, and the root domain outside it still is.
+	// Matcher controls: a planted value and the old UI placeholder both fail.
 	registry := forbidden[retiringLicenseRegistryField]
 	if hits := textHits("plant", []byte("DEFAULT="+registry), forbidden); strings.Join(hits, "|") != retiringLicenseRegistryField+" in plant" {
 		t.Fatalf("matcher control: hits %q", hits)
 	}
-	if data, used := blankExceptions("src/main.jsx", []byte("placeholder=\"https://"+retiringUIPlaceholder+"\"")); len(used) != 1 || len(textHits("placeholder", data, forbidden)) != 0 {
-		t.Fatalf("exception control: the declared placeholder was not excepted (used %v)", used)
-	}
-	if data, _ := blankExceptions("src/main.jsx", []byte(retiringUIPlaceholder+" https://melusina-os.org")); !strings.Contains(strings.Join(textHits("mixed", data, forbidden), "|"), retiringRootDomainField+" in mixed") {
-		t.Fatal("exception control: the root domain outside the placeholder was excepted too")
+	if data, used := blankExceptions(sidecarModuleDir+"ui/assets/index-C5SMNmPA.js", []byte("placeholder=\"https://"+retiringUIPlaceholder+"\"")); len(used) != 0 || !strings.Contains(strings.Join(textHits("placeholder", data, forbidden), "|"), retiringRootDomainField+" in placeholder") {
+		t.Fatalf("placeholder control: the old UI hostname was not forbidden (used %v)", used)
 	}
 
 	scanned := map[string]bool{}
@@ -457,7 +440,7 @@ func TestStoreProgramsCompileNoRetiringEstateValue(t *testing.T) {
 			sources := compiledSources(t, flavor.tags, packages...)
 			var hits []string
 			retiringOnlyHits := map[string]bool{}
-			usedExceptions := map[string]bool{}
+			sawUIBundle := false
 			files := token.NewFileSet()
 			for _, source := range sources {
 				rel, err := filepath.Rel(root, source.path)
@@ -466,16 +449,16 @@ func TestStoreProgramsCompileNoRetiringEstateValue(t *testing.T) {
 				}
 				rel = filepath.ToSlash(rel)
 				moduleRel := strings.TrimPrefix(rel, sidecarModuleDir)
+				if !source.goFile && strings.HasPrefix(moduleRel, "ui/assets/index-") && strings.HasSuffix(moduleRel, ".js") {
+					sawUIBundle = true
+				}
 				raw, err := os.ReadFile(source.path)
 				if err != nil {
 					t.Fatal(err)
 				}
 				var found []string
 				if !source.goFile {
-					data, used := blankExceptions(rel, raw)
-					for _, name := range used {
-						usedExceptions[name] = true
-					}
+					data, _ := blankExceptions(rel, raw)
 					found = textHits(rel, data, forbidden)
 				} else {
 					parsed, err := parser.ParseFile(files, source.path, raw, parser.SkipObjectResolution)
@@ -518,8 +501,8 @@ func TestStoreProgramsCompileNoRetiringEstateValue(t *testing.T) {
 					t.Fatalf("%s: retiring-only %s carried a retiring value = %v", flavor.name, rel, retiringOnlyHits[rel])
 				}
 			}
-			if !usedExceptions["ui-bundle"] {
-				t.Fatalf("%s: the embedded UI bundle was not scanned (its declared placeholder never occurred)", flavor.name)
+			if !sawUIBundle {
+				t.Fatalf("%s: compiled source scan did not include the embedded UI bundle", flavor.name)
 			}
 		})
 	}
@@ -561,10 +544,7 @@ func TestStoreProgramsCarryNoRetiringEstateValueInBuiltBytes(t *testing.T) {
 	forbidden := storeProductionForbiddenValues(t)
 	forms := retiringValueForms(forbidden)
 	module := filepath.Join(repoRoot(t), sidecarModuleDir)
-	legacyLiterals := retiringOnlyLiterals(t, module, forbidden)
-	if len(legacyLiterals) == 0 {
-		t.Fatal("the retiring-only files carry no retiring literal; the standard-build exception is stale")
-	}
+	_ = module
 	env := append(os.Environ(), "GOFLAGS=", "GOWORK=off", "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0")
 	for _, flavor := range []struct{ name, tags string }{{"estate-bootstrap", "estatebootstrap"}, {"standard", ""}} {
 		t.Run(flavor.name, func(t *testing.T) {
@@ -596,17 +576,8 @@ func TestStoreProgramsCarryNoRetiringEstateValueInBuiltBytes(t *testing.T) {
 					t.Fatalf("%s does not name %s; the scan is not reading the built program", binary, importPath)
 				}
 				if pkg == "." {
-					if !bytes.Contains(raw, []byte(retiringUIPlaceholder)) {
-						t.Fatalf("%s sidecar lacks the declared UI placeholder; the exception is stale or the UI is not embedded", flavor.name)
-					}
-					raw = bytes.ReplaceAll(raw, []byte(retiringUIPlaceholder), bytes.Repeat([]byte{' '}, len(retiringUIPlaceholder)))
-				}
-				if flavor.tags == "" {
-					for _, literal := range legacyLiterals {
-						if pkg == "." && !bytes.Contains(raw, []byte(literal)) {
-							t.Fatalf("standard sidecar lacks retiring-only literal %q; the scan is not reading the built program", literal)
-						}
-						raw = bytes.ReplaceAll(raw, []byte(literal), make([]byte, len(literal)))
+					if bytes.Contains(raw, []byte(retiringUIPlaceholder)) {
+						t.Fatalf("%s sidecar embeds the retired UI hostname", flavor.name)
 					}
 				}
 				scanned := binary + ".scanned"

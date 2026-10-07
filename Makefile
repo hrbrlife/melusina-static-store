@@ -38,10 +38,8 @@ SUBMIT_BIN   := $(SIDECAR_DIR)/bin/submit
 # --- test: the Store's test entry point --------------------------------------
 # Runs the Go suite of each Store module and fails if any of them fails. The
 # store sidecar suite runs through its own entry point, scripts/run-tests.sh,
-# in BOTH build flavors: the standard build and the estatebootstrap build the
-# Store bootstrap component ships. A plain `go test ./...` in the sidecar
-# compiles only the standard flavor, so it says nothing about the build that
-# ships. Every suite runs even when an earlier one fails.
+# in the standard enrolled build shipped by the Store bootstrap component.
+# Every suite runs even when an earlier one fails.
 #
 # The sidecar script reads its release declaration and contracts clone from
 # the environment:
@@ -49,8 +47,7 @@ SUBMIT_BIN   := $(SIDECAR_DIR)/bin/submit
 #   CI=true MELUSINA_CONTRACTS_GIT_DIR=/abs/melusina-os-smartcontract make test
 #
 # run_tests_entrypoint_test.go runs this target with a stand-in go and fails
-# by name (test-entrypoint-bootstrap-flavor-missing) if the estatebootstrap
-# flavor stops reaching go test.
+# by name if the enrolled standard suite stops reaching go test.
 STORE_LINK_DIR := sidecar/bazaar-store-link
 test:
 	status=0

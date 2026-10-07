@@ -1,5 +1,3 @@
-//go:build estatebootstrap
-
 package main
 
 import (
@@ -11,9 +9,8 @@ import (
 	"testing"
 )
 
-// Test fixtures exercise both the legacy and bootstrap configurations. These
-// historical coordinates are test-only under the estatebootstrap tag and never
-// enter a released bootstrap binary.
+// Historical coordinates below are test fixtures only and never enter a
+// released standard binary.
 const (
 	defaultBazaarDomain            = "bazaar.melusina-os.org"
 	defaultBazaarSquadsMultisig    = "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"

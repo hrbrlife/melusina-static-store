@@ -23,7 +23,7 @@ from typing import Any
 
 
 SCHEMA = "melusina-app-runtime-contract-v1"
-SCHEMA_URL = "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json"
+SCHEMA_URL = "urn:melusina:runtime-contract:v1"
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SIDECAR_ID = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
 CANONICAL_HOST = re.compile(

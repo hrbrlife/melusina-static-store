@@ -48,7 +48,7 @@ case "$BOOTSTRAP_BUILD" in
     ;;
   1)
     BUILD_FLAVOR="estate-bootstrap"
-    BUILD_TAGS=(-tags estatebootstrap)
+    BUILD_TAGS=()
     ;;
   *)
     echo "MELUSINA_STORE_BOOTSTRAP_BUILD must be empty or 1" >&2

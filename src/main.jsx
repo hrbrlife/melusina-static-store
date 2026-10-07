@@ -61,7 +61,7 @@ const hostValidationError = (raw) => {
   if (!t) return "Enter a server URL.";
   let u;
   try { u = new URL(sanitizeHost(t)); }
-  catch { return "Not a valid URL — example: example.melusina-os.org"; }
+  catch { return "Not a valid URL — example: store.invalid"; }
   if (!u.hostname) return "Server address is missing a hostname.";
   if (/\s/.test(u.hostname)) return "Hostname cannot contain spaces.";
   return "";
@@ -446,7 +446,7 @@ function InstallModal({ app, onClose }) {
                   fontFamily: "'Orbitron', sans-serif",
                   textShadow: `0 0 6px ${T.accentGlow}`,
                 }} htmlFor="tenant-server-address">Server Address</label>
-                <input id="tenant-server-address" type="url" placeholder="https://example.melusina-os.org" value={newServer}
+                <input id="tenant-server-address" type="url" placeholder="https://store.invalid" value={newServer}
                   onChange={(e) => { setNewServer(e.target.value); if (serverError) setServerError(''); }} autoFocus
                   onKeyDown={(e) => e.key === 'Enter' && addAndInstallServer()}
                   aria-invalid={!!serverError}

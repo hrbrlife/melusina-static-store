@@ -43,10 +43,9 @@ func (cfg *Config) normalizeReleaseSquadsAuthority() error {
 }
 
 // configuredReleaseSquadsAuthority is the one release-authority parser for
-// both config-load and serve-time checks. The selected build policy decides
-// whether a legacy fixed authority remains available. An estatebootstrap build
-// requires the enrolled-estate form so a fresh component cannot inherit a
-// prior estate merely because a field was omitted.
+// both config-load and serve-time checks. The standard build requires the
+// enrolled-estate form so a fresh component cannot inherit a prior estate
+// merely because a field was omitted.
 func (cfg Config) configuredReleaseSquadsAuthority() (configuredSquadsAuthority, error) {
 	multisig, err := canonicalSquadsPubkey("release_squads_authority.multisig", cfg.ReleaseSquadsAuthority.Multisig)
 	if err != nil {

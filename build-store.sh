@@ -40,7 +40,6 @@ GH_HARD_LIMIT_BYTES=104857600  # GitHub's documented push rejection limit (100 M
 RELEASES_TAG="packages-v1"
 RELEASES_BASE="https://github.com/hrbrlife/melusina-static-store/releases/download/$RELEASES_TAG"
 VERIFIER_SRC="verifier"
-BASE_URL="https://bazaar.melusina-os.org"
 RUNTIME_CONTRACT_VALIDATOR="$SCRIPT_DIR/scripts/validate-runtime-contract.py"
 RUNTIME_CONTRACT_SCHEMA="$SCRIPT_DIR/schemas/melusina-app-runtime-contract-v1.schema.json"
 RELEASE_ATTESTATION_SCHEMA="$SCRIPT_DIR/schemas/melusina-release-v1.schema.json"
@@ -114,6 +113,10 @@ if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" != "1" && -n "${MELUSINA_BUNDLE_TARBALL
     echo "MELUSINA_BUNDLE_UPDATE_TOOL is not executable: $MELUSINA_BUNDLE_UPDATE_TOOL" >&2; exit 2; }
   BUNDLE_UPDATE=true
 fi
+
+# Resolve the Store origin only after named-input checks have refused stale or
+# unpinned inputs. It is still required before any release bytes are assembled.
+BASE_URL="$(go -C "$SCRIPT_DIR/sidecar/melusina-store-sidecar" run ./cmd/estate-origin --origin)"
 
 # Set explicit TMPDIR for reproducibility. Dry runs use the system temp area so
 # validation does not create repo-local artifacts.
@@ -1465,7 +1468,11 @@ if [[ "${MELUSINA_SKIP_BUNDLE_UPDATE:-}" == "1" ]]; then
   # own signed update/ payload — including generation.json and install.sh — with
   # whatever that unrelated origin happens to serve. Copy locally when the live
   # file exists; only reach for the remote mirror when it does not.
-  LIVE_BASE="${MELUSINA_STORE_UPDATE_LIVE_BASE:-https://bazaar.melusina-os.org/update}"
+  LIVE_BASE="$BASE_URL/update"
+  [[ -z "${MELUSINA_STORE_UPDATE_LIVE_BASE:-}" || "$MELUSINA_STORE_UPDATE_LIVE_BASE" == "$LIVE_BASE" ]] || {
+    fail "MELUSINA_STORE_UPDATE_LIVE_BASE differs from the signed estate origin"
+    exit 2
+  }
   for f in dev stable latest.json manifest.json install.sh; do
     if [[ -f "$FINAL_DIR/update/$f" ]]; then
       cp "$FINAL_DIR/update/$f" "$UPDATE_OUT/$f"
@@ -1506,7 +1513,7 @@ elif $BUNDLE_UPDATE; then
     # client's Sandstorm binary on next self-update poll. Hit once 2026-05-19:
     # local source dir held only builds 0+1 while live was build=4.
     LIVE_BUILD="$(curl -sf --max-time 8 \
-      "https://bazaar.melusina-os.org/update/manifest.json" \
+      "$BASE_URL/update/manifest.json" \
       2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("build",-1))' \
       2>/dev/null || echo -1)"
     if [[ "$LIVE_BUILD" =~ ^[0-9]+$ ]] && [[ "$SANDSTORM_BUILD_NUM" -lt "$LIVE_BUILD" ]]; then

@@ -404,7 +404,7 @@ func (t *Trust) Admit(e Entry, installerHash [32]byte) error {
 		previous = signer.PublisherEd25519Pubkey
 	}
 	if 1+uint32(len(e.AdditionalPublisherSignatures)) < t.threshold {
-		return fmt.Errorf("%w: %d distinct signatures below profile threshold %d", ErrThresholdUnmet, 1+len(e.AdditionalPublisherSignatures), t.threshold)
+		return fmt.Errorf("1.6::store-threshold: %w: %d distinct signatures below profile threshold %d", ErrThresholdUnmet, 1+len(e.AdditionalPublisherSignatures), t.threshold)
 	}
 	if !ed25519.Verify(ed25519.PublicKey(e.PublisherEd25519Pubkey[:]), e.SignedPayloadHash[:], e.PublisherSignature[:]) {
 		return fmt.Errorf("%w: publisher %x", ErrSignatureInvalid, e.PublisherEd25519Pubkey[:])

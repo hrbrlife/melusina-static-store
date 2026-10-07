@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -49,6 +50,17 @@ func v2Fixture(t *testing.T, threshold uint32) (Entry, *Trust, []ed25519.Private
 		t.Fatal(err)
 	}
 	return e, trust, keys
+}
+
+func TestH09_1_6StoreThresholdUsesOwnerNOfM(t *testing.T) {
+	entry, two, _ := v2Fixture(t, 2)
+	if err := two.Admit(entry, entry.InstallerHash); err != nil {
+		t.Fatalf("1.6::store-threshold positive 2-of-3: %v", err)
+	}
+	_, three, _ := v2Fixture(t, 3)
+	if err := three.Admit(entry, entry.InstallerHash); err == nil || !errors.Is(err, ErrThresholdUnmet) || !strings.Contains(err.Error(), "1.6::store-threshold") {
+		t.Fatalf("1.6::store-threshold: 2 signatures satisfied 3-of-3: %v", err)
+	}
 }
 
 func encodeV2(e Entry) []byte {

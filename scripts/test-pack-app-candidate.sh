@@ -33,6 +33,7 @@ endif
 pack-msb-test:
 	@printf 'namedcoin-msb-test\n' >> "$${BUILD_LOG:?BUILD_LOG is required for the profile fixture}"
 	@printf 'candidate-bytes-msb-test' > "$(SPK_OUT)"
+	@if [ "$${MUTATE_NAMEDCOIN_METADATA:-0}" = 1 ]; then printf '\n' >> metadata.json; fi
 MAKE
 cat > "$APP/metadata.json" <<'JSON'
 {"appId":"testappid","version":"1.2.3"}
@@ -256,10 +257,31 @@ git -C "$APP" push -qu origin HEAD:main
 rm -f "$APP/app.spk"
 BUILD_LOG="$WORK/namedcoin-profile.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
   MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet \
-  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --spk-out "$WORK/namedcoin-profile-output.spk" --receipt-out "$WORK/namedcoin-profile-receipt.json"
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --spk-out "$WORK/namedcoin-profile-output.spk" --metadata-out "$WORK/namedcoin-profile-metadata.json" --receipt-out "$WORK/namedcoin-profile-receipt.json"
 [[ "$(cat "$WORK/namedcoin-profile.log")" == "namedcoin-msb-test" ]]
 [[ -f "$WORK/namedcoin-profile-output.spk" && ! -e "$APP/app.spk" ]]
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+python3 - "$WORK/namedcoin-profile-output.spk" "$WORK/namedcoin-profile-metadata.json" "$APP/metadata.json" <<'PY'
+import hashlib, json, pathlib, sys
+spk, staged, source = map(pathlib.Path, sys.argv[1:])
+digest = hashlib.sha256(spk.read_bytes()).hexdigest()
+generated = json.loads(staged.read_text())
+committed = json.loads(source.read_text())
+assert generated["packageId"] == digest[:32]
+assert generated["sha256"] == digest
+assert {k: v for k, v in generated.items() if k not in ("packageId", "sha256")} == {
+    k: v for k, v in committed.items() if k not in ("packageId", "sha256")}
+PY
+set +e
+BUILD_LOG="$WORK/namedcoin-profile-mutation.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet MUTATE_NAMEDCOIN_METADATA=1 \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --spk-out "$WORK/namedcoin-mutated-output.spk" --metadata-out "$WORK/namedcoin-mutated-metadata.json" >"$WORK/namedcoin-source-mutation.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'NamedCoin candidate pack mutated source metadata' "$WORK/namedcoin-source-mutation.log"
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+echo 'PASS NamedCoin source mutation refused by NamedCoin candidate pack mutated source metadata'
 
 python3 - "$APP/metadata.json" <<'PY'
 import json, sys

@@ -261,6 +261,10 @@ if [[ -n "$caller_source_epoch" && "$source_epoch" == "$caller_source_epoch" ]];
 fi
 
 if ! cmp -s "$METADATA" "$METADATA_BASELINE"; then
+  if [[ "$PACK_PROFILE" == namedcoin-msb-devnet ]]; then
+    echo "NamedCoin candidate pack mutated source metadata; refusing to publish" >&2
+    exit 2
+  fi
   [[ -n "$METADATA_OUT" ]] || {
     echo "pack generated metadata.json; pass --metadata-out to preserve the exact staged metadata without dirtying source" >&2
     exit 2
@@ -318,6 +322,29 @@ spk_sha="$(sha256sum "$SPK_OUT" | awk '{print $1}')"
   echo "packageId $package_id does not match sha256 prefix ${spk_sha:0:32}" >&2
   exit 2
 }
+
+# NamedCoin's committed catalog metadata pins a previous package. Derive a
+# staging copy from the just-verified SPK while keeping the committed source
+# checkout byte-identical. The Store consumes this copy and the signed SPK.
+if [[ "$PACK_PROFILE" == namedcoin-msb-devnet ]]; then
+  [[ -n "$METADATA_OUT" ]] || {
+    echo "NamedCoin candidate pack requires --metadata-out" >&2
+    exit 2
+  }
+  [[ ! -e "$METADATA_OUT" && ! -L "$METADATA_OUT" ]] || {
+    echo "NamedCoin candidate metadata output must be new" >&2
+    exit 2
+  }
+  mkdir -p "$(dirname "$METADATA_OUT")"
+  python3 - "$METADATA" "$METADATA_OUT" "$package_id" "$spk_sha" <<'PY'
+import json, pathlib, sys
+source, output = map(pathlib.Path, sys.argv[1:3])
+metadata = json.loads(source.read_text(encoding="utf-8"))
+metadata["packageId"] = sys.argv[3]
+metadata["sha256"] = sys.argv[4]
+output.write_text(json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+PY
+fi
 
 candidate_metadata="$METADATA"
 if [[ -n "$METADATA_OUT" && -f "$METADATA_OUT" ]]; then

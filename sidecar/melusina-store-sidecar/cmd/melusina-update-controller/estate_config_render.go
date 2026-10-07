@@ -525,12 +525,12 @@ func refuseRootStoreHost(hostRoot string) error {
 	}
 	marker, err := rootStoreHostMarker(hostRoot)
 	if err != nil {
-		return fmt.Errorf("%s:probe: %w", refusalControllerRenderRootStore, err)
+		return fmt.Errorf("3.6::title-claim: %s:probe: %w", refusalControllerRenderRootStore, err)
 	}
 	if marker == "" {
 		return nil
 	}
-	return fmt.Errorf("%s:%s: this host carries the Store's installed tree; the root Store host has no controller-managed component, so it gets neither config.json nor component-registry.json and its controller service and timer stay inactive", refusalControllerRenderRootStore, marker)
+	return fmt.Errorf("3.6::title-claim: %s:%s: this host carries the Store's installed tree; the root Store host has no controller-managed component, so it gets neither config.json nor component-registry.json and its controller service and timer stay inactive", refusalControllerRenderRootStore, marker)
 }
 
 // rootStoreHostMarker returns the host path (without hostRoot) of the first

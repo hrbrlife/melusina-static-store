@@ -815,7 +815,7 @@ when a new path field has no class.
   target) and is signed by the Store operator key. It names roots, never host
   paths, and carries no time of its own, so one state gives the same bytes
   wherever it lives (`TestStoreStateTarDeterministicTwoPaths`).
-- `store-state-export -config … -out <new file>` passes the enrollment gate,
+- `store-state-export -config … -generation <N> -out <new file>` passes the enrollment gate,
   then takes the Store's `writer.lock`, so it refuses while the Store serves:
   stop the Store, export, start it. Before it writes a byte it checks the state
   the way a restore will: a committed genesis trust root (a migration record

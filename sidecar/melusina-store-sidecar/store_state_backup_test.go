@@ -722,3 +722,25 @@ func TestStoreStateImportAsAnotherUserRefuses(t *testing.T) {
 		t.Fatalf("positive control: %v", err)
 	}
 }
+
+func TestH09_1_17StoreExportNamesOnlyTheStorePartition(t *testing.T) {
+	name, err := storeStateExportNamespace("root-store", 3)
+	if err != nil || name != "store-root-store-g3" {
+		t.Fatalf("1.17::title-claim positive: %q, %v", name, err)
+	}
+	for _, row := range []struct {
+		name    string
+		storeID string
+		gen     uint64
+	}{
+		{"generation-zero", "root-store", 0},
+		{"invalid-store-id", "Root-store", 1},
+		{"too-long", strings.Repeat("a", 55), 1},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			if _, err := storeStateExportNamespace(row.storeID, row.gen); err == nil || !strings.Contains(err.Error(), "1.17::title-claim") {
+				t.Fatalf("1.17::title-claim refusal: %v", err)
+			}
+		})
+	}
+}

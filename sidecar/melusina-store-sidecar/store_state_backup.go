@@ -397,6 +397,7 @@ type storeStateReport struct {
 	Action            string `json:"action"`
 	Format            string `json:"format"`
 	SubjectKind       string `json:"subjectKind"`
+	Namespace         string `json:"namespace,omitempty"`
 	StoreID           string `json:"storeId"`
 	OperatorKey       string `json:"operatorKey"`
 	CurrentGeneration string `json:"currentGeneration"`
@@ -406,11 +407,12 @@ type storeStateReport struct {
 	StreamBytes       int64  `json:"streamBytes"`
 }
 
-func printStoreStateReport(action string, summary storerecovery.StateSummary) {
+func printStoreStateReport(action string, summary storerecovery.StateSummary, namespace string) {
 	report := storeStateReport{
 		Schema: "melusina.store-state-report.v1", Action: action,
 		Format: storerecovery.StateFormat, SubjectKind: storerecovery.StateSubjectKind,
-		StoreID: summary.Manifest.StoreID, OperatorKey: summary.Manifest.OperatorKey,
+		Namespace: namespace,
+		StoreID:   summary.Manifest.StoreID, OperatorKey: summary.Manifest.OperatorKey,
 		CurrentGeneration: summary.Manifest.CurrentGeneration, Members: len(summary.Manifest.Members),
 		ManifestSHA256: summary.ManifestSHA256, StreamSHA256: summary.StreamSHA256, StreamBytes: summary.StreamBytes,
 	}
@@ -421,6 +423,14 @@ func printStoreStateReport(action string, summary storerecovery.StateSummary) {
 	fmt.Println(string(encoded))
 }
 
+func storeStateExportNamespace(storeID string, generation uint64) (string, error) {
+	name, err := storerecovery.StateNamespace(storeID, generation)
+	if err != nil {
+		return "", fmt.Errorf("1.17::title-claim: %w", err)
+	}
+	return name, nil
+}
+
 // runStoreStateExportSubcommand acts with the operator key, so it passes the
 // enrollment gate first; its first action beyond the gate is the writer
 // exclusion, which a running Store holds.
@@ -428,6 +438,7 @@ func runStoreStateExportSubcommand(args []string) {
 	fs := flag.NewFlagSet("store-state-export", flag.ExitOnError)
 	configPath := fs.String("config", "store.config.json", "path to operator config (JSON)")
 	outPath := fs.String("out", "", "new file to write the store-state-tar-v1 stream to (refused if it exists)")
+	generation := fs.Uint64("generation", 0, "RemoteBak store-state namespace generation (required)")
 	_ = fs.Parse(args)
 	if strings.TrimSpace(*outPath) == "" {
 		log.Fatalf("store-state-export: -out is required")
@@ -438,6 +449,10 @@ func runStoreStateExportSubcommand(args []string) {
 	}
 	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
 		log.Fatalf("config: %v", err)
+	}
+	namespace, err := storeStateExportNamespace(cfg.StoreID, *generation)
+	if err != nil {
+		log.Fatalf("store-state-export: %v", err)
 	}
 	var cr chainReader
 	if cfg.RPCURL != "" {
@@ -453,7 +468,7 @@ func runStoreStateExportSubcommand(args []string) {
 	if err != nil {
 		log.Fatalf("store-state-export: %v", err)
 	}
-	printStoreStateReport("store-state-export", summary)
+	printStoreStateReport("store-state-export", summary, namespace)
 }
 
 // runStoreStateVerifySubcommand checks a stream offline and writes nothing.
@@ -475,7 +490,7 @@ func runStoreStateVerifySubcommand(args []string) {
 	if err != nil {
 		log.Fatalf("store-state-verify: %v", err)
 	}
-	printStoreStateReport("store-state-verify", summary)
+	printStoreStateReport("store-state-verify", summary, "")
 }
 
 // runStoreStateImportSubcommand restores a stream onto this host's empty
@@ -505,5 +520,5 @@ func runStoreStateImportSubcommand(args []string) {
 	if err != nil {
 		log.Fatalf("store-state-import: %v", err)
 	}
-	printStoreStateReport("store-state-import", summary)
+	printStoreStateReport("store-state-import", summary, "")
 }

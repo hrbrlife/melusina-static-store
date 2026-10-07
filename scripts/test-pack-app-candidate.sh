@@ -85,6 +85,27 @@ assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
+# A partial-clone filter entry may be exposed as a URL-shaped remote name.
+# It has no publication authority and must not break the origin proof.
+git -C "$APP" config remote.https://github.com/apache/fineract.git.promisor true
+git -C "$APP" config remote.https://github.com/apache/fineract.git.partialclonefilter blob:none
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --spk-out "$WORK/url-remote.spk" \
+  --receipt-out "$WORK/url-remote-receipt.json" >"$WORK/url-remote.log" 2>&1
+git -C "$APP" config --remove-section remote.https://github.com/apache/fineract.git
+echo 'PASS candidate pack ignores a URL-shaped partial-clone filter remote'
+
+git -C "$APP" remote rename origin saved-origin
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" >"$WORK/no-origin.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate source has no origin remote' "$WORK/no-origin.log"
+git -C "$APP" remote rename saved-origin origin
+echo 'PASS candidate pack refuses missing origin authority'
+
 # A single-branch source cohort must still prove a just-pushed dev-publish
 # revision. The normal remote fetchspec would only refresh main and make this
 # real remote tip falsely appear local-only.

@@ -40,28 +40,22 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
   [[ -z "$dirty" ]] || { echo "source tree is dirty before candidate build" >&2; printf '%s\n' "$dirty" >&2; exit 2; }
   source_revision="$(git -C "$APP_DIR" rev-parse HEAD)"
-  mapfile -t source_remotes < <(git -C "$source_root" remote | LC_ALL=C sort)
-  [[ ${#source_remotes[@]} -gt 0 ]] || { echo "candidate source has no remote" >&2; exit 2; }
-  for remote in "${source_remotes[@]}"; do
-    # A source cohort may have been created with --single-branch. Its default
-    # remote fetchspec then omits dev-publish even when that exact committed
-    # revision was pushed moments ago, causing a false "unpushed" refusal.
-    # Refresh remote heads explicitly before the reachability check rather
-    # than trusting a clone-local fetchspec or accepting an unverifiable tip.
-    # This refresh proves source-ref reachability, not archived submodule
-    # availability. The selected checkout's initialized submodules remain
-    # build inputs; unrelated historical gitlinks must not be fetched here.
-    # Reviewed candidate jobs publish under refs/velocity, not GitHub heads.
-    # Fetch that remote namespace explicitly, then apply the same committed
-    # revision reachability check to both kinds of remote ref.
-    git -C "$source_root" fetch --prune --recurse-submodules=no "$remote" \
-      "+refs/heads/*:refs/remotes/$remote/*" \
-      "+refs/velocity/*:refs/remotes/$remote/velocity/*" || {
-      echo "cannot refresh source remote refs: $remote" >&2
-      exit 2
-    }
-  done
-  pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
+  # Only the reviewed origin can prove publication. Imported partial-clone
+  # filter entries can appear as URL-shaped remote names with no URL; fetching
+  # those names generates invalid refspecs and gives no release authority.
+  git -C "$source_root" remote get-url origin >/dev/null 2>&1 || {
+    echo "candidate source has no origin remote" >&2
+    exit 2
+  }
+  # Fetch both landing heads and hidden candidate refs explicitly, even when
+  # a single-branch checkout has a narrow default fetchspec.
+  git -C "$source_root" fetch --prune --recurse-submodules=no origin \
+    '+refs/heads/*:refs/remotes/origin/*' \
+    '+refs/velocity/*:refs/remotes/origin/velocity/*' || {
+    echo "cannot refresh source remote refs: origin" >&2
+    exit 2
+  }
+  pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/origin/ \
     | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
   [[ -n "$pushed_ref" ]] || { echo "candidate revision is not reachable from any fetched remote ref: $source_revision" >&2; exit 2; }
   source_commit_epoch="$(git -C "$APP_DIR" log -1 --format=%ct HEAD)"

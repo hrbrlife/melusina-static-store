@@ -713,6 +713,10 @@
       "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/cmd/submit/main_test[.]go:381; reviewed as source material, not an estate endpoint."
     },
     {
+      "host": "controlsig.payload.target",
+      "reason": "Go signed-envelope field selector in governed publication test; no DNS endpoint."
+    },
+    {
       "host": "core.mk",
       "reason": "Tracked dotted filename or identifier in KEEP - COMPONENTS FOR APPS[.]md:38; reviewed as source material, not an estate endpoint."
     },
@@ -2531,10 +2535,6 @@
     {
       "host": "publisher.example.test",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/hermetic_harness_test[.]go; it is not an estate endpoint."
-    },
-    {
-      "host": "publisherenvelope.new",
-      "reason": "Go constructor selector in the governed private publication test; no DNS endpoint."
     },
     {
       "host": "purchase.rs",

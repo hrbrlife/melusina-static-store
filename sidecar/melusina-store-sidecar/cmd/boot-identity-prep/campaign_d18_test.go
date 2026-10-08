@@ -90,7 +90,7 @@ func TestCampaignD18CAIssuedStoreLeafAndNamedMutations(t *testing.T) {
 	wrongDomain := append([]string{}, args...)
 	for i := range wrongDomain {
 		if wrongDomain[i] == "-domain" {
-			wrongDomain[i+1] = "foreign.example.org"
+			wrongDomain[i+1] = "other.example.org"
 			break
 		}
 	}

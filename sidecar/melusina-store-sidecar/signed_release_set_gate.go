@@ -17,6 +17,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -42,22 +43,33 @@ type servedReleaseSet struct {
 			Ed25519PublicKey string `json:"ed25519PublicKey"`
 		} `json:"keys"`
 	} `json:"publisherKeyset"`
-	Recalls        []json.RawMessage   `json:"recalls"`
+	Recalls []struct {
+		Kind     string `json:"kind"`
+		Sequence uint64 `json:"sequence"`
+		SHA256   string `json:"sha256"`
+	} `json:"recalls"`
 	PhaseEndpoints map[string][]string `json:"phaseEndpoints"`
 	Artifacts      []struct {
-		Role         string   `json:"role"`
-		Name         string   `json:"name"`
-		SHA256       string   `json:"sha256"`
-		SizeBytes    int64    `json:"sizeBytes"`
-		SourceRepo   string   `json:"sourceRepo"`
-		SourceCommit string   `json:"sourceCommit"`
-		Toolchain    string   `json:"toolchain"`
-		Origins      []string `json:"origins"`
-		Phase        string   `json:"phase"`
+		Role              string    `json:"role"`
+		Name              string    `json:"name"`
+		SHA256            string    `json:"sha256"`
+		SizeBytes         int64     `json:"sizeBytes"`
+		SourceRepo        string    `json:"sourceRepo"`
+		SourceCommit      string    `json:"sourceCommit"`
+		Toolchain         string    `json:"toolchain"`
+		Origins           []string  `json:"origins"`
+		Phase             string    `json:"phase"`
+		ShellCapabilities *[]string `json:"shellCapabilities,omitempty"`
+		IncusFingerprint  *string   `json:"incusFingerprint,omitempty"`
+		BuildInputSHA256  *string   `json:"buildInputSha256,omitempty"`
 	} `json:"artifacts"`
-	Completeness   string            `json:"completeness"`
-	DeclaredAbsent []json.RawMessage `json:"declaredAbsent"`
-	Signatures     []struct {
+	Completeness   string `json:"completeness"`
+	DeclaredAbsent []struct {
+		Role   string `json:"role"`
+		Name   string `json:"name"`
+		Reason string `json:"reason"`
+	} `json:"declaredAbsent"`
+	Signatures []struct {
 		KeyID     string `json:"keyId"`
 		Signature string `json:"signature"`
 	} `json:"signatures"`
@@ -100,7 +112,9 @@ func signedSetDigest(set servedReleaseSet) (string, error) {
 	}
 	u32(uint32(len(set.Recalls)))
 	for _, recall := range set.Recalls {
-		str(string(recall))
+		str(recall.Kind)
+		u64(recall.Sequence)
+		str(recall.SHA256)
 	}
 	for _, phase := range []string{"p0-verify", "p1-host-prep", "p2-enroll", "p3-foundation", "p4-after-closure"} {
 		str(phase)
@@ -128,7 +142,52 @@ func signedSetDigest(set servedReleaseSet) (string, error) {
 	str(set.Completeness)
 	u32(uint32(len(set.DeclaredAbsent)))
 	for _, absence := range set.DeclaredAbsent {
-		str(string(absence))
+		str(absence.Role)
+		str(absence.Name)
+		str(absence.Reason)
+	}
+	// Match the publisher's optional signed extension preimage. A legacy set
+	// with no extensions has no suffix, preserving its original signatures.
+	var extended uint32
+	for _, artifact := range set.Artifacts {
+		if artifact.ShellCapabilities != nil || artifact.IncusFingerprint != nil || artifact.BuildInputSHA256 != nil {
+			extended++
+		}
+	}
+	if extended != 0 {
+		str("C3_RELEASE_SET_EXTENSIONS_V1\n")
+		u32(extended)
+		for index, artifact := range set.Artifacts {
+			var mask uint8
+			if artifact.ShellCapabilities != nil {
+				mask |= 1
+			}
+			if artifact.IncusFingerprint != nil {
+				mask |= 2
+			}
+			if artifact.BuildInputSHA256 != nil {
+				mask |= 4
+			}
+			if mask == 0 {
+				continue
+			}
+			u32(uint32(index))
+			preimage = append(preimage, mask)
+			if artifact.ShellCapabilities != nil {
+				capabilities := append([]string(nil), (*artifact.ShellCapabilities)...)
+				sort.Strings(capabilities)
+				u32(uint32(len(capabilities)))
+				for _, capability := range capabilities {
+					str(capability)
+				}
+			}
+			if artifact.IncusFingerprint != nil {
+				str(*artifact.IncusFingerprint)
+			}
+			if artifact.BuildInputSHA256 != nil {
+				str(*artifact.BuildInputSHA256)
+			}
+		}
 	}
 	sum := sha256.Sum256(preimage)
 	return hex.EncodeToString(sum[:]), nil
@@ -158,6 +217,21 @@ func verifySignedReleaseSet(raw []byte, trusted []string, threshold uint32) (ser
 	var set servedReleaseSet
 	if len(raw) == 0 || len(raw) > 8<<20 || assertNoDuplicateJSONKeys(raw) != nil {
 		return set, "", errors.New("release-set-json-invalid")
+	}
+	// A null optional field otherwise decodes as an absent pointer and keeps
+	// the same signed preimage, even though the served JSON has changed.
+	var shape struct {
+		Artifacts []map[string]json.RawMessage `json:"artifacts"`
+	}
+	if err := json.Unmarshal(raw, &shape); err != nil {
+		return set, "", fmt.Errorf("release-set-json-invalid: %w", err)
+	}
+	for _, artifact := range shape.Artifacts {
+		for _, field := range []string{"shellCapabilities", "incusFingerprint", "buildInputSha256"} {
+			if value, present := artifact[field]; present && bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+				return set, "", fmt.Errorf("release-set-json-invalid: null %s extension", field)
+			}
+		}
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()

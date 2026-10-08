@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 
 HERE = Path(__file__).resolve().parent
@@ -1559,6 +1560,12 @@ def test_catalog_pins_one_shared_squads_authority():
                 "threshold": 3,
                 "memberCount": 4,
             }
+            with patch.object(provider, "member_keypair_paths", return_value=[]):
+                os.environ["MEL_RELEASE_RPC_URL"] = "http://127.0.0.1:19781"
+                executor_env = provider.generic_executor_env()
+                assert executor_env["SQUADS_PROGRAM_ID"] == TEST_SQUADS_PROGRAM_ID, (
+                    "RELEASE_REVOKE_EXECUTOR_PROGRAM_MUST_BE_CATALOG_PINNED"
+                )
             os.environ["MEL_RELEASE_SQUADS_VAULT"] = TEST_SQUADS_MULTISIG
             try:
                 provider.require_shared_squads_authority()

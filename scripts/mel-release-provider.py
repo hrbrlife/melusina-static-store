@@ -3009,9 +3009,11 @@ def policy_executor_env() -> dict[str, str]:
 
 
 def generic_executor_env() -> dict[str, str]:
+    authority = require_shared_squads_authority()
     return {
         "SOLANA_RPC_URL": env("MEL_RELEASE_RPC_URL", required=True),
         "MELUSINA_RPC_PRIMARY": env("MEL_RELEASE_RPC_URL", required=True),
+        "SQUADS_PROGRAM_ID": authority["programId"],
         "SQUADS_MEMBER_KEYPAIRS": ",".join(str(path) for path in member_keypair_paths()),
     }
 

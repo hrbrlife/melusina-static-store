@@ -635,7 +635,6 @@ func TestControlPublishHeaderAndRouteAreStrict(t *testing.T) {
 }
 
 func TestControlCriticalRecheckRefusesBeforeNonceOrCatalogMutation(t *testing.T) {
-	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
@@ -644,6 +643,10 @@ func TestControlCriticalRecheckRefusesBeforeNonceOrCatalogMutation(t *testing.T)
 	m := newMockChainReader()
 	f.pinAccept(m, operatorSignPub32(t, op))
 	svc := newTestService(t, cfg, m, op)
+	// Service construction seeds the durable ledger from the wall clock. Fix
+	// this test's clock afterwards so a loaded farm cannot put it below the
+	// persisted high-water before the first request.
+	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	svc.now = func() time.Time { return clock }
 	publisher := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}

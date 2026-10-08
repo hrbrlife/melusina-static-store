@@ -245,7 +245,7 @@ case "$PACK_PROFILE" in
       exit 2
     }
     PACK_TARGET="pack-msb-test"
-    make -C "$APP_DIR" "${MAKE_VARS[@]}" "$PACK_TARGET"
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" "SPK_OUT=$SPK_OUT" "$PACK_TARGET"
     ;;
 esac
 [[ -f "$SPK_OUT" ]] || { echo "$PACK_TARGET did not create $SPK_OUT" >&2; exit 2; }

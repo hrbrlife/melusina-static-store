@@ -267,6 +267,15 @@ BUILD_LOG="$WORK/namedcoin-profile.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
   "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/namedcoin-profile-receipt.json"
 [[ "$(cat "$WORK/namedcoin-profile.log")" == "namedcoin-msb-test" ]]
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+rm -f "$APP/app.spk"
+BUILD_LOG="$WORK/namedcoin-custom-profile.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+  --spk-out "$WORK/namedcoin-custom-output.spk" \
+  --receipt-out "$WORK/namedcoin-custom-receipt.json"
+[[ -f "$WORK/namedcoin-custom-output.spk" && ! -e "$APP/app.spk" ]]
+[[ "$(cat "$WORK/namedcoin-custom-profile.log")" == "namedcoin-msb-test" ]]
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
 python3 - "$APP/metadata.json" <<'PY'
 import json, sys

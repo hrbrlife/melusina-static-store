@@ -28,6 +28,19 @@ import (
 
 var enc = base64.StdEncoding
 
+func newTestDurableNonceLedger(t *testing.T) *publishNonceLedger {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), publishNonceLedgerDirName)
+	if err := initializePublishNonceLedger(root, testPublishNonceLedgerID, defaultPublishNonceLedgerOptions()); err != nil {
+		t.Fatal(err)
+	}
+	ledger, err := openPublishNonceLedger(root, testPublishNonceLedgerID, defaultPublishNonceLedgerOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ledger
+}
+
 // stubAssembler gives each handler test an isolated in-process read surface.
 func stubAssembler(t *testing.T) *CatalogAssembler {
 	t.Helper()

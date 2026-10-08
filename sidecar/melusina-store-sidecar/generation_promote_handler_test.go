@@ -227,10 +227,11 @@ func TestVerifySidecarComponentOnChain(t *testing.T) {
 func TestHandleGeneratePromoteRejectPaths(t *testing.T) {
 	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
 	svc := &publishService{
-		cfg:      Config{DistDir: t.TempDir(), PublicBaseURL: "https://bazaar.melusina-os.org", StoreID: "melusina-os-root-store"},
-		operator: op,
-		cr:       &mockChainReader{},
-		nonces:   envelope.NewMemoryNonceCache(),
+		cfg:       Config{DistDir: t.TempDir(), PublicBaseURL: "https://bazaar.melusina-os.org", StoreID: "melusina-os-root-store"},
+		operator:  op,
+		cr:        &mockChainReader{},
+		nonces:    envelope.NewMemoryNonceCache(),
+		appNonces: newTestDurableNonceLedger(t),
 	}
 
 	// Read-only readiness lets publish refuse an old store before it creates a
@@ -423,9 +424,10 @@ func TestHandleGeneratePromoteRejectsCrossRouteEnvelopeAndDuplicateJSON(t *testi
 			StoreID:       "melusina-os-root-store",
 			Policy:        Policy{AcceptPublishers: []string{publisher.Public().SignPubkeyB58}},
 		},
-		operator: op,
-		cr:       &mockChainReader{},
-		nonces:   envelope.NewMemoryNonceCache(),
+		operator:  op,
+		cr:        &mockChainReader{},
+		nonces:    envelope.NewMemoryNonceCache(),
+		appNonces: newTestDurableNonceLedger(t),
 	}
 
 	reqJSON, err := json.Marshal(promoteReq(0, shellComp("sandstorm-shell", strings.Repeat("a", 64), "build-1")))

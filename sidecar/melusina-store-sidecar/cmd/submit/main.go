@@ -1,21 +1,12 @@
-// Command submit is the paired sealed-v3 publish client (FEDERATED-STORE-MVP
-// §C3). It REPLACES the gh-pages force-push: instead of writing the catalog
-// itself, it packs the publisher's CLAIMS (the canonical RELEASE.json) into a
-// signed publish-request envelope (envelope.KindPublishRequest) and POSTs
-// them — together with the SPK bytes — to a
-// store sidecar's gated POST /publish (the C2.3 receive contract). The sidecar
-// is the SINGLE WRITER; this client never touches git.
+// Command submit prepares one signed Bazaar Control publication request.
+// It binds the canonical RELEASE.json and SPK digest to the exact dossier
+// publish route, then writes the request to an owner-only file. The Pearl
+// sends that request over the private Store Link mTLS channel after its
+// command and approval checks. This command makes no publication HTTP call.
 //
-// Trust flow (FEDERATED-STORE-MVP §0): the client signs an envelope binding
-// RequestHash=sha256(SPK) and Body=RELEASE.json, addressed to the sidecar's
-// operator identity (the envelope destination). On a 200 the store returns a
-// store-signed provenance Receipt; the client then re-derives the store's
-// on-chain StoreOperatorAuthorization, reads its store_authority, and verifies
-// the receipt's operatorSignature (ed25519 over the RAW 96 bytes
-// appHash||releaseHash||servingDomainHash, contract C-2) against that on-chain
-// key. A receipt the chain does not vouch for is a FAILURE (exit 1) — the store
-// saying "I stored it" is worthless unless the on-chain store_authority signed
-// the tuple.
+// Its read-only receipt mode re-derives the store's on-chain
+// StoreOperatorAuthorization and verifies the operator signature over the
+// appHash, releaseHash and servingDomainHash tuple against that authority.
 //
 // The ReleaseEntry PDA the envelope names and the StoreOperatorAuthorization
 // PDA that vouches for a receipt are both derived under the estate's
@@ -44,7 +35,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -269,14 +259,14 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.domain, "domain", "", "store serving domain (bare host); store_domain_hash seed for receipt verification (defaults to the host in --store)")
 	fs.StringVar(&o.rpcURL, "rpc-url", "", "Solana JSON-RPC endpoint used to read the on-chain store_authority for receipt verification (required)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "ChainEvidence verified_slot for the envelope (publisher's local on-chain pre-check slot)")
-	fs.BoolVar(&o.useMultipart, "multipart", false, "POST as multipart/form-data {envelope,release,spk} instead of the JSON wire form")
-	fs.BoolVar(&o.stageOnly, "stage", false, "privately stage the candidate before chain mutation; return a signed staging receipt")
+	fs.BoolVar(&o.useMultipart, "multipart", false, "retired direct publication option; use --request-out")
+	fs.BoolVar(&o.stageOnly, "stage", false, "retired direct publication option; use --request-out")
 	fs.StringVar(&o.developer, "developer", "", "catalog developer path segment (required with --repo/--slug for a first publish)")
 	fs.StringVar(&o.repo, "repo", "", "catalog repository path segment (required with --developer/--slug for a first publish)")
 	fs.StringVar(&o.slug, "slug", "", "catalog app path segment (required with --developer/--repo for a first publish)")
-	fs.StringVar(&o.receiptOut, "receipt-out", "", "write the verified raw receipt JSON to this path")
+	fs.StringVar(&o.receiptOut, "receipt-out", "", "retired direct publication option; use --verify-receipt for read-only checking")
 	fs.StringVar(&o.verifyReceiptPath, "verify-receipt", "", "verify a saved promotion or app-publish receipt against the on-chain store authority without publishing")
-	fs.StringVar(&o.prepareOut, "prepare-out", "", "write a signed publish handoff and exit without POSTing; use --verify-receipt --prepared-submission to accept the returned receipt")
+	fs.StringVar(&o.prepareOut, "prepare-out", "", "retired direct publication option; use --request-out")
 	fs.StringVar(&o.preparedSubmission, "prepared-submission", "", "prepared handoff to bind a --verify-receipt result to the exact submitted candidate")
 	fs.StringVar(&o.requestOut, "request-out", "", "owner-only path for one 15-minute exact Pearl control publish request; performs no HTTP call")
 	fs.StringVar(&o.controlDossier, "control-dossier", "", "24-character lower-hex Bazaar Control dossier id; required with --request-out")
@@ -463,11 +453,6 @@ func run(args []string, stdout, stderr io.Writer) error {
 			return errors.New("check=scan_report: content mismatch")
 		}
 	}
-	expectedReceipt, err := buildSubmittedReceiptIntentWithRuntimeContract(spk, metadata, runtimeContract, claims, o.developer, o.repo, o.slug)
-	if err != nil {
-		return fmt.Errorf("check=receipt_submission: %w", err)
-	}
-
 	pubPriv, err := loadPublisherKey(o.publisherKey)
 	if err != nil {
 		return fmt.Errorf("publisher key: %w", err)
@@ -477,19 +462,11 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("store pubkey: %w", err)
 	}
 
-	// Select the purpose before signing. App envelopes are never route-less and
-	// a stage envelope is cryptographically distinct from a promotion envelope.
 	// The file-only control mode derives its target from the Pearl dossier; it
 	// never accepts a route supplied by a worker or terminal.
-	target := appPromoteTarget
-	if o.stageOnly {
-		target = appStageTarget
-	}
-	if o.requestOut != "" {
-		target, err = controlPublishTarget(o.controlDossier)
-		if err != nil {
-			return fmt.Errorf("control target: %w", err)
-		}
+	target, err := controlPublishTarget(o.controlDossier)
+	if err != nil {
+		return fmt.Errorf("control target: %w", err)
 	}
 
 	// Build the signed publish-request envelope: KindPublishRequest addressed
@@ -498,78 +475,22 @@ func run(args []string, stdout, stderr io.Writer) error {
 	// program, slot). BodyHash is set explicitly to sha256(release) — the
 	// sidecar requires sha256(release) == envelope.body_hash.
 	//
-	// The envelope must outlive the upload: the sidecar verifies it only after
-	// the full body arrives, so on a slow uplink a large SPK can take longer to
-	// transfer than a short-lived envelope survives. Size the TTL to the
-	// operator-declared -timeout window plus verify margin, floored at 5m.
-	envTTL := o.timeout + 2*time.Minute
-	if envTTL < 5*time.Minute {
-		envTTL = 5 * time.Minute
-	}
 	// A control request is a final transport envelope, not a durable approval
-	// object. It is intentionally fixed at the command window so a worker cannot
-	// make an effectively long-lived publisher capability by inflating timeout.
-	if o.requestOut != "" {
-		envTTL = controlRequestEnvelopeTTL
-	}
-	sig, err := buildEnvelope(pubPriv, dst, target, spk, releaseBytes, claims, o.programID, o.verifiedSlot, envTTL)
+	// object. A worker cannot extend its lifetime by inflating --timeout.
+	sig, err := buildEnvelope(pubPriv, dst, target, spk, releaseBytes, claims, o.programID, o.verifiedSlot, controlRequestEnvelopeTTL)
 	if err != nil {
 		return fmt.Errorf("envelope: %w", err)
 	}
-	if o.prepareOut != "" {
-		prepared := preparedSubmission{
-			Schema: preparedSubmissionSchema, Target: target, Envelope: sig, Expected: expectedReceipt,
-		}
-		if err := writePreparedSubmission(o.prepareOut, prepared); err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, "PREPARED OK — signed publish handoff written to %s; no POST was made\n", o.prepareOut)
-		return nil
-	}
-	if o.requestOut != "" {
-		body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, runtimeContract, scanReport, o.developer, o.repo, o.slug)
-		if err != nil {
-			return fmt.Errorf("control request: %w", err)
-		}
-		output, err := writeOwnerOnlyControlRequest(o.requestOut, body)
-		if err != nil {
-			return fmt.Errorf("control request: %w", err)
-		}
-		digest := sha256.Sum256(body)
-		fmt.Fprintf(stdout, "CONTROL REQUEST PREPARED — exact request written to %s (sha256 %x); no network, chain, stage, or catalog action occurred\n", output, digest)
-		return nil
-	}
-
-	resp, status, err := postPublishWithRuntimeContract(context.Background(), o, target, sig, releaseBytes, spk, metadata, runtimeContract)
+	body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, runtimeContract, scanReport, o.developer, o.repo, o.slug)
 	if err != nil {
-		return fmt.Errorf("publish POST: %w", err)
+		return fmt.Errorf("control request: %w", err)
 	}
-	if status != http.StatusOK {
-		// The sidecar names the failing check in the body (e.g. "check=app_hash").
-		return fmt.Errorf("store rejected publish: HTTP %d: %s", status, strings.TrimSpace(string(resp)))
-	}
-
-	// Verify the store-signed receipt against the ON-CHAIN
-	// store_authority. A store that returns 200 but a receipt the chain does not
-	// vouch for is a FAILURE — the install-side trust (C4) depends on this exact
-	// check, so the publish client refuses to call it a success.
-	cr := verify.NewRPCClient(o.rpcURL)
-	if o.stageOnly {
-		receipt, err := acceptStageReceipt(context.Background(), cr, o.programID, o.licenseMint, o.domain, resp, expectedReceipt, o.receiptOut)
-		if err != nil {
-			return fmt.Errorf("stage receipt verification: %w", err)
-		}
-		out, _ := json.MarshalIndent(receipt, "", "  ")
-		fmt.Fprintf(stdout, "STAGE OK — private persistence receipt verified against on-chain store_authority\n%s\n", out)
-		return nil
-	}
-	receipt, err := acceptPromotionReceipt(context.Background(), cr, o.programID, o.licenseMint, o.domain, resp, expectedReceipt, o.receiptOut)
+	output, err := writeOwnerOnlyControlRequest(o.requestOut, body)
 	if err != nil {
-		return fmt.Errorf("receipt verification: %w", err)
+		return fmt.Errorf("control request: %w", err)
 	}
-
-	out, _ := json.MarshalIndent(receipt, "", "  ")
-	fmt.Fprintf(stdout, "PUBLISH OK — store-signed provenance receipt verified against on-chain store_authority\n%s\n", out)
+	digest := sha256.Sum256(body)
+	fmt.Fprintf(stdout, "CONTROL REQUEST PREPARED — exact request written to %s (sha256 %x); no network, chain, stage, or catalog action occurred\n", output, digest)
 	return nil
 }
 
@@ -1008,103 +929,6 @@ func releaseEntryPDA(masterMintB58 string, appHash [32]byte, programIDB58 string
 	return relPDA.Base58(), nil
 }
 
-// postPublish sends the publish to <store>/publish in either the JSON wire form
-// or multipart/form-data, returning the raw body + status code. metadata is the
-// app's metadata.json bytes, bound into the on-chain appHash the sidecar recomputes.
-func postPublish(ctx context.Context, o options, endpoint string, sig envelope.Signed, releaseBytes, spk, metadata []byte) ([]byte, int, error) {
-	return postPublishWithRuntimeContract(ctx, o, endpoint, sig, releaseBytes, spk, metadata, nil)
-}
-
-func postPublishWithRuntimeContract(ctx context.Context, o options, endpoint string, sig envelope.Signed, releaseBytes, spk, metadata, runtimeContract []byte) ([]byte, int, error) {
-	if endpoint != appPromoteTarget && endpoint != appStageTarget {
-		return nil, 0, fmt.Errorf("app publish endpoint must be exactly %q or %q", appPromoteTarget, appStageTarget)
-	}
-	if sig.Payload.Method != http.MethodPost || sig.Payload.Target != endpoint {
-		return nil, 0, fmt.Errorf("signed app publish purpose %s %q does not match POST %q", sig.Payload.Method, sig.Payload.Target, endpoint)
-	}
-	url := strings.TrimRight(o.store, "/") + endpoint
-	client := &http.Client{Timeout: o.timeout}
-
-	var (
-		req *http.Request
-		err error
-	)
-	if o.useMultipart {
-		var buf bytes.Buffer
-		mw := multipart.NewWriter(&buf)
-		envBytes, merr := json.Marshal(sig)
-		if merr != nil {
-			return nil, 0, fmt.Errorf("marshal envelope: %w", merr)
-		}
-		if werr := writePart(mw, "envelope", "envelope.json", envBytes); werr != nil {
-			return nil, 0, werr
-		}
-		if werr := writePart(mw, "release", "RELEASE.json", releaseBytes); werr != nil {
-			return nil, 0, werr
-		}
-		if werr := writePart(mw, "spk", "app.spk", spk); werr != nil {
-			return nil, 0, werr
-		}
-		if werr := writePart(mw, "metadata", "metadata.json", metadata); werr != nil {
-			return nil, 0, werr
-		}
-		if len(runtimeContract) != 0 {
-			if werr := writePart(mw, "runtime_contract", "RUNTIME-CONTRACT.json", runtimeContract); werr != nil {
-				return nil, 0, werr
-			}
-		}
-		for name, value := range map[string]string{
-			"developer": o.developer,
-			"repo":      o.repo,
-			"slug":      o.slug,
-		} {
-			if value != "" {
-				if werr := mw.WriteField(name, value); werr != nil {
-					return nil, 0, fmt.Errorf("write %s field: %w", name, werr)
-				}
-			}
-		}
-		if cerr := mw.Close(); cerr != nil {
-			return nil, 0, cerr
-		}
-		req, err = http.NewRequestWithContext(ctx, http.MethodPost, url, &buf)
-		if err != nil {
-			return nil, 0, err
-		}
-		req.Header.Set("Content-Type", mw.FormDataContentType())
-	} else {
-		body, merr := json.Marshal(publishRequest{
-			Envelope:           sig,
-			ReleaseB64:         stdB64(releaseBytes),
-			SPKB64:             stdB64(spk),
-			MetadataB64:        stdB64(metadata),
-			RuntimeContractB64: stdB64(runtimeContract),
-			Developer:          o.developer,
-			Repo:               o.repo,
-			Slug:               o.slug,
-		})
-		if merr != nil {
-			return nil, 0, fmt.Errorf("marshal JSON body: %w", merr)
-		}
-		req, err = http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-		if err != nil {
-			return nil, 0, err
-		}
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer resp.Body.Close()
-	out, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, resp.StatusCode, err
-	}
-	return out, resp.StatusCode, nil
-}
-
 func readAndValidateRuntimeContract(path string, spk, metadata []byte, claims ReleaseClaims) ([]byte, error) {
 	binding := runtimecontract.Binding{
 		SPK: spk, Metadata: metadata, AppHash: claims.AppHash, Version: claims.Version,
@@ -1149,17 +973,6 @@ func writeReceiptFile(path string, raw []byte) error {
 	if err := os.Rename(tmp, path); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("receipt-out: rename: %w", err)
-	}
-	return nil
-}
-
-func writePart(mw *multipart.Writer, field, filename string, data []byte) error {
-	w, err := mw.CreateFormFile(field, filename)
-	if err != nil {
-		return fmt.Errorf("create %s part: %w", field, err)
-	}
-	if _, err := w.Write(data); err != nil {
-		return fmt.Errorf("write %s part: %w", field, err)
 	}
 	return nil
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/ed25519"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -24,39 +23,6 @@ func signedLegacyManifest(t *testing.T, build int64, private ed25519.PrivateKey)
 	return m
 }
 
-func TestLegacyManifestReplacementOnlyRepairsInvalidEqualBuild(t *testing.T) {
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	next := signedLegacyManifest(t, 84, private)
-	valid, err := json.Marshal(next)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if legacyManifestReplacementAllowed(valid, next, public) {
-		t.Fatal("a valid equal-build projection must remain immutable")
-	}
-	unsigned := next
-	unsigned.Signature = ""
-	invalid, err := json.Marshal(unsigned)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !legacyManifestReplacementAllowed(invalid, next, public) {
-		t.Fatal("an unsigned equal-build projection must be repairable")
-	}
-	higher := signedLegacyManifest(t, 85, private)
-	higher.Signature = ""
-	higherBytes, err := json.Marshal(higher)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if legacyManifestReplacementAllowed(higherBytes, next, public) {
-		t.Fatal("an invalid higher-build projection must not be rolled back")
-	}
-}
-
 func TestLegacyManifestIsLiveProjectionOfCanonicalGeneration(t *testing.T) {
 	svc := promoteTestService(t)
 	first := promotableShellComp(t, svc, "build-92", "build-92")
@@ -72,6 +38,11 @@ func TestLegacyManifestIsLiveProjectionOfCanonicalGeneration(t *testing.T) {
 		t.Fatal(err)
 	}
 	router := newRouter(svc.cfg, svc.operator, nil, nil)
+	retired := httptest.NewRecorder()
+	router.ServeHTTP(retired, httptest.NewRequest(http.MethodPost, "/publish/legacy-manifest-bootstrap", nil))
+	if retired.Code != http.StatusNotFound {
+		t.Fatalf("legacy-manifest-bootstrap-retired: %d", retired.Code)
+	}
 	getManifest := func() legacyManifest {
 		t.Helper()
 		rec := httptest.NewRecorder()

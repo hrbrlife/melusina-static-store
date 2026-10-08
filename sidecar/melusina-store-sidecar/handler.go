@@ -422,7 +422,6 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// Temporary bootstrap for hosts that still consume the pre-generation shell
 	// manifest.  It derives that compatibility document from the already-signed,
 	// chain-verified current DesiredGeneration; it never accepts artifact facts.
-	mux.HandleFunc("/publish/legacy-manifest-bootstrap", svc.handleLegacyManifestBootstrap)
 
 	// ── DESIRED-GENERATION producers ──────────────────────────────────────────
 	// The operator-signed typed desired-generation document the external host

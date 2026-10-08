@@ -307,7 +307,7 @@ The same rule covers every other Store program and production file. The
 operator and day-two tools compile no estate's values. Each takes the
 estate's license registry as a required flag and refuses by name without it:
 `apply-store-update --program-id`, `submit-generation --program-id`,
-`submit-installer --program-id`, `bootstrap-legacy-manifest --program-id`,
+`submit-installer --program-id`,
 `list-active-releases -program-id` and `canary-emit sign --program-id`. The
 signing clients also refuse a publisher key minted under another registry.
 `canary-emit` requires `program_id` in the Store config it reads. `keygen`

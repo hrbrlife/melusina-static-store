@@ -2,14 +2,19 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,7 +26,9 @@ import (
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/appscan"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/controltlsissue"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/publisherenvelope"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -77,7 +84,7 @@ func controlHeader(t *testing.T, value any) string {
 	return base64.RawURLEncoding.EncodeToString(raw)
 }
 
-func newControlCommand(t *testing.T, now time.Time, dossierID string, preflight appPublishPreflight, policy, grant, action string) (controlCommand, pearlCommandSignature, offlineControlApproval, ed25519.PublicKey, ed25519.PublicKey) {
+func newControlCommand(t *testing.T, now time.Time, dossierID string, preflight appPublishPreflight, policy, grant, action string) (controlCommand, pearlCommandSignature, offlineControlApproval, ed25519.PublicKey, ed25519.PublicKey, ed25519.PrivateKey) {
 	t.Helper()
 	stage, err := buildStagedAppManifestWithRuntimeContract(preflight.spk, preflight.metadata, preflight.releaseBytes, preflight.runtimeContract, preflight.release, preflight.hint, now)
 	if err != nil {
@@ -112,20 +119,7 @@ func newControlCommand(t *testing.T, now time.Time, dossierID string, preflight 
 		SignerPublicKey: base64.RawURLEncoding.EncodeToString(humanPublic),
 		Signature:       base64.RawURLEncoding.EncodeToString(ed25519.Sign(humanPrivate, []byte(command.HumanSigningText()))), SignedAt: now,
 	}
-	return command, signature, approval, public, humanPublic
-}
-
-func stageControlCandidate(t *testing.T, svc *publishService, publisher *identity.Private, operator identity.Public, f publishFixture, now time.Time) appPublishPreflight {
-	t.Helper()
-	release := mustJSON(t, f.rel)
-	stageSig := signPublishForRoute(t, publisher, operator, f.spk, release, "/publish/stage", now, 5*time.Minute, "")
-	stage := doStagePublish(t, svc, jsonPublishBody(t, stageSig, release, f.spk, f.metadata))
-	if stage.Code != http.StatusOK {
-		t.Fatalf("stage candidate: got %d: %s", stage.Code, stage.Body.String())
-	}
-	controlRoute := controlPublishPathPrefix + "dossier-1" + controlPublishPathSuffix
-	controlSig := signPublishForRoute(t, publisher, operator, f.spk, release, controlRoute, now, 5*time.Minute, "control-nonce")
-	return appPublishPreflight{sig: controlSig, releaseBytes: release, spk: f.spk, metadata: f.metadata, runtimeContract: f.runtimeContract, release: f.rel}
+	return command, signature, approval, public, humanPublic, private
 }
 
 func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.T) {
@@ -135,7 +129,20 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	security := signedStoreSecurityFixture(t, profile, profileDigest)
+	bundle, clientPin, err := controltlsissue.Issue("127.0.0.1", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	controlIdentityDir := t.TempDir()
+	serverCertPath := filepath.Join(controlIdentityDir, "server.crt")
+	serverKeyPath := filepath.Join(controlIdentityDir, "server.key")
+	clientCAPath := filepath.Join(controlIdentityDir, "client-ca.crt")
+	for path, content := range map[string]string{serverCertPath: bundle.ServerCertPEM, serverKeyPath: bundle.ServerKeyPEM, clientCAPath: bundle.ClientCAPEM} {
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	security := signedStoreSecurityFixture(t, profile, profileDigest, clientPin)
 	cfg.StoreID = profile.Store.StoreID
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ProgramID = programID.Base58()
@@ -157,12 +164,98 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	// durable value.
 	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	svc.now = func() time.Time { return clock }
-	publisher := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	publisherRef := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org").Public().Ref
+	var publisherSignSeed, publisherBoxSeed [32]byte
+	if _, err := rand.Read(publisherSignSeed[:]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rand.Read(publisherBoxSeed[:]); err != nil {
+		t.Fatal(err)
+	}
+	publisher, err := identity.NewPrivate(publisherRef, publisherSignSeed, publisherBoxSeed)
+	if err != nil {
+		t.Fatal(err)
+	}
 	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
-	preflight := stageControlCandidate(t, svc, publisher, op.Public(), f, clock)
+	release := mustJSON(t, f.rel)
+	dossierID := "0123456789abcdef01234567"
+	stage, err := buildStagedAppManifestWithRuntimeContract(f.spk, f.metadata, release, f.runtimeContract, f.rel, slotHint{}, clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	socketDir, err := os.MkdirTemp(os.TempDir(), "pps")
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisherPath := filepath.Join(socketDir, "publisher.json")
+	storePath := filepath.Join(socketDir, "store.json")
+	publisherFile, err := json.Marshal(map[string]any{"ref": publisherRef, "sign_seed_hex": hex.EncodeToString(publisherSignSeed[:]), "box_seed_hex": hex.EncodeToString(publisherBoxSeed[:])})
+	if err != nil {
+		t.Fatal(err)
+	}
+	storeFile, err := json.Marshal(op.Public())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, content := range map[string][]byte{publisherPath: publisherFile, storePath: storeFile} {
+		if err := os.WriteFile(path, content, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	socketPath := filepath.Join(socketDir, "s")
+	signer, err := publisherenvelope.Load(publisherenvelope.Config{SocketPath: socketPath, PublisherIdentityPath: publisherPath, StoreIdentityPath: storePath, StoreID: cfg.StoreID, AllowedUID: uint32(os.Geteuid())})
+	if err != nil {
+		t.Fatalf("bazaar-publisher-envelope-producer-positive: %v", err)
+	}
+	signerContext, stopSigner := context.WithCancel(context.Background())
+	signerDone := make(chan error, 1)
+	go func() { signerDone <- publisherenvelope.Serve(signerContext, socketPath, signer) }()
+	t.Cleanup(func() {
+		stopSigner()
+		select {
+		case <-signerDone:
+		case <-time.After(2 * time.Second):
+			t.Error("bazaar-publisher-envelope-producer-positive: signer did not stop")
+		}
+		if err := os.RemoveAll(socketDir); err != nil {
+			t.Error(err)
+		}
+	})
+	for deadline := time.Now().Add(2 * time.Second); ; {
+		if info, err := os.Lstat(socketPath); err == nil && info.Mode()&os.ModeSocket != 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("bazaar-publisher-envelope-producer-positive: signer socket did not appear")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	clientSigner, err := publisherenvelope.NewClient(socketPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signedResponse, err := clientSigner.Sign(context.Background(), publisherenvelope.Request{Schema: publisherenvelope.RequestSchema,
+		DossierID: dossierID, StoreID: cfg.StoreID, AppID: stage.AppID, Version: stage.Version,
+		ArtifactSHA256: stage.SPKSHA256, AppHash: stage.AppHash, ReleaseHash: stage.ReleaseHash,
+		ReleaseB64: base64.StdEncoding.EncodeToString(release), ReleaseEntryPDA: f.rel.ReleaseEntryPda, VerifiedSlot: 12345})
+	if err != nil {
+		t.Fatalf("bazaar-publisher-envelope-producer-positive: %v", err)
+	}
+	signedRaw, err := base64.RawURLEncoding.DecodeString(signedResponse.EnvelopeB64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var controlSig envelope.Signed
+	if err := json.Unmarshal(signedRaw, &controlSig); err != nil {
+		t.Fatal(err)
+	}
+	if controlSig.Payload.Method != http.MethodPost || controlSig.Payload.Target != controlPublishPathPrefix+dossierID+controlPublishPathSuffix {
+		t.Fatal("bazaar-publisher-envelope-producer-positive: signer did not bind the governed publish method and target")
+	}
+	preflight := appPublishPreflight{sig: controlSig, releaseBytes: release, spk: f.spk, metadata: f.metadata, runtimeContract: f.runtimeContract, release: f.rel}
 	svc.cfg.EstateProfile = &profile
 	svc.cfg.StoreSecurityProfile = &security
-	svc.cfg.StoreLinkControlMTLS = StoreLinkControlMTLSConfig{ListenAddr: security.ControlListenAddr, StoreLinkClientCertSHA256: security.StoreLinkClientCertSHA256}
+	svc.cfg.StoreLinkControlMTLS = StoreLinkControlMTLSConfig{ListenAddr: security.ControlListenAddr, CertPath: serverCertPath, KeyPath: serverKeyPath, ClientCAPath: clientCAPath, StoreLinkClientCertSHA256: security.StoreLinkClientCertSHA256}
 	svc.cfg.Policy.RequirePearlControlForAppPublish = true
 	svc.cfg.Policy.RequireScanReport = true
 	svc.cfg.Policy.ScannerEd25519PublicKey = security.ScannerEd25519PublicKey
@@ -194,12 +287,73 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	command, pearlSignature, offlineApproval, pearlKey, humanKey := newControlCommand(t, clock, "dossier-1", preflight, policyPDA.Base58(), grantPDA.Base58(), controlCommandActionPublish)
+	command, pearlSignature, offlineApproval, pearlKey, humanKey, pearlPrivate := newControlCommand(t, clock, dossierID, preflight, policyPDA.Base58(), grantPDA.Base58(), controlCommandActionPublish)
 	var pearlRaw [32]byte
 	copy(pearlRaw[:], pearlKey)
 	var humanRaw [32]byte
 	copy(humanRaw[:], humanKey)
 	m.rawAccounts[policyPDA.Base58()] = controlPolicyBlob(license, primitives.StoreDomainHash(cfg.Domain), authority, authz, pearlRaw, humanRaw, 7)
+	m.rawAccounts[grantPDA.Base58()] = controlGrantBlob(policyPDA, appID, releaseMeta.publisherSquadsVault, publisherKey, storePublisherActionPrepareRelease, 3, clock)
+	privateRouter := newControlReleaseRouter(svc)
+	privateServer, err := newStoreLinkControlServer(svc.cfg.StoreLinkControlMTLS, privateRouter)
+	if err != nil {
+		t.Fatalf("control-private-mtls-publish-positive: %v", err)
+	}
+	listener := httptest.NewUnstartedServer(privateServer.Handler)
+	listener.TLS = privateServer.TLSConfig
+	listener.StartTLS()
+	defer listener.Close()
+	clientIdentity, err := tls.X509KeyPair([]byte(bundle.ClientCertPEM), []byte(bundle.ClientKeyPEM))
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM([]byte(bundle.ClientCAPEM)) {
+		t.Fatal("control-private-mtls-publish-positive: client CA missing")
+	}
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots, Certificates: []tls.Certificate{clientIdentity}}}}
+	prepareRoute := controlPublishPathPrefix + "dossier-prepare" + controlPreparePathSuffix
+	prepareSig := signPublishForRoute(t, publisher, op.Public(), f.spk, release, prepareRoute, clock, 5*time.Minute, "prepare-nonce")
+	preparePreflight := preflight
+	preparePreflight.sig = prepareSig
+	prepareCommand, _, _, _, _, _ := newControlCommand(t, clock, "dossier-prepare", preparePreflight, policyPDA.Base58(), grantPDA.Base58(), controlCommandActionPrepare)
+	prepareCommand.CommandID = "fedcba9876543210fedcba98"
+	prepareCommand.Nonce = "fedcba9876543210fedcba98"
+	prepareSignature := pearlCommandSignature{Schema: pearlCommandSignatureSchema, CommandDigest: prepareCommand.Digest(),
+		Signature: base64.RawURLEncoding.EncodeToString(ed25519.Sign(pearlPrivate, pearlCommandSignaturePayload(prepareCommand))), SignedAt: clock}
+	prepareBody := jsonPublishBody(t, prepareSig, release, f.spk, f.metadata)
+	var preparePublish publishRequest
+	if err := json.Unmarshal(prepareBody.Bytes(), &preparePublish); err != nil {
+		t.Fatal(err)
+	}
+	prepareRuntimeContract, err := base64.StdEncoding.DecodeString(preparePublish.RuntimeContractB64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preparePublish.ScanReport = signedClamAVReportFixture(t, prepareRoute, f.spk, f.metadata, release, prepareRuntimeContract, clock)
+	prepareBytes, err := json.Marshal(preparePublish)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepareRequest, err := http.NewRequest(http.MethodPost, listener.URL+prepareRoute, bytes.NewReader(prepareBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepareRequest.Header.Set("Content-Type", "application/json")
+	prepareRequest.Header.Set(controlCommandHeader, controlHeader(t, prepareCommand))
+	prepareRequest.Header.Set(controlPearlSignatureHeader, controlHeader(t, prepareSignature))
+	prepared, err := client.Do(prepareRequest)
+	if err != nil {
+		t.Fatalf("control-private-mtls-prepare-positive: %v", err)
+	}
+	preparedBody, err := io.ReadAll(prepared.Body)
+	prepared.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prepared.StatusCode != http.StatusOK {
+		t.Fatalf("control-private-mtls-prepare-positive: %d %s", prepared.StatusCode, preparedBody)
+	}
 	m.rawAccounts[grantPDA.Base58()] = controlGrantBlob(policyPDA, appID, releaseMeta.publisherSquadsVault, publisherKey, storePublisherActionPublishRelease, 3, clock)
 
 	body := jsonPublishBody(t, preflight.sig, preflight.releaseBytes, preflight.spk, preflight.metadata)
@@ -252,15 +406,25 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodPost, command.Route, bytes.NewReader(boundBody))
+	req, err := http.NewRequest(http.MethodPost, listener.URL+command.Route, bytes.NewReader(boundBody))
+	if err != nil {
+		t.Fatal(err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(controlCommandHeader, controlHeader(t, command))
 	req.Header.Set(controlPearlSignatureHeader, controlHeader(t, pearlSignature))
 	req.Header.Set(controlOfflineApprovalHeader, controlHeader(t, offlineApproval))
-	w := httptest.NewRecorder()
-	svc.handleControlRelease(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("control publish got %d: %s", w.Code, w.Body.String())
+	response, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("control-private-mtls-publish-positive: %v", err)
+	}
+	responseBody, err := io.ReadAll(response.Body)
+	response.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("control-private-mtls-publish-positive: %d %s", response.StatusCode, responseBody)
 	}
 	// The response could be lost after the sidecar has switched the catalog.
 	// An exact command retry must return its durable receipt before it attempts
@@ -269,7 +433,7 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	retry.Header.Set(controlCommandHeader, controlHeader(t, command))
 	retry.Header.Set(controlPearlSignatureHeader, controlHeader(t, pearlSignature))
 	retry.Header.Set(controlOfflineApprovalHeader, controlHeader(t, offlineApproval))
-	w = httptest.NewRecorder()
+	w := httptest.NewRecorder()
 	svc.handleControlRelease(w, retry)
 	if w.Code != http.StatusOK {
 		t.Fatalf("completed control publish retry got %d: %s", w.Code, w.Body.String())
@@ -353,7 +517,7 @@ func TestControlPrepareStagesOnlyWithPearlCommandAndPrepareGrant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command, pearlSignature, _, pearlKey, humanKey := newControlCommand(t, clock, "dossier-prepare", preflight, policyPDA.Base58(), grantPDA.Base58(), controlCommandActionPrepare)
+	command, pearlSignature, _, pearlKey, humanKey, _ := newControlCommand(t, clock, "dossier-prepare", preflight, policyPDA.Base58(), grantPDA.Base58(), controlCommandActionPrepare)
 	var pearlRaw [32]byte
 	copy(pearlRaw[:], pearlKey)
 	var humanRaw [32]byte

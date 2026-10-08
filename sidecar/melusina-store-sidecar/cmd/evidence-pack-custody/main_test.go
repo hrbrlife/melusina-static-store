@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,5 +30,24 @@ func TestLoadPinsRequiresExactInstallerDigest(t *testing.T) {
 	}
 	if _, err := loadPins(path, strings.Repeat("0", 64)); err == nil || !strings.Contains(err.Error(), "pins-drift") {
 		t.Fatalf("evidence-pack-custody-pins-drift: changed roster digest admitted: %v", err)
+	}
+}
+
+func TestPackCustodySocketRequiresInstallerGrainGroup(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pack.sock")
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	if err := setSocketAccess(path, -1); err == nil || !strings.Contains(err.Error(), "socket-group-missing") {
+		t.Fatalf("evidence-pack-custody-socket-group-missing: unset installer group admitted: %v", err)
+	}
+	if err := setSocketAccess(path, os.Getgid()); err != nil {
+		t.Fatalf("grain socket access positive: %v", err)
+	}
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode().Perm() != 0660 {
+		t.Fatalf("grain socket mode != 0660: %v %v", info, err)
 	}
 }

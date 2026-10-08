@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/hrbrlife/melusina-store-sidecar/packcustody"
 )
@@ -56,10 +57,39 @@ func loadPins(path, expectedSHA256 string) (map[string]ed25519.PublicKey, error)
 	return pins, nil
 }
 
+// The Shell grants the grain's mapped group access to this one socket. The
+// installer owns the numeric group in the service unit; requests cannot alter
+// it. Refuse an unset group instead of creating a root-only dead transport.
+func setSocketAccess(path string, gid int) error {
+	if gid < 0 {
+		return errors.New("evidence-pack-custody-socket-group-missing")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSocket == 0 {
+		return errors.New("evidence-pack-custody-socket-invalid")
+	}
+	if err := os.Chown(path, -1, gid); err != nil {
+		return err
+	}
+	if err := os.Chmod(path, 0660); err != nil {
+		return err
+	}
+	info, err = os.Lstat(path)
+	if err != nil {
+		return errors.New("evidence-pack-custody-socket-access-invalid")
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || info.Mode().Perm() != 0660 || stat.Gid != uint32(gid) {
+		return errors.New("evidence-pack-custody-socket-access-invalid")
+	}
+	return nil
+}
+
 func main() {
 	root := flag.String("root", "", "absolute durable evidence-pack root")
 	pearl := flag.String("pearl-dir", "", "absolute disposable grain data directory")
 	socket := flag.String("socket", "", "absolute private Unix socket")
+	socketGID := flag.Int("socket-gid", -1, "installer-pinned grain socket group ID")
 	pinsPath := flag.String("pins", "", "installer-delivered public roster")
 	pinsSHA := flag.String("pins-sha256", "", "installer-pinned public roster SHA-256")
 	flag.Parse()
@@ -78,7 +108,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := os.Chmod(*socket, 0600); err != nil {
+	if err := setSocketAccess(*socket, *socketGID); err != nil {
 		listener.Close()
 		log.Fatal(err)
 	}

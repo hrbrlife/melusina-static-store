@@ -2505,10 +2505,6 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/hermetic_test[.]go; it is not an estate endpoint."
     },
     {
-      "host": "proxy.example.test",
-      "reason": "Tracked test, fixture, or documentation text in scripts/test-mel-release-provider-cli-contract[.]py; it is not an estate endpoint."
-    },
-    {
       "host": "publicsuffix.org",
       "reason": "Tracked explanatory text in domain-tlds[.]txt; it is not an estate endpoint."
     },
@@ -3187,10 +3183,6 @@
     {
       "host": "sig.payload.target",
       "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/cmd/submit/main[.]go:878; reviewed as source material, not an estate endpoint."
-    },
-    {
-      "host": "sigin.payload.target",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/cmd/submit/main_test[.]go:1169; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "signed.payload.target",

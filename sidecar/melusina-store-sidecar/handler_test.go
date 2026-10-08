@@ -22,6 +22,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerpublish"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -37,6 +38,9 @@ func stubAssembler(t *testing.T) *CatalogAssembler {
 // and a stub assembler.
 func newTestService(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private) *publishService {
 	t.Helper()
+	if cfg.ProgramID == "" && op != nil {
+		cfg.ProgramID = op.Public().Ref.ProgramID
+	}
 	// A running enrolled Store has its estate's app-release trust bound at
 	// startup (bindAppReleaseTrust); the fixture estate is the one pinAccept
 	// pinned. A test that binds its own trust keeps it.
@@ -148,11 +152,25 @@ func signPublishForRoute(t *testing.T, publisher *identity.Private, operatorPub 
 	return sig
 }
 
-func signInstallerPublish(t *testing.T, publisher *identity.Private, operatorPub identity.Public, artifact []byte) envelope.Signed {
+func signInstallerPublish(t *testing.T, publisher *identity.Private, operatorPub identity.Public, artifact []byte, target ...string) envelope.Signed {
 	t.Helper()
+	class, name := "shell", "sandstorm-42.tar.xz"
+	if len(target) == 2 {
+		class, name = target[0], target[1]
+	} else if len(target) != 0 {
+		t.Fatal("installer target must have class and name")
+	}
 	artifactSum := sha256.Sum256(artifact)
+	bindingDigest, err := installerpublish.Digest(class, name, hex.EncodeToString(artifactSum[:]),
+		"test-store", operatorPub.Ref.Domain, operatorPub.Ref.LicenseMint, operatorPub.Ref.ProgramID)
+	if err != nil {
+		t.Fatalf("installer binding: %v", err)
+	}
 	sig, err := envelope.Sign(envelope.KindPublishRequest, publisher, operatorPub, envelope.SignOptions{
 		RequestHash: hex.EncodeToString(artifactSum[:]),
+		BodyHash:    bindingDigest,
+		Method:      http.MethodPost,
+		Target:      installerpublish.Target,
 		TTL:         5 * time.Minute,
 		Chain: envelope.ChainEvidence{
 			ChainID:      "solana:devnet",
@@ -1437,7 +1455,7 @@ func TestHandlePublishInstaller_StagesSidecarWithoutInstallerRelease(t *testing.
 	svc := newTestService(t, cfg, m, op)
 	pub := newTestIdentity(t, "sidecar-publisher", randPubkeyB58(t), "publisher.example.org")
 	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
-	sig := signInstallerPublish(t, pub, op.Public(), artifact)
+	sig := signInstallerPublish(t, pub, op.Public(), artifact, "sidecar", "store-sidecar.bin")
 
 	w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, "sidecar", "store-sidecar.bin", artifact))
 	if w.Code != http.StatusOK {
@@ -1569,7 +1587,7 @@ func TestHandlePublishInstaller_Rejects(t *testing.T) {
 			tc.setup(t, cfg, m, op, artifact)
 			svc := newTestService(t, cfg, m, op)
 			pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
-			sig := signInstallerPublish(t, pub, op.Public(), artifact)
+			sig := signInstallerPublish(t, pub, op.Public(), artifact, tc.class, tc.fileName)
 			svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 
 			w := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, sig, tc.class, tc.fileName, artifact))

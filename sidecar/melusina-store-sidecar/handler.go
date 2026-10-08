@@ -17,7 +17,9 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/appscan"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerpublish"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -334,7 +336,6 @@ func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr c
 		cr:                          cr,
 		operator:                    operator,
 		assembler:                   assembler,
-		nonces:                      envelope.NewMemoryNonceCache(),
 		appNonces:                   runtime.appNonces,
 		controlReceipts:             controlReceipts,
 		controlReceiptErr:           controlReceiptErr,
@@ -984,12 +985,22 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 		http.Error(w, "check=accept_publishers: installer publisher not in store policy accept_publishers", http.StatusForbidden)
 		return
 	}
-	if err := envelope.Verify(sig, envelope.VerifyOptions{
+	bindingDigest, err := installerpublish.Digest(class, name, artifactHashHex,
+		s.cfg.StoreID, s.cfg.Domain, s.cfg.LicenseNFTMint, s.cfg.ProgramID)
+	if err != nil {
+		http.Error(w, "check=installer_binding: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	if sig.Payload.Method != http.MethodPost || sig.Payload.Target != installerpublish.Target ||
+		sig.Payload.BodyHashHex != bindingDigest {
+		http.Error(w, "check=installer_binding: signed method, target, class, name or estate does not match", http.StatusUnauthorized)
+		return
+	}
+	if err := s.verifyDurableEnvelope(sig, envelope.VerifyOptions{
 		ExpectedKind:            envelope.KindPublishRequest,
 		ExpectedSignerPubkeyB58: signerKey,
 		ExpectedDestination:     &operatorIdentity,
 		ExpectedRequestHash:     artifactHashHex,
-		NonceCache:              s.nonces,
 	}); err != nil {
 		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
 		return

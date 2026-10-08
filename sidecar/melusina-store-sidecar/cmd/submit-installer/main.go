@@ -26,6 +26,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerpublish"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -47,6 +48,9 @@ type options struct {
 	artifactPath string
 	publisherKey string
 	storePubkey  string
+	storeID      string
+	storeDomain  string
+	licenseMint  string
 	programID    string
 	verifiedSlot uint64
 	timeout      time.Duration
@@ -75,6 +79,9 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.artifactPath, "artifact", "", "whole-file artifact path (required)")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher identity JSON path or env:NAME (required)")
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "store operator identity.Public JSON path (required)")
+	fs.StringVar(&o.storeID, "store-id", "", "profile-bound destination Store ID (required)")
+	fs.StringVar(&o.storeDomain, "store-domain", "", "profile-bound destination Store domain (required)")
+	fs.StringVar(&o.licenseMint, "license-mint", "", "destination Store install licence mint (required)")
 	fs.StringVar(&o.programID, "program-id", "", "license-registry program named in the envelope chain evidence: the estate profile's programs.license-registry.programId (required; there is no default registry)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "publisher chain-evidence slot")
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "upload + read-back timeout")
@@ -86,6 +93,7 @@ func parseFlags(args []string) (options, error) {
 		"--store": o.store, "--class": o.class, "--name": o.name,
 		"--artifact": o.artifactPath, "--publisher-key": o.publisherKey,
 		"--store-pubkey": o.storePubkey, "--program-id": o.programID,
+		"--store-id": o.storeID, "--store-domain": o.storeDomain, "--license-mint": o.licenseMint,
 	} {
 		if strings.TrimSpace(value) == "" {
 			missing = append(missing, name)
@@ -143,12 +151,20 @@ func run(args []string, stdout io.Writer) error {
 	// so no compiled fallback can name the retiring estate's cluster, as one
 	// here once did (K-TEN-03).
 	chainID := publisher.Public().Ref.ChainID
+	bindingDigest, err := installerpublish.Digest(o.class, o.name, hashHex,
+		o.storeID, o.storeDomain, o.licenseMint, o.programID)
+	if err != nil {
+		return err
+	}
 	ttl := o.timeout + 2*time.Minute
 	if ttl < 5*time.Minute {
 		ttl = 5 * time.Minute
 	}
 	signed, err := envelope.Sign(envelope.KindPublishRequest, publisher, destination, envelope.SignOptions{
 		RequestHash: hashHex,
+		BodyHash:    bindingDigest,
+		Method:      http.MethodPost,
+		Target:      installerpublish.Target,
 		TTL:         ttl,
 		Chain: envelope.ChainEvidence{
 			ChainID:      chainID,

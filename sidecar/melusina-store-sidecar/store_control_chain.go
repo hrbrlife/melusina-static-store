@@ -81,8 +81,12 @@ func readStoreControlPolicyMeta(data []byte) (storeControlPolicyMeta, error) {
 	if offset, err = skipFixed(data, offset, 1, "store_control_policy", "bump"); err != nil {
 		return meta, err
 	}
-	if offset != len(data) {
-		return meta, errors.New("store_control_policy: unexpected trailing bytes")
+	// The registry allocates the maximum Borsh size for retired_at. When
+	// retired_at is None, the unused i64 capacity remains zero-filled on chain.
+	// Refuse any nonzero extension or a larger account: neither is a known
+	// version of this policy layout.
+	if err := requireZeroControlPadding(data, offset, 299, "store_control_policy"); err != nil {
+		return meta, err
 	}
 	return meta, nil
 }
@@ -146,10 +150,24 @@ func readStorePublisherGrantMeta(data []byte) (storePublisherGrantMeta, error) {
 	if offset, err = skipFixed(data, offset, 1, "store_publisher_grant", "bump"); err != nil {
 		return meta, err
 	}
-	if offset != len(data) {
-		return meta, errors.New("store_publisher_grant: unexpected trailing bytes")
+	// The grant account likewise allocates the maximum size for its three
+	// optional fields. Absent pubkeys/i64 leave up to 72 zero bytes of padding.
+	if err := requireZeroControlPadding(data, offset, 319, "store_publisher_grant"); err != nil {
+		return meta, err
 	}
 	return meta, nil
+}
+
+func requireZeroControlPadding(data []byte, offset, maxAccountBytes int, account string) error {
+	if offset > len(data) || len(data) > maxAccountBytes {
+		return fmt.Errorf("%s: unexpected trailing bytes", account)
+	}
+	for _, value := range data[offset:] {
+		if value != 0 {
+			return fmt.Errorf("%s: unexpected trailing bytes", account)
+		}
+	}
+	return nil
 }
 
 func skipI64Option(data []byte, offset int, account, field string) (int, error) {

@@ -63,22 +63,40 @@ HEAD="$(git -C "$ROOT" rev-parse HEAD)"
 # The default fetch refspec intentionally contains only a small subset of the
 # Store's many historical branches, so a bare `git fetch origin` can leave a
 # freshly pushed release branch only in FETCH_HEAD and falsely reject it.
-# An attached branch with an explicit upstream is the reviewable release
-# identity; detached or local-only source is refused rather than guessed.
+# An attached branch with an explicit upstream is one reviewable release
+# identity. Velocity jobs use detached worktrees and hidden refs, so the
+# caller may instead name the exact pushed Store work ref. Its remote tip must
+# equal HEAD: a local-only or stale ref cannot authorize release bytes.
 CURRENT_BRANCH="$(git -C "$ROOT" symbolic-ref -q --short HEAD || true)"
-[[ -n "$CURRENT_BRANCH" ]] || { echo "source HEAD must be on an attached branch with an upstream" >&2; exit 2; }
-UPSTREAM_REMOTE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.remote" || true)"
-UPSTREAM_MERGE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.merge" || true)"
-[[ -n "$UPSTREAM_REMOTE" && "$UPSTREAM_MERGE" == refs/heads/* ]] || {
-  echo "source branch must declare an upstream remote branch" >&2; exit 2; }
-UPSTREAM_BRANCH="${UPSTREAM_MERGE#refs/heads/}"
-git -C "$ROOT" remote get-url "$UPSTREAM_REMOTE" >/dev/null 2>&1 || {
-  echo "source branch upstream remote is unavailable: $UPSTREAM_REMOTE" >&2; exit 2; }
-git -C "$ROOT" fetch --prune "$UPSTREAM_REMOTE" \
-  "+refs/heads/$UPSTREAM_BRANCH:refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
-UPSTREAM_HEAD="$(git -C "$ROOT" rev-parse "refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH")"
-git -C "$ROOT" merge-base --is-ancestor "$HEAD" "$UPSTREAM_HEAD" || {
-  echo "source HEAD is not reachable from its refreshed upstream ref: $HEAD" >&2; exit 2; }
+if [[ -n "$CURRENT_BRANCH" ]]; then
+  [[ -z "${MELUSINA_STORE_GENERATION_SOURCE_REF:-}" ]] || {
+    echo "source work ref is only for a detached HEAD" >&2; exit 2; }
+  UPSTREAM_REMOTE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.remote" || true)"
+  UPSTREAM_MERGE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.merge" || true)"
+  [[ -n "$UPSTREAM_REMOTE" && "$UPSTREAM_MERGE" == refs/heads/* ]] || {
+    echo "source branch must declare an upstream remote branch" >&2; exit 2; }
+  UPSTREAM_BRANCH="${UPSTREAM_MERGE#refs/heads/}"
+  git -C "$ROOT" remote get-url "$UPSTREAM_REMOTE" >/dev/null 2>&1 || {
+    echo "source branch upstream remote is unavailable: $UPSTREAM_REMOTE" >&2; exit 2; }
+  git -C "$ROOT" fetch --prune "$UPSTREAM_REMOTE" \
+    "+refs/heads/$UPSTREAM_BRANCH:refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+  UPSTREAM_HEAD="$(git -C "$ROOT" rev-parse "refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH")"
+  git -C "$ROOT" merge-base --is-ancestor "$HEAD" "$UPSTREAM_HEAD" || {
+    echo "source HEAD is not reachable from its refreshed upstream ref: $HEAD" >&2; exit 2; }
+else
+  SOURCE_REF="${MELUSINA_STORE_GENERATION_SOURCE_REF:-}"
+  [[ "$SOURCE_REF" =~ ^refs/velocity/[a-zA-Z0-9._-]+/static-store$ ]] || {
+    echo "source hidden work ref is required for detached HEAD" >&2; exit 2; }
+  git -C "$ROOT" remote get-url origin >/dev/null 2>&1 || {
+    echo "source hidden work ref remote origin is unavailable" >&2; exit 2; }
+  REMOTE_HEAD="$(git -C "$ROOT" ls-remote --exit-code origin "$SOURCE_REF" | awk '{print $1}')"
+  [[ "$REMOTE_HEAD" == "$HEAD" ]] || {
+    echo "source hidden work ref differs from HEAD: $SOURCE_REF" >&2; exit 2; }
+  LOCAL_REF="refs/remotes/origin/${SOURCE_REF#refs/}"
+  git -C "$ROOT" fetch origin "+$SOURCE_REF:$LOCAL_REF"
+  [[ "$(git -C "$ROOT" rev-parse "$LOCAL_REF")" == "$HEAD" ]] || {
+    echo "source hidden work ref changed during fetch: $SOURCE_REF" >&2; exit 2; }
+fi
 
 SOURCE_EPOCH="$(git -C "$ROOT" show -s --format=%ct "$HEAD")"
 # The UI is part of the governed ELF through go:embed. Regenerate it once from

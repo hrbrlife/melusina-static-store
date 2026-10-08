@@ -154,3 +154,29 @@ func TestIsolatedControlSurfaceDoesNotExistOnPublicCatalogListener(t *testing.T)
 		}
 	}
 }
+
+func TestPublicStoreReleaseRouteAbsentWithAndWithoutPrivateListener(t *testing.T) {
+	for _, privateListener := range []bool{false, true} {
+		t.Run(map[bool]string{false: "without-private-mtls", true: "with-private-mtls"}[privateListener], func(t *testing.T) {
+			cfg, _ := testConfig(t)
+			cfg.PrivateStageDir = t.TempDir()
+			public, control := newGovernedRouterSurfaces(cfg, nil, nil, nil, catalogRuntime{}, privateListener)
+			for _, withClientCertificate := range []bool{false, true} {
+				request := httptest.NewRequest(http.MethodPost, "/control/v1/releases/dossier/prepare", nil)
+				if withClientCertificate {
+					request.TLS = &tls.ConnectionState{Version: tls.VersionTLS13, PeerCertificates: []*x509.Certificate{{}}}
+				}
+				response := httptest.NewRecorder()
+				public.ServeHTTP(response, request)
+				if response.Code != http.StatusNotFound {
+					t.Fatalf("PUBLIC_STORE_RELEASE_CONTROL_ROUTE_MUST_BE_404: private=%t clientCert=%t status=%d", privateListener, withClientCertificate, response.Code)
+				}
+			}
+			privateResponse := httptest.NewRecorder()
+			control.ServeHTTP(privateResponse, httptest.NewRequest(http.MethodPost, "/control/v1/releases/dossier/prepare", nil))
+			if privateResponse.Code == http.StatusNotFound {
+				t.Fatal("PRIVATE_STORE_RELEASE_CONTROL_ROUTE_MUST_EXIST")
+			}
+		})
+	}
+}

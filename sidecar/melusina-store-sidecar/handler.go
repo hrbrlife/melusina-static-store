@@ -294,9 +294,8 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 }
 
 func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
-	// Unit and local-development callers retain the combined shape. The real
-	// process uses newRouterSurfaces with isolateControl=true once the dedicated
-	// Pearl mTLS listener is configured.
+	// The catalog listener is public even in a local install without the
+	// optional private mTLS listener.
 	public, _ := newRouterSurfaces(cfg, operator, cr, mirror, runtime, false)
 	return public
 }
@@ -316,7 +315,7 @@ func newGovernedRouterSurfaces(cfg Config, operator *identity.Private, cr chainR
 	return newRouterSurfacesWithAssembler(cfg, operator, cr, mirror, runtime, isolateControl, NewGovernedCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir))
 }
 
-func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, isolateControl bool, assembler *CatalogAssembler) (http.Handler, http.Handler) {
+func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, _ bool, assembler *CatalogAssembler) (http.Handler, http.Handler) {
 	var controlReceipts *controlReceiptLedger
 	var controlReceiptErr error
 	if operator != nil && runtime.appNonces != nil {
@@ -350,10 +349,10 @@ func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr c
 		catalogExpectedUID:          runtime.expectedUID,
 		catalogExpectedGID:          runtime.expectedGID,
 	}
-	return newPublicRouterWithService(cfg, operator, cr, mirror, runtime, svc, !isolateControl), newControlReleaseRouter(svc)
+	return newPublicRouterWithService(cfg, operator, cr, mirror, runtime, svc, false), newControlReleaseRouter(svc)
 }
 
-func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, svc *publishService, exposeControl bool) http.Handler {
+func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, svc *publishService, _ bool) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -391,9 +390,8 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 		mux.HandleFunc("/publish", svc.handlePublish)
 		mux.HandleFunc("/publish/stage", svc.handleStagePublish)
 	}
-	// During migration the typed control route remains on the combined test and
-	// local-development surface. A Golden configuration removes it from the
-	// public listener entirely; only the dedicated mTLS listener owns it.
+	// The catalog listener never serves typed control routes. Only the
+	// dedicated private mTLS listener can mount them.
 	// Store status remains private even in local combined-mode development.
 	// Otherwise a development convenience would turn the Home observation into a
 	// public sidecar probe when a production listener is configured.
@@ -408,11 +406,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// plan/proof route must never be reachable through the browser/catalog
 	// listener or the historical sidecar-apply surface.
 	mux.HandleFunc(controllerUpgradeIssuePathPrefix, privateControlRouteOnly)
-	if exposeControl {
-		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
-	} else {
-		mux.HandleFunc("/control/v1/", privateControlRouteOnly)
-	}
+	mux.HandleFunc("/control/v1/", privateControlRouteOnly)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 	// POST /publish/generation: envelope-authorized promote of the next signed
 	// desired generation (canonical publisher's promote step). Re-verifies the

@@ -147,10 +147,12 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ProgramID = programID.Base58()
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	cfg.StoreAuthority = op.Public().SignPubkeyB58
 	f := buildValidFixture(t, cfg, randPubkeyB58(t))
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
 	m := newMockChainReader()
 	f.pinAccept(m, operatorSignPub32(t, op))
+	f.pinServeListingActive(m)
 	appID, err := controlSandstormAppID(metadataAppID(f.metadata))
 	if err != nil {
 		t.Fatal(err)
@@ -426,6 +428,20 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("control-private-mtls-publish-positive: %d %s", response.StatusCode, responseBody)
 	}
+	var receipt Receipt
+	if err := json.Unmarshal(responseBody, &receipt); err != nil {
+		t.Fatalf("control-publish-public-readback: decode receipt: %v", err)
+	}
+	publicRuntime := catalogRuntime{appNonces: svc.appNonces, catalogGenerations: svc.catalogGenerations,
+		expectedUID: svc.catalogExpectedUID, expectedGID: svc.catalogExpectedGID}
+	publicRouter := newPublicRouterWithService(svc.cfg, op, m, nil, publicRuntime, svc, false)
+	served := exactGET(publicRouter, "/packages/"+metadataPackageID(f.metadata))
+	if served.Code != http.StatusOK || !bytes.Equal(served.Body.Bytes(), f.spk) {
+		t.Fatalf("control-publish-public-readback: package = %d %q", served.Code, served.Body.Bytes())
+	}
+	indexBytes := exactGETOK(t, publicRouter, "/apps/index.json")
+	pointerBytes := exactGETOK(t, publicRouter, "/apps/pointers/"+metadataAppID(f.metadata)+".json")
+	exactAssertCatalogSelection(t, op, f, indexBytes, pointerBytes, receipt)
 	// The response could be lost after the sidecar has switched the catalog.
 	// An exact command retry must return its durable receipt before it attempts
 	// to parse a body or claim the publisher envelope nonce again.

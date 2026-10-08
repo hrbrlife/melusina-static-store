@@ -210,8 +210,8 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	missing.Header.Set(controlOfflineApprovalHeader, controlHeader(t, offlineApproval))
 	missingResponse := httptest.NewRecorder()
 	svc.handleControlRelease(missingResponse, missing)
-	if missingResponse.Code == http.StatusOK || !strings.Contains(missingResponse.Body.String(), "check=scan_report") {
-		t.Fatalf("control-publish-scan-report-required: %d %s", missingResponse.Code, missingResponse.Body.String())
+	if missingResponse.Code == http.StatusOK || !strings.Contains(missingResponse.Body.String(), "scan-report-missing") {
+		t.Fatalf("scan-report-missing: %d %s", missingResponse.Code, missingResponse.Body.String())
 	}
 	var publishBody publishRequest
 	if err := json.Unmarshal(body.Bytes(), &publishBody); err != nil {

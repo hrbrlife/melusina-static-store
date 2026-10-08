@@ -141,10 +141,10 @@ func signedSetDigest(set servedReleaseSet) (string, error) {
 	}
 	str(set.Completeness)
 	u32(uint32(len(set.DeclaredAbsent)))
-	for _, absence := range set.DeclaredAbsent {
-		str(absence.Role)
-		str(absence.Name)
-		str(absence.Reason)
+	for _, artifact := range set.DeclaredAbsent {
+		str(artifact.Role)
+		str(artifact.Name)
+		str(artifact.Reason)
 	}
 	// Match the publisher's optional signed extension preimage. A legacy set
 	// with no extensions has no suffix, preserving its original signatures.

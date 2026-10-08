@@ -1,32 +1,51 @@
 package main
 
 import (
+	"crypto/ed25519"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
 )
 
-// These bytes were cut by the production Foundation release producer for a
-// disposable local estate. The keys are separately pinned by its signed estate
-// profile; no key or digest from the release set selects its own verifier.
+// The expected digest was made by the Foundation release producer's canonical
+// preimage, independent of this Store verifier. The publisher signer is the
+// repository's published, test-only estate vector key.
 func TestEnrolledReleaseGateAcceptsSignedExtensionsAndRecalls(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("testdata", "signed-foundation-v2-migrate-extensions.json"))
+	unsigned, err := os.ReadFile(filepath.Join("testdata", "release-set-c3-extensions-unsigned.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	trusted := []string{
-		"2d1054ec74cb3fe57a051aa41694734c9a5c9c967535068b4a6d59ae6bdb78cc",
-		"c15c7f72f4bafdae9d8a0033ee6a0c51bf14379be715b1060b075a1b206ce9fb",
-		"cb991b63b5937f537ddadb650b266e6f29c96012f91194af9f8cd1c922b347ef",
+		"754a25111a91dffda7231bb434335bdd7b34ebff63d899cec0eaa9da9a66e6bf",
+		"7e9547415856eed6c1fa510a7a641e7037173979220ab4522c0d4941d4510c41",
 	}
-	set, digest, err := verifySignedReleaseSet(raw, trusted, 2)
-	if err != nil || digest != "a87928b82a5d82aa463144657ccdfa6f98c90ddae756948839ad60ed5f6b703f" {
+	const expected = "1ed96229c9cb7dab9c6028b70498b4e0eb9041b46cee03f38cebe28982201483"
+	private := releasetest.TrustedPublisher()
+	if got := hex.EncodeToString(private.Public().(ed25519.PublicKey)); got != trusted[1] {
+		t.Fatalf("signed-extension-publisher-pin-mismatch: %s", got)
+	}
+	var document map[string]any
+	if err := json.Unmarshal(unsigned, &document); err != nil {
+		t.Fatal(err)
+	}
+	document["signatures"] = []any{map[string]any{
+		"keyId": "publisher-b", "signature": hex.EncodeToString(ed25519.Sign(private, []byte(expected))),
+	}}
+	raw, err := json.Marshal(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set, digest, err := verifySignedReleaseSet(raw, trusted, 1)
+	if err != nil || digest != expected {
 		t.Fatalf("signed-extension-release-set-positive: digest=%s err=%v", digest, err)
 	}
-	if len(set.Recalls) != 3 {
-		t.Fatal("signed-extension-release-set-recalls-missing")
+	if len(set.Recalls) != 1 || len(set.DeclaredAbsent) != 1 {
+		t.Fatal("signed-extension-release-set-recalls-or-absence-missing")
 	}
 	for _, artifact := range set.Artifacts {
 		if artifact.Role != "shell-bundle" {
@@ -47,20 +66,13 @@ func TestEnrolledReleaseGateAcceptsSignedExtensionsAndRecalls(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, _, err := verifySignedReleaseSet(changed, trusted, 2); err == nil || !strings.Contains(err.Error(), "release-set-signature-invalid") {
+			if _, _, err := verifySignedReleaseSet(changed, trusted, 1); err == nil || !strings.Contains(err.Error(), "release-set-signature-invalid") {
 				t.Fatalf("signed-extension-%s-mutation-refused: %v", name, err)
 			}
 		})
 	}
 	mutate("incus-fingerprint", func(doc map[string]any) {
-		for _, value := range doc["artifacts"].([]any) {
-			artifact := value.(map[string]any)
-			if artifact["incusFingerprint"] != nil {
-				artifact["incusFingerprint"] = strings.Repeat("0", 64)
-				return
-			}
-		}
-		t.Fatal("extension fixture lacks incus fingerprint")
+		doc["artifacts"].([]any)[0].(map[string]any)["incusFingerprint"] = strings.Repeat("0", 64)
 	})
 	mutate("recall-digest", func(doc map[string]any) {
 		doc["recalls"].([]any)[0].(map[string]any)["sha256"] = strings.Repeat("0", 64)
@@ -69,18 +81,12 @@ func TestEnrolledReleaseGateAcceptsSignedExtensionsAndRecalls(t *testing.T) {
 	if err := json.Unmarshal(raw, &nullable); err != nil {
 		t.Fatal(err)
 	}
-	for _, value := range nullable["artifacts"].([]any) {
-		artifact := value.(map[string]any)
-		if artifact["incusFingerprint"] != nil {
-			artifact["incusFingerprint"] = nil
-			break
-		}
-	}
+	nullable["artifacts"].([]any)[0].(map[string]any)["incusFingerprint"] = nil
 	nullRaw, err := json.Marshal(nullable)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := verifySignedReleaseSet(nullRaw, trusted, 2); err == nil || !strings.Contains(err.Error(), "release-set-json-invalid: null incusFingerprint extension") {
+	if _, _, err := verifySignedReleaseSet(nullRaw, trusted, 1); err == nil || !strings.Contains(err.Error(), "release-set-json-invalid: null incusFingerprint extension") {
 		t.Fatalf("signed-extension-null-mutation-refused: %v", err)
 	}
 }

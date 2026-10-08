@@ -3009,9 +3009,11 @@ def policy_executor_env() -> dict[str, str]:
 
 
 def generic_executor_env() -> dict[str, str]:
+    authority = require_shared_squads_authority()
     return {
         "SOLANA_RPC_URL": env("MEL_RELEASE_RPC_URL", required=True),
         "MELUSINA_RPC_PRIMARY": env("MEL_RELEASE_RPC_URL", required=True),
+        "SQUADS_PROGRAM_ID": authority["programId"],
         "SQUADS_MEMBER_KEYPAIRS": ",".join(str(path) for path in member_keypair_paths()),
     }
 
@@ -3613,6 +3615,21 @@ def approved_runner_executor() -> Path:
     return executor
 
 
+def revoke_instruction(pda: str, authority: dict[str, str], master_ata: str) -> dict[str, Any]:
+    """Build the exact registry instruction sent by the governed revoke executor."""
+    return {
+        "programId": env("MEL_PROGRAM_ID", required=True),
+        "accounts": [
+            {"pubkey": pda, "isSigner": False, "isWritable": True},
+            {"pubkey": authority["vault"], "isSigner": True, "isWritable": True},
+            {"pubkey": env("MEL_RELEASE_MASTER_NFT_MINT", required=True), "isSigner": False, "isWritable": False},
+            {"pubkey": master_ata, "isSigner": False, "isWritable": False},
+            {"pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "isSigner": False, "isWritable": False},
+        ],
+        "data": base64.b64encode(hashlib.sha256(b"global:revoke_release_entry").digest()[:8]).decode(),
+    }
+
+
 def revoke(pda: str, receipt_out: Path) -> None:
     authority = require_shared_squads_authority()
     # Fail-closed runner gate before anything else: a revoke without a
@@ -3643,18 +3660,8 @@ def revoke(pda: str, receipt_out: Path) -> None:
             continue
     if not master_ata:
         raise ProviderError("cannot revoke without a prepared release ceremony state carrying masterNftAta")
-    discriminator = base64.b64encode(hashlib.sha256(b"global:revoke_release_entry").digest()[:8]).decode()
     ix_path = status_doc_path.with_suffix(".ix.json")
-    write_json(ix_path, {
-        "programId": env("MEL_PROGRAM_ID", required=True),
-        "accounts": [
-            {"pubkey": pda, "isSigner": False, "isWritable": True},
-            {"pubkey": authority["vault"], "isSigner": True, "isWritable": True},
-            {"pubkey": env("MEL_RELEASE_MASTER_NFT_MINT", required=True), "isSigner": False, "isWritable": False},
-            {"pubkey": master_ata, "isSigner": False, "isWritable": False},
-            {"pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "isSigner": False, "isWritable": False},
-        ], "data": discriminator,
-    })
+    write_json(ix_path, revoke_instruction(pda, authority, master_ata))
     command, confinement = confined_node("MEL_RELEASE_SQUADS_EXECUTOR", executor, executor, str(ix_path),
                                          "--multisig", authority["multisig"], "--vault", authority["vault"])
     result = last_json(run(command, extra_env={**generic_executor_env(), **confinement}))

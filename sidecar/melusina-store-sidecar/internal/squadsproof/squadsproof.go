@@ -287,7 +287,7 @@ func ParseMultisig(account Account, programID Pubkey) (Multisig, error) {
 			voteMembers++
 		}
 	}
-	if err := d.doneMultisig(out.RentCollector); err != nil {
+	if err := d.doneMultisig(out.RentCollector, len(out.Members)); err != nil {
 		return Multisig{}, err
 	}
 	if out.Threshold == 0 || int(out.Threshold) > voteMembers {
@@ -754,27 +754,33 @@ func (d *decoder) done(kind string) error {
 	return nil
 }
 
-// doneMultisig accepts the one allocation-only suffix emitted by Squads v4.
-// Multisig::size reserves 32 bytes for rent_collector even when its Borsh
-// Option is None. In that case Anchor serializes only the zero option tag and
-// leaves the reserved bytes as a zero suffix. No other suffix is accepted:
-// the length must be exact, the decoded option must be None, and every byte
-// must remain zero.
-func (d *decoder) doneMultisig(rentCollector *Pubkey) error {
+// doneMultisig accepts only zero-filled Squads v4 allocation slack. The account
+// reserves 32 bytes when rent_collector is None and may reserve whole 33-byte
+// Member slots beyond the serialized vector. Neither reserved region is a
+// member or an account extension: the Borsh vector length above is authority.
+func (d *decoder) doneMultisig(rentCollector *Pubkey, memberCount int) error {
 	const unsetRentCollectorReservedBytes = 32
 	if d.remaining() == 0 {
 		return nil
 	}
-	if rentCollector == nil && d.remaining() == unsetRentCollectorReservedBytes {
-		for _, b := range d.data[d.off:] {
-			if b != 0 {
+	base := 0
+	if rentCollector == nil {
+		base = unsetRentCollectorReservedBytes
+	}
+	remaining := d.remaining()
+	if remaining < base || (remaining-base)%33 != 0 || (remaining-base)/33 > maxMembers-memberCount {
+		return d.done("multisig")
+	}
+	for _, b := range d.data[d.off:] {
+		if b != 0 {
+			if remaining == unsetRentCollectorReservedBytes && rentCollector == nil {
 				return fmt.Errorf("squadsproof: multisig: nonzero unset rent collector padding")
 			}
+			return fmt.Errorf("squadsproof: multisig: nonzero member allocation padding")
 		}
-		d.off = len(d.data)
-		return nil
 	}
-	return d.done("multisig")
+	d.off = len(d.data)
+	return nil
 }
 
 func requireDistinctPubkeys(keys []Pubkey, field string) error {

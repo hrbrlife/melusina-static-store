@@ -173,6 +173,32 @@ func TestMultisigAcceptsOnlyCanonicalUnsetRentCollectorPadding(t *testing.T) {
 	}
 }
 
+func TestMultisigZeroMemberCapacityPaddingAndNamedMutations(t *testing.T) {
+	_, programID, multisig, _, _ := fixtureAccounts(t)
+	// A real four-member multisigCreateV2 account on the disposable validator
+	// allocated 561 bytes: 232 serialized bytes plus 32 reserved rent-collector
+	// bytes and nine reserved 33-byte Member slots. The SDK deserializes at 232.
+	const reservedMemberSlots = 9
+	canonical := multisig
+	canonical.Data = append(append([]byte(nil), multisig.Data...), make([]byte, 32+reservedMemberSlots*33)...)
+	if _, err := ParseMultisig(canonical, programID); err != nil {
+		t.Fatalf("SQUADS_MEMBER_CAPACITY_POSITIVE: real allocation rejected: %v", err)
+	}
+
+	nonzero := canonical
+	nonzero.Data = append([]byte(nil), canonical.Data...)
+	nonzero.Data[len(nonzero.Data)-1] = 1
+	if _, err := ParseMultisig(nonzero, programID); err == nil || !strings.Contains(err.Error(), "nonzero member allocation padding") {
+		t.Fatalf("SQUADS_MEMBER_CAPACITY_NONZERO_REFUSED: %v", err)
+	}
+
+	misaligned := multisig
+	misaligned.Data = append(append([]byte(nil), multisig.Data...), make([]byte, 31+reservedMemberSlots*33)...)
+	if _, err := ParseMultisig(misaligned, programID); err == nil || !strings.Contains(err.Error(), "trailing") {
+		t.Fatalf("SQUADS_MEMBER_CAPACITY_LENGTH_REFUSED: %v", err)
+	}
+}
+
 // The expected addresses and bumps in this test were emitted by the installed
 // @sqds/multisig v2.1.4 SDK's get*Pda helpers.  This keeps the Go helpers tied
 // to the actual JS client that creates the production Squads accounts.

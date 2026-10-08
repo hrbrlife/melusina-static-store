@@ -52,13 +52,19 @@ func newStoreConfigRenderFixture(t *testing.T) (estateprofile.EstateProfileV1, s
 	return profile, profilePath, filepath.Join(dir, "store-render-input.json"), filepath.Join(dir, "store.config.json"), input
 }
 
-func signedStoreSecurityFixture(t *testing.T, profile estateprofile.EstateProfileV1, profileDigest string) storesecurity.Profile {
+func signedStoreSecurityFixture(t *testing.T, profile estateprofile.EstateProfileV1, profileDigest string, clientPin ...string) storesecurity.Profile {
 	t.Helper()
 	scanner := sha256.Sum256([]byte("store-security-rehearsal-scanner"))
 	storeLinkCert := sha256.Sum256([]byte("store-security-rehearsal-store-link-cert"))
+	pin := hex.EncodeToString(storeLinkCert[:])
+	if len(clientPin) == 1 {
+		pin = clientPin[0]
+	} else if len(clientPin) != 0 {
+		t.Fatal("one Store Link client pin is required")
+	}
 	p := storesecurity.Profile{
 		Schema: storesecurity.Schema, EstateProfileSHA256: profileDigest, StoreID: profile.Store.StoreID,
-		ControlListenAddr: "127.0.0.1:9444", StoreLinkClientCertSHA256: hex.EncodeToString(storeLinkCert[:]),
+		ControlListenAddr: "127.0.0.1:9444", StoreLinkClientCertSHA256: pin,
 		ScannerEd25519PublicKey: hex.EncodeToString(ed25519.NewKeyFromSeed(scanner[:]).Public().(ed25519.PublicKey)),
 	}
 	ownerKeys := map[string]ed25519.PrivateKey{}

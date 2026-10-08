@@ -18,6 +18,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/controltlsissue"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 )
 
 func newControlTestCA(t *testing.T) (*x509.Certificate, *ecdsa.PrivateKey, *x509.CertPool) {
@@ -134,6 +137,72 @@ func TestStoreLinkControlMTLSRequiresTLS13VerifiedAndPinnedStoreLinkLeaf(t *test
 	}
 	if _, err := newClient(otherLeaf).Get(server.URL + "/control/v1/releases/dossier/prepare"); err == nil {
 		t.Fatal("a different certificate from the trusted CA reached the Store Link control listener")
+	}
+}
+
+func TestIssuedControlIdentityReachesOnlyPrivateProductionRouter(t *testing.T) {
+	bundle, pin, err := controltlsissue.Issue("127.0.0.1", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	serverCertPath := filepath.Join(dir, "server.crt")
+	serverKeyPath := filepath.Join(dir, "server.key")
+	caPath := filepath.Join(dir, "ca.crt")
+	for path, content := range map[string]string{serverCertPath: bundle.ServerCertPEM, serverKeyPath: bundle.ServerKeyPEM, caPath: bundle.ClientCAPEM} {
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	profile := storeEstateProfileFixture(t)
+	profileDigest, err := estateprofile.VerifyProfile(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	security := signedStoreSecurityFixture(t, profile, profileDigest, pin)
+	cfg, _ := testConfig(t)
+	cfg.StoreID = profile.Store.StoreID
+	cfg.EstateProfile = &profile
+	cfg.StoreSecurityProfile = &security
+	cfg.Policy.RequirePearlControlForAppPublish = true
+	cfg.Policy.RequireScanReport = true
+	cfg.Policy.ScannerEd25519PublicKey = security.ScannerEd25519PublicKey
+	cfg.StoreLinkControlMTLS = StoreLinkControlMTLSConfig{ListenAddr: security.ControlListenAddr, CertPath: serverCertPath,
+		KeyPath: serverKeyPath, ClientCAPath: caPath, StoreLinkClientCertSHA256: pin}
+	if err := requireServingControlMTLS(cfg); err != nil {
+		t.Fatalf("issued-control-mtls-positive: %v", err)
+	}
+	public, private := newGovernedRouterSurfaces(cfg, nil, nil, nil, catalogRuntime{}, true)
+	production, err := newStoreLinkControlServer(cfg.StoreLinkControlMTLS, private)
+	if err != nil {
+		t.Fatalf("issued-control-mtls-positive: %v", err)
+	}
+	server := httptest.NewUnstartedServer(production.Handler)
+	server.TLS = production.TLSConfig
+	server.StartTLS()
+	defer server.Close()
+	clientCert, err := tls.X509KeyPair([]byte(bundle.ClientCertPEM), []byte(bundle.ClientKeyPEM))
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM([]byte(bundle.ClientCAPEM)) {
+		t.Fatal("issued-control-ca-absent")
+	}
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13,
+		RootCAs: roots, Certificates: []tls.Certificate{clientCert}}}}
+	response, err := client.Get(server.URL + "/control/v1/releases/dossier/prepare")
+	if err != nil {
+		t.Fatalf("issued-control-mtls-positive: %v", err)
+	}
+	response.Body.Close()
+	if response.StatusCode == http.StatusNotFound {
+		t.Fatal("issued-control-mtls-positive: private route absent")
+	}
+	probe := httptest.NewRecorder()
+	public.ServeHTTP(probe, httptest.NewRequest(http.MethodGet, "/control/v1/releases/dossier/prepare", nil))
+	if probe.Code != http.StatusNotFound {
+		t.Fatalf("control-public-route-absent-without-mtls: %d", probe.Code)
 	}
 }
 

@@ -7,11 +7,13 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"testing"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/controltlsissue"
 	"time"
 )
 
 func TestIssueControlTLSProducesPinnedMutualTLSIdentity(t *testing.T) {
-	b, pin, err := issue("127.0.0.1", time.Now())
+	b, pin, err := controltlsissue.Issue("127.0.0.1", time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

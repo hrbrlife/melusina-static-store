@@ -623,6 +623,17 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 // buildValidFixtureWithSPK is buildValidFixture for the given SPK bytes.
 func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, spk []byte) publishFixture {
 	t.Helper()
+	spkSum := sha256.Sum256(spk)
+	packageID := hex.EncodeToString(spkSum[:])[:32]
+	appIDText := testAppIDText(masterMintB58)
+	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0","version":"1.0.0","packageId":"` + packageID + `","appId":"` + appIDText + `"}`)
+	return buildValidFixtureWithArtifact(t, cfg, masterMintB58, spk, metadata)
+}
+
+// buildValidFixtureWithArtifact keeps a package's real metadata and SPK
+// together, so native Shell acceptance can consume the published release.
+func buildValidFixtureWithArtifact(t *testing.T, cfg Config, masterMintB58 string, spk, metadata []byte) publishFixture {
+	t.Helper()
 	// Individual tests often construct only the fields they exercise. Give
 	// fixture-backed release tests a complete shared-authority tuple while
 	// keeping production Config validation fail-closed for an omitted tuple.
@@ -646,13 +657,18 @@ func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, sp
 	}
 
 	spkSum := sha256.Sum256(spk)
-	packageID := hex.EncodeToString(spkSum[:])[:32]
-	// metadata carries the Sandstorm appId — the served-slot key hygiene check (b)
-	// locates the prior published version under (attest/<appId>/RELEASE.json),
-	// and its decoded key is the App clearance target. It is a canonical
-	// 52-character appId, one per master mint (testAppIDText).
-	appIDText := testAppIDText(masterMintB58)
-	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0","version":"1.0.0","packageId":"` + packageID + `","appId":"` + appIDText + `"}`)
+	var packageMetadata struct {
+		AppID     string `json:"appId"`
+		PackageID string `json:"packageId"`
+		Version   string `json:"version"`
+	}
+	if err := json.Unmarshal(metadata, &packageMetadata); err != nil {
+		t.Fatal(err)
+	}
+	if packageMetadata.PackageID != hex.EncodeToString(spkSum[:])[:32] || packageMetadata.AppID == "" || packageMetadata.Version == "" {
+		t.Fatal("published-artifact-metadata-binding-required")
+	}
+	appIDText := packageMetadata.AppID
 	// The on-chain app_hash is the TREE-HASH over {app.spk, metadata.json}, not
 	// sha256(spk) — exactly what apphash.Canonical (and the pearl ceremony) compute.
 	appHashHex, err := apphash.Canonical(bytes.NewReader(spk), metadata)
@@ -718,7 +734,7 @@ func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, sp
 		Schema:             "melusina-release-v1",
 		AppHash:            appHashHex,
 		ReleaseHash:        releaseHashHex,
-		Version:            "1.0.0",
+		Version:            packageMetadata.Version,
 		SignedAtUnix:       1700000000,
 		MasterNftMint:      masterMintB58,
 		LicenseSquadsVault: cfg.ReleaseSquadsAuthority.Vault,

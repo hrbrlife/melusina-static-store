@@ -148,7 +148,16 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	cfg.ProgramID = programID.Base58()
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
 	cfg.StoreAuthority = op.Public().SignPubkeyB58
-	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	packageDir := filepath.Join("..", "..", "packages", "hrbrlife", "melusina-dashboard-app", "melusina-dashboard-app")
+	spk, err := os.ReadFile(filepath.Join(packageDir, "app.spk"))
+	if err != nil {
+		t.Fatalf("control-real-spk-required: %v", err)
+	}
+	metadata, err := os.ReadFile(filepath.Join(packageDir, "metadata.json"))
+	if err != nil {
+		t.Fatalf("control-real-metadata-required: %v", err)
+	}
+	f := buildValidFixtureWithArtifact(t, cfg, randPubkeyB58(t), spk, metadata)
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
 	m := newMockChainReader()
 	f.pinAccept(m, operatorSignPub32(t, op))

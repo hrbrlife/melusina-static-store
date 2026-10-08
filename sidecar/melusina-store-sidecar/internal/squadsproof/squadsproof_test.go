@@ -192,9 +192,9 @@ func TestMultisigZeroMemberCapacityPaddingAndNamedMutations(t *testing.T) {
 		t.Fatalf("SQUADS_MEMBER_CAPACITY_NONZERO_REFUSED: %v", err)
 	}
 
-	misaligned := multisig
-	misaligned.Data = append(append([]byte(nil), multisig.Data...), make([]byte, 31+reservedMemberSlots*33)...)
-	if _, err := ParseMultisig(misaligned, programID); err == nil || !strings.Contains(err.Error(), "trailing") {
+	wrongLength := multisig
+	wrongLength.Data = append(append([]byte(nil), multisig.Data...), make([]byte, 31+reservedMemberSlots*33)...)
+	if _, err := ParseMultisig(wrongLength, programID); err == nil || !strings.Contains(err.Error(), "trailing") {
 		t.Fatalf("SQUADS_MEMBER_CAPACITY_LENGTH_REFUSED: %v", err)
 	}
 }
@@ -217,9 +217,9 @@ func TestProposalZeroVoteCapacityPaddingAndNamedMutations(t *testing.T) {
 		t.Fatalf("SQUADS_VOTE_CAPACITY_NONZERO_REFUSED: %v", err)
 	}
 
-	misaligned := proposal
-	misaligned.Data = append(append([]byte(nil), proposal.Data...), make([]byte, 9*32-1)...)
-	if _, err := ParseProposal(misaligned, programID); err == nil || !strings.Contains(err.Error(), "trailing") {
+	wrongLength := proposal
+	wrongLength.Data = append(append([]byte(nil), proposal.Data...), make([]byte, 9*32-1)...)
+	if _, err := ParseProposal(wrongLength, programID); err == nil || !strings.Contains(err.Error(), "trailing") {
 		t.Fatalf("SQUADS_VOTE_CAPACITY_LENGTH_REFUSED: %v", err)
 	}
 }

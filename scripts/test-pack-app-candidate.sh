@@ -33,6 +33,7 @@ endif
 pack-msb-test:
 	@printf 'namedcoin-msb-test\n' >> "$${BUILD_LOG:?BUILD_LOG is required for the profile fixture}"
 	@printf 'candidate-bytes-msb-test' > "$(SPK_OUT)"
+	@if [ "$${MUTATE_NAMEDCOIN_METADATA:-0}" = 1 ]; then printf '\n' >> metadata.json; fi
 MAKE
 cat > "$APP/metadata.json" <<'JSON'
 {"appId":"testappid","version":"1.2.3"}
@@ -84,6 +85,27 @@ assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
+# A partial-clone filter entry may be exposed as a URL-shaped remote name.
+# It has no publication authority and must not break the origin proof.
+git -C "$APP" config remote.https://github.com/apache/fineract.git.promisor true
+git -C "$APP" config remote.https://github.com/apache/fineract.git.partialclonefilter blob:none
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --spk-out "$WORK/url-remote.spk" \
+  --receipt-out "$WORK/url-remote-receipt.json" >"$WORK/url-remote.log" 2>&1
+git -C "$APP" config --remove-section remote.https://github.com/apache/fineract.git
+echo 'PASS candidate pack ignores a URL-shaped partial-clone filter remote'
+
+git -C "$APP" remote rename origin saved-origin
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" >"$WORK/no-origin.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate source has no origin remote' "$WORK/no-origin.log"
+git -C "$APP" remote rename saved-origin origin
+echo 'PASS candidate pack refuses missing origin authority'
+
 # A single-branch source cohort must still prove a just-pushed dev-publish
 # revision. The normal remote fetchspec would only refresh main and make this
 # real remote tip falsely appear local-only.
@@ -104,6 +126,22 @@ python3 - "$WORK/narrow-receipt.json" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
 assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/dev-publish", d
+PY
+
+# A hidden candidate ref proves remote publication without creating another
+# GitHub feature branch. The source must be unreachable from every head.
+git -C "$NARROW" checkout -qb rehearsal-candidate
+printf 'hidden-ref-only\n' > "$NARROW/hidden-ref-only.txt"
+git -C "$NARROW" add hidden-ref-only.txt
+git -C "$NARROW" commit -qm hidden-ref-only
+git -C "$NARROW" push -q origin HEAD:refs/velocity/V-CUT-REHEARSAL/namedcoin
+git -C "$NARROW" config remote.origin.fetch '+refs/heads/main:refs/remotes/origin/main'
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$NARROW" --receipt-out "$WORK/hidden-receipt.json"
+python3 - "$WORK/hidden-receipt.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/velocity/V-CUT-REHEARSAL/namedcoin", d
 PY
 
 # Refreshing source history must not fetch gitlinks from unrelated archive
@@ -237,11 +275,34 @@ PY
 git -C "$APP" add metadata.json
 git -C "$APP" commit -qm namedcoin-profile
 git -C "$APP" push -qu origin HEAD:main
+rm -f "$APP/app.spk"
 BUILD_LOG="$WORK/namedcoin-profile.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
   MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet \
-  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --receipt-out "$WORK/namedcoin-profile-receipt.json"
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --spk-out "$WORK/namedcoin-profile-output.spk" --metadata-out "$WORK/namedcoin-profile-metadata.json" --receipt-out "$WORK/namedcoin-profile-receipt.json"
 [[ "$(cat "$WORK/namedcoin-profile.log")" == "namedcoin-msb-test" ]]
+[[ -f "$WORK/namedcoin-profile-output.spk" && ! -e "$APP/app.spk" ]]
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+python3 - "$WORK/namedcoin-profile-output.spk" "$WORK/namedcoin-profile-metadata.json" "$APP/metadata.json" <<'PY'
+import hashlib, json, pathlib, sys
+spk, staged, source = map(pathlib.Path, sys.argv[1:])
+digest = hashlib.sha256(spk.read_bytes()).hexdigest()
+generated = json.loads(staged.read_text())
+committed = json.loads(source.read_text())
+assert generated["packageId"] == digest[:32]
+assert generated["sha256"] == digest
+assert {k: v for k, v in generated.items() if k not in ("packageId", "sha256")} == {
+    k: v for k, v in committed.items() if k not in ("packageId", "sha256")}
+PY
+set +e
+BUILD_LOG="$WORK/namedcoin-profile-mutation.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet MUTATE_NAMEDCOIN_METADATA=1 \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --spk-out "$WORK/namedcoin-mutated-output.spk" --metadata-out "$WORK/namedcoin-mutated-metadata.json" >"$WORK/namedcoin-source-mutation.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'NamedCoin candidate pack mutated source metadata' "$WORK/namedcoin-source-mutation.log"
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+echo 'PASS NamedCoin source mutation refused by NamedCoin candidate pack mutated source metadata'
 
 python3 - "$APP/metadata.json" <<'PY'
 import json, sys

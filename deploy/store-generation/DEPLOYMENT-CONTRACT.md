@@ -7,6 +7,14 @@ version-pinned adapter.
 
 ## Build
 
+The deterministic archive includes `bin/evidence-pack-custody` as a separately
+launched private Store transport producer. It carries no tenant key, roster or
+socket group. A signed installer plan must place the daemon on the Shell host,
+provide the exact public-roster digest, durable root outside the grain tree,
+private socket path and grain-mapped `--socket-gid`, then mount only that socket
+into the opted-in DueProcess grain. Merely extracting this binary does not
+start the service or authorize a pack read.
+
 From a clean, pushed source commit:
 
 ```sh

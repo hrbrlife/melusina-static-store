@@ -45,11 +45,10 @@ const (
 	// programme the key is salted by must be the verified profile's own, so a
 	// verified profile never lends its chain to another estate's programme.
 	RefusalProgramDiffersFromProfile = "boot-identity-program-differs-from-profile"
-	// RefusalIdentityLeafSelfSignatureInvalid: the first -tls-cert certificate
-	// is the boot identity leaf; it must be self-signed, so a mutated or
-	// externally signed leaf is refused rather than fingerprinted into the
-	// ceremony report.
+	// An unchained self-signed identity leaf must prove its own signature.
 	RefusalIdentityLeafSelfSignatureInvalid = "identity-leaf-self-signature-invalid"
+	// A CA-issued leaf must have a complete, verified chain and match -domain.
+	RefusalIdentityLeafCAChainInvalid = "identity-leaf-ca-chain-invalid"
 )
 
 // chainReferencePattern is a CAIP-2 chain reference ([-_a-zA-Z0-9]{1,32}).
@@ -340,7 +339,7 @@ func prepare(opts options) (ceremonyReport, error) {
 	if err != nil {
 		return ceremonyReport{}, fmt.Errorf("binary_hash: %w", err)
 	}
-	tlsFingerprint, caHash, err := certHashes(opts.tlsCertPath, opts.caChainPath)
+	tlsFingerprint, caHash, err := certHashesForDomain(opts.tlsCertPath, opts.caChainPath, opts.domain)
 	if err != nil {
 		return ceremonyReport{}, err
 	}
@@ -484,6 +483,10 @@ func parseShard32(raw []byte) ([32]byte, error) {
 }
 
 func certHashes(tlsCertPath, caChainPath string) ([32]byte, [32]byte, error) {
+	return certHashesForDomain(tlsCertPath, caChainPath, "")
+}
+
+func certHashesForDomain(tlsCertPath, caChainPath, domain string) ([32]byte, [32]byte, error) {
 	leafAndMaybeChain, err := readPEMCerts(tlsCertPath)
 	if err != nil {
 		return [32]byte{}, [32]byte{}, fmt.Errorf("tls cert: %w", err)
@@ -493,18 +496,44 @@ func certHashes(tlsCertPath, caChainPath string) ([32]byte, [32]byte, error) {
 	if err != nil {
 		return [32]byte{}, [32]byte{}, fmt.Errorf("%s: parse tls identity leaf: %v", RefusalIdentityLeafSelfSignatureInvalid, err)
 	}
-	if !bytes.Equal(leaf.RawSubject, leaf.RawIssuer) {
-		return [32]byte{}, [32]byte{}, fmt.Errorf("%s: issuer differs from subject", RefusalIdentityLeafSelfSignatureInvalid)
-	}
-	if err := leaf.CheckSignature(leaf.SignatureAlgorithm, leaf.RawTBSCertificate, leaf.Signature); err != nil {
-		return [32]byte{}, [32]byte{}, fmt.Errorf("%s: %v", RefusalIdentityLeafSelfSignatureInvalid, err)
-	}
 	leafFingerprint := sha256.Sum256(leafDER)
 	caCerts := leafAndMaybeChain[1:]
 	if strings.TrimSpace(caChainPath) != "" {
 		caCerts, err = readPEMCerts(caChainPath)
 		if err != nil {
 			return [32]byte{}, [32]byte{}, fmt.Errorf("ca chain: %w", err)
+		}
+	}
+	if bytes.Equal(leaf.RawSubject, leaf.RawIssuer) {
+		if err := leaf.CheckSignature(leaf.SignatureAlgorithm, leaf.RawTBSCertificate, leaf.Signature); err != nil {
+			return [32]byte{}, [32]byte{}, fmt.Errorf("%s: %v", RefusalIdentityLeafSelfSignatureInvalid, err)
+		}
+	} else {
+		if len(caCerts) == 0 {
+			return [32]byte{}, [32]byte{}, fmt.Errorf("%s: issuer differs from subject and no CA chain was supplied", RefusalIdentityLeafSelfSignatureInvalid)
+		}
+		if domain == "" {
+			return [32]byte{}, [32]byte{}, fmt.Errorf("%s: CA leaf requires the Store domain", RefusalIdentityLeafCAChainInvalid)
+		}
+		roots := x509.NewCertPool()
+		intermediates := x509.NewCertPool()
+		for i, der := range caCerts {
+			cert, err := x509.ParseCertificate(der)
+			if err != nil || !cert.IsCA {
+				return [32]byte{}, [32]byte{}, fmt.Errorf("%s: CA member %d is invalid", RefusalIdentityLeafCAChainInvalid, i)
+			}
+			if i == len(caCerts)-1 {
+				if !bytes.Equal(cert.RawSubject, cert.RawIssuer) || cert.CheckSignature(cert.SignatureAlgorithm, cert.RawTBSCertificate, cert.Signature) != nil {
+					return [32]byte{}, [32]byte{}, fmt.Errorf("%s: last CA member is not a self-signed root", RefusalIdentityLeafCAChainInvalid)
+				}
+				roots.AddCert(cert)
+			} else {
+				intermediates.AddCert(cert)
+			}
+		}
+		if _, err := leaf.Verify(x509.VerifyOptions{Roots: roots, Intermediates: intermediates,
+			DNSName: domain, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}); err != nil {
+			return [32]byte{}, [32]byte{}, fmt.Errorf("%s: %v", RefusalIdentityLeafCAChainInvalid, err)
 		}
 	}
 	return leafFingerprint, sha256Concat(caCerts), nil

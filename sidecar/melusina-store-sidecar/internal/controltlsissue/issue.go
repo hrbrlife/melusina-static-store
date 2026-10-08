@@ -94,7 +94,7 @@ func Issue(serverName string, now time.Time) (Bundle, string, error) {
 	if err != nil {
 		return Bundle{}, "", err
 	}
-	clientCert, clientKey, clientDER, err := leaf("store-link.invalid", x509.ExtKeyUsageClientAuth)
+	clientCert, clientKey, clientDER, err := leaf("store-link", x509.ExtKeyUsageClientAuth)
 	if err != nil {
 		return Bundle{}, "", err
 	}

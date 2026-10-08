@@ -40,9 +40,11 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
   [[ -z "$dirty" ]] || { echo "source tree is dirty before candidate build" >&2; printf '%s\n' "$dirty" >&2; exit 2; }
   source_revision="$(git -C "$APP_DIR" rev-parse HEAD)"
-  mapfile -t source_remotes < <(git -C "$source_root" remote | LC_ALL=C sort)
-  [[ ${#source_remotes[@]} -gt 0 ]] || { echo "candidate source has no remote" >&2; exit 2; }
-  for remote in "${source_remotes[@]}"; do
+  git -C "$source_root" remote get-url origin >/dev/null 2>&1 || {
+    echo "candidate source has no origin remote" >&2
+    exit 2
+  }
+  for remote in origin; do
     # A source cohort may have been created with --single-branch. Its default
     # remote fetchspec then omits dev-publish even when that exact committed
     # revision was pushed moments ago, causing a false "unpushed" refusal.
@@ -51,12 +53,14 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     # This refresh proves source-ref reachability, not archived submodule
     # availability. The selected checkout's initialized submodules remain
     # build inputs; unrelated historical gitlinks must not be fetched here.
-    git -C "$source_root" fetch --prune --recurse-submodules=no "$remote" "+refs/heads/*:refs/remotes/$remote/*" || {
+    git -C "$source_root" fetch --prune --recurse-submodules=no "$remote" \
+      "+refs/heads/*:refs/remotes/$remote/*" \
+      "+refs/velocity/*:refs/remotes/$remote/velocity/*" || {
       echo "cannot refresh source remote heads: $remote" >&2
       exit 2
     }
   done
-  pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
+  pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/origin/ \
     | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
   [[ -n "$pushed_ref" ]] || { echo "candidate revision is not reachable from any fetched remote ref: $source_revision" >&2; exit 2; }
   source_commit_epoch="$(git -C "$APP_DIR" log -1 --format=%ct HEAD)"

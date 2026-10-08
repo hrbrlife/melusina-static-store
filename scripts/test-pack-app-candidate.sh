@@ -106,6 +106,31 @@ d = json.load(open(sys.argv[1]))
 assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/dev-publish", d
 PY
 
+# A reviewed candidate may be published only to a hidden velocity work ref.
+# The real pack rail must recognize that ref, while an unpushed successor is
+# still refused before any package is built.
+printf 'hidden candidate\n' > "$NARROW/hidden-candidate.txt"
+git -C "$NARROW" add hidden-candidate.txt
+git -C "$NARROW" commit -qm hidden-candidate
+git -C "$NARROW" push -q origin HEAD:refs/velocity/V-H10-J2b/app
+git -C "$NARROW" update-ref -d refs/remotes/origin/velocity/V-H10-J2b/app 2>/dev/null || true
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$NARROW" --receipt-out "$WORK/hidden-receipt.json"
+python3 - "$WORK/hidden-receipt.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["source"]["pushedRemoteRef"] == "refs/remotes/origin/velocity/V-H10-J2b/app", d
+PY
+printf 'unpublished successor\n' > "$NARROW/unpublished.txt"
+git -C "$NARROW" add unpublished.txt
+git -C "$NARROW" commit -qm unpublished
+if PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$NARROW" >"$WORK/unpublished.log" 2>&1; then
+  echo 'candidate source publication guard accepted an unpublished successor' >&2
+  exit 1
+fi
+grep -q 'candidate revision is not reachable' "$WORK/unpublished.log"
+
 # Refreshing source history must not fetch gitlinks from unrelated archive
 # branches. The current selected submodule is real and initialized; only the
 # archive points to an unavailable commit, as in the live DueProcess failure.

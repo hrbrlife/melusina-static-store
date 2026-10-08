@@ -115,28 +115,27 @@ func TestReadStorePublisherGrantMetaStrictlyDecodesLayout(t *testing.T) {
 }
 
 func TestStoreControlReadersAcceptOnlyZeroFilledRegistryAllocation(t *testing.T) {
-	for _, row := range []struct {
-		name            string
-		body            []byte
-		maxAccountBytes int
-		read            func([]byte) error
-	}{
-		{"policy", storeControlPolicyBlob(storePolicyStatusActive), 299, func(b []byte) error { _, err := readStoreControlPolicyMeta(b); return err }},
-		{"grant", storePublisherGrantBlob(storeGrantStatusActive), 319, func(b []byte) error { _, err := readStorePublisherGrantMeta(b); return err }},
-	} {
-		t.Run(row.name, func(t *testing.T) {
-			padded := append(append([]byte{}, row.body...), make([]byte, row.maxAccountBytes-len(row.body))...)
-			if err := row.read(padded); err != nil {
-				t.Fatalf("registry-zero-padding-positive: %v", err)
-			}
-			padded[len(padded)-1] = 1
-			if err := row.read(padded); err == nil {
-				t.Fatal("registry-nonzero-padding-refused: accepted nonzero extension")
-			}
-			tooLong := append(append([]byte{}, row.body...), make([]byte, row.maxAccountBytes-len(row.body)+1)...)
-			if err := row.read(tooLong); err == nil {
-				t.Fatal("registry-oversized-padding-refused: accepted oversized allocation")
-			}
-		})
+	check := func(t *testing.T, body []byte, maxAccountBytes int, read func([]byte) error) {
+		t.Helper()
+		padded := append(append([]byte{}, body...), make([]byte, maxAccountBytes-len(body))...)
+		if err := read(padded); err != nil {
+			t.Fatalf("registry-zero-padding-positive: %v", err)
+		}
+		padded[len(padded)-1] = 1
+		if err := read(padded); err == nil {
+			t.Fatal("registry-nonzero-padding-refused: accepted nonzero extension")
+		}
+		tooLong := append(append([]byte{}, body...), make([]byte, maxAccountBytes-len(body)+1)...)
+		if err := read(tooLong); err == nil {
+			t.Fatal("registry-oversized-padding-refused: accepted oversized allocation")
+		}
 	}
+	t.Run("policy", func(t *testing.T) {
+		check(t, storeControlPolicyBlob(storePolicyStatusActive), 299,
+			func(b []byte) error { _, err := readStoreControlPolicyMeta(b); return err })
+	})
+	t.Run("grant", func(t *testing.T) {
+		check(t, storePublisherGrantBlob(storeGrantStatusActive), 319,
+			func(b []byte) error { _, err := readStorePublisherGrantMeta(b); return err })
+	})
 }

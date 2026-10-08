@@ -30,6 +30,14 @@ func TestInstallerPublishExactBindingAndRestartReplay(t *testing.T) {
 	sign := func(class, name, method, target, storeID string) envelope.Signed {
 		t.Helper()
 		hash := sha256.Sum256(artifact)
+		if method == http.MethodPost && target == installerpublish.Target {
+			signed, err := installerpublish.Sign(pub, op.Public(), class, name, hex.EncodeToString(hash[:]),
+				storeID, svc.cfg.Domain, svc.cfg.LicenseNFTMint, svc.cfg.ProgramID, 12345, 5*time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return signed
+		}
 		binding, err := installerpublish.Digest(class, name, hex.EncodeToString(hash[:]),
 			storeID, svc.cfg.Domain, svc.cfg.LicenseNFTMint, svc.cfg.ProgramID)
 		if err != nil {

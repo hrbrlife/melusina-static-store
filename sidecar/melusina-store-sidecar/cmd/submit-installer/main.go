@@ -150,28 +150,12 @@ func run(args []string, stdout io.Writer) error {
 	// refuses a key without one (identity.Ref.Validate: chain_id is required),
 	// so no compiled fallback can name the retiring estate's cluster, as one
 	// here once did (K-TEN-03).
-	chainID := publisher.Public().Ref.ChainID
-	bindingDigest, err := installerpublish.Digest(o.class, o.name, hashHex,
-		o.storeID, o.storeDomain, o.licenseMint, o.programID)
-	if err != nil {
-		return err
-	}
 	ttl := o.timeout + 2*time.Minute
 	if ttl < 5*time.Minute {
 		ttl = 5 * time.Minute
 	}
-	signed, err := envelope.Sign(envelope.KindPublishRequest, publisher, destination, envelope.SignOptions{
-		RequestHash: hashHex,
-		BodyHash:    bindingDigest,
-		Method:      http.MethodPost,
-		Target:      installerpublish.Target,
-		TTL:         ttl,
-		Chain: envelope.ChainEvidence{
-			ChainID:      chainID,
-			ProgramID:    o.programID,
-			VerifiedSlot: o.verifiedSlot,
-		},
-	})
+	signed, err := installerpublish.Sign(publisher, destination, o.class, o.name, hashHex,
+		o.storeID, o.storeDomain, o.licenseMint, o.programID, o.verifiedSlot, ttl)
 	if err != nil {
 		return fmt.Errorf("sign envelope: %w", err)
 	}

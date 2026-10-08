@@ -9,6 +9,10 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/hrbrlife/melusina-attest/envelope"
+	"github.com/hrbrlife/melusina-attest/identity"
 )
 
 const Target = "/publish/installer"
@@ -50,4 +54,19 @@ func Digest(class, name, artifactSHA256, storeID, storeDomain, licenseMint, regi
 	}
 	digest := sha256.Sum256(raw)
 	return hex.EncodeToString(digest[:]), nil
+}
+
+// Sign is the command producer for the exact installer publication purpose.
+// The receiver recomputes Digest from the HTTP request and its pinned estate.
+func Sign(publisher *identity.Private, destination identity.Public, class, name, artifactSHA256,
+	storeID, storeDomain, licenseMint, registryProgram string, verifiedSlot uint64, ttl time.Duration) (envelope.Signed, error) {
+	binding, err := Digest(class, name, artifactSHA256, storeID, storeDomain, licenseMint, registryProgram)
+	if err != nil {
+		return envelope.Signed{}, err
+	}
+	return envelope.Sign(envelope.KindPublishRequest, publisher, destination, envelope.SignOptions{
+		RequestHash: artifactSHA256, BodyHash: binding, Method: http.MethodPost, Target: Target, TTL: ttl,
+		Chain: envelope.ChainEvidence{ChainID: publisher.Public().Ref.ChainID,
+			ProgramID: registryProgram, VerifiedSlot: verifiedSlot},
+	})
 }

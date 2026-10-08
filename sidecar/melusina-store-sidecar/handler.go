@@ -324,6 +324,11 @@ func newGovernedRouterSurfaces(cfg Config, operator *identity.Private, cr chainR
 }
 
 func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, isolateControl bool, assembler *CatalogAssembler) (http.Handler, http.Handler) {
+	public, private, _ := newRouterSurfacesAndServiceWithAssembler(cfg, operator, cr, mirror, runtime, isolateControl, assembler)
+	return public, private
+}
+
+func newRouterSurfacesAndServiceWithAssembler(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, isolateControl bool, assembler *CatalogAssembler) (http.Handler, http.Handler, *publishService) {
 	var controlReceipts *controlReceiptLedger
 	var controlReceiptErr error
 	if operator != nil && runtime.appNonces != nil {
@@ -356,7 +361,7 @@ func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr c
 		catalogExpectedUID:          runtime.expectedUID,
 		catalogExpectedGID:          runtime.expectedGID,
 	}
-	return newPublicRouterWithService(cfg, operator, cr, mirror, runtime, svc, false), newControlReleaseRouter(svc)
+	return newPublicRouterWithService(cfg, operator, cr, mirror, runtime, svc, false), newControlReleaseRouter(svc), svc
 }
 
 func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, svc *publishService, exposeControl bool) http.Handler {

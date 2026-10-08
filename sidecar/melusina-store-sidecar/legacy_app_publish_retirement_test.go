@@ -47,3 +47,21 @@ func TestRequirePearlControlRetiresLegacyAppRoutesBeforeAnyMutation(t *testing.T
 		t.Fatalf("Pearl control route was retired with the legacy routes: %s", response.Body.String())
 	}
 }
+
+func TestStoreUIBypassRefused(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.DistDir = t.TempDir()
+	cfg.PrivateStageDir = t.TempDir()
+	public, _ := newGovernedRouterSurfaces(cfg, nil, nil, nil, catalogRuntime{}, true)
+	for _, path := range []string{"/publish", "/publish/stage", "/control/v1/releases/0123456789abcdef01234567/publish"} {
+		response := httptest.NewRecorder()
+		public.ServeHTTP(response, httptest.NewRequest(http.MethodPost, path, bytes.NewReader([]byte(`{"candidate":"app"}`))))
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("store-ui-bypass-refused: %s returned %d", path, response.Code)
+		}
+	}
+	entries, err := os.ReadDir(cfg.PrivateStageDir)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("store-ui-bypass-refused: public request touched stage state: %v %v", entries, err)
+	}
+}

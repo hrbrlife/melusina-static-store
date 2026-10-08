@@ -173,6 +173,13 @@ func TestSignedPackCustodyRetainsAndRefusesForeignTesterAndTamper(t *testing.T) 
 	if _, err := store.Put(pack, "case-A", "tester-B", "corr-A"); err == nil || !strings.Contains(err.Error(), "pack-cross-tester") {
 		t.Fatalf("pack-cross-tester: signed foreign tester admitted: %v", err)
 	}
+	changedCase := bytes.Replace(pack, []byte(`"case_ref":"case-A"`), []byte(`"case_ref":"case-B"`), 1)
+	if bytes.Equal(changedCase, pack) {
+		t.Fatal("pack-tamper: case mutation did not change signed manifest")
+	}
+	if _, err := store.Put(changedCase, "case-A", "tester-A", "corr-A"); err == nil || !strings.Contains(err.Error(), "pack-tamper: signature-invalid") {
+		t.Fatalf("pack-tamper: changed signed case manifest misclassified: %v", err)
+	}
 	foreign, err := SignReadClaim("case-A", "tester-B", "corr-A", "test", signer, now)
 	if err != nil {
 		t.Fatal(err)

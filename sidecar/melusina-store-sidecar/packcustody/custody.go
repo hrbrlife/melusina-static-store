@@ -185,13 +185,20 @@ func (s *Custody) Verify(pack []byte, caseRef, testerRef, correlationRef string)
 		len(header.Members) != len(roster) || !validRef(header.SignerKeyID) {
 		return bad("manifest-invalid")
 	}
-	if header.CaseRef != caseRef || header.CorrelationRef != correlationRef {
-		return errors.New("pack-cross-tester")
-	}
 	signer := s.pins["dueprocess/"+header.SignerKeyID]
 	public, err := base64.RawURLEncoding.DecodeString(header.SignerPublicKey)
 	if err != nil || len(signer) != ed25519.PublicKeySize || !bytes.Equal(public, signer) {
 		return bad("signer-pin-mismatch")
+	}
+	preimage := make([]byte, 0, len(packDomain)+4+len(manifestBytes))
+	preimage = append(preimage, packDomain...)
+	preimage = binary.BigEndian.AppendUint32(preimage, uint32(len(manifestBytes)))
+	preimage = append(preimage, manifestBytes...)
+	if !ed25519.Verify(signer, preimage, pack[len(pack)-ed25519.SignatureSize:]) {
+		return bad("signature-invalid")
+	}
+	if header.CaseRef != caseRef || header.CorrelationRef != correlationRef {
+		return errors.New("pack-cross-tester")
 	}
 	for i, d := range header.Members {
 		if d.Name != roster[i] || d.Size == 0 || d.Size > 64<<20 || !digest.MatchString(d.SHA256) || !validRef(d.IssuerKeyID) ||
@@ -238,13 +245,6 @@ func (s *Custody) Verify(pack []byte, caseRef, testerRef, correlationRef string)
 	}
 	if pos != len(pack)-ed25519.SignatureSize {
 		return bad("trailing-bytes")
-	}
-	preimage := make([]byte, 0, len(packDomain)+4+len(manifestBytes))
-	preimage = append(preimage, packDomain...)
-	preimage = binary.BigEndian.AppendUint32(preimage, uint32(len(manifestBytes)))
-	preimage = append(preimage, manifestBytes...)
-	if !ed25519.Verify(signer, preimage, pack[pos:]) {
-		return bad("signature-invalid")
 	}
 	return nil
 }

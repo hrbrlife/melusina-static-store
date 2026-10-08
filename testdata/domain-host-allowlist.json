@@ -197,6 +197,10 @@
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/genesis_dist_init[.]go; reviewed as outside the estate origin."
     },
     {
+      "host": "appscan.report",
+      "reason": "Go type selector for the pinned scan report in cmd/scan-app; no DNS endpoint."
+    },
+    {
       "host": "architecture-mcp-bridge.md",
       "reason": "Tracked dotted filename or identifier in packages/hrbrlife/AI_Lagoon/ai-lagoon/changelog[.]md:37; reviewed as source material, not an estate endpoint."
     },
@@ -335,6 +339,10 @@
     {
       "host": "big.int",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/estateprofile/encoding[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "binding.name",
+      "reason": "Go field selector for the installer binding; no DNS endpoint."
     },
     {
       "host": "blob.id",
@@ -1657,6 +1665,10 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
     },
     {
+      "host": "installerpublish.target",
+      "reason": "Go constant selector for the fixed installer target in a test; no DNS endpoint."
+    },
+    {
       "host": "installerrelease.trust",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/chaingate[.]go; reviewed as outside the estate origin."
     },
@@ -2037,16 +2049,16 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/provider_pairing_signer_test[.]go; it is not an estate endpoint."
     },
     {
+      "host": "negative.name",
+      "reason": "Go field selector in the scan-report negative table; no DNS endpoint."
+    },
+    {
       "host": "network-online.target",
       "reason": "Tracked dotted filename or identifier in deploy/store-generation/melusina-store-listing-signer[.]service:4; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "newsnapshot.id",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
-    },
-    {
-      "host": "next.build",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap[.]go; reviewed as outside the estate origin."
     },
     {
       "host": "nn.test",
@@ -2099,10 +2111,6 @@
     {
       "host": "object.prototype.tostring.call",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
-    },
-    {
-      "host": "old.build",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap[.]go; reviewed as outside the estate origin."
     },
     {
       "host": "old.id",
@@ -2525,6 +2533,10 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/hermetic_harness_test[.]go; it is not an estate endpoint."
     },
     {
+      "host": "publisherenvelope.new",
+      "reason": "Go constructor selector in the governed private publication test; no DNS endpoint."
+    },
+    {
       "host": "purchase.rs",
       "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/vendor/github[.]com/hrbrlife/melusina-identity-gate/verify/attest_records[.]go:52; reviewed as source material, not an estate endpoint."
     },
@@ -2769,6 +2781,10 @@
       "reason": "Tracked dotted filename or identifier in fleet/work/ceremony-5apps/brief[.]md:84; reviewed as source material, not an estate endpoint."
     },
     {
+      "host": "report.target",
+      "reason": "Go field selector in cmd/scan-app test; no DNS endpoint."
+    },
+    {
       "host": "repository.now",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/releasefinalizer/repository_test[.]go; it is not an estate endpoint."
     },
@@ -2815,10 +2831,6 @@
     {
       "host": "response.read",
       "reason": "Tracked external endpoint or dotted identifier in scripts/materialize-governed-cohort[.]py; reviewed as outside the estate origin."
-    },
-    {
-      "host": "result.build",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/cmd/bootstrap-legacy-manifest/main[.]go; reviewed as outside the estate origin."
     },
     {
       "host": "result.name",

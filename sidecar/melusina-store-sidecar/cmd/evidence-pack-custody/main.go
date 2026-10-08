@@ -166,8 +166,46 @@ func openDossier(root, pearl string, pins map[string]ed25519.PublicKey) (http.Ha
 	return store.Handler(), nil
 }
 
+// writeDossierSetupPublic is the pre-enrolment producer for the Store member
+// pin. The installer runs this signed binary before assembling the public
+// roster; the same durable root is used when the socket service starts. Only
+// public halves leave the host. Repeated calls read the first-writer keys.
+func writeDossierSetupPublic(root string, output io.Writer) error {
+	if !filepath.IsAbs(root) || root == "/" {
+		return errors.New("evidence-pack-dossier-setup-root-invalid")
+	}
+	rootInfo, err := os.Lstat(root)
+	if err != nil || !rootInfo.IsDir() || rootInfo.Mode().Perm()&0077 != 0 {
+		return errors.New("evidence-pack-dossier-setup-root-invalid")
+	}
+	dossierRoot := filepath.Join(root, "dossier-retention")
+	if err := os.MkdirAll(dossierRoot, 0700); err != nil {
+		return err
+	}
+	info, err := os.Lstat(dossierRoot)
+	if err != nil || !info.IsDir() || info.Mode().Perm() != 0700 {
+		return errors.New("evidence-pack-dossier-setup-root-invalid")
+	}
+	_, native, nativeID, err := dossierretention.LoadOrCreateIdentity(dossierRoot, "native")
+	if err != nil {
+		return err
+	}
+	_, member, memberID, err := dossierretention.LoadOrCreateIdentity(dossierRoot, "member")
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(map[string]any{
+		"schema": "storage-evidence-pack-setup-keys-v1",
+		"keys": []map[string]string{
+			{"purpose": "native", "key_id": nativeID, "public_key": base64.RawURLEncoding.EncodeToString(native)},
+			{"purpose": "member", "key_id": memberID, "public_key": base64.RawURLEncoding.EncodeToString(member)},
+		},
+	})
+}
+
 func main() {
 	root := flag.String("root", "", "absolute durable evidence-pack root")
+	setupPublic := flag.Bool("setup-public-only", false, "produce the durable public signer roster before enrolment")
 	pearl := flag.String("pearl-dir", "", "absolute disposable grain data directory")
 	socket := flag.String("socket", "", "absolute private Unix socket")
 	socketGID := flag.Int("socket-gid", -1, "installer-pinned grain socket group ID")
@@ -175,6 +213,15 @@ func main() {
 	pinsPath := flag.String("pins", "", "installer-delivered public roster")
 	pinsSHA := flag.String("pins-sha256", "", "installer-pinned public roster SHA-256")
 	flag.Parse()
+	if *setupPublic {
+		if *socket != "" || *pinsPath != "" || *pinsSHA != "" || *pearl != "" || *socketGID >= 0 || *socketGroup != "" {
+			log.Fatal("evidence-pack-dossier-setup-flags-invalid")
+		}
+		if err := writeDossierSetupPublic(*root, os.Stdout); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if !filepath.IsAbs(*socket) || *socket == "/" {
 		log.Fatal("evidence-pack-custody-socket-invalid")
 	}

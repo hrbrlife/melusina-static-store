@@ -10,8 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/storesecurity"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -53,7 +55,8 @@ type Policy struct {
 	// AllowedTiers: capability tiers this store may list (regular/admin/...).
 	AllowedTiers []string `json:"allowed_tiers"`
 	// RequireScanReport: reject publishes lacking an attested clean scan report.
-	RequireScanReport bool `json:"require_scan_report"`
+	RequireScanReport       bool   `json:"require_scan_report"`
+	ScannerEd25519PublicKey string `json:"scanner_ed25519_public_key"`
 	// AcceptPublishers: base58 SIGNING PUBKEYS (identity.Public.SignPubkeyB58)
 	// this store's policy authorizes to submit — the SOLE signer authority
 	// resolveAcceptedPublisherKey pins into envelope.Verify's
@@ -86,7 +89,9 @@ type ReleaseSquadsAuthority struct {
 }
 
 type Config struct {
-	LicenseNFTMint string `json:"license_nft_mint"`
+	EstateProfile        *estateprofile.EstateProfileV1 `json:"estate_profile,omitempty"`
+	StoreSecurityProfile *storesecurity.Profile         `json:"store_security_profile,omitempty"`
+	LicenseNFTMint       string                         `json:"license_nft_mint"`
 	// EstateEnrollmentStatePath opts this Store into the owner-enrolled estate
 	// runtime boundary. It is deliberately empty by default so existing legacy
 	// Stores do not acquire a fabricated identity. A fresh estate config sets an
@@ -430,6 +435,33 @@ func LoadConfig(path string) (Config, error) {
 
 func (cfg StoreLinkControlMTLSConfig) configured() bool {
 	return strings.TrimSpace(cfg.ListenAddr) != "" || strings.TrimSpace(cfg.CertPath) != "" || strings.TrimSpace(cfg.KeyPath) != "" || strings.TrimSpace(cfg.ClientCAPath) != "" || strings.TrimSpace(cfg.StoreLinkClientCertSHA256) != ""
+}
+
+func requireServingControlMTLS(cfg Config) error {
+	if !cfg.StoreLinkControlMTLS.configured() {
+		return fmt.Errorf("config: store_link_control_mtls is required for the serving Store")
+	}
+	if !cfg.Policy.RequirePearlControlForAppPublish {
+		return fmt.Errorf("config: policy.require_pearl_control_for_app_publish is required for the serving Store")
+	}
+	if cfg.EstateProfile == nil || cfg.StoreSecurityProfile == nil {
+		return fmt.Errorf("config: signed Store security profile is required for the serving Store")
+	}
+	profileSHA256, err := estateprofile.VerifyProfile(*cfg.EstateProfile)
+	if err != nil {
+		return fmt.Errorf("config: signed estate profile: %w", err)
+	}
+	if err := storesecurity.Verify(*cfg.StoreSecurityProfile, *cfg.EstateProfile, profileSHA256); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+	security := cfg.StoreSecurityProfile
+	if cfg.StoreID != security.StoreID || cfg.StoreLinkControlMTLS.ListenAddr != security.ControlListenAddr || cfg.StoreLinkControlMTLS.StoreLinkClientCertSHA256 != security.StoreLinkClientCertSHA256 || cfg.Policy.ScannerEd25519PublicKey != security.ScannerEd25519PublicKey {
+		return fmt.Errorf("config: signed Store security fields do not match serving config")
+	}
+	if !cfg.Policy.RequireScanReport {
+		return fmt.Errorf("config: policy.require_scan_report is required for the serving Store")
+	}
+	return nil
 }
 
 func (cfg *Config) validateStoreLinkControlMTLS() error {

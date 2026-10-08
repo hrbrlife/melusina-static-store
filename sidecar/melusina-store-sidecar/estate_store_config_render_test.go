@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/storesecurity"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -45,8 +47,30 @@ func newStoreConfigRenderFixture(t *testing.T) (estateprofile.EstateProfileV1, s
 		"rpcAttempts":     2,
 		"chainId":         "solana:rehearsal",
 		"operatorDomain":  "operator.rehearsal.invalid",
+		"securityProfile": signedStoreSecurityFixture(t, profile, digest),
 	}
 	return profile, profilePath, filepath.Join(dir, "store-render-input.json"), filepath.Join(dir, "store.config.json"), input
+}
+
+func signedStoreSecurityFixture(t *testing.T, profile estateprofile.EstateProfileV1, profileDigest string) storesecurity.Profile {
+	t.Helper()
+	scanner := sha256.Sum256([]byte("store-security-rehearsal-scanner"))
+	storeLinkCert := sha256.Sum256([]byte("store-security-rehearsal-store-link-cert"))
+	p := storesecurity.Profile{
+		Schema: storesecurity.Schema, EstateProfileSHA256: profileDigest, StoreID: profile.Store.StoreID,
+		ControlListenAddr: "127.0.0.1:9444", StoreLinkClientCertSHA256: hex.EncodeToString(storeLinkCert[:]),
+		ScannerEd25519PublicKey: hex.EncodeToString(ed25519.NewKeyFromSeed(scanner[:]).Public().(ed25519.PublicKey)),
+	}
+	ownerKeys := map[string]ed25519.PrivateKey{}
+	for _, signer := range profile.OwnerPolicy.Signers[:profile.OwnerPolicy.Threshold] {
+		seed := sha256.Sum256([]byte("melusina-estate-profile-vector-key:" + profile.OwnerPolicy.PolicyID + "/" + signer.KeyID))
+		ownerKeys[signer.KeyID] = ed25519.NewKeyFromSeed(seed[:])
+	}
+	signed, err := storesecurity.SignOwnerThreshold(p, profile, profileDigest, ownerKeys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return signed
 }
 
 func writeStoreConfigRenderInput(t *testing.T, path string, input map[string]any) {
@@ -226,6 +250,13 @@ func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.
 	}
 	if cfg.Domain != profile.Store.RootDomain || cfg.StoreID != profile.Store.StoreID || cfg.StoreAuthority != profile.Store.OperatorKey {
 		t.Fatalf("Store identity = domain %q id %q authority %q", cfg.Domain, cfg.StoreID, cfg.StoreAuthority)
+	}
+	security := input["securityProfile"].(storesecurity.Profile)
+	if cfg.StoreLinkControlMTLS.ListenAddr != security.ControlListenAddr || cfg.StoreLinkControlMTLS.StoreLinkClientCertSHA256 != security.StoreLinkClientCertSHA256 || !cfg.Policy.RequirePearlControlForAppPublish || cfg.ListingSignerSocket == "" {
+		t.Fatalf("rendered-governed-store-link-control-missing: control=%+v policy=%+v signer=%q", cfg.StoreLinkControlMTLS, cfg.Policy, cfg.ListingSignerSocket)
+	}
+	if err := requireServingControlMTLS(cfg); err != nil {
+		t.Fatalf("rendered-governed-store-link-control-refused: %v", err)
 	}
 	if cfg.ProgramID != profileProgramID(t, profile, estateprofile.ProgramRoleLicenseRegistry) {
 		t.Fatalf("program ID = %q", cfg.ProgramID)

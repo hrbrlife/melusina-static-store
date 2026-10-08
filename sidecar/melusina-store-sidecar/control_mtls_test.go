@@ -106,14 +106,17 @@ func TestStoreLinkControlMTLSRequiresTLS13VerifiedAndPinnedStoreLinkLeaf(t *test
 	if tlsConfig.MinVersion != tls.VersionTLS13 || tlsConfig.ClientAuth != tls.RequireAndVerifyClientCert || tlsConfig.ClientCAs == nil {
 		t.Fatalf("control TLS did not require TLS-1.3 verified mTLS: %#v", tlsConfig)
 	}
-	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.TLS == nil || r.TLS.Version < tls.VersionTLS13 || len(r.TLS.PeerCertificates) != 1 {
-			http.Error(w, "missing verified Store Link mTLS", http.StatusForbidden)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	server.TLS = tlsConfig
+	cfg := Config{StoreID: "local-control-test"}
+	_, control := newGovernedRouterSurfaces(cfg, nil, nil, nil, catalogRuntime{}, true)
+	productionServer, err := newStoreLinkControlServer(StoreLinkControlMTLSConfig{
+		ListenAddr: "127.0.0.1:9443", CertPath: serverCertPath, KeyPath: serverKeyPath, ClientCAPath: caPath,
+		StoreLinkClientCertSHA256: hex.EncodeToString(pinned[:]),
+	}, control)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewUnstartedServer(productionServer.Handler)
+	server.TLS = productionServer.TLSConfig
 	server.StartTLS()
 	defer server.Close()
 	newClient := func(certificate tls.Certificate) *http.Client {
@@ -121,15 +124,15 @@ func TestStoreLinkControlMTLSRequiresTLS13VerifiedAndPinnedStoreLinkLeaf(t *test
 			MinVersion: tls.VersionTLS13, RootCAs: roots, ServerName: "sidecar.test", Certificates: []tls.Certificate{certificate},
 		}}}
 	}
-	response, err := newClient(storeLinkLeaf).Get(server.URL)
+	response, err := newClient(storeLinkLeaf).Get(server.URL + "/control/v1/releases/dossier/prepare")
 	if err != nil {
 		t.Fatalf("pinned Store Link request: %v", err)
 	}
 	response.Body.Close()
-	if response.StatusCode != http.StatusNoContent {
-		t.Fatalf("pinned Pearl status = %d", response.StatusCode)
+	if response.StatusCode == http.StatusNotFound {
+		t.Fatalf("pinned Store Link did not reach governed private control route: %d", response.StatusCode)
 	}
-	if _, err := newClient(otherLeaf).Get(server.URL); err == nil {
+	if _, err := newClient(otherLeaf).Get(server.URL + "/control/v1/releases/dossier/prepare"); err == nil {
 		t.Fatal("a different certificate from the trusted CA reached the Store Link control listener")
 	}
 }

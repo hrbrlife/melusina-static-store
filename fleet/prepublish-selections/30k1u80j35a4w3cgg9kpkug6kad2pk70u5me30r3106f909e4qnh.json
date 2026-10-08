@@ -2,16 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh",
     "sourceRepository": "https://github.com/hrbrlife/melusina_canboard_app",
-    "sourceCommit": "7862d297c943e604a5d65c6196b421b9581d0c82",
+    "sourceCommit": "418c6d1bb244251faf462dd2db80211c81e3f3d3",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "same",
-    "decisionSummary": "v0.2.8/appVersion-15 on main==dev-publish at 7862d297: the v3 grain-auth client pins the daemon's authz identity from /run/melusina/authz-identity.pub; v14 exits at connect on next boot because the v3 client refuses to construct without it. cohortPackageID re-derived from the v15 pack (e99072166473484375078568e64b4fc1), live is v14.",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "Audit-repair source-only selection for v0.2.9/appVersion-16: canonical dev-publish renders a bounded truthful 403 unknown-action refusal without changing authorization. This records source and local package evidence only; it is not a Store, Bazaar, or live acceptance; the positive path remains blocked on live authzsign.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean recursive checkout at 7862d297c943e604a5d65c6196b421b9581d0c82",
-            "go vet and full go test pass, including the cohort guard and the identity-loader positive control and per-refusal mutation cases",
-            "unpacked candidate binary carries the v3 wire markers, the identity loader and the /run/melusina/authz-identity.pub path; zero v2 markers"
+            "go test ./... and go vet ./... passed",
+            "Deterministic package double-build and packageId synchronization passed",
+            "Verified package SHA-256 3ecc1364f2a43ad4639e9292a9d637440f777d0eeb877303b6292b83a3cdf8a0"
         ]
     },
     "reviewedRefs": [
@@ -22,7 +22,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "7862d297c943e604a5d65c6196b421b9581d0c82",
+            "commit": "418c6d1bb244251faf462dd2db80211c81e3f3d3",
             "outcome": "selected"
         },
         {
@@ -52,7 +52,7 @@
         },
         {
             "ref": "refs/heads/publish",
-            "commit": "2f3c4b6457b2d08061f4fe00bd39a8f1e1ba5ea6",
+            "commit": "f5000929f56ed524350c37750d51b49d6efb018d",
             "outcome": "retained"
         },
         {
@@ -62,5 +62,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "same"
+    "baselineRelation": "ancestor"
 }

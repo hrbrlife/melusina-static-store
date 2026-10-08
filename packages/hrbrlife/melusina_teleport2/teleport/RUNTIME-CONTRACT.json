@@ -1,0 +1,27 @@
+{
+  "$schema": "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json",
+  "app": {
+    "appHash": "fd495de160a580b2792eeff7ef7346bea422d75c7babd0351c65df4d1cc0325e",
+    "appId": "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h",
+    "spkSha256": "8a819649db4e032f56e86f2a04b90c9b7d5fe08a4b55230b69ed027ed0cb37ef",
+    "version": "1.3.8"
+  },
+  "cleanup": {
+    "steps": [
+      "Move only the temporary Call Room grain created for this probe to Trash through the rendered grain controls; the bounded probe creates no external account, bot, webhook, or capability."
+    ]
+  },
+  "fixtures": [],
+  "launchProbe": {
+    "expectedResult": "A fresh Teleport Call Room is reachable through the normal Store and shell UI, while the owner-deferred BotMother and Telegram creation actions remain unavailable.",
+    "kind": "visible-ui",
+    "steps": [
+      {
+        "action": "Install Teleport from Bazaar, create a fresh New Call Room through the rendered app action, and open it as the grain owner without configuring BotMother or Telegram.",
+        "expectedResult": "The Calls room renders its normal persistent-chat and call surface without a blank page, supervisor reset, or an unsolicited external request."
+      }
+    ]
+  },
+  "schema": "melusina-app-runtime-contract-v1",
+  "sidecars": []
+}

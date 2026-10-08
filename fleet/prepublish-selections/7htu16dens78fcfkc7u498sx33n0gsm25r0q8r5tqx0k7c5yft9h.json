@@ -2,15 +2,16 @@
     "schema": "melusina-source-selection-v1",
     "appId": "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h",
     "sourceRepository": "https://github.com/hrbrlife/cca-tc-operator",
-    "sourceCommit": "14011aaece6087b87a30d4e7748cf0328c23e407",
+    "sourceCommit": "7d1b2061e10839d01f64e0f4ffca241c746b12d7",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "same",
-    "decisionSummary": "Publish the reviewed 0.2.22 native provider and canonical file-delivered trust credentials. main and dev-publish select the same tested source.",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "Audit-repair source-only selection for v0.2.23/appVersion-23: canonical dev-publish preserves selected remote and dedicated-hypervisor topology through claim, recheck, and reload, rejects host, legacy, and invalid state, and preserves private-network policy. This records source and local package evidence only; it is not a Store, Bazaar, or live endpoint acceptance.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "Sidecar, setup, watcher and native provider tests pass; the full provider boots against a disposable PostgreSQL database and rejects unsigned writes.",
-            "Provider and credential mutations fail their named controls; version cohort is 0.2.22 / 22."
+            "Go test, race test, vet, release cohort and mutation checks, and native build passed",
+            "Two identical exclusive packs and spk verify passed",
+            "Verified package SHA-256 973c3a99ca1c7ea5652b14cfd8f1483449d0884815e46f69ebb98b490a3f41ba"
         ]
     },
     "reviewedRefs": [
@@ -26,7 +27,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "14011aaece6087b87a30d4e7748cf0328c23e407",
+            "commit": "7d1b2061e10839d01f64e0f4ffca241c746b12d7",
             "outcome": "selected"
         },
         {
@@ -106,5 +107,5 @@
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "same"
+    "baselineRelation": "ancestor"
 }

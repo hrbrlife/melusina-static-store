@@ -1,0 +1,30 @@
+{
+  "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
+  "name": "InstaCo",
+  "version": "0.1.11",
+  "versionNumber": 18,
+  "shortDescription": "Montana series-LLC management pearl \u2014 form, hold, operate entities end-to-end.",
+  "description": "InstaCo is the company-formation and corporate-registry app of the Melusina estate: every grain is one Montana series-LLC \u2014 one series, one clan, one wallet, one team of bots, one inbox. The grain carries the entity end to end: formation, governance records, an OTP-gated approval flow, an append-only audit log, and payment handoff to a sibling ccash grain over raw Cap'n Proto. Six permission bits carry two role families \u2014 platform staff (Admin, Collaborator, Auditor) and the client side (Client, Client Assistant, Client View-Only) \u2014 and every console and API surface is gated by them.",
+  "categories": [
+    "Productivity",
+    "Office"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://hrbr.life",
+  "codeLink": "https://github.com/hrbrlife/melusina-instaco-app",
+  "upstreamAuthor": "hrbr.life",
+  "createdAt": 1776618664000,
+  "author": {
+    "name": "hrbr.life",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": "",
+    "email": "ak@hrbr.life",
+    "website": "https://hrbr.life"
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source)",
+  "marketingVersion": "0.1.11",
+  "packageId": "fcae8c78b134d4bcabde9dfa91ca40eb",
+  "sha256": "fcae8c78b134d4bcabde9dfa91ca40eb1097d5da4747e41919558e0df06ceb75"
+}

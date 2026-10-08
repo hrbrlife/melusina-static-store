@@ -2,10 +2,10 @@
     "schema": "melusina-source-selection-v1",
     "appId": "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
     "sourceRepository": "https://github.com/hrbrlife/ccash_go_htmx",
-    "sourceCommit": "7ac65fd2905ad50a93211a12c3c3728d96883981",
+    "sourceCommit": "73c14ec231f7faa4aa061944f7445ad4c8d1c833",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "The Aug. 20 v0.3.191/appVersion-183 dev-publish tip is the newest valid forward paype.cc source. It retains the reviewed KYB disclosure, conditional-procedure, visible participant-declaration, authenticated release-identity, clean local package controls, and bounded lossless advice-PNG export path while advancing above the prior same-version byte divergence. It also aligns the public package and visible runtime name to paype.cc without changing the immutable app identity or technical popaye release selector. Main is an ancestor. The relevant divergent work is integrated in the selected tip; every other advertised ref remains a remote archived review input rather than release authority.",
+    "decisionSummary": "paype.cc 0.3.193 is the dev.paype.cc MSB cohort cut; two clean source paths produced byte-identical packages on 2026-09-13 (sha256 95a36a0d\u2026).",
     "internalControls": {
         "status": "passed",
         "checks": [
@@ -49,7 +49,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "7ac65fd2905ad50a93211a12c3c3728d96883981",
+            "commit": "73c14ec231f7faa4aa061944f7445ad4c8d1c833",
             "outcome": "selected"
         },
         {
@@ -58,8 +58,13 @@
             "outcome": "retained"
         },
         {
+            "ref": "refs/heads/integration/popaye-canary-build193",
+            "commit": "73c14ec231f7faa4aa061944f7445ad4c8d1c833",
+            "outcome": "retained"
+        },
+        {
             "ref": "refs/heads/main",
-            "commit": "0670842bc8461f0780140950cdc468d8b41544dd",
+            "commit": "4c17f19b005e95063f4de728c28423b79f8bf925",
             "outcome": "baseline"
         },
         {

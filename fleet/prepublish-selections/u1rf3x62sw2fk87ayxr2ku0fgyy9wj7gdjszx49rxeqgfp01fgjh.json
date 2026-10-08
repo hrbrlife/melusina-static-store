@@ -2,24 +2,22 @@
     "schema": "melusina-source-selection-v1",
     "appId": "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh",
     "sourceRepository": "https://github.com/hrbrlife/melusina-instaco-app",
-    "sourceCommit": "838a3729df2bde5c3cbfef094f914992e17c61ce",
+    "sourceCommit": "9e0f83029b65a37e0f925837d94f5af857ece458",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The 2026-08-20 dev-publish source retains the current owner-role fixes and governed candidate packaging, and advances the canonical public InstaCo identity to v0.1.10/v17. main is its reviewed direct ancestor. Every advertised source head remains recorded: the divergent August 4 B03/clienthub/schema preservation lines are retained for a separate merge decision, while older integrated and historical ceremony lines are archived rather than selected by name or timestamp.",
+    "decisionSummary": "Audit-repair source-only selection for v0.1.11/appVersion-18: canonical dev-publish requires canonical persisted mutation confirmation and rejects success:false or malformed responses before UI success. This records source and local package evidence only; it is not a Store, Bazaar, or live acceptance.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "fresh recursive clone at the selected source commit",
-            "make ci passed with pinned pnpm, client build, Go vet, Go tests, and the static grain build",
-            "all direct local release entry points refuse in favor of the governed Store release provider",
-            "make pack-local and spk verify",
-            "two independent committed-source package builds matched SHA-256 54fa2178468feaa0278f8994b1faea24acdda09c3ebecb0d3f08ded18f321964"
+            "make ci with GOTOOLCHAIN=local and offline frozen pnpm passed",
+            "Vitest 57 of 57 including persisted-mutation refusal passed",
+            "Two clean make pack-local and spk verify candidates matched SHA-256 fcae8c78b134d4bcabde9dfa91ca40eb1097d5da4747e41919558e0df06ceb75"
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "838a3729df2bde5c3cbfef094f914992e17c61ce",
+            "commit": "9e0f83029b65a37e0f925837d94f5af857ece458",
             "outcome": "selected"
         },
         {

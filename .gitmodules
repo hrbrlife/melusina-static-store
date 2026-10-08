@@ -18,14 +18,10 @@
 [submodule "packages/hrbrlife/client_collection"]
 	path = packages/hrbrlife/client_collection
 	url = https://github.com/hrbrlife/clientspace.git
-	branch = publish
+	branch = dev-publish
 [submodule "packages/hrbrlife/openclaw-main"]
 	path = packages/hrbrlife/openclaw-main
 	url = https://github.com/hrbrlife/openclaw-melusina.git
-	branch = publish
-[submodule "packages/hrbrlife/instaco-app"]
-	path = packages/hrbrlife/instaco-app
-	url = https://github.com/hrbrlife/melusina-instaco-app.git
 	branch = publish
 [submodule "packages/hrbrlife/melusina-bureau-doc-app"]
 	path = packages/hrbrlife/melusina-bureau-doc-app
@@ -78,10 +74,6 @@
 [submodule "packages/hrbrlife/melusina-ccash-org-member-app"]
 	path = packages/hrbrlife/melusina-ccash-org-member-app
 	url = https://github.com/hrbrlife/melusina_ccash_org_member_app.git
-	branch = publish
-[submodule "packages/hrbrlife/shell_tester"]
-	path = packages/hrbrlife/shell_tester
-	url = https://github.com/hrbrlife/shell_tester.git
 	branch = publish
 [submodule "packages/hrbrlife/MLSNA_token"]
 	path = packages/hrbrlife/MLSNA_token

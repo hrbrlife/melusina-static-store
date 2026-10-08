@@ -171,6 +171,32 @@ func TestGovernedCatalogAssemblerRejectsFirstPublishWithoutEmbeddedPolicy(t *tes
 	}
 }
 
+func TestFirstBazaarControlAdmissionDoesNotLetPublisherChooseInstallation(t *testing.T) {
+	root := t.TempDir()
+	spk := []byte("synthetic first Bazaar package: projection test only")
+	sum := sha256.Sum256(spk)
+	sha := hex.EncodeToString(sum[:])
+	const appID = "zukk3pav049f7wr4a12x76ytpgmsyt3136sz1hev4zy8g33f1310"
+	metadata := []byte(`{"appId":"` + appID + `","packageId":"` + sha[:32] + `","name":"Bazaar Control","version":"0.1.0","installation":{"audience":"workspace","install_mode":"self-service","pearl_role":"workspace","client_access":"self-owned","admin_surface":"same-pearl"}}`)
+	projection, err := NewGovernedCatalogAssembler("", root).projectCatalogIndex(AppCatalogSnapshot{Root: root}, spk, []byte(`{"signedAtUnix":1}`), metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var index struct {
+		Apps []map[string]any `json:"apps"`
+	}
+	if err := json.Unmarshal(projection.indexBytes, &index); err != nil || len(index.Apps) != 1 {
+		t.Fatalf("first publication projection: %+v, %v", index, err)
+	}
+	policy := index.Apps[0]["installation"].(map[string]any)
+	if policy["audience"] != "operator" || policy["install_mode"] != "owner-only" || policy["client_access"] != "none" || policy["pearl_role"] != "workflow" || policy["admin_surface"] != "same-pearl" {
+		t.Fatalf("publisher changed first Bazaar installation authority: %+v", policy)
+	}
+	if entries, err := os.ReadDir(root); err != nil || len(entries) != 0 {
+		t.Fatalf("policy/projection alone wrote a catalog: %v, %v", entries, err)
+	}
+}
+
 // TestProjectCatalogIndexStripsMongoUnsafeKeysPreservingAttestHashes proves the
 // publish path (projectCatalogIndex) emits an apps/index.json whose rows carry
 // NO Minimongo-unsafe key ($-prefixed or dotted) at any depth — so the shell's

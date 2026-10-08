@@ -2,10 +2,10 @@
     "schema": "melusina-source-selection-v1",
     "appId": "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0",
     "sourceRepository": "https://github.com/hrbrlife/cyberteller",
-    "sourceCommit": "e16bb3c7a8a31cb855115762265aef98ad271e78",
+    "sourceCommit": "449297bcd2805990425d6d801a5aff7e0022ff51",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "CyberTeller v0.1.99/appVersion-176 is retained only as a forensic source candidate and is release-held. Its source envelope coverage rejects an unauthenticated offline-signer HTTP call, and its only fiat deposit endpoints remain outside the sealed corridor while depending on legacy FINREACT env/secret material that ConfigGate v27 deliberately clears. A later versioned source cut must provide a typed sealed fiat-deposit authority and pass the full gates before it can be selected for release.",
+    "decisionSummary": "CyberTeller 0.1.101 merges the dev.paype.cc MSB cohort cut into dev-publish and clears the 0.1.99 release hold: offline-sign onboarding signs the canonical body /admin/onboard verifies, and the provisioned legacy fiat rail is refused on any provisioned grain while the sealed corridor reads no environment variable.",
     "internalControls": {
         "status": "passed",
         "checks": [
@@ -84,7 +84,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "e16bb3c7a8a31cb855115762265aef98ad271e78",
+            "commit": "449297bcd2805990425d6d801a5aff7e0022ff51",
             "outcome": "selected"
         },
         {
@@ -98,8 +98,18 @@
             "outcome": "retained"
         },
         {
+            "ref": "refs/heads/fix/chainwatch-observer-own-authority",
+            "commit": "8c2910156e6e9aad0faac1d4c0266bc4a2e9f0b3",
+            "outcome": "retained"
+        },
+        {
+            "ref": "refs/heads/integration/cyberteller-msb-cohort-20260913",
+            "commit": "431525f1405064f5bdf3f87624790b2890c000e4",
+            "outcome": "retained"
+        },
+        {
             "ref": "refs/heads/main",
-            "commit": "fdfa056ab79d7a4971b3f9f7e5b1bd762dbeabbe",
+            "commit": "96b6123d33dfd897f541cda11480567e63d3bba6",
             "outcome": "baseline"
         },
         {

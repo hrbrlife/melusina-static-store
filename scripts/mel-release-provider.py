@@ -344,7 +344,8 @@ def canonical_source_repository(value: str) -> str:
     normalized = value.strip()
     if normalized.endswith(".git"):
         normalized = normalized[:-4]
-    if not CANONICAL_SOURCE_REPOSITORY_RE.fullmatch(normalized):
+    if (not CANONICAL_SOURCE_REPOSITORY_RE.fullmatch(normalized) and
+            normalized != "https://github.com/melusina-os/bazaar-control-pearl"):
         raise ProviderError(f"invalid canonical source_repository: {value!r}")
     return normalized
 
@@ -644,8 +645,8 @@ def catalog_config() -> dict[str, Any]:
 #   differ.
 # - fleet/retiring-bazaar-snapshot.yaml is the retiring Bazaar's snapshot, a
 #   record kept as evidence: its snapshot_origin host and parent domain,
-#   snapshot_index_sha256 and observed population. The catalog ledger itself
-#   (fleet/bazaar-catalog.yaml) is membership only and carries none of these.
+#   snapshot_index_sha256 and observed population. The catalog ledger also
+#   retains its observed origin and index as evidence, never release approval.
 #   A projection scanned against another ledger file is also scanned for that
 #   file's own values.
 ESTATE_SCAN_SNAPSHOT_REFERENCE = ROOT / "fleet" / "retiring-bazaar-snapshot.yaml"
@@ -735,9 +736,8 @@ def _ledger_origin_values(origin: Any, path: Path) -> list[dict[str, str]]:
     """The bare-https Store origin's host and parent domain, by field.
 
     A malformed origin is refused rather than skipped, so a value cannot
-    escape the scan by being miswritten. An absent origin contributes nothing:
-    the membership ledger carries no origin (its facts are the snapshot
-    file's); a published manifest's origin is bound, not scanned, here.
+    escape the scan by being miswritten. An absent origin contributes nothing;
+    a published manifest's origin is bound, not scanned, here.
     """
     host = ""
     if isinstance(origin, str):
@@ -786,10 +786,9 @@ def _ledger_retiring_values(path: Path) -> list[dict[str, str]]:
     """The values a catalog ledger itself records: its release authority and,
     when it carries them, its Store origin and index digest.
 
-    The checked-in membership ledger carries only the authority (its snapshot
-    facts are fleet/retiring-bazaar-snapshot.yaml's); a ledger that still names
-    an origin or index digest is scanned for them all the same. A ledger that
-    lacks its release authority is refused rather than scanned for fewer
+    The checked-in membership ledger retains observed origin and index facts
+    alongside its authority. They are scanned as retiring values. A ledger
+    that lacks its release authority is refused rather than scanned for fewer
     values.
     """
     try:
@@ -1033,10 +1032,9 @@ def validate_catalog_document(value: dict[str, Any], bound_origin: Any, *,
     ``bound_origin`` is the bound Store origin, or a callable returning it; the
     callable form keeps the schema refusal ahead of an unset origin.
 
-    ``release_catalog=False`` reads a membership ledger: it carries no
-    catalog_origin (its snapshot facts are fleet/retiring-bazaar-snapshot.yaml's)
-    and its expected_live_app_count is derived membership, so neither is
-    required of it and nothing is bound to it.
+    ``release_catalog=False`` reads a membership ledger without treating its
+    observed origin as release authority. The membership count is validated,
+    and the estate scan separately refuses retiring origin and index values.
     """
     if value.get("schema") != BAZAAR_CATALOG_SCHEMA:
         raise ProviderError("bazaar-catalog.yaml has an unsupported schema")
@@ -2291,8 +2289,11 @@ def catalog_package(app_id: str) -> Path | None:
         try:
             info = path.lstat()
         except FileNotFoundError:
-            if index == 0:
-                raise ProviderError(f"catalog packages root is missing: {packages}")
+            # A sparse release checkout need not materialize the packages
+            # directory at all, just as an ordinary checkout need not
+            # initialize a package submodule.  Both are an explicit
+            # first-publish/slot-bootstrap condition; do not require an
+            # untracked mkdir merely to reach the private candidate path.
             return None
         except OSError as exc:
             raise ProviderError(f"lstat declared catalog path {path}: {exc}") from exc

@@ -101,12 +101,15 @@ func TestGovernedUIClosesOverStaleDistDir(t *testing.T) {
 	if err := json.Unmarshal(policy.Body.Bytes(), &entries); err != nil {
 		t.Fatalf("decode embedded installation policy: %v", err)
 	}
-	// The governed catalog now contains 35 identities, including the restored
-	// Bureau Diagram workspace. Keep this assertion in
+	// The governed ledger contains 36 identities, including first-publication
+	// admission for the held Bazaar Control identity. Keep this assertion in
 	// lockstep with fleet/bazaar-catalog.yaml rather than silently serving a
 	// stale policy snapshot.
-	if len(entries) != 35 {
-		t.Fatalf("embedded installation policy count = %d, want 35", len(entries))
+	if len(entries) != 36 {
+		t.Fatalf("embedded installation policy count = %d, want 36", len(entries))
+	}
+	if got := entries["zukk3pav049f7wr4a12x76ytpgmsyt3136sz1hev4zy8g33f1310"]; got["audience"] != "operator" || got["install_mode"] != "owner-only" || got["pearl_role"] != "workflow" || got["client_access"] != "none" || got["admin_surface"] != "same-pearl" {
+		t.Fatalf("first Bazaar Control policy must require an owner-only operator install: %#v", got)
 	}
 	if got := entries["sexh707e9gpems03ae8c71wn02ummdahaxh40tsnd1snapfp8420"]; got["audience"] != "workspace" || got["install_mode"] != "self-service" || got["pearl_role"] != "workspace" || got["client_access"] != "self-owned" || got["admin_surface"] != "same-pearl" {
 		t.Fatalf("restored Bureau Diagram is not a self-service workspace: %#v", got)

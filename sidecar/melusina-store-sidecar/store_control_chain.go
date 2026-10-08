@@ -27,6 +27,9 @@ const (
 	storeGrantStatusActive    = 0
 	storeGrantStatusSuspended = 1
 	storeGrantStatusRevoked   = 2
+	// Exact original Anchor allocation sizes, including maximal Option fields.
+	storeControlPolicyAccountBytes  = 299
+	storePublisherGrantAccountBytes = 319
 )
 
 func readStoreControlPolicyMeta(data []byte) (storeControlPolicyMeta, error) {
@@ -81,8 +84,8 @@ func readStoreControlPolicyMeta(data []byte) (storeControlPolicyMeta, error) {
 	if offset, err = skipFixed(data, offset, 1, "store_control_policy", "bump"); err != nil {
 		return meta, err
 	}
-	if offset != len(data) {
-		return meta, errors.New("store_control_policy: unexpected trailing bytes")
+	if !validStoreControlAllocation(data, offset, storeControlPolicyAccountBytes) {
+		return meta, errors.New("store_control_policy: unexpected trailing allocation bytes")
 	}
 	return meta, nil
 }
@@ -146,10 +149,32 @@ func readStorePublisherGrantMeta(data []byte) (storePublisherGrantMeta, error) {
 	if offset, err = skipFixed(data, offset, 1, "store_publisher_grant", "bump"); err != nil {
 		return meta, err
 	}
-	if offset != len(data) {
-		return meta, errors.New("store_publisher_grant: unexpected trailing bytes")
+	if !validStoreControlAllocation(data, offset, storePublisherGrantAccountBytes) {
+		return meta, errors.New("store_publisher_grant: unexpected trailing allocation bytes")
 	}
 	return meta, nil
+}
+
+// Anchor allocates the maximum Borsh size even when an Option is None.
+// Accept the exact serialized form or the exact original fixed allocation;
+// every unused byte must remain zero. Arbitrary suffixes and future layouts
+// are still refused rather than being interpreted as trusted authority.
+func validStoreControlAllocation(data []byte, offset, allocation int) bool {
+	if offset > len(data) || len(data) > allocation {
+		return false
+	}
+	if offset == len(data) {
+		return true
+	}
+	if len(data) != allocation {
+		return false
+	}
+	for _, b := range data[offset:] {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func skipI64Option(data []byte, offset int, account, field string) (int, error) {

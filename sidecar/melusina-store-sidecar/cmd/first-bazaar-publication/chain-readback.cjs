@@ -1,0 +1,11 @@
+"use strict";
+// Spawned only by the fixed keyless transport. stdin is public author/stage
+// evidence. This process cannot submit, sign, choose a network or accept code.
+const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm"),crypto=require("node:crypto"),root=process.argv[1];
+async function rpc(url,o){if(String(url)!=="https://api.devnet.solana.com"||o?.method!=="POST")throw Error("fixed devnet reads only");const q=JSON.parse(o.body);if(!["getGenesisHash","getMultipleAccounts"].includes(q.method))throw Error("chain verifier cannot submit or run arbitrary RPC");return fetch(url,{...o,redirect:"error",signal:AbortSignal.timeout(25000)});}
+const c=vm.createContext({crypto:crypto.webcrypto,TextEncoder,TextDecoder,Uint8Array,ArrayBuffer,Buffer,BigInt,atob,btoa,setTimeout,clearTimeout,AbortSignal,fetch:rpc},{codeGeneration:{strings:false,wasm:false}});
+const pins={"web3.js":"021e88bb4b21b95f3b0e83238ec88aedf06f406ba4a66e8cea951cca218539ad","registry.js":"dadd34a84e169d50d8d8756c194adafddc2fc1c28eb50508106022f86f78cd54","core.js":"4cfebd53428833e8d65fd36c48f1a443d489f0b2b5fcaeec9eb3d4d841e8d163","protocol.js":"1e4a35ad8ae77b4bc34d85bb5fb968d2a564e8c3abce399184524bc3e59ce53d"};
+for(const [n,digest] of Object.entries(pins)){const f=fs.openSync(path.join(root,"static",n),fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);let b;try{const s=fs.fstatSync(f);if(!s.isFile()||s.size>4*1024*1024||(s.mode&0o022))throw Error("protected public verifier asset required");b=fs.readFileSync(f);}finally{fs.closeSync(f);}if(crypto.createHash("sha256").update(b).digest("hex")!==digest)throw Error("public verifier asset changed");vm.runInContext(b.toString("utf8"),c,{timeout:10000});}
+const raw=fs.readFileSync(0,"utf8");if(raw.length>131072)throw Error("bounded public plan required");const H=c.MelusinaFirstBazaar,p=H.plan(raw);
+const timer=setTimeout(()=>{console.error("bounded first-release chain check timed out");process.exit(1);},90000);
+H.context(p).then(x=>console.log(JSON.stringify({slot:x.slot,registeredAt:x.registeredAt,index:String(x.index),proposalStatus:x.proposal?.status||"absent",approved:x.proposal?.approved||[]}))).catch(e=>{console.error(e.message);process.exitCode=1;}).finally(()=>clearTimeout(timer));

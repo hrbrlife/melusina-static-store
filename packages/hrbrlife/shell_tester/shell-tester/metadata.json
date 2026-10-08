@@ -1,0 +1,27 @@
+{
+  "appId": "nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh",
+  "name": "Shell Tester",
+  "version": "0.1.12",
+  "marketingVersion": "0.1.12",
+  "versionNumber": 15,
+  "packageId": "75f2ea7acea42a02ec83be58450d94bf",
+  "shortDescription": "Melusina Shell Extension Tester",
+  "description": "Shell Tester is the reference grain for exercising the Melusina shell extensions end to end: wallet connect and message signing, one-time passwords, NFT and license reads, the Solana RPC bridge, and the grain-local end-to-end encryption journal. It is a diagnostic surface for operators and app authors — it holds no custody, no screening, and no chain authority.",
+  "categories": [
+    "Developer Tools"
+  ],
+  "isOpenSource": false,
+  "webLink": "https://github.com/hrbrlife/shell_tester",
+  "codeLink": "https://github.com/hrbrlife/shell_tester",
+  "upstreamAuthor": "Shell Tester",
+  "createdAt": 1776764702000,
+  "author": {
+    "name": "alexeikarp",
+    "githubUsername": "hrbrlife",
+    "keybaseUsername": "",
+    "twitterUsername": "",
+    "picture": ""
+  },
+  "license": "Melusina Public License v1.0 (source-available, not open source).",
+  "sha256": "75f2ea7acea42a02ec83be58450d94bf3114db46268a641e690aa5c05baaade7"
+}

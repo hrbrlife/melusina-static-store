@@ -35,11 +35,12 @@ const (
 	tenantProofResumeSchema                = "bazaar-control-tenant-proof-resume-request-v1"
 	maxJobRequestBytes               int64 = 64 << 10
 	// A complete build result includes the candidate JSON body encoded as
-	// base64url. The Pearl enforces the same candidate cap after decoding.
-	maxBuildJobResultBytes int64 = (maxCandidateBytes*4)/3 + (128 << 10)
-	// A completed preparation result carries the full, signed final sidecar
-	// request. It is bounded the same way as a build candidate, then verified
-	// and stored privately by the Pearl; the relay never interprets it.
+	// base64url plus the complete 1 MiB source review, whose JSON encoding may
+	// expand sixfold. Matches Bazaar trustedbuildworker.MaxBuildResultBytes;
+	// the decoded candidate itself remains capped at 64 MiB.
+	maxBuildJobResultBytes int64 = ((64<<20)*4)/3 + (8 << 20)
+	// A signed private-stage offer carries only a preparation body. Final
+	// publication bodies are returned exclusively by the separate finalizer.
 	maxPreparationJobResultBytes  int64 = (maxCandidateBytes*4)/3 + (128 << 10)
 	maxFinalizationJobResultBytes int64 = (maxCandidateBytes*4)/3 + (128 << 10)
 	maxProofJobResultBytes        int64 = 64 << 10
@@ -269,6 +270,15 @@ func (h *Handler) handleJob(w http.ResponseWriter, r *http.Request, collection s
 		h.handleJobStart(w, r, collection)
 		return
 	}
+	if r.Method == http.MethodPost && collection == releasePreparationJobCollection {
+		id, ok := preparationStageReturnRoute(r.URL.Path)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		h.handlePreparationStageReturn(w, r, id)
+		return
+	}
 	if r.Method == http.MethodPost && collection == tenantProofJobCollection {
 		id, ok := tenantProofResumeRoute(r.URL.Path)
 		if !ok {
@@ -305,7 +315,23 @@ func (h *Handler) handleJobStart(w http.ResponseWriter, r *http.Request, collect
 		http.Error(w, "Verification job does not bind one release.", http.StatusBadRequest)
 		return
 	}
-	h.forwardJobResponse(w, r, collection, WorkerRequest{Method: http.MethodPost, Path: "/v1/" + collection, Body: io.NopCloser(bytes.NewReader(body))}, true, false)
+	var scope struct {
+		StoreID string `json:"storeId"`
+	}
+	if json.Unmarshal(body, &scope) != nil || scope.StoreID != h.storeID {
+		http.Error(w, "Verification job belongs to another Store.", http.StatusForbidden)
+		return
+	}
+	path := "/v1/" + collection
+	if collection == buildJobCollection {
+		body, err = h.buildSubmission(r.Context(), body)
+		if err != nil {
+			http.Error(w, "The selected Store release could not be read for source review.", http.StatusServiceUnavailable)
+			return
+		}
+		path = buildSubmissionPath
+	}
+	h.forwardJobResponse(w, r, collection, WorkerRequest{Method: http.MethodPost, Path: path, Body: io.NopCloser(bytes.NewReader(body))}, true, false)
 }
 
 // handleTenantProofResume preserves the human's explicit recovery boundary.
@@ -362,6 +388,12 @@ func (h *Handler) forwardJobResponse(w http.ResponseWriter, r *http.Request, col
 		return
 	}
 	defer response.Body.Close()
+	limit := jobResponseLimit(collection, start)
+	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
+	if err != nil || int64(len(body)) > limit {
+		http.Error(w, "Verification worker returned an incomplete or oversized response.", http.StatusBadGateway)
+		return
+	}
 	if isJSONContentType(response.Header.Get("Content-Type")) {
 		w.Header().Set("Content-Type", "application/json")
 	} else {
@@ -369,9 +401,9 @@ func (h *Handler) forwardJobResponse(w http.ResponseWriter, r *http.Request, col
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(response.StatusCode)
-	// This source cap mirrors the Pearl's own input cap. A malformed/oversize
-	// result is not a successful job because the Pearl cannot decode/verify it.
-	_, _ = io.Copy(w, io.LimitReader(response.Body, jobResponseLimit(collection, start)+1))
+	// Refuse a failed or oversized stream before sending a successful status;
+	// never turn a prefix of a signed result into a successful relay response.
+	_, _ = w.Write(body)
 }
 
 func allowedJobStatus(status int, start, resume bool) bool {
@@ -454,6 +486,7 @@ type preparationStartRequest struct {
 	RuntimeContractSHA256  string `json:"runtimeContractSha256,omitempty"`
 	PackageID              string `json:"packageId"`
 	AppHash                string `json:"appHash"`
+	ReviewedPriorAppHash   string `json:"reviewedPriorAppHash,omitempty"`
 	Action                 string `json:"action"`
 	RequestDigest          string `json:"requestDigest"`
 }
@@ -504,7 +537,7 @@ func validateJobStart(collection string, body []byte) error {
 		if err := decoder.Decode(&value); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
 			return errors.New("release preparation job JSON is malformed")
 		}
-		if value.Schema != "bazaar-control-release-preparation-request-v1" || !isLowerHex(value.DossierID, 24) || !validSegment(value.StoreID) || !validSegment(value.AppID) || !safeJobText(value.SourceRef) || !isLowerHex(value.SourceCommit, 40) || !safeJobText(value.Version) || !isLowerHex(value.BuildAttestationDigest, 64) || !isLowerHex(value.CandidateSHA256, 64) || value.CandidateBytes <= 0 || value.CandidateBytes > maxCandidateBytes || !isLowerHex(value.ArtifactSHA256, 64) || !isLowerHex(value.MetadataSHA256, 64) || (value.RuntimeContractSHA256 != "" && !isLowerHex(value.RuntimeContractSHA256, 64)) || !safeJobText(value.PackageID) || !isLowerHex(value.AppHash, 64) || value.Action != "prepare_release" || !isLowerHex(value.RequestDigest, 64) {
+		if value.Schema != "bazaar-control-release-preparation-request-v2" || !isLowerHex(value.DossierID, 24) || !validSegment(value.StoreID) || !validSegment(value.AppID) || !safeJobText(value.SourceRef) || !isLowerHex(value.SourceCommit, 40) || !safeJobText(value.Version) || !isLowerHex(value.BuildAttestationDigest, 64) || !isLowerHex(value.CandidateSHA256, 64) || value.CandidateBytes <= 0 || value.CandidateBytes > maxCandidateBytes || !isLowerHex(value.ArtifactSHA256, 64) || !isLowerHex(value.MetadataSHA256, 64) || (value.RuntimeContractSHA256 != "" && !isLowerHex(value.RuntimeContractSHA256, 64)) || !safeJobText(value.PackageID) || !isLowerHex(value.AppHash, 64) || (value.ReviewedPriorAppHash != "" && !isLowerHex(value.ReviewedPriorAppHash, 64)) || value.Action != "prepare_release" || !isLowerHex(value.RequestDigest, 64) {
 			return errors.New("release preparation job is not exact")
 		}
 		return nil
@@ -563,8 +596,15 @@ func tenantProofResumeRoute(path string) (string, bool) {
 
 func canonicalJobPath(method, path, collection string) bool {
 	if method == http.MethodPost {
+		if collection == buildJobCollection {
+			return path == buildSubmissionPath
+		}
 		if path == "/v1/"+collection {
 			return true
+		}
+		if collection == releasePreparationJobCollection {
+			_, ok := preparationStageReturnRoute(path)
+			return ok
 		}
 		_, ok := tenantProofResumeRoute(path)
 		return collection == tenantProofJobCollection && ok

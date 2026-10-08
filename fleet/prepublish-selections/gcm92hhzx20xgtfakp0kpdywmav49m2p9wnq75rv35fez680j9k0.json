@@ -2,21 +2,17 @@
     "schema": "melusina-source-selection-v1",
     "appId": "gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0",
     "sourceRepository": "https://github.com/hrbrlife/MLSNA_token",
-    "sourceCommit": "b32df2d42af962e80947f863f15f0161c5899c7b",
+    "sourceCommit": "0894960ccdfb1a8aabcce1e48246968465d69cc8",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "The Aug. 20 appVersion-66 dev-publish tip is the newest valid forward InstaDAO source. It contains main's Aug. 16 landing of the preserved v65 securities, browser-RPC, and acceptance-harness work, then records the controlled devnet reconciliation of dao_securities and dao_voting. The full seven-program verifier, release controls, deterministic package builds, SPK verification, and fresh launch simulation passed at this source. The preserved v65 snapshot remains historical evidence but carries an older 683824-byte dao_securities artifact; it is superseded by main's landed source and cannot be merged without regressing the verified 685072-byte artifact. DAO and historic publish lines are superseded or incompatible prior release histories, not newer valid application sources.",
+    "decisionSummary": "Terminal 1.0.21/appVersion 73 checkpoint retains the accepted aec99aae package and signed release evidence for source cut c637088. Recoverable approval-wallet setup is shipped; governed DAO initialization remains explicitly unfinished and guarded.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "fresh recursive source checkout resolved dev-publish b32df2d42af962e80947f863f15f0161c5899c7b cleanly",
-            "complete current remote-head snapshot reviewed, including preserved v65, DAO, feature, codex, and historic publish refs",
-            "the Aug. 16 main landing contains the preserved v65 acceptance/RPC/security surfaces and is an ancestor of the selected dev-publish source",
-            "scripts/check-shared-suite.mjs confirmed all seven devnet program accounts are executable upgradeable programs",
-            "scripts/verify-onchain.mjs --no-build --artifact-dir=app/so returned ok=true for all seven reviewed source artifacts after controlled upgrades of dao_securities and dao_voting",
-            "npm test, package-config-check, and the bwrap launch simulation passed with all launch actions stamped INSTADAO_SHARED_SUITE_VERIFIED=1",
-            "two independent clean package runs matched SHA-256 7beb775145c768e0b3181e5b905090822df72ffa93ce52196ab5b08ac7644913 and packageId 7beb775145c768e0b3181e5b90509082",
-            "spk verify confirmed immutable appId gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0, appVersion 66, and marketing version 1.0.14"
+            "Clean checkpoint 0894960ccdfb1a8aabcce1e48246968465d69cc8 is remote dev-publish; released source c637088 and main are ancestors.",
+            "Full Go tests, vet, focused race tests, npm release suite, two matching clean-path SPK builds and unpacked exact-asset/isolated-launch checks passed at released source c637088.",
+            "Normal governed terminal accepted ReleaseEntry 2WsapnF1ATjnC559Jj4e3J36SccZbMJg67nAk8EX1MDz at app hash 84523b698277862cceeb3636acda32aa9a5ee7c417c9e210fd13a1ffbd24ba76; every native receipt hash and size rechecked.",
+            "Certificate-verified public package is 7607416 bytes with SHA-256 aec99aaeaaad95122c5c07f44d541887fed0bf737d52a0fd053899630f541589; pointer/index agree and all 33 unrelated catalog rows remain unchanged. Tenant install is in progress, not claimed complete."
         ]
     },
     "reviewedRefs": [
@@ -32,7 +28,7 @@
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "b32df2d42af962e80947f863f15f0161c5899c7b",
+            "commit": "0894960ccdfb1a8aabcce1e48246968465d69cc8",
             "outcome": "selected"
         },
         {

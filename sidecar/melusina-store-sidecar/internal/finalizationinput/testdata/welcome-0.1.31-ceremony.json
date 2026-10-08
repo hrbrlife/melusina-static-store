@@ -1,0 +1,77 @@
+{
+  "$schema": "melusina-release-ceremony-v1",
+  "status": "dry-run-prepared",
+  "dryRun": true,
+  "appHash": "37bffeb984326a526bc974e772a2c7861e16264451b02cef1f0e23dca82dd802",
+  "releaseHash": "abf91c1cd077e1355d32287fd8d611a40a134fd3f4ce15fa707367dc82070881",
+  "releaseNonce": "50bc8fa74d156754a7e55e32850a07f2",
+  "version": "0.1.31",
+  "appId": "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0",
+  "appIdHash": "b4683d6276750ac5f608013d38a3747510dae968b681820b81ed67880caec077",
+  "licenseMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+  "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+  "programId": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+  "squadsProgramId": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+  "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V",
+  "licenseSquadsVault": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+  "masterNftAta": "EA2FEHzhg4ZunhchFhcBMjaVtTh3pGkEy2SG6FEmYepn",
+  "transactionIndex": 1924,
+  "transactionPda": "3wLM6nL4sTT7Hq5CddJdjzsQdRYjy3betbp2cwSTbERJ",
+  "proposalPda": "2sBwLvwvc35wdogDMvWq9gLCDSSNiwwMJEfj7vqPjPMU",
+  "releaseEntryPda": "DbMYreAvaPBPvYPG2qFCpXCrZKofBVXBaoBVdojvEoJK",
+  "publisherEd25519Pubkey": "ARX39MQQR1c7cT8L9ARbeg7AWw975gPGr9EE9oygKv1P",
+  "signedPayloadHash": "a69b8c0a91b39e438eb0720e5d4d4dc250cb9144434336340694b87d5d123a0a",
+  "authorSig": "MJf8ed1+bg4fpBQp0NZdRI0Rig9nuDso/rbSEAIuk2yjZ3deCSstkqnLczpipCrGqezKH1TmqtAajPyNmjXcDw==",
+  "createdAtUnix": 1787938999,
+  "ed25519Instruction": {
+    "programId": "Ed25519SigVerify111111111111111111111111111",
+    "accounts": null,
+    "data": "AQAQAP//UAD//3AAIAD//zCX/Hndfm4OH6QUKdDWXUSNEYoPZ7g7KP620hACLpNso2d3XgkrLZKpy3M6YqQqxqnsyh9U5qrQGoz8jZo13A+MARWsSIwFoz50EAlMzvEfPj6a1rAo9jxUP00rDigySqabjAqRs55DjrByDl1NTcJQy5FEQ0M2NAaUuH1dEjoK"
+  },
+  "registerReleaseEntryInstruction": {
+    "programId": "7anRCW8UAFwdSAAxkrK7TmptukNKY74nZrNPfRKzzWLb",
+    "accounts": [
+      {
+        "pubkey": "DbMYreAvaPBPvYPG2qFCpXCrZKofBVXBaoBVdojvEoJK",
+        "isSigner": false,
+        "isWritable": true
+      },
+      {
+        "pubkey": "3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3",
+        "isSigner": true,
+        "isWritable": true
+      },
+      {
+        "pubkey": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+        "isSigner": false,
+        "isWritable": false
+      },
+      {
+        "pubkey": "EA2FEHzhg4ZunhchFhcBMjaVtTh3pGkEy2SG6FEmYepn",
+        "isSigner": false,
+        "isWritable": false
+      },
+      {
+        "pubkey": "Sysvar1nstructions1111111111111111111111111",
+        "isSigner": false,
+        "isWritable": false
+      },
+      {
+        "pubkey": "11111111111111111111111111111111",
+        "isSigner": false,
+        "isWritable": false
+      },
+      {
+        "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "isSigner": false,
+        "isWritable": false
+      }
+    ],
+    "data": "Piw4UmrzAr03v/65hDJqUmvJdOdyoseGHhYmRFGwLO8fDiPcqC3YArRoPWJ2dQrF9ggBPTijdHUQ2ulotoGCC4HtZ4gMrsB3q/kcHNB34TVdMih/2NYRpAoTT9P0zhX6cHNn3IIHCIEGAAAAMC4xLjMxKKUlnduxgZXZwX5Xi+0mut1CjrjnXFpGQ7uS3T5jssyMARWsSIwFoz50EAlMzvEfPj6a1rAo9jxUP00rDigySjCX/Hndfm4OH6QUKdDWXUSNEYoPZ7g7KP620hACLpNso2d3XgkrLZKpy3M6YqQqxqnsyh9U5qrQGoz8jZo13A+mm4wKkbOeQ46wcg5dTU3CUMuRRENDNjQGlLh9XRI6Cg=="
+  },
+  "quorumPolicy": {
+    "threshold": 3,
+    "memberCount": 4,
+    "multisigPda": "4sPNmdcSzQRxtBq66R5TTbokUgQj3Betb765dtK7bq4V"
+  }
+}

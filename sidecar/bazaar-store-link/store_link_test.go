@@ -194,7 +194,7 @@ func proofResumeHTTPRequest(t *testing.T, jobID, dossierID, releaseDigest string
 
 func preparationJobRequest(t *testing.T) *http.Request {
 	t.Helper()
-	body := `{"schema":"bazaar-control-release-preparation-request-v1","dossierId":"` + testDossierID + `","storeId":"` + testStoreID + `","appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceRef":"refs/heads/dev-publish","sourceCommit":"0123456789abcdef0123456789abcdef01234567","version":"1.2.3","buildAttestationDigest":"` + strings.Repeat("a", 64) + `","candidateSha256":"` + strings.Repeat("b", 64) + `","candidateBytes":1,"artifactSha256":"` + strings.Repeat("c", 64) + `","metadataSha256":"` + strings.Repeat("d", 64) + `","packageId":"pkg-1","appHash":"` + strings.Repeat("e", 64) + `","action":"prepare_release","requestDigest":"` + strings.Repeat("f", 64) + `"}`
+	body := `{"schema":"bazaar-control-release-preparation-request-v2","dossierId":"` + testDossierID + `","storeId":"` + testStoreID + `","appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceRef":"refs/heads/dev-publish","sourceCommit":"0123456789abcdef0123456789abcdef01234567","version":"1.2.3","buildAttestationDigest":"` + strings.Repeat("a", 64) + `","candidateSha256":"` + strings.Repeat("b", 64) + `","candidateBytes":1,"artifactSha256":"` + strings.Repeat("c", 64) + `","metadataSha256":"` + strings.Repeat("d", 64) + `","packageId":"pkg-1","appHash":"` + strings.Repeat("e", 64) + `","action":"prepare_release","requestDigest":"` + strings.Repeat("f", 64) + `"}`
 	request := httptest.NewRequest(http.MethodPost, "/v1/release-preparation-jobs", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	return request
@@ -437,7 +437,8 @@ func TestDurableWorkerJobsHaveOnlyFixedRoutesAndBodies(t *testing.T) {
 		finalizationResponse: WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-release-finalization-job-v1"}`))},
 		proofResponse:        WorkerResponse{StatusCode: http.StatusAccepted, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-tenant-proof-job-v1"}`))},
 	}
-	handler := newJobTestHandler(t, &capturedForwarder{}, workers)
+	selected, _ := selectedSnapshotFixture(t)
+	handler := newJobTestHandler(t, &capturedForwarder{response: ForwardResponse{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: selected}}, workers)
 
 	buildRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(buildRecorder, buildJobRequest(t))
@@ -445,7 +446,7 @@ func TestDurableWorkerJobsHaveOnlyFixedRoutesAndBodies(t *testing.T) {
 		t.Fatalf("build status/requests = %d/%d", buildRecorder.Code, len(workers.buildRequests))
 	}
 	build := workers.buildRequests[0]
-	if build.Method != http.MethodPost || build.Path != "/v1/build-jobs" {
+	if build.Method != http.MethodPost || build.Path != buildSubmissionPath {
 		t.Fatalf("build worker request = %s %s", build.Method, build.Path)
 	}
 
@@ -558,8 +559,8 @@ func TestWorkerJobRelayFailsClosed(t *testing.T) {
 	}
 
 	badPreparation := preparationJobRequest(t)
-	badPreparation.Body = io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-release-preparation-request-v1","action":"publish_release"}`))
-	badPreparation.ContentLength = int64(len(`{"schema":"bazaar-control-release-preparation-request-v1","action":"publish_release"}`))
+	badPreparation.Body = io.NopCloser(strings.NewReader(`{"schema":"bazaar-control-release-preparation-request-v2","action":"publish_release"}`))
+	badPreparation.ContentLength = int64(len(`{"schema":"bazaar-control-release-preparation-request-v2","action":"publish_release"}`))
 	badPreparationRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(badPreparationRecorder, badPreparation)
 	if badPreparationRecorder.Code != http.StatusBadRequest || len(workers.preparationRequests) != 0 {

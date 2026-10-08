@@ -2,23 +2,22 @@
     "schema": "melusina-source-selection-v1",
     "appId": "55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60",
     "sourceRepository": "https://github.com/hrbrlife/pr_ninja",
-    "sourceCommit": "b334cec9bff40e56323b93074e479c3e01b22610",
+    "sourceCommit": "176a9bca7f194ae0febe02a8ab432e7aabe5a9fc",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "ancestor",
-    "decisionSummary": "TeleScreen v0.0.17/appVersion 21 canonical dev-publish carries the P0 loopback authority boundary: the bundled sidecar receives only POST /llm/ and cannot reach shell-facing admin routes through forged headers. main is the reviewed v21 ancestor. This source-selection record does not claim final shared-protocol P_bind alignment, a package, listing, installation, or customer screening flow.",
+    "decisionSummary": "Select canonical dev-publish 176a9bc: F09/F10/U01 runtime repairs plus the strict version-guard correction for 0.0.18/v22. Earlier queued artifact used the parent epoch; final packages must be derived from this clean source revision before publication. Main is preserved as baseline; other refs remain evidence.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "Fresh detached checkout at b334cec9bff40e56323b93074e479c3e01b22610 remained clean after validation.",
-            "grain/go.mod verification, default and melusina-tagged go vet ./..., and default and melusina-tagged go test -count=1 ./... passed.",
-            "TestLoopbackSidecarMux_RejectsForgedSandstormPermissions returns 404 for forged-header admin routes; TestLoopbackSidecarMux_StillForwardsLLMPost preserves POST forwarding and refuses GET.",
-            "The direct shared-protocol v1.14 consumer was identified as a pending final P_bind cohort member; this receipt is not package approval."
+            "Clean selected source equals canonical origin/dev-publish; main unchanged at 415766b.",
+            "Full Python suite: 1194 passed with 29 retained warnings; 42 focused release/build/trust/lease checks pass.",
+            "Production payload unchanged from audited 94c3dd5; both Go build/vet/race and isolated admin smoke checks passed for that identical runtime source."
         ]
     },
     "reviewedRefs": [
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "b334cec9bff40e56323b93074e479c3e01b22610",
+            "commit": "176a9bca7f194ae0febe02a8ab432e7aabe5a9fc",
             "outcome": "selected"
         },
         {

@@ -285,7 +285,7 @@ func TestPublishBodyLimitsAreEndpointSpecific(t *testing.T) {
 	appRequest := httptest.NewRequest(http.MethodPost, "/publish", http.NoBody)
 	appRequest.Header.Set("Content-Type", "application/json")
 	appRequest.ContentLength = maxAppPublishBody + 1
-	if _, _, _, _, _, _, err := parsePublishBody(appRequest); err == nil ||
+	if _, _, _, _, _, _, _, err := parsePublishBody(appRequest); err == nil ||
 		!strings.Contains(err.Error(), "limit is") {
 		t.Fatalf("app publish did not reject a body above its limit: %v", err)
 	}

@@ -82,6 +82,7 @@ type appPublishPreflight struct {
 	runtimeContract []byte
 	hint            slotHint
 	release         ReleaseJSON
+	scanReport      appscan.Report
 }
 
 // appPublisherResolver is the narrow injection point between a signed
@@ -128,7 +129,7 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 // claims the durable nonce or changes catalog state.
 func (s *publishService) preflightAppPublishWithPublisher(r *http.Request, route string, resolvePublisher appPublisherResolver) (appPublishPreflight, error) {
 	var out appPublishPreflight
-	sig, releaseBytes, spk, metadata, runtimeContract, hint, err := parsePublishBody(r)
+	sig, releaseBytes, spk, metadata, runtimeContract, hint, scanReport, err := parsePublishBody(r)
 	if err != nil {
 		return out, fmt.Errorf("check=request: %w", err)
 	}
@@ -136,8 +137,13 @@ func (s *publishService) preflightAppPublishWithPublisher(r *http.Request, route
 	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
 		return out, fmt.Errorf("check=release_json: %w", err)
 	}
-	out = appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel}
+	out = appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel, scanReport: scanReport}
 	now := s.currentTime()
+	if s.cfg.Policy.RequireScanReport {
+		if err := appscan.Verify(scanReport, s.cfg.Policy.ScannerEd25519PublicKey, r.Method, route, spk, metadata, releaseBytes, runtimeContract, now); err != nil {
+			return out, fmt.Errorf("check=scan_report: %w", err)
+		}
+	}
 	if s.appNonces == nil {
 		return out, errors.New("check=nonce_ledger: durable app nonce ledger is not initialized")
 	}
@@ -241,7 +247,8 @@ type publishRequest struct {
 	// recomputes that AppHash, so a missing/tampered metadata fails check=app_hash.
 	MetadataB64 string `json:"metadata_b64"`
 	// RuntimeContractB64 is the raw RUNTIME-CONTRACT.json bound by RELEASE.json.
-	RuntimeContractB64 string `json:"runtime_contract_b64,omitempty"`
+	RuntimeContractB64 string         `json:"runtime_contract_b64,omitempty"`
+	ScanReport         appscan.Report `json:"scan_report"`
 	// Developer/Repo/Slug OPTIONALLY name the catalog slot
 	// (packages/<developer>/<repo>/<slug>) for the FIRST publish of a new app.
 	// A re-publish resolves its existing slot by the appId in metadata.json and
@@ -1162,88 +1169,96 @@ func requireEnvelopePresent(sig envelope.Signed) error {
 // (publishRequest). metadata is REQUIRED (the on-chain AppHash binds
 // {app.spk, metadata.json}); a publish without it cannot recompute the AppHash
 // and is malformed.
-func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, runtimeContract []byte, hint slotHint, err error) {
+func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, runtimeContract []byte, hint slotHint, report appscan.Report, err error) {
 	if err := limitPublishBody(r, maxAppPublishBody); err != nil {
-		return sig, nil, nil, nil, nil, hint, err
+		return sig, nil, nil, nil, nil, hint, report, err
 	}
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		if perr := r.ParseMultipartForm(32 << 20); perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("parse multipart: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("parse multipart: %w", perr)
 		}
 		envBytes, perr := readFormFile(r, "envelope")
 		if perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("envelope part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("envelope part: %w", perr)
 		}
 		if perr := json.Unmarshal(envBytes, &sig); perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("decode envelope JSON: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("decode envelope JSON: %w", perr)
 		}
 		release, perr = readFormFile(r, "release")
 		if perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("release part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("release part: %w", perr)
 		}
 		spk, perr = readFormFile(r, "spk")
 		if perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("spk part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("spk part: %w", perr)
 		}
 		metadata, perr = readFormFile(r, "metadata")
 		if perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("metadata part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("metadata part: %w", perr)
 		}
 		if len(metadata) == 0 {
-			return sig, nil, nil, nil, nil, hint, errors.New("metadata is empty")
+			return sig, nil, nil, nil, nil, hint, report, errors.New("metadata is empty")
 		}
 		runtimeContract, perr = readFormFile(r, "runtime_contract")
 		if perr != nil && !errors.Is(perr, http.ErrMissingFile) {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("runtime_contract part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("runtime_contract part: %w", perr)
 		}
 		hint = slotHint{
 			Developer: strings.TrimSpace(r.FormValue("developer")),
 			Repo:      strings.TrimSpace(r.FormValue("repo")),
 			Slug:      strings.TrimSpace(r.FormValue("slug")),
 		}
-		return sig, release, spk, metadata, runtimeContract, hint, nil
+		if reportBytes, perr := readFormFile(r, "scan_report"); perr == nil {
+			if perr := json.Unmarshal(reportBytes, &report); perr != nil {
+				return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("scan_report part: %w", perr)
+			}
+		} else if !errors.Is(perr, http.ErrMissingFile) {
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("scan_report part: %w", perr)
+		}
+		return sig, release, spk, metadata, runtimeContract, hint, report, nil
 	}
 
 	// JSON wire form (base64 fields).
 	body, perr := io.ReadAll(r.Body)
 	if perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("read body: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("read body: %w", perr)
 	}
 	var req publishRequest
 	if perr := json.Unmarshal(body, &req); perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("decode JSON body: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("decode JSON body: %w", perr)
 	}
 	sig = req.Envelope
+	report = req.ScanReport
 	release, perr = stdB64(req.ReleaseB64)
 	if perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("release_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("release_b64: %w", perr)
 	}
 	spk, perr = stdB64(req.SPKB64)
 	if perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("spk_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("spk_b64: %w", perr)
 	}
 	if len(spk) == 0 {
-		return sig, nil, nil, nil, nil, hint, errors.New("spk is empty")
+		return sig, nil, nil, nil, nil, hint, report, errors.New("spk is empty")
 	}
 	metadata, perr = stdB64(req.MetadataB64)
 	if perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("metadata_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("metadata_b64: %w", perr)
 	}
 	if len(metadata) == 0 {
-		return sig, nil, nil, nil, nil, hint, errors.New("metadata is empty")
+		return sig, nil, nil, nil, nil, hint, report, errors.New("metadata is empty")
 	}
 	runtimeContract, perr = stdB64(req.RuntimeContractB64)
 	if perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("runtime_contract_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("runtime_contract_b64: %w", perr)
 	}
 	hint = slotHint{
 		Developer: strings.TrimSpace(req.Developer),
 		Repo:      strings.TrimSpace(req.Repo),
 		Slug:      strings.TrimSpace(req.Slug),
 	}
-	return sig, release, spk, metadata, runtimeContract, hint, nil
+	return sig, release, spk, metadata, runtimeContract, hint, report, nil
 }
 
 func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class string, name string, artifact []byte, err error) {

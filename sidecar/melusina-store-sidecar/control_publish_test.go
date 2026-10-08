@@ -3,18 +3,25 @@ package main
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/appscan"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -123,6 +130,13 @@ func stageControlCandidate(t *testing.T, svc *publishService, publisher *identit
 
 func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.T) {
 	cfg, _ := testConfig(t)
+	profile := storeEstateProfileFixture(t)
+	profileDigest, err := estateprofile.VerifyProfile(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	security := signedStoreSecurityFixture(t, profile, profileDigest)
+	cfg.StoreID = profile.Store.StoreID
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ProgramID = programID.Base58()
 	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
@@ -146,6 +160,15 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	publisher := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
 	preflight := stageControlCandidate(t, svc, publisher, op.Public(), f, clock)
+	svc.cfg.EstateProfile = &profile
+	svc.cfg.StoreSecurityProfile = &security
+	svc.cfg.StoreLinkControlMTLS = StoreLinkControlMTLSConfig{ListenAddr: security.ControlListenAddr, StoreLinkClientCertSHA256: security.StoreLinkClientCertSHA256}
+	svc.cfg.Policy.RequirePearlControlForAppPublish = true
+	svc.cfg.Policy.RequireScanReport = true
+	svc.cfg.Policy.ScannerEd25519PublicKey = security.ScannerEd25519PublicKey
+	if err := requireServingControlMTLS(svc.cfg); err != nil {
+		t.Fatalf("control-publish-signed-security-setup: %v", err)
+	}
 
 	license, err := primitives.PubkeyFromBase58(cfg.LicenseNFTMint)
 	if err != nil {
@@ -180,7 +203,56 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	m.rawAccounts[grantPDA.Base58()] = controlGrantBlob(policyPDA, appID, releaseMeta.publisherSquadsVault, publisherKey, storePublisherActionPublishRelease, 3, clock)
 
 	body := jsonPublishBody(t, preflight.sig, preflight.releaseBytes, preflight.spk, preflight.metadata)
-	req := httptest.NewRequest(http.MethodPost, command.Route, bytes.NewReader(body.Bytes()))
+	missing := httptest.NewRequest(http.MethodPost, command.Route, bytes.NewReader(body.Bytes()))
+	missing.Header.Set("Content-Type", "application/json")
+	missing.Header.Set(controlCommandHeader, controlHeader(t, command))
+	missing.Header.Set(controlPearlSignatureHeader, controlHeader(t, pearlSignature))
+	missing.Header.Set(controlOfflineApprovalHeader, controlHeader(t, offlineApproval))
+	missingResponse := httptest.NewRecorder()
+	svc.handleControlRelease(missingResponse, missing)
+	if missingResponse.Code == http.StatusOK || !strings.Contains(missingResponse.Body.String(), "check=scan_report") {
+		t.Fatalf("control-publish-scan-report-required: %d %s", missingResponse.Code, missingResponse.Body.String())
+	}
+	var publishBody publishRequest
+	if err := json.Unmarshal(body.Bytes(), &publishBody); err != nil {
+		t.Fatal(err)
+	}
+	runtimeContract, err := base64.StdEncoding.DecodeString(publishBody.RuntimeContractB64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publishBody.ScanReport = signedClamAVReportFixture(t, command.Route, preflight.spk, preflight.metadata, preflight.releaseBytes, runtimeContract, clock)
+	for _, negative := range []struct {
+		name   string
+		change func(*appscan.Report)
+	}{
+		{"scan-report-wrong-artifact", func(r *appscan.Report) { r.SPKSHA256 = appscan.Hash([]byte("other artifact")) }},
+		{"scan-report-wrong-signer", func(r *appscan.Report) { r.Signature = "AA" }},
+		{"scan-report-expired", func(r *appscan.Report) { r.ScannedAtUnix = clock.Add(-appscan.MaxAge - time.Second).Unix() }},
+		{"scan-report-wrong-purpose", func(r *appscan.Report) { r.Target = "/publish" }},
+	} {
+		candidate := publishBody
+		negative.change(&candidate.ScanReport)
+		negativeBody, err := json.Marshal(candidate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request := httptest.NewRequest(http.MethodPost, command.Route, bytes.NewReader(negativeBody))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set(controlCommandHeader, controlHeader(t, command))
+		request.Header.Set(controlPearlSignatureHeader, controlHeader(t, pearlSignature))
+		request.Header.Set(controlOfflineApprovalHeader, controlHeader(t, offlineApproval))
+		response := httptest.NewRecorder()
+		svc.handleControlRelease(response, request)
+		if response.Code == http.StatusOK || !strings.Contains(response.Body.String(), negative.name) {
+			t.Fatalf("%s: status=%d body=%s", negative.name, response.Code, response.Body.String())
+		}
+	}
+	boundBody, err := json.Marshal(publishBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, command.Route, bytes.NewReader(boundBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(controlCommandHeader, controlHeader(t, command))
 	req.Header.Set(controlPearlSignatureHeader, controlHeader(t, pearlSignature))
@@ -202,6 +274,34 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	if w.Code != http.StatusOK {
 		t.Fatalf("completed control publish retry got %d: %s", w.Code, w.Body.String())
 	}
+}
+
+func signedClamAVReportFixture(t *testing.T, target string, spk, metadata, release, runtimeContract []byte, now time.Time) appscan.Report {
+	t.Helper()
+	dir := t.TempDir()
+	db := filepath.Join(dir, "db")
+	if err := os.Mkdir(db, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	marker := []byte("known scan marker fixture\n")
+	markerHash := md5.Sum(marker)
+	if err := os.WriteFile(filepath.Join(db, "fixture.hdb"), []byte(fmt.Sprintf("%x:%d:Known.Marker.Fixture\n", markerHash, len(marker))), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	content := [4][]byte{spk, metadata, release, runtimeContract}
+	version, database, err := appscan.ScanFiles(content, db, dir)
+	if err != nil {
+		t.Fatalf("control-publish-scan-producer: %v", err)
+	}
+	if _, _, err := appscan.ScanFiles([4][]byte{marker, metadata, release, runtimeContract}, db, dir); err == nil {
+		t.Fatal("control-publish-scanner-detection-required")
+	}
+	seed := sha256.Sum256([]byte("store-security-rehearsal-scanner"))
+	report := appscan.Report{Schema: appscan.Schema, Method: "POST", Target: target, SPKSHA256: appscan.Hash(spk), MetadataSHA256: appscan.Hash(metadata), ReleaseSHA256: appscan.Hash(release), RuntimeContractSHA256: appscan.Hash(runtimeContract), ScannedAtUnix: now.Unix(), ScannerVersion: version, DatabaseVersion: database, Clean: true}
+	if err := report.Sign(ed25519.NewKeyFromSeed(seed[:])); err != nil {
+		t.Fatal(err)
+	}
+	return report
 }
 
 func TestControlPrepareStagesOnlyWithPearlCommandAndPrepareGrant(t *testing.T) {

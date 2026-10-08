@@ -336,7 +336,7 @@ func ParseProposal(account Account, programID Pubkey) (Proposal, error) {
 	if out.Cancelled, err = d.pubkeyVec("cancelled", maxMembers); err != nil {
 		return Proposal{}, err
 	}
-	if err := d.done("proposal"); err != nil {
+	if err := d.doneProposal(len(out.Approved) + len(out.Rejected) + len(out.Cancelled)); err != nil {
 		return Proposal{}, err
 	}
 	if err := requireDistinctPubkeys(out.Approved, "proposal approved"); err != nil {
@@ -777,6 +777,25 @@ func (d *decoder) doneMultisig(rentCollector *Pubkey, memberCount int) error {
 				return fmt.Errorf("squadsproof: multisig: nonzero unset rent collector padding")
 			}
 			return fmt.Errorf("squadsproof: multisig: nonzero member allocation padding")
+		}
+	}
+	d.off = len(d.data)
+	return nil
+}
+
+// doneProposal accepts only unused 32-byte voter slots from the allocation.
+// The three serialized vote vectors above remain the sole source of votes.
+func (d *decoder) doneProposal(voteCount int) error {
+	remaining := d.remaining()
+	if remaining == 0 {
+		return nil
+	}
+	if remaining%32 != 0 || remaining/32 > 3*maxMembers-voteCount {
+		return d.done("proposal")
+	}
+	for _, b := range d.data[d.off:] {
+		if b != 0 {
+			return fmt.Errorf("squadsproof: proposal: nonzero vote allocation padding")
 		}
 	}
 	d.off = len(d.data)

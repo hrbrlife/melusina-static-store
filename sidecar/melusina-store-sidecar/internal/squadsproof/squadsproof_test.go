@@ -199,6 +199,31 @@ func TestMultisigZeroMemberCapacityPaddingAndNamedMutations(t *testing.T) {
 	}
 }
 
+func TestProposalZeroVoteCapacityPaddingAndNamedMutations(t *testing.T) {
+	_, programID, _, proposal, _ := fixtureAccounts(t)
+	// The disposable validator's real executed proposal allocated 454 bytes.
+	// Its SDK Borsh decoder consumed 166; the remaining nine voter slots are
+	// zero, and cannot supply a vote outside the three serialized vectors.
+	canonical := proposal
+	canonical.Data = append(append([]byte(nil), proposal.Data...), make([]byte, 9*32)...)
+	if _, err := ParseProposal(canonical, programID); err != nil {
+		t.Fatalf("SQUADS_VOTE_CAPACITY_POSITIVE: real allocation rejected: %v", err)
+	}
+
+	nonzero := canonical
+	nonzero.Data = append([]byte(nil), canonical.Data...)
+	nonzero.Data[len(nonzero.Data)-1] = 1
+	if _, err := ParseProposal(nonzero, programID); err == nil || !strings.Contains(err.Error(), "nonzero vote allocation padding") {
+		t.Fatalf("SQUADS_VOTE_CAPACITY_NONZERO_REFUSED: %v", err)
+	}
+
+	misaligned := proposal
+	misaligned.Data = append(append([]byte(nil), proposal.Data...), make([]byte, 9*32-1)...)
+	if _, err := ParseProposal(misaligned, programID); err == nil || !strings.Contains(err.Error(), "trailing") {
+		t.Fatalf("SQUADS_VOTE_CAPACITY_LENGTH_REFUSED: %v", err)
+	}
+}
+
 // The expected addresses and bumps in this test were emitted by the installed
 // @sqds/multisig v2.1.4 SDK's get*Pda helpers.  This keeps the Go helpers tied
 // to the actual JS client that creates the production Squads accounts.

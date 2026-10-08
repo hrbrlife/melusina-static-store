@@ -40,23 +40,22 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
   [[ -z "$dirty" ]] || { echo "source tree is dirty before candidate build" >&2; printf '%s\n' "$dirty" >&2; exit 2; }
   source_revision="$(git -C "$APP_DIR" rev-parse HEAD)"
-  mapfile -t source_remotes < <(git -C "$source_root" remote | LC_ALL=C sort)
-  [[ ${#source_remotes[@]} -gt 0 ]] || { echo "candidate source has no remote" >&2; exit 2; }
-  for remote in "${source_remotes[@]}"; do
-    # A source cohort may have been created with --single-branch. Its default
-    # remote fetchspec then omits dev-publish even when that exact committed
-    # revision was pushed moments ago, causing a false "unpushed" refusal.
-    # Refresh remote heads explicitly before the reachability check rather
-    # than trusting a clone-local fetchspec or accepting an unverifiable tip.
-    # This refresh proves source-ref reachability, not archived submodule
-    # availability. The selected checkout's initialized submodules remain
-    # build inputs; unrelated historical gitlinks must not be fetched here.
-    git -C "$source_root" fetch --prune --recurse-submodules=no "$remote" "+refs/heads/*:refs/remotes/$remote/*" || {
-      echo "cannot refresh source remote heads: $remote" >&2
-      exit 2
-    }
-  done
-  pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
+  # Only the reviewed origin can prove publication. Imported partial-clone
+  # filter entries can appear as URL-shaped remote names with no URL; fetching
+  # those names generates invalid refspecs and gives no release authority.
+  git -C "$source_root" remote get-url origin >/dev/null 2>&1 || {
+    echo "candidate source has no origin remote" >&2
+    exit 2
+  }
+  # Fetch both landing heads and hidden candidate refs explicitly, even when
+  # a single-branch checkout has a narrow default fetchspec.
+  git -C "$source_root" fetch --prune --recurse-submodules=no origin \
+    '+refs/heads/*:refs/remotes/origin/*' \
+    '+refs/velocity/*:refs/remotes/origin/velocity/*' || {
+    echo "cannot refresh source remote refs: origin" >&2
+    exit 2
+  }
+  pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/origin/ \
     | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
   [[ -n "$pushed_ref" ]] || { echo "candidate revision is not reachable from any fetched remote ref: $source_revision" >&2; exit 2; }
   source_commit_epoch="$(git -C "$APP_DIR" log -1 --format=%ct HEAD)"
@@ -241,7 +240,7 @@ case "$PACK_PROFILE" in
       exit 2
     }
     PACK_TARGET="pack-msb-test"
-    make -C "$APP_DIR" "${MAKE_VARS[@]}" "$PACK_TARGET"
+    make -C "$APP_DIR" "${MAKE_VARS[@]}" "SPK_OUT=$SPK_OUT" "$PACK_TARGET"
     ;;
 esac
 [[ -f "$SPK_OUT" ]] || { echo "$PACK_TARGET did not create $SPK_OUT" >&2; exit 2; }
@@ -256,6 +255,10 @@ if [[ -n "$caller_source_epoch" && "$source_epoch" == "$caller_source_epoch" ]];
 fi
 
 if ! cmp -s "$METADATA" "$METADATA_BASELINE"; then
+  if [[ "$PACK_PROFILE" == namedcoin-msb-devnet ]]; then
+    echo "NamedCoin candidate pack mutated source metadata; refusing to publish" >&2
+    exit 2
+  fi
   [[ -n "$METADATA_OUT" ]] || {
     echo "pack generated metadata.json; pass --metadata-out to preserve the exact staged metadata without dirtying source" >&2
     exit 2
@@ -313,6 +316,29 @@ spk_sha="$(sha256sum "$SPK_OUT" | awk '{print $1}')"
   echo "packageId $package_id does not match sha256 prefix ${spk_sha:0:32}" >&2
   exit 2
 }
+
+# NamedCoin's committed catalog metadata pins a previous package. Derive a
+# staging copy from the just-verified SPK while keeping the committed source
+# checkout byte-identical. The Store consumes this copy and the signed SPK.
+if [[ "$PACK_PROFILE" == namedcoin-msb-devnet ]]; then
+  [[ -n "$METADATA_OUT" ]] || {
+    echo "NamedCoin candidate pack requires --metadata-out" >&2
+    exit 2
+  }
+  [[ ! -e "$METADATA_OUT" && ! -L "$METADATA_OUT" ]] || {
+    echo "NamedCoin candidate metadata output must be new" >&2
+    exit 2
+  }
+  mkdir -p "$(dirname "$METADATA_OUT")"
+  python3 - "$METADATA" "$METADATA_OUT" "$package_id" "$spk_sha" <<'PY'
+import json, pathlib, sys
+source, output = map(pathlib.Path, sys.argv[1:3])
+metadata = json.loads(source.read_text(encoding="utf-8"))
+metadata["packageId"] = sys.argv[3]
+metadata["sha256"] = sys.argv[4]
+output.write_text(json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+PY
+fi
 
 candidate_metadata="$METADATA"
 if [[ -n "$METADATA_OUT" && -f "$METADATA_OUT" ]]; then

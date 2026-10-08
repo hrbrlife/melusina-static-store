@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION=""
 OUT_DIR=""
+SOURCE_REF=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version)
@@ -13,6 +14,9 @@ while [[ $# -gt 0 ]]; do
     --out-dir)
       [[ $# -ge 2 ]] || { echo "--out-dir requires a value" >&2; exit 2; }
       OUT_DIR="$2"; shift 2 ;;
+    --source-ref)
+      [[ $# -ge 2 ]] || { echo "--source-ref requires a value" >&2; exit 2; }
+      SOURCE_REF="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -59,26 +63,32 @@ esac
 [[ -z "$(git -C "$ROOT" status --porcelain --untracked-files=normal)" ]] || {
   echo "source tree must be clean" >&2; exit 2; }
 HEAD="$(git -C "$ROOT" rev-parse HEAD)"
-# Fetch exactly the branch which declares this source checkout publishable.
-# The default fetch refspec intentionally contains only a small subset of the
-# Store's many historical branches, so a bare `git fetch origin` can leave a
-# freshly pushed release branch only in FETCH_HEAD and falsely reject it.
-# An attached branch with an explicit upstream is the reviewable release
-# identity; detached or local-only source is refused rather than guessed.
-CURRENT_BRANCH="$(git -C "$ROOT" symbolic-ref -q --short HEAD || true)"
-[[ -n "$CURRENT_BRANCH" ]] || { echo "source HEAD must be on an attached branch with an upstream" >&2; exit 2; }
-UPSTREAM_REMOTE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.remote" || true)"
-UPSTREAM_MERGE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.merge" || true)"
-[[ -n "$UPSTREAM_REMOTE" && "$UPSTREAM_MERGE" == refs/heads/* ]] || {
-  echo "source branch must declare an upstream remote branch" >&2; exit 2; }
-UPSTREAM_BRANCH="${UPSTREAM_MERGE#refs/heads/}"
-git -C "$ROOT" remote get-url "$UPSTREAM_REMOTE" >/dev/null 2>&1 || {
-  echo "source branch upstream remote is unavailable: $UPSTREAM_REMOTE" >&2; exit 2; }
-git -C "$ROOT" fetch --prune "$UPSTREAM_REMOTE" \
-  "+refs/heads/$UPSTREAM_BRANCH:refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
-UPSTREAM_HEAD="$(git -C "$ROOT" rev-parse "refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH")"
-git -C "$ROOT" merge-base --is-ancestor "$HEAD" "$UPSTREAM_HEAD" || {
-  echo "source HEAD is not reachable from its refreshed upstream ref: $HEAD" >&2; exit 2; }
+# A velocity worker has a detached worktree and only a hidden, pushed review
+# ref. Accept that explicit ref for a local candidate build after checking the
+# remote points to this exact HEAD. The official attached-upstream path remains
+# the default. Neither path signs or promotes the resulting archive.
+if [[ -n "$SOURCE_REF" ]]; then
+  [[ "$SOURCE_REF" =~ ^refs/velocity/[A-Z0-9-]+/store$ ]] || {
+    echo "source-ref is not a Store velocity work ref" >&2; exit 2; }
+  REMOTE_HEAD="$(git -C "$ROOT" ls-remote origin "$SOURCE_REF" | awk '{print $1}')"
+  [[ "$REMOTE_HEAD" == "$HEAD" ]] || {
+    echo "source HEAD differs from pushed velocity work ref: $HEAD" >&2; exit 2; }
+else
+  CURRENT_BRANCH="$(git -C "$ROOT" symbolic-ref -q --short HEAD || true)"
+  [[ -n "$CURRENT_BRANCH" ]] || { echo "source HEAD must be on an attached branch with an upstream" >&2; exit 2; }
+  UPSTREAM_REMOTE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.remote" || true)"
+  UPSTREAM_MERGE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.merge" || true)"
+  [[ -n "$UPSTREAM_REMOTE" && "$UPSTREAM_MERGE" == refs/heads/* ]] || {
+    echo "source branch must declare an upstream remote branch" >&2; exit 2; }
+  UPSTREAM_BRANCH="${UPSTREAM_MERGE#refs/heads/}"
+  git -C "$ROOT" remote get-url "$UPSTREAM_REMOTE" >/dev/null 2>&1 || {
+    echo "source branch upstream remote is unavailable: $UPSTREAM_REMOTE" >&2; exit 2; }
+  git -C "$ROOT" fetch --prune "$UPSTREAM_REMOTE" \
+    "+refs/heads/$UPSTREAM_BRANCH:refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+  UPSTREAM_HEAD="$(git -C "$ROOT" rev-parse "refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH")"
+  git -C "$ROOT" merge-base --is-ancestor "$HEAD" "$UPSTREAM_HEAD" || {
+    echo "source HEAD is not reachable from its refreshed upstream ref: $HEAD" >&2; exit 2; }
+fi
 
 SOURCE_EPOCH="$(git -C "$ROOT" show -s --format=%ct "$HEAD")"
 # The UI is part of the governed ELF through go:embed. Regenerate it once from

@@ -14,6 +14,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 readonly SOURCE_REPO="hrbrlife/melusina-static-store"
 VERSION=""
 OUT_DIR=""
+SOURCE_REF=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -25,6 +26,11 @@ while [[ $# -gt 0 ]]; do
     --out-dir)
       [[ $# -ge 2 ]] || { echo "--out-dir requires a value" >&2; exit 2; }
       OUT_DIR="$2"
+      shift 2
+      ;;
+    --source-ref)
+      [[ $# -ge 2 ]] || { echo "--source-ref requires a value" >&2; exit 2; }
+      SOURCE_REF="$2"
       shift 2
       ;;
     *)
@@ -92,9 +98,9 @@ cleanup() {
 trap cleanup EXIT
 
 BUILD_OUT="$TMP/generation"
-MELUSINA_STORE_BOOTSTRAP_BUILD=1 "$ROOT/scripts/build-store-generation-release.sh" \
-  --version "$VERSION" \
-  --out-dir "$BUILD_OUT"
+BUILD_ARGS=(--version "$VERSION" --out-dir "$BUILD_OUT")
+if [[ -n "$SOURCE_REF" ]]; then BUILD_ARGS+=(--source-ref "$SOURCE_REF"); fi
+MELUSINA_STORE_BOOTSTRAP_BUILD=1 "$ROOT/scripts/build-store-generation-release.sh" "${BUILD_ARGS[@]}"
 
 RENDER_INPUT_TEMPLATE="$ROOT/deploy/store-generation/store-config-render-input.template.json"
 [[ -f "$RENDER_INPUT_TEMPLATE" && ! -L "$RENDER_INPUT_TEMPLATE" ]] || {

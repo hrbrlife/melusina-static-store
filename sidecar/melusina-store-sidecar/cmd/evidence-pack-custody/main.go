@@ -13,7 +13,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -85,16 +87,42 @@ func setSocketAccess(path string, gid int) error {
 	return nil
 }
 
+func socketGroupID(groupName string, numericGID int) (int, error) {
+	if groupName == "" {
+		if numericGID < 0 {
+			return 0, errors.New("evidence-pack-custody-socket-group-missing")
+		}
+		return numericGID, nil
+	}
+	if groupName != "melusina" || numericGID >= 0 {
+		return 0, errors.New("evidence-pack-custody-socket-group-invalid")
+	}
+	group, err := user.LookupGroup(groupName)
+	if err != nil {
+		return 0, errors.New("evidence-pack-custody-socket-group-missing")
+	}
+	actualGID, err := strconv.Atoi(group.Gid)
+	if err != nil || actualGID < 0 {
+		return 0, errors.New("evidence-pack-custody-socket-group-invalid")
+	}
+	return actualGID, nil
+}
+
 func main() {
 	root := flag.String("root", "", "absolute durable evidence-pack root")
 	pearl := flag.String("pearl-dir", "", "absolute disposable grain data directory")
 	socket := flag.String("socket", "", "absolute private Unix socket")
 	socketGID := flag.Int("socket-gid", -1, "installer-pinned grain socket group ID")
+	socketGroup := flag.String("socket-group", "", "installed grain socket group name")
 	pinsPath := flag.String("pins", "", "installer-delivered public roster")
 	pinsSHA := flag.String("pins-sha256", "", "installer-pinned public roster SHA-256")
 	flag.Parse()
 	if !filepath.IsAbs(*socket) || *socket == "/" {
 		log.Fatal("evidence-pack-custody-socket-invalid")
+	}
+	resolvedGID, err := socketGroupID(*socketGroup, *socketGID)
+	if err != nil {
+		log.Fatal(err)
 	}
 	pins, err := loadPins(*pinsPath, *pinsSHA)
 	if err != nil {
@@ -108,7 +136,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := setSocketAccess(*socket, *socketGID); err != nil {
+	if err := setSocketAccess(*socket, resolvedGID); err != nil {
 		listener.Close()
 		log.Fatal(err)
 	}

@@ -21,7 +21,7 @@ import (
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 )
 
-// The Store bootstrap component ships exactly these four programs (see
+// The Store bootstrap component ships exactly these five programs (see
 // scripts/build-store-bootstrap-component.sh). The scan covers every Go file
 // and embedded file the toolchain compiles into them, vendored code included.
 var bootstrapComponentPackages = []string{
@@ -29,6 +29,7 @@ var bootstrapComponentPackages = []string{
 	"./cmd/boot-identity-prep",
 	"./cmd/melusina-update-controller",
 	"./cmd/verify-installer-release",
+	"./cmd/evidence-pack-custody",
 }
 
 const (

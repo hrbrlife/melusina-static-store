@@ -1293,6 +1293,10 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/campaign_c1_d14_test[.]go; it is not an estate endpoint."
     },
     {
+      "host": "flag.int",
+      "reason": "Go flag.Int method token in sidecar/melusina-store-sidecar/cmd/evidence-pack-custody/main[.]go:92; it is not an estate endpoint."
+    },
+    {
       "host": "flavor.name",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/retiring_estate_artifact_scan_test[.]go; it is not an estate endpoint."
     },

@@ -375,6 +375,44 @@ func TestHandleGeneratePromoteRejectPaths(t *testing.T) {
 	}
 }
 
+func TestGenerationPromoteEnvelopeRestartReplay(t *testing.T) {
+	cfg, _ := testConfig(t)
+	cfg.PublicBaseURL = "https://store.example.org"
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	pub := newTestIdentity(t, "generation-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc := newTestService(t, cfg, newMockChainReader(), op)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	requestBytes := []byte(`{}`)
+	hash := sha256.Sum256(requestBytes)
+	signed, err := envelope.Sign(envelope.KindPublishRequest, pub, op.Public(), envelope.SignOptions{
+		RequestHash: hex.EncodeToString(hash[:]), Method: http.MethodPost, Target: "/publish/generation", TTL: 5 * time.Minute,
+		Chain: envelope.ChainEvidence{ChainID: pub.Public().Ref.ChainID, ProgramID: svc.cfg.ProgramID, VerifiedSlot: 1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := json.Marshal(generationPromoteBody{Envelope: signed, RequestB64: base64.StdEncoding.EncodeToString(requestBytes)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := httptest.NewRecorder()
+	svc.handleGeneratePromote(first, httptest.NewRequest(http.MethodPost, "/publish/generation", bytes.NewReader(body)))
+	if first.Code == http.StatusUnauthorized || strings.Contains(first.Body.String(), "nonce_ledger") {
+		t.Fatalf("generation-promote-envelope-first-claim: status=%d body=%s", first.Code, first.Body.String())
+	}
+	reopened, err := openPublishNonceLedger(filepath.Join(svc.cfg.PrivateStageDir, publishNonceLedgerDirName), testPublishNonceLedgerID, defaultPublishNonceLedgerOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	restarted := *svc
+	restarted.appNonces = reopened
+	replay := httptest.NewRecorder()
+	restarted.handleGeneratePromote(replay, httptest.NewRequest(http.MethodPost, "/publish/generation", bytes.NewReader(body)))
+	if replay.Code != http.StatusUnauthorized || !strings.Contains(replay.Body.String(), "nonce_ledger") {
+		t.Fatalf("generation-promote-restart-replay: status=%d body=%s", replay.Code, replay.Body.String())
+	}
+}
+
 func TestHandleGeneratePromoteRejectsCrossRouteEnvelopeAndDuplicateJSON(t *testing.T) {
 	op := newTestIdentity(t, "store-operator", testLicenseMint, "bazaar.melusina-os.org")
 	publisher := newTestIdentity(t, "generation-publisher", testLicenseMint, "publisher.example.org")

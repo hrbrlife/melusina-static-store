@@ -12,10 +12,9 @@ type storeRequest struct {
 	Encrypted []byte      `json:"encrypted"`
 }
 
-// Handler is the custody transport for the separately deployed local service.
-// It accepts only two pinned source signatures and the exact encrypted object.
-// The listener must be a mode-0600 Unix socket owned by the storage service;
-// the store has no HTTP network listener or ambient token fallback.
+// Handler is mounted on the installer-bound private Store custody socket.
+// It accepts only two source signatures from the signed public roster and
+// the exact encrypted object. No request may select keys or a network port.
 func (s *Store) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/dossier", func(w http.ResponseWriter, r *http.Request) {

@@ -96,14 +96,27 @@ func TestExportDossierRetentionIntegrationFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, native := key(t)
-	_, export := key(t)
 	root := t.TempDir()
 	pearl := filepath.Join(root, "pearl")
 	if err := os.Mkdir(pearl, 0700); err != nil {
 		t.Fatal(err)
 	}
-	s, err := Open(filepath.Join(root, "durable"), pearl, ccashPublic, duePublic, "storage-native", native, "storage-export", export)
+	grainRoot := os.Getenv("EVIDENCE_PACK_STORAGE_GRAIN_DIR")
+	if grainRoot == "" {
+		grainRoot = filepath.Join(root, "durable")
+	}
+	if err := os.MkdirAll(grainRoot, 0700); err != nil {
+		t.Fatal(err)
+	}
+	native, _, nativeID, err := LoadOrCreateIdentity(grainRoot, "native")
+	if err != nil {
+		t.Fatal(err)
+	}
+	export, _, exportID, err := LoadOrCreateIdentity(grainRoot, "member")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := Open(grainRoot, pearl, ccashPublic, duePublic, nativeID, native, exportID, export)
 	if err != nil {
 		t.Fatal(err)
 	}

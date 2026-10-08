@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
@@ -19,6 +20,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/hrbrlife/melusina-store-sidecar/dossierretention"
 	"github.com/hrbrlife/melusina-store-sidecar/packcustody"
 )
 
@@ -108,6 +110,62 @@ func socketGroupID(groupName string, numericGID int) (int, error) {
 	return actualGID, nil
 }
 
+// The same installer-pinned roster authenticates the Ccash source, Station
+// scope and Store member. A roster with competing keys for one source cannot
+// silently choose one. The Store member private half must have been produced
+// under this durable root before the signed roster was enrolled.
+func oneSourcePin(pins map[string]ed25519.PublicKey, owner string) (ed25519.PublicKey, string, error) {
+	var public ed25519.PublicKey
+	var id string
+	for name, candidate := range pins {
+		if strings.HasPrefix(name, owner+"/") {
+			if id != "" {
+				return nil, "", errors.New("evidence-pack-dossier-pin-ambiguous")
+			}
+			id, public = strings.TrimPrefix(name, owner+"/"), candidate
+		}
+	}
+	if id == "" {
+		return nil, "", errors.New("evidence-pack-dossier-pin-missing")
+	}
+	return public, id, nil
+}
+
+func openDossier(root, pearl string, pins map[string]ed25519.PublicKey) (http.Handler, error) {
+	ccash, _, err := oneSourcePin(pins, "ccash")
+	if err != nil {
+		return nil, err
+	}
+	dueprocess, _, err := oneSourcePin(pins, "dueprocess")
+	if err != nil {
+		return nil, err
+	}
+	storage, storageID, err := oneSourcePin(pins, "storage")
+	if err != nil {
+		return nil, err
+	}
+	dossierRoot := filepath.Join(root, "dossier-retention")
+	if err := os.MkdirAll(dossierRoot, 0700); err != nil {
+		return nil, err
+	}
+	native, _, nativeID, err := dossierretention.LoadOrCreateIdentity(dossierRoot, "native")
+	if err != nil {
+		return nil, err
+	}
+	member, memberPublic, memberID, err := dossierretention.LoadOrCreateIdentity(dossierRoot, "member")
+	if err != nil {
+		return nil, err
+	}
+	if memberID != storageID || !bytes.Equal(storage, memberPublic) {
+		return nil, errors.New("evidence-pack-dossier-signed-roster-drift")
+	}
+	store, err := dossierretention.Open(dossierRoot, pearl, ccash, dueprocess, nativeID, native, memberID, member)
+	if err != nil {
+		return nil, err
+	}
+	return store.Handler(), nil
+}
+
 func main() {
 	root := flag.String("root", "", "absolute durable evidence-pack root")
 	pearl := flag.String("pearl-dir", "", "absolute disposable grain data directory")
@@ -132,6 +190,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	dossier, err := openDossier(*root, *pearl, pins)
+	if err != nil {
+		log.Fatal(err)
+	}
 	listener, err := net.Listen("unix", *socket)
 	if err != nil {
 		log.Fatal(err)
@@ -141,7 +203,10 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Printf("evidence-pack custody listener ready at %s", *socket)
-	if err := http.Serve(listener, custody.Handler()); err != nil {
+	routes := http.NewServeMux()
+	routes.Handle("POST /v1/dossier", dossier)
+	routes.Handle("/", custody.Handler())
+	if err := http.Serve(listener, routes); err != nil {
 		log.Fatal(err)
 	}
 }

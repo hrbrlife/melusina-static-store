@@ -64,12 +64,8 @@ func main() {
 	socket := flag.String("socket", "", "absolute private Unix socket path")
 	ccashPin := flag.String("ccash-pin", "", "absolute pinned Ccash source public-key file")
 	duePin := flag.String("dueprocess-pin", "", "absolute pinned DueProcess public-key file")
-	nativeKey := flag.String("native-key", "", "absolute 0600 storage receipt key file")
 	nativePublic := flag.String("native-pin", "", "absolute storage receipt public-key file")
-	exportKey := flag.String("export-key", "", "absolute 0600 member export key file")
 	exportPublic := flag.String("export-pin", "", "absolute member export public-key file")
-	nativeID := flag.String("native-key-id", "", "storage receipt key ID")
-	exportID := flag.String("export-key-id", "", "storage member key ID")
 	flag.Parse()
 	if !filepath.IsAbs(*socket) || *socket == "/" {
 		log.Fatal("dossier-retention-socket-invalid")
@@ -82,15 +78,26 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	native, err := readIdentity(*nativeKey, *nativePublic)
+	if !filepath.IsAbs(*root) || *root == "/" {
+		log.Fatal("dossier-retention-root-invalid")
+	}
+	if err := os.MkdirAll(*root, 0700); err != nil {
+		log.Fatal(err)
+	}
+	native, nativeProducedPublic, nativeID, err := dossierretention.LoadOrCreateIdentity(*root, "native")
 	if err != nil {
 		log.Fatal(err)
 	}
-	export, err := readIdentity(*exportKey, *exportPublic)
+	export, exportProducedPublic, exportID, err := dossierretention.LoadOrCreateIdentity(*root, "member")
 	if err != nil {
 		log.Fatal(err)
 	}
-	store, err := dossierretention.Open(*root, *pearl, ccash, dueprocess, *nativeID, native, *exportID, export)
+	nativePinnedPublic, nativeErr := readPublic(*nativePublic)
+	exportPinnedPublic, exportErr := readPublic(*exportPublic)
+	if nativeErr != nil || exportErr != nil || !bytes.Equal(nativeProducedPublic, nativePinnedPublic) || !bytes.Equal(exportProducedPublic, exportPinnedPublic) {
+		log.Fatal("dossier-retention-key-pin-mismatch")
+	}
+	store, err := dossierretention.Open(*root, *pearl, ccash, dueprocess, nativeID, native, exportID, export)
 	if err != nil {
 		log.Fatal(err)
 	}

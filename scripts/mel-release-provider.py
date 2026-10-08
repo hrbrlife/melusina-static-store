@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Governed provider for ``mel-release publish`` and ``mel-release approve``.
 
-The Go CLI owns the durable two-command state machine.  This provider is its
-only real-world adapter: it builds an SPK from a committed app tree, creates a
-private store stage and an *unexecuted* Squads ReleaseEntry proposal, and on
-the approve side reads the ReleaseEntry account back (raw, for mel-release to
-admit), binds the candidate RELEASE.json to it, promotes the staged bytes, and
-revokes only declared stale ReleaseEntries.  It never approves or executes a
+The Go CLI owns the durable two-command state machine. This provider builds an
+SPK from a committed app tree, creates an *unexecuted* Squads ReleaseEntry
+proposal, and reads the ReleaseEntry account back for mel-release to admit.
+Bazaar Control owns the private Store prepare and publish operations; this
+provider refuses the retired direct stage and promote operations. It binds the
+candidate RELEASE.json to the admitted entry and revokes only declared stale
+ReleaseEntries. It never approves or executes a
 register proposal: the owner-authorized runner registers every ReleaseEntry.
 The stale revoke, which mel-release requests only when a release opted into
 global revoke, is the one operation that executes a Squads transaction: it

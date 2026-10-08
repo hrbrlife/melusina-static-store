@@ -7,8 +7,10 @@
 # or author private key.  The caller is the Go `mel-release` CLI, which binds
 # every resulting receipt into its durable WAL.  The two halves:
 #
-#   mel-release publish -> build, private stage, UNEXECUTED Squads proposal
-#   mel-release approve -> ReleaseEntry readback, finalize-release, promote
+#   mel-release publish -> build and UNEXECUTED Squads proposal
+#   mel-release approve -> ReleaseEntry readback and finalize-release
+# Bazaar Control alone prepares and publishes the Store release. Direct stage
+# and promote operations are refused before the provider reads release state.
 #
 # approve registers no ReleaseEntry and approves or executes no register
 # proposal. The owner-authorized runner registers each ReleaseEntry;

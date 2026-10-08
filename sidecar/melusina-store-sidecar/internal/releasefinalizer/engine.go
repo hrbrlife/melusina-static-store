@@ -137,8 +137,6 @@ type VaultReader interface {
 type ProposalExpectation struct {
 	Reference string
 	Digest    string
-	AppID     string
-	Version   string
 	AppHash   string
 	Release   string
 	StageID   string
@@ -155,25 +153,15 @@ const (
 // It must bind the executed immutable action and live ReleaseEntry evidence;
 // a generic “transaction succeeded” boolean is deliberately insufficient.
 type ProposalObservation struct {
-	State                  ProposalState
-	Reference              string
-	Digest                 string
-	AppHash                string
-	Release                string
-	StageID                string
-	ExecutedAt             time.Time
-	ReleaseEntryPDA        string
-	VerifiedSlot           uint64
-	RegisteredAt           time.Time
-	AuthorSignatureBase64  string
-	RegistryProgramID      string
-	PublisherEd25519Pubkey string
-	SignedPayloadHash      string
-	MasterNftMint          string
-	PublisherSquadsVault   string
-	SquadsMultisig         string
-	Threshold              int
-	MemberCount            int
+	State           ProposalState
+	Reference       string
+	Digest          string
+	AppHash         string
+	Release         string
+	StageID         string
+	ExecutedAt      time.Time
+	ReleaseEntryPDA string
+	VerifiedSlot    uint64
 }
 
 type ProposalObserver interface {
@@ -238,11 +226,10 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 	if err != nil {
 		return Result{}, nil, fmt.Errorf("load finalization input: %w", err)
 	}
-	if int64(len(inputRaw)) != request.FinalizationInputBytes || hash(inputRaw) != request.FinalizationInputSHA256 {
-		return Result{}, nil, errors.New("loaded finalization input differs from its approved immutable descriptor")
-	}
-	input, err := finalizationinput.Decode(inputRaw, maxBytes)
-	if err != nil {
+	var input finalizationinput.Input
+	decoder := json.NewDecoder(bytes.NewReader(inputRaw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&input); err != nil || decoder.Decode(&struct{}{}) != io.EOF || input.Validate(maxBytes) != nil {
 		return Result{}, nil, errors.New("finalization input is malformed or untrusted")
 	}
 	if input.DossierID != request.DossierID || input.StoreID != request.StoreID || input.AppID != request.AppID || input.Candidate.SHA256 != request.CandidateSHA256 || input.Candidate.Bytes != request.CandidateBytes || input.ReleaseHash != request.ReleaseHash || input.StageID != request.StageID {
@@ -256,7 +243,7 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 	if err != nil {
 		return Result{}, nil, err
 	}
-	observation, err := e.observer.ObserveExecution(ctx, ProposalExpectation{Reference: request.ProposalReference, Digest: request.ProposalDigest, AppID: input.AppID, Version: input.Version, AppHash: input.AppHash, Release: request.ReleaseHash, StageID: request.StageID})
+	observation, err := e.observer.ObserveExecution(ctx, ProposalExpectation{Reference: request.ProposalReference, Digest: request.ProposalDigest, AppHash: input.AppHash, Release: request.ReleaseHash, StageID: request.StageID})
 	if err != nil {
 		return Result{}, nil, fmt.Errorf("observe approved proposal: %w", err)
 	}
@@ -266,30 +253,12 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 	if observation.State != ProposalExecuted || observation.Reference != request.ProposalReference || observation.Digest != request.ProposalDigest || observation.AppHash != input.AppHash || observation.Release != request.ReleaseHash || observation.StageID != request.StageID || observation.ExecutedAt.IsZero() || observation.ExecutedAt.After(now.Add(2*time.Minute)) || observation.VerifiedSlot == 0 {
 		return Result{}, nil, errors.New("governance observer did not prove this exact proposal execution")
 	}
-	if observation.RegisteredAt.IsZero() || !observation.RegisteredAt.Equal(observation.ExecutedAt) {
-		return Result{}, nil, errors.New("release registration does not match the exact proposal execution time")
-	}
-	input, err = input.WithRegistration(finalizationinput.Registration{
-		ProposalReference: observation.Reference, RegisteredAtUnix: observation.RegisteredAt.Unix(), ProgramID: observation.RegistryProgramID,
-		MasterNftMint: observation.MasterNftMint, LicenseSquadsVault: observation.PublisherSquadsVault, ReleaseEntryPDA: observation.ReleaseEntryPDA,
-		PublisherEd25519Pubkey: observation.PublisherEd25519Pubkey, SignedPayloadHash: observation.SignedPayloadHash, AuthorSig: observation.AuthorSignatureBase64,
-		QuorumPolicy: finalizationinput.ReleaseQuorum{Threshold: observation.Threshold, MemberCount: observation.MemberCount, MultisigPDA: observation.SquadsMultisig},
-	}, maxBytes)
-	if err != nil {
-		return Result{}, nil, fmt.Errorf("materialize observed final release: %w", err)
-	}
 	release, claims, err := input.Release(maxBytes)
 	if err != nil {
 		return Result{}, nil, err
 	}
 	if claims.ReleaseEntryPDA != observation.ReleaseEntryPDA {
 		return Result{}, nil, errors.New("governance observation release entry differs from RELEASE.json")
-	}
-	if observation.RegisteredAt.IsZero() || claims.SignedAtUnix != observation.RegisteredAt.Unix() || claims.AuthorSig != observation.AuthorSignatureBase64 {
-		return Result{}, nil, errors.New("final release does not bind the observed registration time and author signature")
-	}
-	if claims.MasterNftMint != observation.MasterNftMint || claims.LicenseSquadsVault != observation.PublisherSquadsVault || claims.QuorumPolicy.MultisigPDA != observation.SquadsMultisig || claims.QuorumPolicy.Threshold != observation.Threshold || claims.QuorumPolicy.MemberCount != observation.MemberCount {
-		return Result{}, nil, errors.New("final release authority differs from the independently observed Core authority")
 	}
 	signed, err := e.signer.Sign(ctx, publisherenvelope.Request{
 		Schema: publisherenvelope.RequestSchema, DossierID: request.DossierID, StoreID: request.StoreID, AppID: request.AppID, Version: input.Version,
@@ -299,17 +268,7 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 	if err != nil {
 		return Result{}, nil, fmt.Errorf("request publisher envelope: %w", err)
 	}
-	// The separate custody process timestamps its envelope after the request
-	// reaches it. Validate its unchanged TTL against the current clock, rather
-	// than rejecting every real IPC round trip against the earlier start time.
-	if err := ctx.Err(); err != nil {
-		return Result{}, nil, err
-	}
-	finalizedAt := e.now().UTC()
-	if finalizedAt.Before(now) {
-		return Result{}, nil, errors.New("finalizer clock moved backwards during custody")
-	}
-	envelopeRaw, err := validateEnvelopeResponse(signed, request, input, release, observation, finalizedAt)
+	envelopeRaw, err := validateEnvelopeResponse(signed, request, input, release, observation, now)
 	if err != nil {
 		return Result{}, nil, err
 	}
@@ -321,7 +280,7 @@ func (e *Engine) Finalize(ctx context.Context, job Job, request Request) (Result
 		Schema: ResultSchema, WorkerID: e.workerID, Job: job, RequestDigest: request.RequestDigest,
 		ReleaseAuthorizationDigest: request.ReleaseAuthorizationDigest, ProposalReference: request.ProposalReference, ProposalDigest: request.ProposalDigest,
 		ProposalExecutedAt: observation.ExecutedAt.UTC(), FinalCandidateSHA256: hash(body), FinalCandidateBytes: int64(len(body)),
-		PublisherIntentHash: signed.PublisherIntentHash, FinalizedAt: finalizedAt, ExpiresAt: signed.ExpiresAt.UTC(),
+		PublisherIntentHash: signed.PublisherIntentHash, FinalizedAt: now, ExpiresAt: signed.ExpiresAt.UTC(),
 	}
 	result.Signature = base64.RawURLEncoding.EncodeToString(ed25519.Sign(e.resultKey, []byte(resultPrefix+result.Digest())))
 	return result, body, nil

@@ -12,8 +12,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-
-	"github.com/hrbrlife/melusina-store-sidecar/catalogselection"
 )
 
 const (
@@ -43,10 +41,6 @@ func NewHTTPHandler(runner *Runner, storeLinkCertSHA string) (*HTTPHandler, erro
 func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h == nil || h.runner == nil || !verifiedPinnedClient(r.Context(), r, h.storeLinkCertSHA) {
 		http.Error(w, "Finalization worker access is not authorised.", http.StatusForbidden)
-		return
-	}
-	if r.URL.RawQuery != "" || r.URL.RawPath != "" || r.URL.Fragment != "" {
-		http.NotFound(w, r)
 		return
 	}
 	if r.Method == http.MethodPost && r.URL.Path == jobCollectionPath {
@@ -155,7 +149,12 @@ func jobRoute(path string) (string, bool) {
 }
 
 func decodeExactJSON(raw []byte, target any) error {
-	return catalogselection.DecodeExact(raw, target)
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
+		return errors.New("invalid exact JSON")
+	}
+	return nil
 }
 
 func jsonContentType(value string) bool {

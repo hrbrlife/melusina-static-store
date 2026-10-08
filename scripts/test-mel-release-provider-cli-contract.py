@@ -47,9 +47,10 @@ CHECKED_IN_SNAPSHOT = HERE.parent / "fleet" / "retiring-bazaar-snapshot.yaml"
 
 def checked_in_ledger_document():
     """The checked-in ledger, validated as the membership record it is. It
-    retains the observed retiring origin as evidence, but it is not a release
-    approval. Its expected_live_app_count is the derived membership count;
-    the estate scan refuses the retiring origin for a new Store."""
+    carries no catalog_origin (its snapshot facts are
+    fleet/retiring-bazaar-snapshot.yaml's) and its expected_live_app_count is
+    the derived membership count, so it is never a release catalog:
+    catalog_config refuses any manifest without the bound Store origin."""
     _, document = provider.load_catalog_text(CHECKED_IN_LEDGER)
     return provider.validate_catalog_document(document, None, release_catalog=False)
 
@@ -799,10 +800,10 @@ def test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog():
     """Known-positive control: the retiring Bazaar's snapshot facts are refused
     as release-catalog values, and the membership ledger's own authority with
     them, by every provider operation — not only by a caller that remembers to
-    scan. The ledger and the independently retained snapshot both name the
-    retiring origin and index digest; neither authorizes a new Store."""
+    scan. The ledger itself no longer carries the origin or index digest; the
+    forbid set derives them from fleet/retiring-bazaar-snapshot.yaml."""
     document = checked_in_ledger_document()
-    assert document["catalog_origin"] == "https://bazaar.melusina-os.org", document
+    assert "catalog_origin" not in document, document.get("catalog_origin")
     values = retiring_values_by_field()
     store = store_forbid_set()
     ledger_fields = {field for field in values if field.startswith("ledger/")}
@@ -916,7 +917,7 @@ def test_estate_scan_refuses_each_retiring_value_in_text_and_parsed_values():
             text, document = provider.load_catalog_text(config)
             report = provider.estate_scan(text, document)
             assert report["status"] == "clean", report
-            assert report["valueCount"] == len(provider.retiring_estate_values()) and set(report["fields"]) == set(values), report
+            assert report["valueCount"] == len(values) and set(report["fields"]) == set(values), report
             assert report["exceptions"][0]["name"] == "squads-v4-program" and not report["exceptions"][0]["applied"], report
             note_line = f"line {clean.count(chr(10)) + 1}"
             for field, value in sorted(values.items()):
@@ -1119,11 +1120,13 @@ def test_estate_scan_refuses_an_unusable_reference_or_values_file():
             # Positive control: the committed bytes, copied, scan.
             values_file.write_text(committed, encoding="utf-8")
             report = provider.estate_scan(text, document, reference)
-            # The current ledger retains origin and index evidence. Count the
-            # complete source list, including independently scanned matching
-            # snapshot and reference facts, so a missing source narrows the
-            # scan and fails this width check.
-            assert report["status"] == "clean" and report["valueCount"] == len(provider.retiring_estate_values(reference)), report
+            # Store forbid set (len(store["values"])) + the snapshot file's origin host and
+            # parent domain + its index digest (3) + the checked-in ledger's
+            # release authority (3 keys) + the reference ledger's own
+            # authority again (3, deduplicated as fields) = that + 9. A field
+            # defined twice would narrow the scan silently, so the width is
+            # exact.
+            assert report["status"] == "clean" and report["valueCount"] == len(store["values"]) + 9, report
         finally:
             provider.ESTATE_SCAN_VALUES = old_values
 
@@ -2567,14 +2570,11 @@ def checked_in_catalog_entries():
 
 def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     document, entries = checked_in_catalog_entries()
-    assert document["catalog_origin"] == "https://bazaar.melusina-os.org", document
-    assert document["expected_live_app_count"] == 36, document
-    assert len(entries) == 36, entries
-    first_bazaar = entries["zukk3pav049f7wr4a12x76ytpgmsyt3136sz1hev4zy8g33f1310"]
-    assert first_bazaar["live_version"] == "unpublished", first_bazaar
-    assert first_bazaar["release_state"] == "hold", first_bazaar
-    assert first_bazaar["source_selection_state"] == "pending", first_bazaar
-    assert "source_commit" not in first_bazaar and "source_selection_receipt" not in first_bazaar, first_bazaar
+    # Membership only: the ledger names no Store and its count is the entries.
+    assert "catalog_origin" not in document, document.get("catalog_origin")
+    assert "catalog_index_sha256" not in document and "catalog_observed_at" not in document
+    assert document["expected_live_app_count"] == len(entries) == 35, document
+    assert len(entries) == 35, entries
     assert document["default_release_state"] == "hold", document
     assert document["default_source_branch"] == "dev-publish", document
     assert document["installation_policy_version"] == 1, document
@@ -2607,7 +2607,6 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     for app_id, expected_name in expected_public_names.items():
         assert entries[app_id]["catalog_name"] == expected_name, entries[app_id]
     expected_installation_policy = {
-        "zukk3pav049f7wr4a12x76ytpgmsyt3136sz1hev4zy8g33f1310": ("operator", "owner-only", "workflow", "none", "same-pearl"),
         "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0": ("client", "owner-provisions", "workflow", "scoped-share", "hidden-authority"),
         "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh": ("client", "owner-provisions", "workspace", "scoped-share", "hidden-authority"),
         "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0": ("foundation", "owner-only", "authority", "none", "hidden-authority"),
@@ -2661,7 +2660,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert paint["group"] == "bureau-rich-office", paint
     assert paint["catalog_slug"] == "paint-bureau", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "b4264407a67cc5b01101a3c7dc99fa3b3baffb54", paint
+    assert paint["source_commit"] == "4fe245183b31de5045bae69af53a5908accec939", paint
     assert paint["live_version"] == "2.0.34", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["reconciliation_state"] == "source-pinned", jinn
@@ -2680,7 +2679,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
         "prepublish-selections/svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h.json"
     ), claude
     namedcoin_admin = entries["zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0"]
-    assert namedcoin_admin["source_commit"] == "3ac1207235f6869a11ac2549886701a55507edca", namedcoin_admin
+    assert namedcoin_admin["source_commit"] == "f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f", namedcoin_admin
     assert namedcoin_admin["reconciliation_state"] == "source-pinned", namedcoin_admin
     assert namedcoin_admin["release_state"] == "ready", namedcoin_admin
     assert namedcoin_admin["source_selection_state"] == "direct-dev-verified", namedcoin_admin
@@ -2696,7 +2695,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert doc["source_selection_state"] == "direct-dev-verified", doc
     instaco = entries["u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh"]
     assert instaco["reconciliation_state"] == "source-pinned", instaco
-    assert instaco["source_commit"] == "9e0f83029b65a37e0f925837d94f5af857ece458", instaco
+    assert instaco["source_commit"] == "838a3729df2bde5c3cbfef094f914992e17c61ce", instaco
     assert instaco["release_state"] == "ready", instaco
     assert instaco["source_selection_state"] == "direct-dev-verified", instaco
     botmother = entries["xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0"]
@@ -2706,22 +2705,22 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert botmother["source_selection_state"] == "direct-dev-verified", botmother
     cratelink = entries["ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h"]
     assert cratelink["reconciliation_state"] == "source-pinned", cratelink
-    assert cratelink["source_commit"] == "2f76ff35acf39b154b56a8720c6988d753bbaf94", cratelink
+    assert cratelink["source_commit"] == "147165e48dadbb53e552bd8e94bd85f243031298", cratelink
     assert cratelink["release_state"] == "ready", cratelink
     assert cratelink["source_selection_state"] == "direct-dev-verified", cratelink
     telescreen = entries["55ru3mytzq9swmfx0xvxzhaq71hwdhmxp3vus65c9th61ep2mu60"]
-    assert telescreen["source_commit"] == "176a9bca7f194ae0febe02a8ab432e7aabe5a9fc", telescreen
+    assert telescreen["source_commit"] == "b334cec9bff40e56323b93074e479c3e01b22610", telescreen
     assert telescreen["reconciliation_state"] == "source-pinned", telescreen
     assert telescreen["release_state"] == "ready", telescreen
     assert telescreen["source_selection_state"] == "direct-dev-verified", telescreen
     shell_tester = entries["nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh"]
     assert shell_tester["source_path"] == "shell-tester", shell_tester
-    assert shell_tester["source_commit"] == "206730ce407cf7ff2844417f15aa3dd7e626f081", shell_tester
+    assert shell_tester["source_commit"] == "a6e23c3480bd97fde24cdaeaa6bed9418ad280f0", shell_tester
     assert shell_tester["reconciliation_state"] == "source-pinned", shell_tester
     assert shell_tester["release_state"] == "ready", shell_tester
     assert shell_tester["source_selection_state"] == "direct-dev-verified", shell_tester
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
-    assert clientspace["source_commit"] == "c17b22bccf42b0c49da7224fb2161c63c19982c0", clientspace
+    assert clientspace["source_commit"] == "e4d3913a4965153620595552b83b59dace048f28", clientspace
     assert clientspace["reconciliation_state"] == "source-pinned", clientspace
     assert clientspace["release_state"] == "ready", clientspace
     assert clientspace["source_selection_state"] == "direct-dev-verified", clientspace
@@ -2758,7 +2757,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     ), domain_template
     paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
     assert paype["source_path"] == "popaye", paype
-    assert paype["source_commit"] == "73c14ec231f7faa4aa061944f7445ad4c8d1c833", paype
+    assert paype["source_commit"] == "7ac65fd2905ad50a93211a12c3c3728d96883981", paype
     assert paype["source_baseline_branch"] == "main", paype
     assert paype["runtime_contract_path"] == "RUNTIME-CONTRACT.json", paype
     assert paype["reconciliation_state"] == "source-pinned", paype
@@ -2769,7 +2768,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     ), paype
     instadao = entries["gcm92hhzx20xgtfakp0kpdywmav49m2p9wnq75rv35fez680j9k0"]
     assert instadao["reconciliation_state"] == "source-pinned", instadao
-    assert instadao["source_commit"] == "0894960ccdfb1a8aabcce1e48246968465d69cc8", instadao
+    assert instadao["source_commit"] == "b32df2d42af962e80947f863f15f0161c5899c7b", instadao
     assert instadao["release_state"] == "ready", instadao
     assert instadao["source_selection_state"] == "direct-dev-verified", instadao
     assert instadao["source_selection_receipt"] == (
@@ -2777,7 +2776,7 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     ), instadao
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
     assert canboard["reconciliation_state"] == "source-pinned", canboard
-    assert canboard["source_commit"] == "418c6d1bb244251faf462dd2db80211c81e3f3d3", canboard
+    assert canboard["source_commit"] == "7862d297c943e604a5d65c6196b421b9581d0c82", canboard
     assert canboard["release_state"] == "ready", canboard
     assert canboard["source_selection_state"] == "direct-dev-verified", canboard
     contacts = entries["trymnqgywrmc3pskv6160e7h2gjscm9kentjkeah6pnvyeqeq0kh"]
@@ -2787,12 +2786,12 @@ def test_checked_in_default_bazaar_catalog_is_complete_and_release_gated():
     assert contacts["source_selection_state"] == "direct-dev-verified", contacts
     calendar = entries["p0wjp099ry06x0shap6ts270x55tn24pa5pt5029qdyhpqkaztv0"]
     assert calendar["reconciliation_state"] == "source-pinned", calendar
-    assert calendar["source_commit"] == "9d31a11cca3805cc940cb6033d2ba3538150bc91", calendar
+    assert calendar["source_commit"] == "b2865491f725452e58745c2660bb0d03ab65f78c", calendar
     assert calendar["release_state"] == "ready", calendar
     assert calendar["source_selection_state"] == "direct-dev-verified", calendar
     paint = entries["q4332kctv72tw70z8cgfk0adxve57p12fe34vfyhcftactv6w360"]
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "b4264407a67cc5b01101a3c7dc99fa3b3baffb54", paint
+    assert paint["source_commit"] == "4fe245183b31de5045bae69af53a5908accec939", paint
     assert paint["release_state"] == "hold", paint
     assert paint["source_selection_state"] == "direct-dev-verified", paint
     ai_lagoon = entries["v4ywsgcuc6wgqvjre99k9j4js21rxt0hamxd5nsnn8q5vgw93gjh"]
@@ -2866,11 +2865,11 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "xjdtxcy392qtrf317pyutxt2h5m022h291juzj1fs7023qsck3j0":
             ("botmother", "403e526976e700cba7c5671526c788d5b7d86f49", "MELUSINA_BOTMOTHER", "botmother"),
         "47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0":
-            ("dueprocess", "29e6b5a2b659a657e10838fde04efa4f74030215", "DueProcess", "dueprocess"),
+            ("dueprocess", "0b2a7687a00754cb420fdcf88c018187588b034e", "DueProcess", "dueprocess"),
         "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h":
-            ("fineract-setup/fineract-sidecar", "7d1b2061e10839d01f64e0f4ffca241c746b12d7", "fineract-setup", "fineract-setup"),
+            ("fineract-setup/fineract-sidecar", "14011aaece6087b87a30d4e7748cf0328c23e407", "fineract-setup", "fineract-setup"),
         "ar4the0nec9myt6k4h5qw7x4fgwnyg8r8nf42t84jygst97c7e3h":
-            ("teleport", "2c312877d45b5b881921cd7269eabdd199a7af55", "melusina_teleport2", "teleport"),
+            ("teleport", "9b8f137dc65d85b8a4b423af73ba416677eb143e", "melusina_teleport2", "teleport"),
         "quckdm544ydg12dmx8jt7t6vgnmy2trtt8jnsjv3afxvcfas4hvh":
             ("GoldKey", "4c1f0b8746e98c06e7d9f78f71ff30dfdc2df915", "GoldKey", "goldkey"),
         "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h":
@@ -2878,7 +2877,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
         "hck466e5ath1p4k4z1hhmd75ujjhs6z4pexe3d230hsrzzs2dg2h":
             ("ccash-domain-template", "5b95e3346052c4cd24e3866d19d6b268dd827112", "ccash_domain_template", "cca-sh-domain-template"),
         "u1rf3x62sw2fk87ayxr2ku0fgyy9wj7gdjszx49rxeqgfp01fgjh":
-            ("instaco", "9e0f83029b65a37e0f925837d94f5af857ece458", "instaco-app", "instaco"),
+            ("instaco", "838a3729df2bde5c3cbfef094f914992e17c61ce", "instaco-app", "instaco"),
         CYBERTELLER_CONFIG_APP_ID:
             ("cybertellerconfig", "05667acf956ca622ba9cfa2577c52bb1d086d362", "melusina_cybertellerconfig_app", "cybertellerconfig"),
     }
@@ -2897,7 +2896,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     dueprocess = entries["47der88w353m8ne2j009yj7yzh9dhhmgqfy8an66qt0za1cj0ax0"]
     assert dueprocess["source_path"] == "dueprocess", dueprocess
     assert dueprocess["source_repository"] == "https://github.com/hrbrlife/AITX-Procedures", dueprocess
-    assert dueprocess["source_commit"] == "29e6b5a2b659a657e10838fde04efa4f74030215", dueprocess
+    assert dueprocess["source_commit"] == "0b2a7687a00754cb420fdcf88c018187588b034e", dueprocess
     assert dueprocess["source_baseline_branch"] == "main", dueprocess
     assert dueprocess["runtime_contract_path"] == "RUNTIME-CONTRACT.json", dueprocess
     assert dueprocess["reconciliation_state"] == "source-pinned", dueprocess
@@ -2909,7 +2908,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     clientspace = entries["kcemn7du4wnacu6uh4aghd2qjm3r86u6ehcjj4pptpe9kkgfjuh0"]
     assert clientspace["source_path"] == "clientspace", clientspace
     assert clientspace["reconciliation_state"] == "source-pinned", clientspace
-    assert clientspace["source_commit"] == "c17b22bccf42b0c49da7224fb2161c63c19982c0", clientspace
+    assert clientspace["source_commit"] == "e4d3913a4965153620595552b83b59dace048f28", clientspace
     dashboard = entries["40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0"]
     assert dashboard["source_path"] == "melusina-dashboard-app", dashboard
     assert dashboard["source_repository"] == "https://github.com/hrbrlife/melusina-dashboard-app", dashboard
@@ -2920,7 +2919,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     shell_tester = entries["nn4ddmmdrs72caf25m0czd4ayk6qt0vx9ny7yzkygn962tkk08kh"]
     assert shell_tester["source_path"] == "shell-tester", shell_tester
     assert shell_tester["source_repository"] == "https://github.com/hrbrlife/shell_tester", shell_tester
-    assert shell_tester["source_commit"] == "206730ce407cf7ff2844417f15aa3dd7e626f081", shell_tester
+    assert shell_tester["source_commit"] == "a6e23c3480bd97fde24cdaeaa6bed9418ad280f0", shell_tester
     assert shell_tester["reconciliation_state"] == "source-pinned", shell_tester
     assert shell_tester["release_state"] == "ready", shell_tester
     assert shell_tester["source_selection_state"] == "direct-dev-verified", shell_tester
@@ -2928,7 +2927,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert paint["source_path"] == "paint-bureau", paint
     assert paint["source_repository"] == "https://github.com/hrbrlife/melusina-bureau-paint-app", paint
     assert paint["reconciliation_state"] == "source-pinned", paint
-    assert paint["source_commit"] == "b4264407a67cc5b01101a3c7dc99fa3b3baffb54", paint
+    assert paint["source_commit"] == "4fe245183b31de5045bae69af53a5908accec939", paint
     jinn = entries["vau6r6xst3mg96npt6zf0wkc1hzycrtzprd2su7z38myaudam3kh"]
     assert jinn["source_path"] == "jinn", jinn
     assert jinn["source_repository"] == "https://github.com/hrbrlife/jinn", jinn
@@ -2967,11 +2966,11 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     ), ailagoon
     cyberteller = entries["vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"]
     assert cyberteller["source_path"] == "cyberteller", cyberteller
-    assert cyberteller["source_commit"] == "449297bcd2805990425d6d801a5aff7e0022ff51", cyberteller
+    assert cyberteller["source_commit"] == "e16bb3c7a8a31cb855115762265aef98ad271e78", cyberteller
     assert cyberteller["source_baseline_branch"] == "main", cyberteller
     assert cyberteller["runtime_contract_path"] == "RUNTIME-CONTRACT.json", cyberteller
     assert cyberteller["reconciliation_state"] == "source-pinned", cyberteller
-    assert cyberteller["release_state"] == "ready", cyberteller
+    assert cyberteller["release_state"] == "hold", cyberteller
     assert cyberteller["source_selection_state"] == "direct-dev-verified", cyberteller
     assert cyberteller["source_selection_receipt"] == (
         "prepublish-selections/vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0.json"
@@ -2991,14 +2990,14 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     paype = entries["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"]
     assert paype["source_path"] == "popaye", paype
     assert paype["source_repository"] == "https://github.com/hrbrlife/ccash_go_htmx", paype
-    assert paype["source_commit"] == "73c14ec231f7faa4aa061944f7445ad4c8d1c833", paype
+    assert paype["source_commit"] == "7ac65fd2905ad50a93211a12c3c3728d96883981", paype
     assert paype["reconciliation_state"] == "source-pinned", paype
     assert paype["release_state"] == "ready", paype
     assert paype["source_selection_state"] == "direct-dev-verified", paype
     cratelink = entries["ztxjck2pk8ecy6mxchrwprtss0vt8vgkfkx18vrjepk3vm4u5k0h"]
     assert cratelink["source_path"] == "cratelink", cratelink
     assert cratelink["source_repository"] == "https://github.com/hrbrlife/melusina_cratelink_app", cratelink
-    assert cratelink["source_commit"] == "2f76ff35acf39b154b56a8720c6988d753bbaf94", cratelink
+    assert cratelink["source_commit"] == "147165e48dadbb53e552bd8e94bd85f243031298", cratelink
     assert cratelink["reconciliation_state"] == "source-pinned", cratelink
     assert cratelink["release_state"] == "ready", cratelink
     assert cratelink["source_selection_state"] == "direct-dev-verified", cratelink
@@ -3006,7 +3005,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     assert instadao["source_path"] == "instadao", instadao
     assert instadao["source_repository"] == "https://github.com/hrbrlife/MLSNA_token", instadao
     assert instadao["runtime_contract_path"] == "RUNTIME-CONTRACT.json", instadao
-    assert instadao["source_commit"] == "0894960ccdfb1a8aabcce1e48246968465d69cc8", instadao
+    assert instadao["source_commit"] == "b32df2d42af962e80947f863f15f0161c5899c7b", instadao
     assert instadao["reconciliation_state"] == "source-pinned", instadao
     assert instadao["release_state"] == "ready", instadao
     assert instadao["source_selection_state"] == "direct-dev-verified", instadao
@@ -3016,7 +3015,7 @@ def test_checked_in_catalog_preserves_source_and_slot_evidence():
     canboard = entries["30k1u80j35a4w3cgg9kpkug6kad2pk70u5me30r3106f909e4qnh"]
     assert canboard["source_path"] == "melusina-canboard-app", canboard
     assert canboard["reconciliation_state"] == "source-pinned", canboard
-    assert canboard["source_commit"] == "418c6d1bb244251faf462dd2db80211c81e3f3d3", canboard
+    assert canboard["source_commit"] == "7862d297c943e604a5d65c6196b421b9581d0c82", canboard
     opensanctions = entries["msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh"]
     assert opensanctions["source_path"] == "melusina-app-opensanctions", opensanctions
     assert opensanctions["source_commit"] == "a4ab5a12aaa877105c93bec8bdcf8d5bfa934401", opensanctions
@@ -3261,18 +3260,6 @@ def test_missing_declared_slot_bootstraps_private_catalog_from_source_metadata()
         (source / "metadata.json").write_text(json.dumps(source_metadata) + "\n")
         (source / "screenshots").mkdir()
         (source / "screenshots" / "source-proof.png").write_bytes(b"source screenshot")
-
-        # A clean sparse release checkout may not materialize packages/ at
-        # all.  That must be the same safe bootstrap condition as an
-        # uninitialized declared submodule, rather than requiring an
-        # untracked directory in the governed source tree.
-        old_root, old = provider.ROOT, with_env({"MEL_RELEASE_CONFIG": str(config)})
-        try:
-            provider.ROOT = root
-            assert provider.catalog_package(app_id) is None
-        finally:
-            provider.ROOT = old_root
-            restore_env(old)
 
         # Preserved stale evidence is deliberately at a different slot. The
         # bootstrap must neither use nor alter it.

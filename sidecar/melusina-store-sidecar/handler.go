@@ -400,7 +400,6 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	mux.HandleFunc(controlStatusPath, privateControlRouteOnly)
 	mux.HandleFunc(controlPolicyPath, privateControlRouteOnly)
 	mux.HandleFunc(rootControllerStatePath, privateControlRouteOnly)
-	mux.HandleFunc(controlSelectedReleasePrefix, privateControlRouteOnly)
 	// A host-apply decision is never a browser/catalog API, even in the
 	// combined development router. The actual private mTLS listener owns this
 	// prefix below; the public listener must not disclose that it exists.
@@ -486,7 +485,6 @@ func newControlReleaseRouter(svc *publishService) http.Handler {
 	mux.HandleFunc(controlStatusPath, svc.handleControlStatus)
 	mux.HandleFunc(controlPolicyPath, svc.handleControlPolicy)
 	mux.Handle(rootControllerStatePath, newRootControllerStateHandler("/"))
-	mux.HandleFunc(controlSelectedReleasePrefix, svc.handleControlSelectedRelease)
 	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
 	mux.HandleFunc("/control/v1/authority/", svc.handleControlAuthority)
 	mux.HandleFunc(hostApplyIssuePathPrefix, svc.handleHostApplyPlanRoute)

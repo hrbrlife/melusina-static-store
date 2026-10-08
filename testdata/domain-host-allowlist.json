@@ -817,6 +817,10 @@
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/coordinator[.]go; reviewed as outside the estate origin."
     },
     {
+      "host": "desc.name",
+      "reason": "Go descriptor field access in sidecar/melusina-store-sidecar/packcustody/custody_test[.]go; not a network endpoint."
+    },
+    {
       "host": "description.md",
       "reason": "Tracked dotted filename or identifier in KEEP - COMPONENTS FOR APPS[.]md:124; reviewed as source material, not an estate endpoint."
     },
@@ -2273,6 +2277,10 @@
       "reason": "Tracked external endpoint or dotted identifier in scripts/generate-app-icon-lock[.]py; reviewed as outside the estate origin."
     },
     {
+      "host": "packcustody.open",
+      "reason": "Go package function call in sidecar/melusina-store-sidecar/cmd/evidence-pack-custody/main[.]go; not a network endpoint."
+    },
+    {
       "host": "page.keyboard.press",
       "reason": "Tracked test, fixture, or documentation text in e2e/tests/static_store[.]spec[.]ts; it is not an estate endpoint."
     },
@@ -3017,6 +3025,10 @@
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/served_tls[.]go; reviewed as outside the estate origin."
     },
     {
+      "host": "s.read",
+      "reason": "Go custody method call in sidecar/melusina-store-sidecar/packcustody/http[.]go; not a network endpoint."
+    },
+    {
       "host": "s.run",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/hermetic_cases_test[.]go; it is not an estate endpoint."
     },
@@ -3323,6 +3335,10 @@
     {
       "host": "store.pub",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/scripts/test-mel-release-provider[.]sh; it is not an estate endpoint."
+    },
+    {
+      "host": "store.read",
+      "reason": "Go custody method call in sidecar/melusina-store-sidecar/packcustody/custody_test[.]go; not a network endpoint."
     },
     {
       "host": "store.recovery.test",

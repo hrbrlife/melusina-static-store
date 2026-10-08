@@ -294,10 +294,8 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 }
 
 func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
-	// Unit and local-development callers retain the combined shape. The real
-	// process uses newRouterSurfaces with isolateControl=true once the dedicated
-	// Pearl mTLS listener is configured.
-	public, _ := newRouterSurfaces(cfg, operator, cr, mirror, runtime, false)
+	// Every public router keeps release control on the private listener.
+	public, _ := newRouterSurfaces(cfg, operator, cr, mirror, runtime, true)
 	return public
 }
 
@@ -350,7 +348,7 @@ func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr c
 		catalogExpectedUID:          runtime.expectedUID,
 		catalogExpectedGID:          runtime.expectedGID,
 	}
-	return newPublicRouterWithService(cfg, operator, cr, mirror, runtime, svc, !isolateControl), newControlReleaseRouter(svc)
+	return newPublicRouterWithService(cfg, operator, cr, mirror, runtime, svc, false), newControlReleaseRouter(svc)
 }
 
 func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, svc *publishService, exposeControl bool) http.Handler {
@@ -384,19 +382,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	}
 	mux.Handle(rootTrustBundlePath, rootTrust)
 
-	if cfg.Policy.RequirePearlControlForAppPublish {
-		mux.HandleFunc("/publish", retiredLegacyAppPublish)
-		mux.HandleFunc("/publish/stage", retiredLegacyAppPublish)
-	} else {
-		mux.HandleFunc("/publish", svc.handlePublish)
-		mux.HandleFunc("/publish/stage", svc.handleStagePublish)
-	}
-	// During migration the typed control route remains on the combined test and
-	// local-development surface. A Golden configuration removes it from the
-	// public listener entirely; only the dedicated mTLS listener owns it.
-	// Store status remains private even in local combined-mode development.
-	// Otherwise a development convenience would turn the Home observation into a
-	// public sidecar probe when a production listener is configured.
+	// All Store Link control routes belong to the dedicated mTLS listener.
 	mux.HandleFunc(controlStatusPath, privateControlRouteOnly)
 	mux.HandleFunc(controlPolicyPath, privateControlRouteOnly)
 	mux.HandleFunc(rootControllerStatePath, privateControlRouteOnly)
@@ -408,11 +394,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// plan/proof route must never be reachable through the browser/catalog
 	// listener or the historical sidecar-apply surface.
 	mux.HandleFunc(controllerUpgradeIssuePathPrefix, privateControlRouteOnly)
-	if exposeControl {
-		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
-	} else {
-		mux.HandleFunc("/control/v1/", privateControlRouteOnly)
-	}
+	mux.HandleFunc("/control/v1/", privateControlRouteOnly)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 	// POST /publish/generation: envelope-authorized promote of the next signed
 	// desired generation (canonical publisher's promote step). Re-verifies the
@@ -496,29 +478,6 @@ func newControlReleaseRouter(svc *publishService) http.Handler {
 // than advertising the private listener or its authentication method.
 func privateControlRouteOnly(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
-}
-
-// retiredLegacyAppPublish is a routing cutover, not an additional publish
-// check. It runs before body parsing, envelope handling, nonce allocation, and
-// stage access, so a direct caller cannot turn a retired endpoint into a
-// partially-completed release. The exact Bazaar Control routes remain separate
-// registrations above.
-func retiredLegacyAppPublish(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, "Direct app publishing is retired. Prepare and approve the release in Bazaar Control.", http.StatusGone)
-}
-
-// handleStagePublish durably stores a candidate in the private content-addressed
-// stage before its ReleaseEntry exists. It verifies the signed publisher
-// envelope, exact app hash, store operator authority, path policy, and
-// blacklists, but deliberately does not assemble or expose the candidate.
-func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
-	s.handleAppStage(w, r, "/publish/stage", func(_ appPublishPreflight, claimed identity.Public) (string, error) {
-		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
-		if !ok {
-			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
-		}
-		return signerKey, nil
-	}, nil, nil)
 }
 
 // handleAppStage is the one private-candidate implementation. Route-specific
@@ -649,19 +608,6 @@ func (s *publishService) handleAppStage(w http.ResponseWriter, r *http.Request, 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(receipt)
-}
-
-// handlePublish retains the legacy transport surface while Bazaar Control is
-// piloted. Its static allowlist is explicitly a migration path; it is not used
-// by the typed Pearl route.
-func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
-	s.handleAppPublish(w, r, "/publish", func(_ appPublishPreflight, claimed identity.Public) (string, error) {
-		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
-		if !ok {
-			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
-		}
-		return signerKey, nil
-	}, nil, nil, nil)
 }
 
 // handleAppPublish is the one gated write implementation. Route-specific

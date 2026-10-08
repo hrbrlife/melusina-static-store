@@ -21,6 +21,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/appscan"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -41,6 +42,14 @@ func TestControlRequestCannotMixLegacyPreparedHandoff(t *testing.T) {
 	}
 	if _, err := parseFlags(base); err != nil {
 		t.Fatalf("standalone control request refused: %v", err)
+	}
+}
+
+func TestDirectAppSubmissionProducerRetired(t *testing.T) {
+	args := []string{"--store", "https://store.example.org", "--spk", "missing.spk", "--metadata", "missing-metadata.json", "--release", "missing-release.json", "--publisher-key", "missing-publisher.json", "--store-pubkey", "missing-store.json", "--license-mint", "11111111111111111111111111111111", "--rpc-url", "https://rpc.example.org", "--program-id", testProgramID}
+	var stdout, stderr bytes.Buffer
+	if err := run(args, &stdout, &stderr); err == nil || !strings.Contains(err.Error(), "direct-app-publish-retired") {
+		t.Fatalf("direct-app-publication-producer-retired: %v", err)
 	}
 }
 
@@ -406,7 +415,7 @@ func TestMarshalControlPublishRequestBindsExactPearlRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, nil, "dev", "repo", "app")
+	body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, nil, appscan.Report{}, "dev", "repo", "app")
 	if err != nil {
 		t.Fatalf("marshal control request: %v", err)
 	}
@@ -428,7 +437,7 @@ func TestMarshalControlPublishRequestBindsExactPearlRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := marshalControlPublishRequest(direct, releaseBytes, spk, metadata, nil, "", "", ""); err == nil {
+	if _, err := marshalControlPublishRequest(direct, releaseBytes, spk, metadata, nil, appscan.Report{}, "", "", ""); err == nil {
 		t.Fatal("direct /publish envelope was accepted as a Pearl control request")
 	}
 }

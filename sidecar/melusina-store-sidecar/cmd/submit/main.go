@@ -57,6 +57,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/appscan"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -207,6 +208,7 @@ type publishRequest struct {
 	SPKB64             string          `json:"spk_b64"`
 	MetadataB64        string          `json:"metadata_b64"`
 	RuntimeContractB64 string          `json:"runtime_contract_b64,omitempty"`
+	ScanReport         appscan.Report  `json:"scan_report"`
 	Developer          string          `json:"developer,omitempty"`
 	Repo               string          `json:"repo,omitempty"`
 	Slug               string          `json:"slug,omitempty"`
@@ -225,6 +227,7 @@ type options struct {
 	metadataPath        string
 	releasePath         string
 	runtimeContractPath string
+	scanReportPath      string
 	publisherKey        string // path; or env name via --publisher-key env:NAME
 	storePubkey         string // path to the sidecar operator identity.Public JSON
 	licenseMint         string // store operator's license_nft_mint (StoreOperatorAuthz seed)
@@ -258,6 +261,7 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.metadataPath, "metadata", "", "path to the app metadata.json (required; bound into the on-chain appHash)")
 	fs.StringVar(&o.releasePath, "release", "", "path to the canonical RELEASE.json (required)")
 	fs.StringVar(&o.runtimeContractPath, "runtime-contract", "", "path to the raw RUNTIME-CONTRACT.json when RELEASE.json binds one")
+	fs.StringVar(&o.scanReportPath, "scan-report", "", "signed clean scan report from scan-app")
 	fs.StringVar(&o.publisherKey, "publisher-key", "", "publisher signing identity: a path, or env:NAME to read the JSON from $NAME (required)")
 	fs.StringVar(&o.storePubkey, "store-pubkey", "", "path to the sidecar operator identity.Public JSON (the envelope destination; required — the sidecar exposes no well-known identity endpoint yet)")
 	fs.StringVar(&o.licenseMint, "license-mint", "", "store operator license_nft_mint (base58); StoreOperatorAuthorization seed for receipt verification (required)")
@@ -404,6 +408,9 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if o.verifyReceiptPath != "" {
 		return runVerifyReceipt(o, stdout)
 	}
+	if o.requestOut == "" {
+		return errors.New("direct-app-publish-retired: prepare one signed Bazaar Control request with --request-out")
+	}
 	spk, err := os.ReadFile(o.spkPath)
 	if err != nil {
 		return fmt.Errorf("read spk %s: %w", o.spkPath, err)
@@ -442,6 +449,19 @@ func run(args []string, stdout, stderr io.Writer) error {
 	runtimeContract, err := readAndValidateRuntimeContract(o.runtimeContractPath, spk, metadata, claims)
 	if err != nil {
 		return fmt.Errorf("check=runtime_contract: %w", err)
+	}
+	var scanReport appscan.Report
+	if o.scanReportPath != "" {
+		raw, err := os.ReadFile(o.scanReportPath)
+		if err != nil {
+			return fmt.Errorf("check=scan_report: %w", err)
+		}
+		if err := json.Unmarshal(raw, &scanReport); err != nil {
+			return fmt.Errorf("check=scan_report: %w", err)
+		}
+		if scanReport.SPKSHA256 != appscan.Hash(spk) || scanReport.MetadataSHA256 != appscan.Hash(metadata) || scanReport.ReleaseSHA256 != appscan.Hash(releaseBytes) || scanReport.RuntimeContractSHA256 != appscan.Hash(runtimeContract) {
+			return errors.New("check=scan_report: content mismatch")
+		}
 	}
 	expectedReceipt, err := buildSubmittedReceiptIntentWithRuntimeContract(spk, metadata, runtimeContract, claims, o.developer, o.repo, o.slug)
 	if err != nil {
@@ -507,7 +527,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return nil
 	}
 	if o.requestOut != "" {
-		body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, runtimeContract, o.developer, o.repo, o.slug)
+		body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, runtimeContract, scanReport, o.developer, o.repo, o.slug)
 		if err != nil {
 			return fmt.Errorf("control request: %w", err)
 		}
@@ -874,7 +894,7 @@ func isAllowedPublisherEnvelopeTarget(target string) bool {
 // that the Pearl will later send through the Store Link. It is deliberately a
 // pure function: a worker can prepare the candidate without receiving a store
 // URL, RPC URL, or any way to call the sidecar directly.
-func marshalControlPublishRequest(sig envelope.Signed, releaseBytes, spk, metadata, runtimeContract []byte, developer, repo, slug string) ([]byte, error) {
+func marshalControlPublishRequest(sig envelope.Signed, releaseBytes, spk, metadata, runtimeContract []byte, scanReport appscan.Report, developer, repo, slug string) ([]byte, error) {
 	if sig.Payload.Method != http.MethodPost || !isControlPublishTarget(sig.Payload.Target) {
 		return nil, errors.New("signed envelope is not for one exact Pearl control publish route")
 	}
@@ -884,6 +904,7 @@ func marshalControlPublishRequest(sig envelope.Signed, releaseBytes, spk, metada
 		SPKB64:             stdB64(spk),
 		MetadataB64:        stdB64(metadata),
 		RuntimeContractB64: stdB64(runtimeContract),
+		ScanReport:         scanReport,
 		Developer:          developer,
 		Repo:               repo,
 		Slug:               slug,

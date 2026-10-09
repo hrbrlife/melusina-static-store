@@ -478,6 +478,7 @@ func newPromoteRoute(t *testing.T) promoteRoute {
 	svc.cfg.Domain = "bazaar.melusina-os.org"
 	svc.cfg.Policy = Policy{AcceptPublishers: []string{publisher.Public().SignPubkeyB58}}
 	svc.nonces = envelope.NewMemoryNonceCache()
+	svc.appNonces = newTestDurableNonceLedger(t)
 	chain := newMockChainReader()
 	license, err := primitives.PubkeyFromBase58(testLicenseMint)
 	if err != nil {

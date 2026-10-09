@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -23,8 +24,8 @@ import (
 // storeStateFixture is a write-capable, enrolled root Store laid out the way
 // the profile-bound renderer lays one out: six state roots side by side in
 // one owner-only directory. Genesis sealed its trust root under the writer
-// lock, and one app was staged and promoted through the production router,
-// so every root holds real Store state.
+// lock, and one app was staged and promoted through the same service that
+// backs the read router, so every root holds real Store state.
 type storeStateFixture struct {
 	cfg          Config
 	parent       string
@@ -112,14 +113,14 @@ func newStoreStateFixture(t *testing.T) storeStateFixture {
 	// The Store runs enrolled in the fixture estate: its app-release trust is
 	// bound, as startup binds the enrolled profile's.
 	cfg = withReleaseTrust(cfg, chain)
-	router := newRouterWithCatalogRuntime(cfg, operator, chain, nil, runtime)
+	router, _, svc := newRouterSurfacesAndServiceWithAssembler(cfg, operator, chain, nil, runtime, true, NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir))
 	now := time.Now().UTC()
 	stageBody := exactPublishBody(t, signPublishForRoute(t, publisher, operator.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "state-backup-stage"), release, fixture.spk, fixture.metadata)
 	promoteBody := exactPublishBody(t, signPublishForRoute(t, publisher, operator.Public(), fixture.spk, release, "/publish", now, 5*time.Minute, "state-backup-promote"), release, fixture.spk, fixture.metadata)
-	if got := exactRequest(router, http.MethodPost, "/publish/stage", stageBody); got.Code != http.StatusOK {
+	if got := doStagePublish(t, svc, bytes.NewBuffer(stageBody)); got.Code != http.StatusOK {
 		t.Fatalf("stage = %d: %s", got.Code, got.Body.String())
 	}
-	if got := exactRequest(router, http.MethodPost, "/publish", promoteBody); got.Code != http.StatusOK {
+	if got := doPublish(t, svc, bytes.NewBuffer(promoteBody)); got.Code != http.StatusOK {
 		t.Fatalf("promote = %d: %s", got.Code, got.Body.String())
 	}
 
@@ -277,14 +278,19 @@ func TestStoreRestoreServesIdenticalGeneration(t *testing.T) {
 	if created, err := prepareServedSnapshotDir(f.cfg.ServedSnapshotDir); err != nil || !created {
 		t.Fatalf("restored Store start-up did not create its served-snapshot directory: created=%v err=%v", created, err)
 	}
-	restored := newRouterWithCatalogRuntime(f.cfg, f.operator, f.chain, nil, runtime)
+	restored, _, restoredService := newRouterSurfacesAndServiceWithAssembler(f.cfg, f.operator, f.chain, nil, runtime, true, NewCatalogAssembler(f.cfg.CatalogRepoRoot, f.cfg.DistDir))
 	for path, want := range map[string][]byte{"/apps/index.json": f.indexBytes, f.packagePath: f.packageBytes, f.pointerPath: f.pointerBytes} {
 		if got := exactGETOK(t, restored, path); !bytes.Equal(got, want) {
 			t.Fatalf("restored Store serves different bytes at %s", path)
 		}
 	}
 	for path, body := range map[string][]byte{"/publish/stage": f.stageBody, "/publish": f.promoteBody} {
-		got := exactRequest(restored, http.MethodPost, path, body)
+		var got *httptest.ResponseRecorder
+		if path == "/publish/stage" {
+			got = doStagePublish(t, restoredService, bytes.NewBuffer(body))
+		} else {
+			got = doPublish(t, restoredService, bytes.NewBuffer(body))
+		}
 		if got.Code != http.StatusUnauthorized || !bytes.Contains(got.Body.Bytes(), []byte("nonce already consumed")) {
 			t.Fatalf("replay of %s on the restored Store = %d: %s", path, got.Code, got.Body.String())
 		}

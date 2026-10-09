@@ -18,10 +18,12 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/derive"
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/controltlsissue"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -195,8 +197,30 @@ func newEnrolledEntryPointFixture(t *testing.T) enrolledEntryPointFixture {
 	profile.Store.OperatorKey = operator.Public().SignPubkeyB58
 	profile = signStoreEnrollmentRuntimeProfile(t, profile)
 	declaration := storeEstateDeclarationForProfile(t, profile)
+	profileSHA, err := estateprofile.VerifyProfile(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	controlBundle, clientPin, err := controltlsissue.Issue("127.0.0.1", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	security := signedStoreSecurityFixture(t, profile, profileSHA, clientPin)
+	controlCertPath := filepath.Join(identityDir, "control-server.crt")
+	controlKeyPath := filepath.Join(identityDir, "control-server.key")
+	controlCAPath := filepath.Join(identityDir, "control-client-ca.crt")
+	for path, content := range map[string]string{controlCertPath: controlBundle.ServerCertPEM, controlKeyPath: controlBundle.ServerKeyPEM, controlCAPath: controlBundle.ClientCAPEM} {
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	writeConfig := func(name, statePath, rpcURL string) string {
 		config := map[string]any{
+			"estate_profile":         profile,
+			"store_security_profile": security,
+			"store_link_control_mtls": StoreLinkControlMTLSConfig{ListenAddr: security.ControlListenAddr, CertPath: controlCertPath,
+				KeyPath: controlKeyPath, ClientCAPath: controlCAPath, StoreLinkClientCertSHA256: clientPin},
+			"policy":                       Policy{RequirePearlControlForAppPublish: true, RequireScanReport: true, ScannerEd25519PublicKey: security.ScannerEd25519PublicKey},
 			"license_nft_mint":             declaration.LicenseNFTMint,
 			"store_authority":              declaration.StoreAuthority,
 			"program_id":                   declaration.ProgramID,

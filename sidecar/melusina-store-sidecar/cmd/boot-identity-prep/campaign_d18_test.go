@@ -18,9 +18,95 @@ import (
 	"time"
 )
 
-// Campaign D18 producer-owned controls: the TLS identity leaf must be
-// self-signed (a mutated leaf refuses by name), and the two-pass flow over
-// the same valid certificate yields a stable identity fingerprint.
+// Campaign D18 producer-owned controls: a self-signed leaf proves its own
+// signature; a CA-issued leaf must verify through its supplied chain and SAN.
+// The two-pass flow yields a stable identity fingerprint.
+
+func TestCampaignD18CAIssuedStoreLeafAndNamedMutations(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Now()
+	makeSigner := func(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey) {
+		t.Helper()
+		public, private, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return public, private
+	}
+	rootPublic, rootPrivate := makeSigner(t)
+	root := &x509.Certificate{SerialNumber: big.NewInt(101), Subject: pkix.Name{CommonName: "D18 test root"},
+		NotBefore: now.Add(-time.Hour), NotAfter: now.Add(24 * time.Hour), IsCA: true,
+		BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign}
+	rootDER, err := x509.CreateCertificate(rand.Reader, root, root, rootPublic, rootPrivate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rootCert, err := x509.ParseCertificate(rootDER)
+	if err != nil {
+		t.Fatal(err)
+	}
+	intermediatePublic, intermediatePrivate := makeSigner(t)
+	intermediate := &x509.Certificate{SerialNumber: big.NewInt(102), Subject: pkix.Name{CommonName: "D18 test intermediate"},
+		NotBefore: now.Add(-time.Hour), NotAfter: now.Add(12 * time.Hour), IsCA: true,
+		BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign}
+	intermediateDER, err := x509.CreateCertificate(rand.Reader, intermediate, rootCert, intermediatePublic, rootPrivate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	intermediateCert, err := x509.ParseCertificate(intermediateDER)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leafPublic, _ := makeSigner(t)
+	leaf := &x509.Certificate{SerialNumber: big.NewInt(103), DNSNames: []string{"store.example.org"},
+		NotBefore: now.Add(-time.Hour), NotAfter: now.Add(6 * time.Hour),
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	leafDER, err := x509.CreateCertificate(rand.Reader, leaf, intermediateCert, leafPublic, intermediatePrivate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leafPath, chainPath := filepath.Join(dir, "leaf.pem"), filepath.Join(dir, "chain.pem")
+	if err := os.WriteFile(leafPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: leafDER}), 0600); err != nil {
+		t.Fatal(err)
+	}
+	chain := append(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: intermediateDER}),
+		pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rootDER})...)
+	if err := os.WriteFile(chainPath, chain, 0600); err != nil {
+		t.Fatal(err)
+	}
+	args := append(d18CertArgs(t, dir, leafPath), "-ca-chain", chainPath)
+	var output bytes.Buffer
+	if err := run(args, &output); err != nil {
+		t.Fatalf("CA-issued Store identity refused: %v", err)
+	}
+	var report ceremonyReport
+	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	want := sha256.Sum256(leafDER)
+	if report.RegisterSidecarInput.TLSCertFingerprintHex != hex.EncodeToString(want[:]) {
+		t.Fatal("CA-issued leaf fingerprint differs from measured DER")
+	}
+	wrongDomain := append([]string{}, args...)
+	for i := range wrongDomain {
+		if wrongDomain[i] == "-domain" {
+			wrongDomain[i+1] = "other.example.org"
+			break
+		}
+	}
+	if err := run(wrongDomain, &bytes.Buffer{}); err == nil || !strings.Contains(err.Error(), RefusalIdentityLeafCAChainInvalid) {
+		t.Fatalf("wrong SAN must refuse %s: %v", RefusalIdentityLeafCAChainInvalid, err)
+	}
+	brokenChain := filepath.Join(dir, "broken-chain.pem")
+	if err := os.WriteFile(brokenChain, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: intermediateDER}), 0600); err != nil {
+		t.Fatal(err)
+	}
+	missingRoot := append([]string{}, args...)
+	missingRoot[len(missingRoot)-1] = brokenChain
+	if err := run(missingRoot, &bytes.Buffer{}); err == nil || !strings.Contains(err.Error(), RefusalIdentityLeafCAChainInvalid) {
+		t.Fatalf("missing root must refuse %s: %v", RefusalIdentityLeafCAChainInvalid, err)
+	}
+}
 
 func d18CertArgs(t *testing.T, dir, certPath string) []string {
 	t.Helper()

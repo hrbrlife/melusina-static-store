@@ -251,6 +251,13 @@ go run ./cmd/boot-identity-prep \
   -tls-cert /etc/melusina/store/boot-identity-tls-cert.pem
 ```
 
+For a CA-issued Store leaf, pass `-ca-chain` with the PEM intermediate(s)
+followed by the self-signed root. The preparer verifies the full chain, the
+leaf's server-auth purpose and `-domain` against its DNS SAN before recording
+the leaf fingerprint. A chain without the root or a leaf for another hostname
+refuses `identity-leaf-ca-chain-invalid`. A self-signed leaf retains its
+signature check and refusal `identity-leaf-self-signature-invalid`.
+
 For a binding-only rotation that preserves an operator originally derived at
 version 1 for `bazaar.melusina-os.org`, add:
 

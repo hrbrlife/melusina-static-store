@@ -31,7 +31,8 @@ import {
 } from "./app-icon-map.js";
 import {
   applyGovernedInstallationPolicy,
-  canSelfInstall,
+  canStoreInstall,
+  storeInstallLabel,
   installationPresentation,
   isVisibleInPublicBazaar,
 } from "./installation-policy.js";
@@ -279,7 +280,7 @@ function InstallModal({ app, onClose }) {
   const [installError, setInstallError] = useState('');
 
   const doInstall = useCallback((host) => {
-    if (!canSelfInstall(app)) {
+    if (!canStoreInstall(app)) {
       setInstallError(installationPresentation(app).detail);
       return;
     }
@@ -826,7 +827,7 @@ function AppCard({ app, onSelect, onInstall }) {
   const shots = (app.screenshots || []).slice(0, 5);
   const updatedAgo = timeAgo(signedPromotionAt(app));
   const runtime = runtimeContractInfo(app);
-  const selfService = canSelfInstall(app);
+  const storeInstall = canStoreInstall(app);
   const installPolicy = installationPresentation(app);
 
   return (
@@ -910,7 +911,7 @@ function AppCard({ app, onSelect, onInstall }) {
               <Badge key={`conn-${i}`} neon={b.color === 'yellow' ? T.yellow : T.magenta}>{b.icon} {b.short}</Badge>
             ))}
           </div>
-          {selfService ? <button
+          {storeInstall ? <button
               onClick={(e) => { e.stopPropagation(); onInstall(app); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
@@ -937,7 +938,7 @@ function AppCard({ app, onSelect, onInstall }) {
                 e.currentTarget.style.boxShadow = `0 0 12px ${T.accentGlow}`;
                 e.currentTarget.style.transform = "none";
               }}
-            >INSTALL</button> : (
+            >{storeInstallLabel(app)}</button> : (
             <span title={installPolicy.detail} style={{
               padding: "8px 10px", borderRadius: T.radiusSm,
               border: `1px solid ${T.yellow}44`, color: T.yellow,
@@ -1397,7 +1398,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
   useEffect(() => { setTab(initialTab || 'overview'); setOpenFaq(new Set(featuredFaqSet)); setDevSubTab(initialDevSubTab || 'suggestions'); }, [app.appId, featuredFaqSet, initialTab, initialDevSubTab]);
 
   if (!app) return null;
-  const selfService = canSelfInstall(app);
+  const storeInstall = canStoreInstall(app);
   const installPolicy = installationPresentation(app);
 
   const rows = [
@@ -2040,7 +2041,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
 
         {/* actions */}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-          {selfService ? <button onClick={() => onInstall(app)} style={{
+          {storeInstall ? <button onClick={() => onInstall(app)} style={{
               display: "inline-flex", alignItems: "center", gap: 10,
               padding: "14px 36px", minHeight: 48,
               background: `linear-gradient(135deg, ${T.cyan}22, ${T.magenta}22)`,
@@ -2064,7 +2065,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
                 e.currentTarget.style.boxShadow = `0 0 20px ${T.accentGlow}, inset 0 0 20px ${T.cyan}08`;
                 e.currentTarget.style.transform = "none";
               }}
-            ><span style={{ fontSize: 16 }}>↓</span> INSTALL</button> : (
+            ><span style={{ fontSize: 16 }}>↓</span> {storeInstallLabel(app)}</button> : (
             <div role="status" style={{
               maxWidth: 560, padding: "12px 16px", borderRadius: 3,
               background: T.yellow + "0d", border: `1px solid ${T.yellow}44`,
@@ -2207,7 +2208,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
       </div>
 
       {/* sticky mobile install bar */}
-      {selfService && <div className="mobile-sticky-install" style={{
+      {storeInstall && <div className="mobile-sticky-install" style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 300,
         background: "linear-gradient(135deg, rgba(17,14,36,0.96), rgba(30,20,58,0.94))",
         backdropFilter: "blur(20px) saturate(1.4)", WebkitBackdropFilter: "blur(20px) saturate(1.4)",
@@ -2230,7 +2231,7 @@ function DetailPage({ app, onClose, onInstall, initialTab, initialDevSubTab }) {
             borderRadius: 3, cursor: "pointer",
             textShadow: `0 0 10px ${T.accentGlow}`,
             boxShadow: `0 0 20px ${T.accentGlow}`,
-          }}>↓ INSTALL</button>
+          }}>↓ {storeInstallLabel(app)}</button>
         </div>
       </div>}
     </div>
@@ -2351,7 +2352,7 @@ function App() {
   }, [selectedId]);
 
   const onInstall = useCallback((app) => {
-    if (canSelfInstall(app)) setInstallModalApp(app);
+    if (canStoreInstall(app)) setInstallModalApp(app);
   }, []);
 
   const categories = useMemo(() => {

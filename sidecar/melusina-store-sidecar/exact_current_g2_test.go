@@ -118,7 +118,7 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 	// The Store runs enrolled in the fixture estate: its app-release trust is
 	// bound, as startup binds the enrolled profile's.
 	cfg = withReleaseTrust(cfg, baseChain)
-	router := newRouterWithCatalogRuntime(cfg, operator, chain, nil, runtime)
+	router, _, service := newRouterSurfacesAndServiceWithAssembler(cfg, operator, chain, nil, runtime, true, NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir))
 
 	now := time.Now().UTC()
 	stageEnvelope := signPublishForRoute(t, publisher, operator.Public(), fixture.spk, release, "/publish/stage", now, 5*time.Minute, "g2-exact-current-stage")
@@ -126,11 +126,11 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 	stageBody := exactPublishBody(t, stageEnvelope, release, fixture.spk, fixture.metadata)
 	promoteBody := exactPublishBody(t, promoteEnvelope, release, fixture.spk, fixture.metadata)
 
-	stage := exactRequest(router, http.MethodPost, "/publish/stage", stageBody)
+	stage := doStagePublish(t, service, bytes.NewBuffer(stageBody))
 	if stage.Code != http.StatusOK {
 		t.Fatalf("purpose-bound stage = %d: %s", stage.Code, stage.Body.String())
 	}
-	promote := exactRequest(router, http.MethodPost, "/publish", promoteBody)
+	promote := doPublish(t, service, bytes.NewBuffer(promoteBody))
 	if promote.Code != http.StatusOK {
 		t.Fatalf("purpose-bound promote = %d: %s", promote.Code, promote.Body.String())
 	}
@@ -161,7 +161,7 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 	// the chain Active set (a pointer re-sign in a later wall-clock second is not
 	// a release-selection change).
 	retryEnvelope := signPublishForRoute(t, publisher, operator.Public(), fixture.spk, release, "/publish", time.Now().UTC(), 5*time.Minute, "g2-exact-current-promote-retry")
-	retry := exactRequest(router, http.MethodPost, "/publish", exactPublishBody(t, retryEnvelope, release, fixture.spk, fixture.metadata))
+	retry := doPublish(t, service, bytes.NewBuffer(exactPublishBody(t, retryEnvelope, release, fixture.spk, fixture.metadata)))
 	if retry.Code != http.StatusOK {
 		t.Fatalf("fresh-envelope idempotent promote = %d: %s", retry.Code, retry.Body.String())
 	}
@@ -185,7 +185,7 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 	if err != nil {
 		t.Fatalf("restart committed bootstrap: %v", err)
 	}
-	restarted := newRouterWithCatalogRuntime(cfg, operator, chain, nil, restartedRuntime)
+	_, _, restartedService := newRouterSurfacesAndServiceWithAssembler(cfg, operator, chain, nil, restartedRuntime, true, NewCatalogAssembler(cfg.CatalogRepoRoot, cfg.DistDir))
 	for _, replay := range []struct {
 		path string
 		body []byte
@@ -193,7 +193,12 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 		{path: "/publish/stage", body: stageBody},
 		{path: "/publish", body: promoteBody},
 	} {
-		got := exactRequest(restarted, http.MethodPost, replay.path, replay.body)
+		var got *httptest.ResponseRecorder
+		if replay.path == "/publish/stage" {
+			got = doStagePublish(t, restartedService, bytes.NewBuffer(replay.body))
+		} else {
+			got = doPublish(t, restartedService, bytes.NewBuffer(replay.body))
+		}
 		if got.Code != http.StatusUnauthorized || !bytes.Contains(got.Body.Bytes(), []byte("nonce already consumed")) {
 			t.Fatalf("restart replay %s = %d: %s", replay.path, got.Code, got.Body.String())
 		}

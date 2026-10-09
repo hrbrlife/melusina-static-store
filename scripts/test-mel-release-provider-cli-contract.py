@@ -182,50 +182,6 @@ def test_finalize_uses_only_supported_flags():
         assert finalized["runtimeContractSchema"] == "melusina-app-runtime-contract-v1", finalized
 
 
-def test_stage_refuses_stale_live_quorum_before_store_mutation():
-    """A stale workstation policy must fail before any release-side action."""
-    with tempfile.TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        executor = root / "executor.mjs"
-        executor.write_text("// test executor\n")
-        config = root / "bazaar-catalog.yaml"
-        write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
-        captured = []
-        old_run, old_context, old_rewrite = provider.run, provider.require_context, provider.rewrite_release
-        old = with_env({
-            "MEL_RELEASE_CONFIG": str(config),
-            **pinned_input("MEL_RELEASE_REGISTER_EXECUTOR", executor),
-            "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
-            **pinned_input("MEL_RELEASE_SQUADS_NODE_MODULES", fake_squads_node_modules(root)),
-            # This reflects the real failure mode: local configuration says
-            # 2-of-4 while the governed authority is now 3-of-4.
-            "MEL_RELEASE_SQUADS_THRESHOLD": "2",
-            "MEL_RELEASE_SQUADS_MEMBER_COUNT": "4",
-        })
-        try:
-            def fake_run(args, **_):
-                captured.append(args)
-                return json.dumps({
-                    "multisig": TEST_SQUADS_MULTISIG, "vault": TEST_SQUADS_VAULT,
-                    "programId": TEST_SQUADS_PROGRAM_ID, "threshold": 3, "memberCount": 4,
-                    "members": ["member-1", "member-2", "member-3", "member-4"],
-                })
-
-            provider.run = fake_run
-            provider.require_context = lambda _: (_ for _ in ()).throw(AssertionError("stage reached provider context"))
-            provider.rewrite_release = lambda *_: (_ for _ in ()).throw(AssertionError("stage rewrote release evidence"))
-            try:
-                provider.stage("app", "a" * 64, "b" * 64, "nonce", root / "stage.json")
-            except provider.ProviderError as exc:
-                assert "cannot override the catalog-pinned shared Squads authority" in str(exc), exc
-            else:
-                raise AssertionError("stale quorum was allowed to stage")
-        finally:
-            provider.run, provider.require_context, provider.rewrite_release = old_run, old_context, old_rewrite
-            restore_env(old)
-        assert captured == [], captured
-
-
 def test_propose_uses_only_supported_flags():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -564,159 +520,6 @@ def test_propose_reprepares_after_a_foreign_transaction_index():
         assert [item[0] for item in captured].count("node") == 2, captured
 
 
-def test_submit_binds_the_immutable_catalog_slot():
-    old_bin = provider.ensure_bin
-    old = with_env({
-        "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN,
-        "MEL_RELEASE_STORE_LICENSE_MINT": "license",
-        "MEL_PROGRAM_ID": TEST_PROGRAM_ID,
-        "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
-        "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
-        "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
-    })
-    try:
-        provider.ensure_bin = lambda *_: Path("/tmp/submit")
-        args = provider.submit_args({
-            "spkPath": "/tmp/app.spk",
-            "metadataPath": "/tmp/metadata.json",
-            "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json",
-            "releasePath": "/tmp/RELEASE.json",
-            "catalogSlot": {"developer": "hrbrlife", "repo": "ccash_go_htmx", "slug": "popaye"},
-        }, Path("/tmp/receipt.json"), stage_only=True)
-    finally:
-        provider.ensure_bin = old_bin
-        restore_env(old)
-    assert args[args.index("--developer") + 1] == "hrbrlife", args
-    assert args[args.index("--repo") + 1] == "ccash_go_htmx", args
-    assert args[args.index("--slug") + 1] == "popaye", args
-    assert args[args.index("--runtime-contract") + 1] == "/tmp/RUNTIME-CONTRACT.json", args
-    assert args[args.index("--store") + 1] == TEST_STORE_ORIGIN, args
-    assert args[args.index("--domain") + 1] == TEST_STORE_DOMAIN, args
-    assert args[args.index("--program-id") + 1] == TEST_PROGRAM_ID, args
-    assert "--stage" in args, args
-    assert "--multipart" not in args, args
-
-
-def test_submit_allows_only_explicit_multipart_transport():
-    old_bin = provider.ensure_bin
-    old = with_env({
-        "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN,
-        "MEL_RELEASE_STORE_LICENSE_MINT": "license",
-        "MEL_PROGRAM_ID": TEST_PROGRAM_ID,
-        "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
-        "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
-        "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
-        "MEL_RELEASE_SUBMIT_MULTIPART": "yes",
-    })
-    context = {
-        "spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json",
-        "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json", "releasePath": "/tmp/RELEASE.json",
-        "catalogSlot": {"developer": "hrbrlife", "repo": "ccash_go_htmx", "slug": "popaye"},
-    }
-    try:
-        provider.ensure_bin = lambda *_: Path("/tmp/submit")
-        args = provider.submit_args(context, Path("/tmp/receipt.json"), stage_only=False)
-        assert "--multipart" in args, args
-        os.environ["MEL_RELEASE_SUBMIT_MULTIPART"] = "true"
-        try:
-            provider.submit_args(context, Path("/tmp/receipt.json"), stage_only=False)
-        except provider.ProviderError as exc:
-            assert "MEL_RELEASE_SUBMIT_MULTIPART" in str(exc), exc
-        else:
-            raise AssertionError("invalid multipart mode was accepted")
-    finally:
-        provider.ensure_bin = old_bin
-        restore_env(old)
-
-
-def test_submit_socks_proxy_is_loopback_only_and_scoped():
-    old = with_env({"MEL_RELEASE_SUBMIT_SOCKS5_PROXY": "socks5://127.0.0.1:1087"})
-    try:
-        assert provider.submit_transport_env() == {
-            "HTTP_PROXY": "socks5://127.0.0.1:1087",
-            "HTTPS_PROXY": "socks5://127.0.0.1:1087",
-            "NO_PROXY": "",
-        }
-        os.environ["MEL_RELEASE_SUBMIT_SOCKS5_PROXY"] = "socks5://proxy.example.test:1087"
-        try:
-            provider.submit_transport_env()
-        except provider.ProviderError as exc:
-            assert "MEL_RELEASE_SUBMIT_SOCKS5_PROXY" in str(exc), exc
-        else:
-            raise AssertionError("non-loopback submit proxy was accepted")
-    finally:
-        restore_env(old)
-
-
-def test_submit_refuses_missing_catalog_slot():
-    old = with_env({
-        "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN,
-        "MEL_RELEASE_STORE_LICENSE_MINT": "license",
-        "MEL_PROGRAM_ID": TEST_PROGRAM_ID,
-        "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
-        "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
-        "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
-    })
-    try:
-        try:
-            provider.submit_args({"spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json", "releasePath": "/tmp/RELEASE.json", "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json"}, Path("/tmp/receipt.json"), stage_only=True)
-        except provider.ProviderError as exc:
-            assert "catalogSlot" in str(exc), exc
-        else:
-            raise AssertionError("missing catalogSlot was accepted")
-    finally:
-        restore_env(old)
-
-
-def test_submit_refuses_a_missing_or_malformed_estate_target():
-    """No Store, domain or registry is compiled in; each is refused by name."""
-    base = {
-        "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN,
-        "MEL_RELEASE_STORE_LICENSE_MINT": "license",
-        "MEL_PROGRAM_ID": TEST_PROGRAM_ID,
-        "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
-        "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
-        "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
-    }
-    context = {
-        "spkPath": "/tmp/app.spk", "metadataPath": "/tmp/metadata.json",
-        "runtimeContractPath": "/tmp/RUNTIME-CONTRACT.json", "releasePath": "/tmp/RELEASE.json",
-        "catalogSlot": {"developer": "hrbrlife", "repo": "repo", "slug": "app"},
-    }
-    old_bin = provider.ensure_bin
-    provider.ensure_bin = lambda *_: Path("/tmp/submit")
-    try:
-        for change, expected in (
-            ({"MEL_RELEASE_STORE_URL": ""}, "MEL_RELEASE_STORE_URL is required"),
-            ({"MEL_RELEASE_STORE_URL": "http://bazaar.rehearsal.invalid"}, "MEL_RELEASE_STORE_URL must be a bare https origin"),
-            ({"MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN + "/catalog"}, "MEL_RELEASE_STORE_URL must be a bare https origin"),
-            ({"MEL_RELEASE_STORE_URL": "https://operator@bazaar.rehearsal.invalid"}, "MEL_RELEASE_STORE_URL must be a bare https origin"),
-            ({"MEL_RELEASE_STORE_DOMAIN": "store.example.test"}, "MEL_RELEASE_STORE_DOMAIN must equal the host of MEL_RELEASE_STORE_URL"),
-            ({"MEL_PROGRAM_ID": ""}, "MEL_PROGRAM_ID is required"),
-        ):
-            old = with_env({**base, **change})
-            try:
-                try:
-                    provider.submit_args(context, Path("/tmp/receipt.json"), stage_only=True)
-                except provider.ProviderError as exc:
-                    assert expected in str(exc), (change, exc)
-                else:
-                    raise AssertionError(f"provider accepted {change}")
-            finally:
-                restore_env(old)
-        # Positive control: another well-formed Store is the caller's (the
-        # estate profile's) decision, and a repeated domain is accepted.
-        old = with_env({**base, "MEL_RELEASE_STORE_URL": "https://store.example.test/", "MEL_RELEASE_STORE_DOMAIN": "store.example.test"})
-        try:
-            args = provider.submit_args(context, Path("/tmp/receipt.json"), stage_only=True)
-        finally:
-            restore_env(old)
-        assert args[args.index("--store") + 1] == "https://store.example.test", args
-        assert args[args.index("--domain") + 1] == "store.example.test", args
-    finally:
-        provider.ensure_bin = old_bin
-
-
 def test_catalog_must_describe_the_bound_store():
     with tempfile.TemporaryDirectory() as tmp:
         config = Path(tmp) / "bazaar-catalog.yaml"
@@ -886,7 +689,7 @@ def test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog():
         try:
             # release-status and active-releases never read the catalog
             # themselves; the scan still runs before they dispatch.
-            for op in ("stage", "promote", "revoke", "release-status", "active-releases", "estate-scan"):
+            for op in ("propose-register", "finalize-release", "revoke", "release-status", "active-releases", "estate-scan"):
                 provider.sys.argv = [str(HERE / "mel-release-provider.py"), op]
                 try:
                     provider.main()
@@ -1349,77 +1152,6 @@ def test_release_entry_account_prints_the_raw_account_only():
             raise AssertionError("a non-base64 account was printed")
     finally:
         provider.read_account = old_read
-
-
-def test_promote_repairs_registered_resume_runtime_binding():
-    with tempfile.TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        app_hash = "a" * 64
-        release_hash = "b" * 64
-        version = "1.2.3"
-        spk = root / "app.spk"
-        spk.write_bytes(b"spk")
-        metadata = root / "metadata.json"
-        metadata.write_text("{}\n")
-        release = root / "RELEASE.json"
-        release.write_text(json.dumps({
-            "appHash": app_hash,
-            "releaseHash": release_hash,
-            "version": version,
-            "licenseSquadsVault": TEST_SQUADS_VAULT,
-        }) + "\n")
-        runtime_contract = root / "RUNTIME-CONTRACT.json"
-        runtime_contract.write_text(json.dumps({
-            "schema": "melusina-app-runtime-contract-v1",
-            "app": {
-                "appId": "app",
-                "version": version,
-                "spkSha256": provider.hashlib.sha256(b"spk").hexdigest(),
-                "appHash": app_hash,
-            },
-        }) + "\n")
-        receipt = root / "promote.json"
-        context = {
-            "appId": "app",
-            "spkPath": str(spk),
-            "metadataPath": str(metadata),
-            "releasePath": str(release),
-            "runtimeContractPath": str(runtime_contract),
-            "catalogSlot": {"developer": "dev", "repo": "repo", "slug": "app"},
-        }
-        submit = root / "submit"
-        submit.write_text("#!/bin/sh\n")
-        submit.chmod(0o700)
-        captured = []
-        old_context = provider.require_context
-        old_ensure_bin = provider.ensure_bin
-        old_run = provider.run
-        config = root / "bazaar-catalog.yaml"
-        write_catalog_config(config, {"app": {"appId": "app", "source_path": "app"}})
-        old = with_env({
-            "MEL_RELEASE_CONFIG": str(config),
-            "MEL_RELEASE_STORE_URL": TEST_STORE_ORIGIN,
-            "MEL_RELEASE_STORE_LICENSE_MINT": "license",
-            "MEL_PROGRAM_ID": TEST_PROGRAM_ID,
-            "MEL_RELEASE_RPC_URL": "https://rpc.example.test",
-            "MEL_RELEASE_PUBLISHER_KEY": "/tmp/publisher.json",
-            "MEL_RELEASE_STORE_PUBKEY": "/tmp/store-public.json",
-        })
-        try:
-            provider.require_context = lambda _: context
-            provider.ensure_bin = lambda *_: submit
-            provider.run = lambda args, **_: captured.append(args) or ""
-            provider.promote("app", app_hash, release_hash, version, "stage-id", receipt)
-        finally:
-            provider.require_context = old_context
-            provider.ensure_bin = old_ensure_bin
-            provider.run = old_run
-            restore_env(old)
-        repaired = json.loads(release.read_text())
-        assert repaired["runtimeContractSha256"] == provider.hex_sha(runtime_contract), repaired
-        assert repaired["runtimeContractSchema"] == "melusina-app-runtime-contract-v1", repaired
-        assert len(captured) == 1, captured
-        assert captured[0][captured[0].index("--runtime-contract") + 1] == str(runtime_contract), captured
 
 
 def release_entry_fixture(status, version="1.2.3"):
@@ -3069,13 +2801,13 @@ def test_provider_main_cannot_bypass_a_catalog_hold_at_a_later_stage():
             "MEL_APP_ID": app_id,
         }), provider.sys.argv
         try:
-            provider.sys.argv = [str(HERE / "mel-release-provider.py"), "stage"]
+            provider.sys.argv = [str(HERE / "mel-release-provider.py"), "propose-register"]
             try:
                 provider.main()
             except provider.ProviderError as exc:
                 assert "held for reconciliation" in str(exc), exc
             else:
-                raise AssertionError("a held app reached the provider stage boundary")
+                raise AssertionError("a held app reached the provider proposal boundary")
         finally:
             provider.sys.argv = old_argv
             restore_env(old_env)
@@ -3605,18 +3337,28 @@ def test_staged_metadata_preserves_authored_bytes_while_deriving_package_identit
         assert json.loads(destination.read_text(encoding="utf-8")) == staged
 
 
+def test_direct_app_publish_operations_retired():
+    old_argv = provider.sys.argv
+    try:
+        for operation in ("stage", "promote"):
+            provider.sys.argv = [str(HERE / "mel-release-provider.py"), operation]
+            try:
+                provider.main()
+            except provider.ProviderError as exc:
+                assert "direct-app-publish-retired" in str(exc), (operation, exc)
+            else:
+                raise AssertionError(f"direct-app-publish-retired: {operation} was accepted")
+    finally:
+        provider.sys.argv = old_argv
+
+
 if __name__ == "__main__":
     test_provider_helpers_rebuild_from_current_source_not_ignored_module_bin()
     test_finalize_uses_only_supported_flags()
-    test_stage_refuses_stale_live_quorum_before_store_mutation()
+    test_direct_app_publish_operations_retired()
     test_propose_uses_only_supported_flags()
     test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state()
     test_propose_register_resumes_the_exact_state_without_advancing_index()
-    test_submit_binds_the_immutable_catalog_slot()
-    test_submit_allows_only_explicit_multipart_transport()
-    test_submit_socks_proxy_is_loopback_only_and_scoped()
-    test_submit_refuses_missing_catalog_slot()
-    test_submit_refuses_a_missing_or_malformed_estate_target()
     test_catalog_must_describe_the_bound_store()
     test_estate_scan_refuses_the_checked_in_ledger_as_a_release_catalog()
     test_estate_scan_refuses_each_retiring_value_in_text_and_parsed_values()
@@ -3625,7 +3367,6 @@ if __name__ == "__main__":
     test_provider_estate_scans_every_selection_receipt_it_reads()
     test_release_helper_owns_the_index_and_approve_executes_nothing()
     test_release_entry_account_prints_the_raw_account_only()
-    test_promote_repairs_registered_resume_runtime_binding()
     test_release_entry_status_uses_zero_based_borsh_ordinals()
     test_release_status_requires_program_owner()
     test_catalog_pins_one_shared_squads_authority()

@@ -113,3 +113,29 @@ func TestReadStorePublisherGrantMetaStrictlyDecodesLayout(t *testing.T) {
 		t.Fatal("unknown grant status was accepted")
 	}
 }
+
+func TestStoreControlReadersAcceptOnlyZeroFilledRegistryAllocation(t *testing.T) {
+	check := func(t *testing.T, body []byte, maxAccountBytes int, read func([]byte) error) {
+		t.Helper()
+		padded := append(append([]byte{}, body...), make([]byte, maxAccountBytes-len(body))...)
+		if err := read(padded); err != nil {
+			t.Fatalf("registry-zero-padding-positive: %v", err)
+		}
+		padded[len(padded)-1] = 1
+		if err := read(padded); err == nil {
+			t.Fatal("registry-nonzero-padding-refused: accepted nonzero extension")
+		}
+		tooLong := append(append([]byte{}, body...), make([]byte, maxAccountBytes-len(body)+1)...)
+		if err := read(tooLong); err == nil {
+			t.Fatal("registry-oversized-padding-refused: accepted oversized allocation")
+		}
+	}
+	t.Run("policy", func(t *testing.T) {
+		check(t, storeControlPolicyBlob(storePolicyStatusActive), 299,
+			func(b []byte) error { _, err := readStoreControlPolicyMeta(b); return err })
+	})
+	t.Run("grant", func(t *testing.T) {
+		check(t, storePublisherGrantBlob(storeGrantStatusActive), 319,
+			func(b []byte) error { _, err := readStorePublisherGrantMeta(b); return err })
+	})
+}

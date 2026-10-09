@@ -63,6 +63,10 @@ deployer uses this exact, checksummed tool during its staged prepare phase to
 derive the `register_sidecar_identity` input from the archived store ELF, the
 fresh TLS certificate, and the root-owned shard set. It must never hand-compose
 those identity fields or build the preparer on the target.
+For a CA-issued certificate, supply its intermediate-to-root PEM bundle with
+`-ca-chain`; the preparer verifies that chain and the Store hostname before
+it records the exact leaf fingerprint. The bundle and leaf must be the ones
+the provider edge later serves and the ceremony profile pins.
 
 It also includes the separately running `bin/melusina-update-controller` and
 the controller service/timer units, but no controller configuration. On the

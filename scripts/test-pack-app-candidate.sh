@@ -323,6 +323,16 @@ grep -q 'NamedCoin candidate pack mutated source metadata' "$WORK/namedcoin-sour
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 echo 'PASS NamedCoin source mutation refused by NamedCoin candidate pack mutated source metadata'
 
+set +e
+BUILD_LOG="$WORK/namedcoin-profile.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/namedcoin-profile-metadata.json" \
+  >"$WORK/namedcoin-metadata-reuse.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'NamedCoin candidate metadata output must be new' "$WORK/namedcoin-metadata-reuse.log"
+
 python3 - "$APP/metadata.json" <<'PY'
 import json, sys
 p = sys.argv[1]
@@ -353,6 +363,32 @@ rc=$?
 set -e
 [[ $rc -ne 0 ]]
 grep -q 'not reachable from any fetched remote ref' "$WORK/unpushed.log"
+git -C "$APP" push -qu origin HEAD:refs/velocity/V-M2-DRESS2/test-app
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+  --source-ref refs/velocity/V-M2-DRESS2/test-app \
+  --receipt-out "$WORK/hidden-source-receipt.json"
+python3 - "$WORK/hidden-source-receipt.json" <<'PY'
+import json, sys
+receipt = json.load(open(sys.argv[1], encoding='utf-8'))
+assert receipt['source']['pushedRemoteRef'] == 'refs/remotes/origin/velocity/V-M2-DRESS2/test-app'
+PY
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+  --source-ref refs/velocity/V-M2-DRESS2/absent >"$WORK/hidden-source-absent.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate source ref unavailable' "$WORK/hidden-source-absent.log"
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+  --source-ref refs/velocity/V-CUT-REHEARSAL/namedcoin >"$WORK/hidden-source-mismatch.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate source ref does not name source revision' "$WORK/hidden-source-mismatch.log"
 git -C "$APP" reset -q --hard refs/remotes/origin/main
 
 cp "$APP/metadata.json" "$APP/ignored-metadata.json"

@@ -22,6 +22,7 @@ func completeFlags() []string {
 	return []string{
 		"--store", "https://store.example", "--class", "deployer", "--name", "deployer.tar.xz",
 		"--artifact", "artifact.tar.xz", "--publisher-key", "publisher.json", "--store-pubkey", "store.json",
+		"--store-id", "test-store", "--store-domain", "publisher.example", "--license-mint", "11111111111111111111111111111111",
 	}
 }
 
@@ -81,6 +82,7 @@ func TestPublisherKeyBoundToAnotherRegistryIsRefused(t *testing.T) {
 	err := run([]string{
 		"--store", server.URL, "--class", "deployer", "--name", "deployer.tar.xz", "--artifact", artifactPath,
 		"--publisher-key", publisherPath, "--store-pubkey", operatorPath, "--program-id", testProgramID,
+		"--store-id", "test-store", "--store-domain", "publisher.example", "--license-mint", publisher.Public().Ref.LicenseMint,
 	}, new(strings.Builder))
 	if err == nil || !strings.Contains(err.Error(), "check=program_id: publisher key is bound to license-registry program "+otherTestProgramID) {
 		t.Fatalf("publisher key under another registry: error = %v", err)

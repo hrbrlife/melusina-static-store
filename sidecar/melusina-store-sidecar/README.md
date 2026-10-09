@@ -79,19 +79,9 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   Every other state (an unreadable or absent entry, `Superseded`, an unknown
   status, `Revoked` without `revoked_at`, another master mint, or no
   `release_master_nft_mint` configured) refuses the whole catalog with `503`.
-- **WRITE** (gated; the sidecar is the SINGLE WRITER): while
-  `policy.require_pearl_control_for_app_publish=false`, the legacy
-  `POST /publish` route accepts a sealed-v3 envelope from an attested publisher
-  (+ `metadata.json`), recomputes the AppHash (tree-hash over
-  `{app.spk, metadata.json}`), requires the matching Active on-chain
-  `ReleaseEntry`, explicit Clear records for the app and the operator licence, and the
-  version floor, then invokes
-  `build-store.sh` as an in-process assembler and returns a store-signed
-  provenance receipt. After the named Bazaar Control pilot is proven, set the
-  flag to `true`: legacy app `POST /publish` and `/publish/stage` return `410`
-  before parsing a body or changing state. Typed, human-approved
-  `/control/v1/releases/<dossier>/prepare|publish` commands are then the only
-  app-release write path. In the cutover configuration they exist only on the
+- **WRITE** (gated; the sidecar is the SINGLE WRITER): typed, human-approved
+  `/control/v1/releases/<dossier>/prepare|publish` commands are the app-release
+  write path. They exist only on the
   separate `store_link_control_mtls.listen_addr`: TLS 1.3, a verified Store
   Link control-plane client CA, and the exact pinned Store Link client
   certificate are all required. That listener additionally exposes two exact
@@ -102,7 +92,8 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   policy identifier, revision, and public Pearl command-key binding. Neither
   is public catalog health, a chain diagnostic, a policy/Pearl selector, or a
   transaction/signing API.
-  The public catalog listener returns `404` for that route. **No
+  The public catalog listener returns `404` for those routes and for retired
+  direct app `POST /publish` and `/publish/stage`. **No
   `MELUSINA_ATTEST_OFFLINE`/`SKIP_STEPS`/`SCAN_NOOP` bypass exists on either
   path.**
 - **Internal preflight** (not an HTTP route):
@@ -133,8 +124,8 @@ a contract but loses or alters it is excluded by the serve-time gate. See
 [`../../docs/RUNTIME_CONTRACT_V1.md`](../../docs/RUNTIME_CONTRACT_V1.md).
 
 ## Status
-Phase-1 spine: READ surface plus the gated legacy app-publish receive path
-(C2.3), retained only until the Bazaar Control pilot cutover. It verifies the
+Phase-1 spine: READ surface plus the governed Bazaar Control app-publish path.
+It verifies the
 publisher's signed artifact envelope, recomputes the AppHash (the tree-hash over
 `{app.spk, metadata.json}`), requires it == the on-chain `ReleaseEntry.app_hash`,
 requires an Active `StoreOperatorAuthorization` whose `store_authority` is this
@@ -156,26 +147,15 @@ returns a store-signed provenance receipt over the raw
 is the trust gate — `build-store.sh` is NOT. No `MELUSINA_ATTEST_OFFLINE` /
 `SKIP_STEPS` / `SCAN_NOOP` bypass is reachable on this path (spec §5 S7).
 
-### Retiring direct app publish after the Bazaar Control pilot
+### Governed app publication
 
-`policy.require_pearl_control_for_app_publish` defaults to `false` for a safe,
-explicit migration. Set it to `true` only after a named pilot has completed all
-of these in the real tenant: exact frozen candidate, offline human approval,
-typed Pearl command through its private Store Link mTLS listener, sidecar pre-switch listing proof, catalog/pin
-agreement, fresh-grain runtime proof, and rollback rehearsal. In that state the
-sidecar returns `410 Gone` for direct app `/publish` and `/publish/stage` before
-it reads a request body, claims a nonce, or touches staged candidates. This is a
-routing cutover, not a weaker verification mode.
-
-`/publish/installer`, `/publish/generation`, and
-`/publish/legacy-manifest-bootstrap` are system-update routes. They remain
-separate from this app-release cutover and require their own governed controls.
-The typed Pearl routes are present, but certificate injection, network policy,
-and the Pearl's secret injection must be deployed and proved before this flag is
-enabled in a live store. The config loader refuses this cutover unless a complete
-`store_link_control_mtls` listener is supplied. It refuses partial settings, a
-non-absolute certificate path, an unpinned client leaf, or reuse of the public
-listener address.
+The Store requires a complete `store_link_control_mtls` listener at startup.
+The signed Store security profile pins the exact client leaf; the server checks
+that pin as well as the client CA. The public listener never mounts control or
+direct app publication routes. `/publish/installer` and `/publish/generation`
+remain separate system update routes with their own signed and on-chain gates.
+The legacy-manifest bootstrap write route is retired; its generation reader
+remains available for already committed state.
 
 ### Boot identity (gated app publish) — B1-02
 The operator signing identity (receipt signer + envelope destination) is no
@@ -307,7 +287,7 @@ The same rule covers every other Store program and production file. The
 operator and day-two tools compile no estate's values. Each takes the
 estate's license registry as a required flag and refuses by name without it:
 `apply-store-update --program-id`, `submit-generation --program-id`,
-`submit-installer --program-id`, `bootstrap-legacy-manifest --program-id`,
+`submit-installer --program-id`,
 `list-active-releases -program-id` and `canary-emit sign --program-id`. The
 signing clients also refuse a publisher key minted under another registry.
 `canary-emit` requires `program_id` in the Store config it reads. `keygen`

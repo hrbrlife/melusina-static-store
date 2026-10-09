@@ -7,8 +7,10 @@
 # or author private key.  The caller is the Go `mel-release` CLI, which binds
 # every resulting receipt into its durable WAL.  The two halves:
 #
-#   mel-release publish -> build, private stage, UNEXECUTED Squads proposal
-#   mel-release approve -> ReleaseEntry readback, finalize-release, promote
+#   mel-release publish -> build and UNEXECUTED Squads proposal
+#   mel-release approve -> ReleaseEntry readback and finalize-release
+# Bazaar Control alone prepares and publishes the Store release. Direct stage
+# and promote operations are refused before the provider reads release state.
 #
 # approve registers no ReleaseEntry and approves or executes no register
 # proposal. The owner-authorized runner registers each ReleaseEntry;
@@ -90,30 +92,6 @@ run_go_cmd() { # a source command in this exact sidecar module, never an unknown
   local cmd="$1"; shift
   (cd "$PROVIDER_ROOT" && go run "$cmd" "$@")
 }
-submit_cmd() {
-  if [[ -n "${MEL_RELEASE_SUBMIT_BIN:-}" ]]; then
-    [[ -x "$MEL_RELEASE_SUBMIT_BIN" && ! -L "$MEL_RELEASE_SUBMIT_BIN" ]] || die "MEL_RELEASE_SUBMIT_BIN must be an executable non-symlink file"
-    "$MEL_RELEASE_SUBMIT_BIN" "$@"
-  else
-    run_go_cmd "$PROVIDER_ROOT/cmd/submit" "$@"
-  fi
-}
-
-# A catalog slot is needed only when an app is not yet present in the store.
-# Accept an absent triple for existing entries, but never accept a partial path:
-# that would let staging and promotion disagree about the visible package slot.
-catalog_slot_args() {
-  local developer="${MEL_RELEASE_CATALOG_DEVELOPER:-}"
-  local repo="${MEL_RELEASE_CATALOG_REPO:-}"
-  local slug="${MEL_RELEASE_CATALOG_SLUG:-}"
-  SUBMIT_CATALOG_SLOT_ARGS=()
-  if [[ -z "$developer" && -z "$repo" && -z "$slug" ]]; then
-    return
-  fi
-  [[ -n "$developer" && -n "$repo" && -n "$slug" ]] || die "catalog slot requires MEL_RELEASE_CATALOG_DEVELOPER, MEL_RELEASE_CATALOG_REPO, and MEL_RELEASE_CATALOG_SLUG together"
-  SUBMIT_CATALOG_SLOT_ARGS=(--developer "$developer" --repo "$repo" --slug "$slug")
-}
-
 # The catalog is the sole selector of release authority. Every app retains its
 # own SPK key, but none may select a different Squads multisig, vault, or
 # program. Keep this check in the provider as well as the Go CLI so invoking
@@ -180,14 +158,15 @@ PY
 }
 
 readonly OP="${1:-}"
-[[ $# -eq 1 ]] || die "usage: $0 {build|active-releases|release-status|release-entry-account|served-app-hash|stage|propose-register|finalize-release|promote|revoke}"
+[[ $# -eq 1 ]] || die "usage: $0 {build|active-releases|release-status|release-entry-account|served-app-hash|propose-register|finalize-release|revoke}"
 case "$OP" in
-  build|active-releases|release-status|release-entry-account|served-app-hash|stage|propose-register|finalize-release|promote|revoke) ;;
+  build|active-releases|release-status|release-entry-account|served-app-hash|propose-register|finalize-release|revoke) ;;
+  stage|promote) die "direct-app-publish-retired: Bazaar Control owns prepare and publish" ;;
   *) die "unknown operation: $OP" ;;
 esac
 
 case "$OP" in
-  build|stage|propose-register|finalize-release|promote|revoke) require_catalog_shared_squads_authority ;;
+  build|propose-register|finalize-release|revoke) require_catalog_shared_squads_authority ;;
 esac
 
 need MEL_RELEASE_STATE_DIR
@@ -424,31 +403,6 @@ if hits:
 PY
 }
 
-stage() {
-  need MEL_APP_ID; need MEL_NEW_APP_HASH; need MEL_RELEASE_HASH; need MEL_NEW_VERSION; need MEL_RELEASE_NONCE; need MEL_STAGE_RECEIPT_OUT
-  need MEL_RELEASE_MASTER_NFT_MINT; need MEL_RELEASE_STORE_LICENSE_MINT; need MEL_RELEASE_STORE_DOMAIN; need MEL_PROGRAM_ID
-  need MEL_RELEASE_STORE_URL; need MEL_RELEASE_STORE_PUBKEY; need MEL_RELEASE_RPC_URL; need MEL_RELEASE_PUBLISHER_KEY
-  local state release
-  state="$(app_dir_for)"
-  [[ -f "$state/material/app.spk" && -f "$state/material/metadata.json" ]] || die "no built material; run publish/build first"
-  release="$state/release-stage.json"
-  python3 - "$release" "$MEL_NEW_APP_HASH" "$MEL_RELEASE_HASH" "$MEL_NEW_VERSION" "$MEL_RELEASE_NONCE" "$MEL_RELEASE_MASTER_NFT_MINT" <<'PY'
-import json, os, sys
-out, apphash, rhash, ver, nonce, master = sys.argv[1:]
-doc={"$schema":"melusina-release-v1","appHash":apphash,"releaseHash":rhash,"version":ver,
-     "signedAtUnix":0,"masterNftMint":master,"licenseSquadsVault":"","releaseEntryPda":"",
-     "authorSig":"","quorumPolicy":{"threshold":0,"memberCount":0,"multisigPda":""},"releaseNonce":nonce}
-with open(out,"w",encoding="utf-8") as f: json.dump(doc,f,sort_keys=True);f.write("\n")
-os.chmod(out,0o600)
-PY
-  catalog_slot_args
-  submit_cmd --store "$MEL_RELEASE_STORE_URL" --spk "$state/material/app.spk" --metadata "$state/material/metadata.json" \
-    --release "$release" --publisher-key "$MEL_RELEASE_PUBLISHER_KEY" --store-pubkey "$MEL_RELEASE_STORE_PUBKEY" \
-    --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --program-id "$MEL_PROGRAM_ID" \
-    --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
-    "${SUBMIT_CATALOG_SLOT_ARGS[@]}" --stage --receipt-out "$MEL_STAGE_RECEIPT_OUT"
-}
-
 need_ceremony_env() {
   need MEL_APP_ID; need MEL_NEW_APP_HASH; need MEL_NEW_VERSION; need MEL_RELEASE_NONCE
   need MEL_RELEASE_LICENSE_MINT; need MEL_RELEASE_MASTER_NFT_MINT; need MEL_RELEASE_SQUADS_MULTISIG; need MEL_RELEASE_SQUADS_VAULT
@@ -564,32 +518,13 @@ finalize_release() {
   write_json "$MEL_FINAL_RELEASE_JSON_OUT" <"$release"
 }
 
-promote() {
-  need MEL_APP_ID; need MEL_NEW_APP_HASH; need MEL_RELEASE_HASH; need MEL_NEW_VERSION; need MEL_STAGE_ID; need MEL_PROMOTE_RECEIPT_OUT
-  need MEL_RELEASE_STORE_LICENSE_MINT; need MEL_RELEASE_STORE_DOMAIN; need MEL_PROGRAM_ID
-  need MEL_RELEASE_STORE_URL; need MEL_RELEASE_STORE_PUBKEY; need MEL_RELEASE_RPC_URL; need MEL_RELEASE_PUBLISHER_KEY
-  local state release
-  state="$(app_dir_for)"; release="$state/release.json"
-  [[ -f "$state/material/app.spk" && -f "$state/material/metadata.json" && -f "$release" ]] || die "promotion material or finalized release JSON is missing"
-  [[ "$(json_get "$release" appHash)" = "$MEL_NEW_APP_HASH" ]] || die "final release appHash differs from promotion request"
-  [[ "$(json_get "$release" releaseHash)" = "$MEL_RELEASE_HASH" ]] || die "final release hash differs from promotion request"
-  catalog_slot_args
-  submit_cmd --store "$MEL_RELEASE_STORE_URL" --spk "$state/material/app.spk" --metadata "$state/material/metadata.json" \
-    --release "$release" --publisher-key "$MEL_RELEASE_PUBLISHER_KEY" --store-pubkey "$MEL_RELEASE_STORE_PUBKEY" \
-    --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --program-id "$MEL_PROGRAM_ID" \
-    --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
-    "${SUBMIT_CATALOG_SLOT_ARGS[@]}" --receipt-out "$MEL_PROMOTE_RECEIPT_OUT"
-}
-
 case "$OP" in
   build) build ;;
   active-releases) active_releases ;;
   release-status) release_status ;;
   served-app-hash) served_app_hash ;;
-  stage) stage ;;
   propose-register) propose_register ;;
   release-entry-account) release_entry_account ;;
   finalize-release) finalize_release ;;
-  promote) promote ;;
   revoke) revoke ;;
 esac

@@ -15,6 +15,7 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerpublish"
 )
 
 func testPrivate(t *testing.T, sidecarID string) (*identity.Private, [32]byte, [32]byte) {
@@ -76,6 +77,12 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 			if signed.Payload.ChainEvidence.ProgramID != testProgramID {
 				t.Fatalf("chain evidence names program %q, want the supplied %q", signed.Payload.ChainEvidence.ProgramID, testProgramID)
 			}
+			bindingDigest, err := installerpublish.Digest("deployer", "deployer-test.tar.xz", hashHex,
+				"test-store", "publisher.example", operator.Public().Ref.LicenseMint, testProgramID)
+			if err != nil || signed.Payload.Method != http.MethodPost ||
+				signed.Payload.Target != installerpublish.Target || signed.Payload.BodyHashHex != bindingDigest {
+				t.Fatalf("signed installer binding mismatch: %v", err)
+			}
 			// The envelope's chain is the publisher key's own (K-TEN-03).
 			if signed.Payload.ChainEvidence.ChainID != testChainID {
 				t.Fatalf("chain evidence names chain %q, want the publisher key's %q", signed.Payload.ChainEvidence.ChainID, testChainID)
@@ -124,6 +131,9 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 		"--artifact", artifactPath,
 		"--publisher-key", publisherPath,
 		"--store-pubkey", operatorPath,
+		"--store-id", "test-store",
+		"--store-domain", "publisher.example",
+		"--license-mint", operator.Public().Ref.LicenseMint,
 		"--verified-slot", "123",
 		"--program-id", testProgramID,
 	}, &output)
@@ -188,6 +198,9 @@ func TestRunStagesSidecarUntilGenerationPromotion(t *testing.T) {
 		"--artifact", artifactPath,
 		"--publisher-key", publisherPath,
 		"--store-pubkey", operatorPath,
+		"--store-id", "test-store",
+		"--store-domain", "publisher.example",
+		"--license-mint", operator.Public().Ref.LicenseMint,
 		"--verified-slot", "123",
 		"--program-id", testProgramID,
 	}, &output)

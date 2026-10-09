@@ -153,24 +153,19 @@ func (s *publishService) handleGeneratePromote(w http.ResponseWriter, r *http.Re
 		http.Error(w, "check=accept_publishers: promote publisher not in store policy accept_publishers", http.StatusForbidden)
 		return
 	}
-	if err := envelope.Verify(body.Envelope, envelope.VerifyOptions{
-		ExpectedKind:            envelope.KindPublishRequest,
-		ExpectedSignerPubkeyB58: signerKey,
-		ExpectedDestination:     &operatorIdentity,
-		ExpectedRequestHash:     requestHashHex,
-		NonceCache:              s.nonces,
-	}); err != nil {
-		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
-		return
-	}
-	// A valid publish envelope for another endpoint must never be replayable at
-	// this route. Verify() authenticates the signed payload; the route owns this
-	// explicit purpose comparison.
 	if body.Envelope.Payload.Method != http.MethodPost || body.Envelope.Payload.Target != "/publish/generation" {
 		http.Error(w, "check=envelope_purpose: signed purpose must be POST /publish/generation", http.StatusUnauthorized)
 		return
 	}
-
+	if err := s.verifyDurableEnvelope(body.Envelope, envelope.VerifyOptions{
+		ExpectedKind:            envelope.KindPublishRequest,
+		ExpectedSignerPubkeyB58: signerKey,
+		ExpectedDestination:     &operatorIdentity,
+		ExpectedRequestHash:     requestHashHex,
+	}); err != nil {
+		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
 	// Strict-decode the promote request (an unknown field is a smuggled host
 	// action; a duplicate/trailing is ambiguity — refuse).
 	if err := assertNoDuplicateJSONKeys(requestBytes); err != nil {

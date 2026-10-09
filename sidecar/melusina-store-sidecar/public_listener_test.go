@@ -67,7 +67,7 @@ func installerUploadFixture(t *testing.T) (*publishService, string, func(name st
 	pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
 	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
 	body := func(name string) []byte {
-		sig := signInstallerPublish(t, pub, op.Public(), artifact)
+		sig := signInstallerPublish(t, pub, op.Public(), artifact, "shell", name)
 		return jsonInstallerPublishBody(t, sig, "shell", name, artifact).Bytes()
 	}
 	return svc, cfg.DistDir, body

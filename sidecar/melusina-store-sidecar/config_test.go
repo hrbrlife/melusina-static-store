@@ -7,8 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/pda"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/controltlsissue"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 )
 
 const testStoreAuthority = "11111111111111111111111111111111"
@@ -169,7 +172,34 @@ func profileEnrolledStoreConfig(t *testing.T, statePath string) map[string]any {
 	t.Helper()
 	profile := storeEstateProfileFixture(t)
 	declaration := storeEstateDeclarationForProfile(t, profile)
+	profileSHA, err := estateprofile.VerifyProfile(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle, pin, err := controltlsissue.Issue("127.0.0.1", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	security := signedStoreSecurityFixture(t, profile, profileSHA, pin)
+	identityDir := filepath.Dir(statePath)
+	if statePath == "" {
+		identityDir = t.TempDir()
+	}
+	certPath := filepath.Join(identityDir, "control-server.crt")
+	keyPath := filepath.Join(identityDir, "control-server.key")
+	caPath := filepath.Join(identityDir, "control-client-ca.crt")
+	for path, content := range map[string]string{certPath: bundle.ServerCertPEM, keyPath: bundle.ServerKeyPEM, caPath: bundle.ClientCAPEM} {
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	return map[string]any{
+		"estate_profile":         profile,
+		"store_security_profile": security,
+		"store_link_control_mtls": StoreLinkControlMTLSConfig{ListenAddr: security.ControlListenAddr, CertPath: certPath,
+			KeyPath: keyPath, ClientCAPath: caPath, StoreLinkClientCertSHA256: pin},
+		"policy":                       Policy{RequirePearlControlForAppPublish: true, RequireScanReport: true, ScannerEd25519PublicKey: security.ScannerEd25519PublicKey},
+		"listing_signer_socket":        filepath.Join(identityDir, "listing-signer.sock"),
 		"license_nft_mint":             declaration.LicenseNFTMint,
 		"store_authority":              declaration.StoreAuthority,
 		"program_id":                   declaration.ProgramID,

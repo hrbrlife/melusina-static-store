@@ -110,9 +110,10 @@ func TestHandleGeneratePromoteRefusesMisplacedBundleByName(t *testing.T) {
 			StoreID:       "melusina-os-root-store",
 			Policy:        Policy{AcceptPublishers: []string{publisher.Public().SignPubkeyB58}},
 		},
-		operator: op,
-		cr:       &mockChainReader{},
-		nonces:   envelope.NewMemoryNonceCache(),
+		operator:  op,
+		cr:        &mockChainReader{},
+		nonces:    envelope.NewMemoryNonceCache(),
+		appNonces: newTestDurableNonceLedger(t),
 	}
 	misplaced, placed := misplacedShell(t, svc, "handler")
 	renamed := placed

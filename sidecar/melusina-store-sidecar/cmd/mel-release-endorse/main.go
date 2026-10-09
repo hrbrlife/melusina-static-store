@@ -163,17 +163,17 @@ func run() error {
 	var account struct {
 		Value *struct {
 			Owner      string   `json:"owner"`
-			Data       []string `json:"data"`
+			Encoded    []string `json:"data"`
 			Executable bool     `json:"executable"`
 		} `json:"value"`
 	}
 	if err := callRPC(client, *rpcURL, "getAccountInfo", []any{*entryPDA, map[string]any{"encoding": "base64", "commitment": "finalized"}}, &account); err != nil {
 		return err
 	}
-	if account.Value == nil || account.Value.Owner != programID || account.Value.Executable || len(account.Value.Data) != 2 || account.Value.Data[1] != "base64" {
+	if account.Value == nil || account.Value.Owner != programID || account.Value.Executable || len(account.Value.Encoded) != 2 || account.Value.Encoded[1] != "base64" {
 		return errors.New("ENDORSE_FINALIZED_RELEASE_ENTRY_REQUIRED")
 	}
-	entryBytes, err := base64.StdEncoding.Strict().DecodeString(account.Value.Data[0])
+	entryBytes, err := base64.StdEncoding.Strict().DecodeString(account.Value.Encoded[0])
 	if err != nil {
 		return errors.New("ENDORSE_RELEASE_ENTRY_BYTES_INVALID")
 	}

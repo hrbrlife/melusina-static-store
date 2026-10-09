@@ -69,6 +69,7 @@ type Config struct {
 	// signed into the profile.
 	ReleasePublisherKeys      []string // releaseTrust.publisherKeys (lowercase hex)
 	ReleasePublisherThreshold uint32   // releaseTrust.threshold
+	PublisherEndorsements     string   // MEL_RELEASE_PUBLISHER_ENDORSEMENTS: detached signatures over the registered app ReleaseEntry payload
 
 	// Additional env-only settings. The publisher envelope identity is required
 	// for both halves: private staging is itself a signed store mutation, so
@@ -100,18 +101,19 @@ func loadPreflightConfig() (Config, error) { return loadConfigForMutation(false)
 
 func loadConfigForMutation(needsMutationInputs bool) (Config, error) {
 	c := Config{
-		ConfigPath:          os.Getenv("MEL_RELEASE_CONFIG"),
-		RPCURL:              os.Getenv("MEL_RELEASE_RPC_URL"),
-		EstateProfile:       strings.TrimSpace(os.Getenv("MEL_RELEASE_ESTATE_PROFILE")),
-		EstateProfileSHA256: strings.TrimSpace(os.Getenv("MEL_RELEASE_ESTATE_PROFILE_SHA256")),
-		SquadsMultisig:      os.Getenv("MEL_RELEASE_SQUADS_MULTISIG"),
-		SquadsVault:         os.Getenv("MEL_RELEASE_SQUADS_VAULT"),
-		SquadsProgramID:     os.Getenv("MEL_RELEASE_SQUADS_PROGRAM_ID"),
-		SignerProvider:      os.Getenv("MEL_RELEASE_SIGNER_PROVIDER"),
-		StorePubkey:         os.Getenv("MEL_RELEASE_STORE_PUBKEY"),
-		StoreLicenseMint:    os.Getenv("MEL_RELEASE_STORE_LICENSE_MINT"),
-		Channel:             envOr("MEL_RELEASE_CHANNEL", "dev"),
-		PublisherKey:        os.Getenv("MEL_RELEASE_PUBLISHER_KEY"),
+		ConfigPath:            os.Getenv("MEL_RELEASE_CONFIG"),
+		RPCURL:                os.Getenv("MEL_RELEASE_RPC_URL"),
+		EstateProfile:         strings.TrimSpace(os.Getenv("MEL_RELEASE_ESTATE_PROFILE")),
+		EstateProfileSHA256:   strings.TrimSpace(os.Getenv("MEL_RELEASE_ESTATE_PROFILE_SHA256")),
+		SquadsMultisig:        os.Getenv("MEL_RELEASE_SQUADS_MULTISIG"),
+		SquadsVault:           os.Getenv("MEL_RELEASE_SQUADS_VAULT"),
+		SquadsProgramID:       os.Getenv("MEL_RELEASE_SQUADS_PROGRAM_ID"),
+		SignerProvider:        os.Getenv("MEL_RELEASE_SIGNER_PROVIDER"),
+		StorePubkey:           os.Getenv("MEL_RELEASE_STORE_PUBKEY"),
+		StoreLicenseMint:      os.Getenv("MEL_RELEASE_STORE_LICENSE_MINT"),
+		Channel:               envOr("MEL_RELEASE_CHANNEL", "dev"),
+		PublisherKey:          os.Getenv("MEL_RELEASE_PUBLISHER_KEY"),
+		PublisherEndorsements: strings.TrimSpace(os.Getenv("MEL_RELEASE_PUBLISHER_ENDORSEMENTS")),
 	}
 	for _, item := range []struct {
 		name string

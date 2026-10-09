@@ -624,9 +624,23 @@ at the ReleaseEntry PDA back through the provider's read-only
   and version are the frozen candidate's, and its publisher vault is the
   release custodian (`roles.store-release`), which also registered it;
 - its signed digest is recomputed from its own fields, its publisher key is
-  one of `releaseTrust.publisherKeys`, and that key's signature verifies. An
-  entry records one publisher signature, so a `releaseTrust.threshold` above 1
-  is refused as `release-entry-publisher-threshold-unmet`.
+  one of `releaseTrust.publisherKeys`, and that key's signature verifies.
+  Additional distinct enrolled publishers may endorse that same digest in a
+  detached, pinned file. `mel-release` checks the file before finalization and
+  carries its signatures in RELEASE.json; Store verifies them again at publish.
+  Missing signatures refuse `release-entry-publisher-threshold-unmet`.
+
+For a profile threshold above one, each additional publisher runs
+`mel-release-endorse --estate-profile <signed-profile> --profile-sha256
+<reviewed-digest> --rpc-url <profile-chain-rpc> --release-entry-pda <pda>
+--signer-keypair <0600-keypair> --out <new-0600-file>`. The command reads the
+finalized program-owned account, checks its PDA and the profile's genesis,
+and writes only the detached signature and public binding. Supply the
+resulting file to the release runner as `MEL_RELEASE_PUBLISHER_ENDORSEMENTS`.
+The file binds the exact on-chain payload hash and PDA; the runner refuses
+missing, changed, duplicate, unordered, or untrusted signatures. Additional
+publisher entries in RELEASE.json are covered by the publisher envelope and
+the Store's signed scan report.
 
 Each refusal is named (`release-entry-missing`, `release-entry-owner-mismatch`,
 `release-entry-publisher-untrusted`, `release-entry-app-hash-mismatch`, and so

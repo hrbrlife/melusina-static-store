@@ -17,17 +17,21 @@ package main
 // whose publisher key, custodian or signature the estate's releaseTrust does
 // not admit.
 type ReleaseJSON struct {
-	Schema             string       `json:"$schema"`
-	AppHash            string       `json:"appHash"`     // lowercase hex tree-hash over {app.spk, metadata.json} (canonicalAppHash; NOT sha256(spk))
-	ReleaseHash        string       `json:"releaseHash"` // lowercase sha256(appHash + version + nonce); must be the ReleaseEntry's release_hash (publish admission)
-	Version            string       `json:"version"`
-	SignedAtUnix       int64        `json:"signedAtUnix"`
-	MasterNftMint      string       `json:"masterNftMint"`      // base58; ReleaseEntry PDA seed
-	LicenseSquadsVault string       `json:"licenseSquadsVault"` // base58; publisher custody vault
-	ReleaseEntryPda    string       `json:"releaseEntryPda"`    // base58; publisher's claim, re-derived + checked
-	AuthorSig          string       `json:"authorSig"`          // base58 ed25519 sig (chain-verified at register)
-	QuorumPolicy       QuorumPolicy `json:"quorumPolicy"`
-	ReleaseNonce       string       `json:"releaseNonce"`
+	Schema             string `json:"$schema"`
+	AppHash            string `json:"appHash"`     // lowercase hex tree-hash over {app.spk, metadata.json} (canonicalAppHash; NOT sha256(spk))
+	ReleaseHash        string `json:"releaseHash"` // lowercase sha256(appHash + version + nonce); must be the ReleaseEntry's release_hash (publish admission)
+	Version            string `json:"version"`
+	SignedAtUnix       int64  `json:"signedAtUnix"`
+	MasterNftMint      string `json:"masterNftMint"`      // base58; ReleaseEntry PDA seed
+	LicenseSquadsVault string `json:"licenseSquadsVault"` // base58; publisher custody vault
+	ReleaseEntryPda    string `json:"releaseEntryPda"`    // base58; publisher's claim, re-derived + checked
+	AuthorSig          string `json:"authorSig"`          // base58 ed25519 sig (chain-verified at register)
+	// Additional publishers endorse the exact payload hash recorded by the
+	// on-chain ReleaseEntry. Store verifies these signatures against the
+	// owner-signed releaseTrust set before admitting a threshold above one.
+	AdditionalPublisherSignatures []ReleasePublisherEndorsement `json:"additionalPublisherSignatures,omitempty"`
+	QuorumPolicy                  QuorumPolicy                  `json:"quorumPolicy"`
+	ReleaseNonce                  string                        `json:"releaseNonce"`
 	// RuntimeContractSHA256 binds the raw RUNTIME-CONTRACT.json bytes to this
 	// RELEASE.json.  RELEASE.json is the publisher-envelope Body, so future
 	// publishes cryptographically bind an app's visible runtime test contract to
@@ -39,6 +43,11 @@ type ReleaseJSON struct {
 	// both fields and the matching contract; a half-populated pair fails closed.
 	RuntimeContractSHA256 string `json:"runtimeContractSha256,omitempty"`
 	RuntimeContractSchema string `json:"runtimeContractSchema,omitempty"`
+}
+
+type ReleasePublisherEndorsement struct {
+	PublisherEd25519PublicKey string `json:"publisherEd25519PublicKey"`
+	Signature                 string `json:"signature"`
 }
 
 // QuorumPolicy records the multisig that co-signed the release at origination.

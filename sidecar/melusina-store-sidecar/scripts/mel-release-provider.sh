@@ -514,6 +514,26 @@ finalize_release() {
   [[ "$(json_get "$ceremony" appHash)" = "$MEL_NEW_APP_HASH" ]] || die "MEL_NEW_APP_HASH does not bind the persisted candidate"
   [[ "$(json_get "$ceremony" releaseHash)" = "$MEL_RELEASE_HASH" ]] || die "MEL_RELEASE_HASH does not bind the persisted candidate"
   "$pearl_tool" finalize-release --app-dir "$state/material" --release-json "$release" --state "$ceremony" --rpc-url "$MEL_RELEASE_RPC_URL" --program-id "$MEL_PROGRAM_ID"
+  if [[ -n "${MEL_RELEASE_PUBLISHER_ENDORSEMENTS:-}" ]]; then
+    python3 - "$release" "$MEL_RELEASE_PUBLISHER_ENDORSEMENTS" <<'PY'
+import json, os, sys
+release_path, endorsement_path = sys.argv[1:]
+with open(endorsement_path, encoding="utf-8") as source:
+    endorsements = json.load(source)
+if endorsements.get("schema") != "melusina-app-release-endorsements-v1" or not isinstance(endorsements.get("signatures"), list):
+    raise SystemExit("release-entry-publisher-endorsements-malformed")
+with open(release_path, encoding="utf-8") as source:
+    release = json.load(source)
+if endorsements.get("releaseEntryPda") != release.get("releaseEntryPda"):
+    raise SystemExit("release-entry-publisher-endorsements-binding-mismatch")
+release["additionalPublisherSignatures"] = endorsements["signatures"]
+temporary = release_path + ".endorsements.tmp"
+with os.fdopen(os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as target:
+    json.dump(release, target, sort_keys=True)
+    target.write("\n")
+os.replace(temporary, release_path)
+PY
+  fi
   "$pearl_tool" verify-release --spk "$state/material/app.spk" --metadata "$state/material/metadata.json" --release-json "$release" --app-slug "$MEL_APP_ID"
   write_json "$MEL_FINAL_RELEASE_JSON_OUT" <"$release"
 }

@@ -29,6 +29,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
@@ -36,6 +37,64 @@ import (
 
 // readbackReceiptName is where approve records the admitted account.
 const readbackReceiptName = "release-entry-readback.json"
+
+type publisherEndorsement struct {
+	PublisherEd25519PublicKey string `json:"publisherEd25519PublicKey"`
+	Signature                 string `json:"signature"`
+}
+
+type publisherEndorsementFile struct {
+	Schema            string                 `json:"schema"`
+	ReleaseEntryPDA   string                 `json:"releaseEntryPda"`
+	SignedPayloadHash string                 `json:"signedPayloadHash"`
+	Signatures        []publisherEndorsement `json:"signatures"`
+}
+
+func decodePublisherEndorsements(rows []publisherEndorsement) ([]releaseentry.PublisherSignature, error) {
+	if len(rows) > 15 {
+		return nil, errors.New("release-entry-publisher-endorsements-too-many")
+	}
+	result := make([]releaseentry.PublisherSignature, len(rows))
+	for i, row := range rows {
+		if !isLowerHex(row.PublisherEd25519PublicKey, 64) || !isLowerHex(row.Signature, 128) {
+			return nil, fmt.Errorf("release-entry-publisher-endorsement-malformed:%d", i)
+		}
+		key, _ := hex.DecodeString(row.PublisherEd25519PublicKey)
+		signature, _ := hex.DecodeString(row.Signature)
+		copy(result[i].PublicKey[:], key)
+		copy(result[i].Signature[:], signature)
+	}
+	return result, nil
+}
+
+func releasePublisherEndorsements(c Config, rec *walReceipt, entry releaseentry.Entry) ([]releaseentry.PublisherSignature, []publisherEndorsement, error) {
+	if stateRank(rec.State) >= stateRank(stateRegistered) {
+		if rec.ReleaseJSON.Path == "" {
+			return nil, nil, errors.New("release-entry-finalized-descriptor-required")
+		}
+		var final struct {
+			AdditionalPublisherSignatures []publisherEndorsement `json:"additionalPublisherSignatures"`
+		}
+		if _, err := readNativeJSON(rec.ReleaseJSON.Path, &final); err != nil {
+			return nil, nil, err
+		}
+		signatures, err := decodePublisherEndorsements(final.AdditionalPublisherSignatures)
+		return signatures, final.AdditionalPublisherSignatures, err
+	}
+	if c.PublisherEndorsements == "" {
+		return nil, nil, nil
+	}
+	var file publisherEndorsementFile
+	if _, err := readNativeJSON(c.PublisherEndorsements, &file); err != nil {
+		return nil, nil, fmt.Errorf("release-entry-publisher-endorsements: %w", err)
+	}
+	if file.Schema != "melusina-app-release-endorsements-v1" || file.ReleaseEntryPDA != rec.NewReleasePDA ||
+		file.SignedPayloadHash != hex.EncodeToString(entry.SignedPayloadHash[:]) {
+		return nil, nil, errors.New("release-entry-publisher-endorsements-binding-mismatch")
+	}
+	signatures, err := decodePublisherEndorsements(file.Signatures)
+	return signatures, file.Signatures, err
+}
 
 // errFinalReleaseUnbound names a finalized RELEASE.json that does not carry
 // the admitted entry's facts; errReleaseEntryChanged an entry whose account
@@ -123,7 +182,11 @@ func readbackReleaseEntry(c Config, prov SignerProvider, rec *walReceipt) (relea
 	if err != nil {
 		return releaseentry.Entry{}, nil, err
 	}
-	if err := trust.Admit(entry, want); err != nil {
+	additional, _, err := releasePublisherEndorsements(c, rec, entry)
+	if err != nil {
+		return releaseentry.Entry{}, nil, err
+	}
+	if err := trust.AdmitWithSignatures(entry, want, additional); err != nil {
 		return releaseentry.Entry{}, nil, err
 	}
 	return entry, account.Data, nil
@@ -171,12 +234,13 @@ func writeReadbackReceipt(path string, rec *walReceipt, receipt readbackReceipt)
 
 // attestedFinalRelease is the finalized RELEASE.json's chain-bound part.
 type attestedFinalRelease struct {
-	ReleaseEntryPDA    string `json:"releaseEntryPda"`
-	SignedAtUnix       int64  `json:"signedAtUnix"`
-	MasterNftMint      string `json:"masterNftMint"`
-	LicenseSquadsVault string `json:"licenseSquadsVault"`
-	AuthorSig          string `json:"authorSig"`
-	QuorumPolicy       struct {
+	ReleaseEntryPDA               string                 `json:"releaseEntryPda"`
+	SignedAtUnix                  int64                  `json:"signedAtUnix"`
+	MasterNftMint                 string                 `json:"masterNftMint"`
+	LicenseSquadsVault            string                 `json:"licenseSquadsVault"`
+	AuthorSig                     string                 `json:"authorSig"`
+	AdditionalPublisherSignatures []publisherEndorsement `json:"additionalPublisherSignatures"`
+	QuorumPolicy                  struct {
 		Threshold   int    `json:"threshold"`
 		MemberCount int    `json:"memberCount"`
 		MultisigPda string `json:"multisigPda"`
@@ -218,6 +282,28 @@ func readAttestedFinalRelease(path string, c Config, rec *walReceipt, entry rele
 	} {
 		if field.got != field.want {
 			return artifactRef{}, fmt.Errorf("%w:%s: finalized RELEASE.json has %v, the admitted ReleaseEntry and estate say %v", errFinalReleaseUnbound, field.name, field.got, field.want)
+		}
+	}
+	additional, err := decodePublisherEndorsements(rel.AdditionalPublisherSignatures)
+	if err != nil {
+		return artifactRef{}, err
+	}
+	trust, err := releaseEntryTrust(c)
+	if err != nil {
+		return artifactRef{}, err
+	}
+	want := releaseentry.Expectation{AppHash: entry.AppHash, AppID: entry.AppID,
+		ReleaseHash: entry.ReleaseHash, Version: entry.Version}
+	if err := trust.AdmitWithSignatures(entry, want, additional); err != nil {
+		return artifactRef{}, err
+	}
+	if stateRank(rec.State) < stateRank(stateRegistered) {
+		_, expected, err := releasePublisherEndorsements(c, rec, entry)
+		if err != nil {
+			return artifactRef{}, err
+		}
+		if !reflect.DeepEqual(expected, rel.AdditionalPublisherSignatures) {
+			return artifactRef{}, errors.New("release-entry-publisher-endorsements-finalization-mismatch")
 		}
 	}
 	return ref, nil

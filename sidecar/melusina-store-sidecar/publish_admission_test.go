@@ -170,6 +170,42 @@ func TestPublishAdmissionRefusesAReleaseItsEntryDoesNotAttest(t *testing.T) {
 	})
 }
 
+func TestPublishAdmissionRequiresSecondSignedPublisherAtThresholdTwo(t *testing.T) {
+	cfg, _ := testConfig(t)
+	op := newTestIdentity(t, "store-operator", cfg.LicenseNFTMint, cfg.Domain)
+	opPub := operatorSignPub32(t, op)
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	m := newMockChainReader()
+	f.pinAccept(m, opPub)
+	enrolled := withReleaseTrust(cfg, m)
+	entry, err := releaseentry.Decode(m.releaseEntry[f.relPDA].programAccount())
+	if err != nil {
+		t.Fatal(err)
+	}
+	second := admissionOtherPublisher()
+	secondKey := [32]byte(second.Public().(ed25519.PublicKey))
+	enrolled.appReleaseTrust, err = releaseentry.NewTrust(entry.MasterNFTMint, entry.PublisherSquadsVault,
+		[][32]byte{entry.PublisherEd25519Pubkey, secondKey}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.rel.AdditionalPublisherSignatures = []ReleasePublisherEndorsement{{
+		PublisherEd25519PublicKey: hex.EncodeToString(secondKey[:]),
+		Signature:                 hex.EncodeToString(ed25519.Sign(second, entry.SignedPayloadHash[:])),
+	}}
+	if err := VerifyPublish(context.Background(), m, enrolled, f.spk, f.metadata, f.rel, opPub); err != nil {
+		t.Fatalf("two signed publishers through VerifyPublish: %v", err)
+	}
+	positive := f.rel.AdditionalPublisherSignatures[0]
+	f.rel.AdditionalPublisherSignatures = nil
+	requireAdmissionRefusal(t, VerifyPublish(context.Background(), m, enrolled, f.spk, f.metadata, f.rel, opPub),
+		releaseentry.ErrThresholdUnmet)
+	f.rel.AdditionalPublisherSignatures = []ReleasePublisherEndorsement{positive}
+	f.rel.AdditionalPublisherSignatures[0].Signature = strings.Repeat("0", 128)
+	requireAdmissionRefusal(t, VerifyPublish(context.Background(), m, enrolled, f.spk, f.metadata, f.rel, opPub),
+		releaseentry.ErrSignatureInvalid)
+}
+
 // TestPublishAdmissionBindsTheAppID calls the admission directly: an entry
 // whose app_id is not sha256 of the metadata appId is refused by name, with
 // the estate trust bound and on the trust-free subset alike.

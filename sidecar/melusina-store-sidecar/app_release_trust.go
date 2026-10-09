@@ -102,7 +102,22 @@ func admitReleaseEntryForPublish(cfg Config, appHash [32]byte, meta releaseEntry
 	}
 	entry := meta.entry()
 	if cfg.appReleaseTrust != nil {
-		if err := cfg.appReleaseTrust.Admit(entry, want); err != nil {
+		if len(rel.AdditionalPublisherSignatures) > 15 {
+			return fmt.Errorf("4.19::title-claim: check=release_entry_admission: app-release-endorsements-too-many")
+		}
+		additional := make([]releaseentry.PublisherSignature, len(rel.AdditionalPublisherSignatures))
+		for i, signer := range rel.AdditionalPublisherSignatures {
+			key, keyErr := hex.DecodeString(signer.PublisherEd25519PublicKey)
+			signature, sigErr := hex.DecodeString(signer.Signature)
+			if keyErr != nil || sigErr != nil || len(key) != 32 || len(signature) != 64 ||
+				signer.PublisherEd25519PublicKey != strings.ToLower(signer.PublisherEd25519PublicKey) ||
+				signer.Signature != strings.ToLower(signer.Signature) {
+				return fmt.Errorf("4.19::title-claim: check=release_entry_admission: app-release-endorsement-malformed:%d", i)
+			}
+			copy(additional[i].PublicKey[:], key)
+			copy(additional[i].Signature[:], signature)
+		}
+		if err := cfg.appReleaseTrust.AdmitWithSignatures(entry, want, additional); err != nil {
 			return fmt.Errorf("4.19::title-claim: check=release_entry_admission: ReleaseEntry %s: %w", meta.PDA, err)
 		}
 		return nil

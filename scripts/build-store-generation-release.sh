@@ -59,7 +59,7 @@ esac
 [[ -z "$(git -C "$ROOT" status --porcelain --untracked-files=normal)" ]] || {
   echo "source tree must be clean" >&2; exit 2; }
 HEAD="$(git -C "$ROOT" rev-parse HEAD)"
-# Fetch exactly the remote ref which declares this source checkout publishable.
+# Fetch exactly the branch which declares this source checkout publishable.
 # The default fetch refspec intentionally contains only a small subset of the
 # Store's many historical branches, so a bare `git fetch origin` can leave a
 # freshly pushed release branch only in FETCH_HEAD and falsely reject it.
@@ -73,18 +73,14 @@ if [[ -n "$CURRENT_BRANCH" ]]; then
     echo "source work ref is only for a detached HEAD" >&2; exit 2; }
   UPSTREAM_REMOTE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.remote" || true)"
   UPSTREAM_MERGE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.merge" || true)"
-  [[ -n "$UPSTREAM_REMOTE" && ( "$UPSTREAM_MERGE" == refs/heads/* || "$UPSTREAM_MERGE" == refs/velocity/*/* ) ]] || {
-    echo "source branch must declare an upstream remote branch or velocity ref" >&2; exit 2; }
+  [[ -n "$UPSTREAM_REMOTE" && "$UPSTREAM_MERGE" == refs/heads/* ]] || {
+    echo "source branch must declare an upstream remote branch" >&2; exit 2; }
+  UPSTREAM_BRANCH="${UPSTREAM_MERGE#refs/heads/}"
   git -C "$ROOT" remote get-url "$UPSTREAM_REMOTE" >/dev/null 2>&1 || {
     echo "source branch upstream remote is unavailable: $UPSTREAM_REMOTE" >&2; exit 2; }
-  if [[ "$UPSTREAM_MERGE" == refs/heads/* ]]; then
-    UPSTREAM_TRACKING_REF="refs/remotes/$UPSTREAM_REMOTE/${UPSTREAM_MERGE#refs/heads/}"
-  else
-    UPSTREAM_TRACKING_REF="refs/remotes/$UPSTREAM_REMOTE/${UPSTREAM_MERGE#refs/}"
-  fi
-  git -C "$ROOT" fetch "$UPSTREAM_REMOTE" \
-    "+$UPSTREAM_MERGE:$UPSTREAM_TRACKING_REF"
-  UPSTREAM_HEAD="$(git -C "$ROOT" rev-parse "$UPSTREAM_TRACKING_REF")"
+  git -C "$ROOT" fetch --prune "$UPSTREAM_REMOTE" \
+    "+refs/heads/$UPSTREAM_BRANCH:refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+  UPSTREAM_HEAD="$(git -C "$ROOT" rev-parse "refs/remotes/$UPSTREAM_REMOTE/$UPSTREAM_BRANCH")"
   git -C "$ROOT" merge-base --is-ancestor "$HEAD" "$UPSTREAM_HEAD" || {
     echo "source HEAD is not reachable from its refreshed upstream ref: $HEAD" >&2; exit 2; }
 else

@@ -307,7 +307,7 @@ echo 'PASS NamedCoin source mutation refused by NamedCoin candidate pack mutated
 set +e
 BUILD_LOG="$WORK/namedcoin-profile.log" PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
   MEL_RELEASE_PACK_PROFILE=namedcoin-msb-devnet \
-  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/namedcoin-candidate-metadata.json" \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/namedcoin-profile-metadata.json" \
   >"$WORK/namedcoin-metadata-reuse.log" 2>&1
 rc=$?
 set -e
@@ -362,6 +362,14 @@ rc=$?
 set -e
 [[ $rc -ne 0 ]]
 grep -q 'candidate source ref unavailable' "$WORK/hidden-source-absent.log"
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+  --source-ref refs/velocity/V-CUT-REHEARSAL/namedcoin >"$WORK/hidden-source-mismatch.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate source ref does not name source revision' "$WORK/hidden-source-mismatch.log"
 git -C "$APP" reset -q --hard refs/remotes/origin/main
 
 cp "$APP/metadata.json" "$APP/ignored-metadata.json"

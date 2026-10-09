@@ -1,6 +1,5 @@
-// Store-governed installation policy. The live catalog carries this object;
-// app metadata and UI defaults may never turn a non-self-service pearl into a
-// direct-install target.
+// Store-governed installation policy. The signed UI projects this object over
+// the live catalog; app metadata cannot enable an install action.
 
 const AUDIENCES = new Set(["foundation", "operator", "client", "workspace", "engineering"]);
 const INSTALL_MODES = new Set(["owner-only", "owner-provisions", "self-service"]);
@@ -21,7 +20,7 @@ export function installationFor(app) {
 
 // The signed Store UI owns the default-Bazaar policy asset.  Never retain an
 // app-supplied installation object when applying it: metadata may describe an
-// app but cannot make it directly installable or expose an internal pearl.
+// app but cannot enable self-service or owner installation.
 export function applyGovernedInstallationPolicy(app, policies) {
   const projected = { ...(app || {}) };
   delete projected.installation;
@@ -36,6 +35,17 @@ export function applyGovernedInstallationPolicy(app, policies) {
 
 export function canSelfInstall(app) {
   return installationFor(app)?.install_mode === "self-service";
+}
+
+// Owner-provisioned entries use the same Store-to-Shell install link. Shell
+// verifies the tenant's committed S30 statement and the logged-in owner.
+export function canStoreInstall(app) {
+  const mode = installationFor(app)?.install_mode;
+  return mode === "self-service" || mode === "owner-provisions";
+}
+
+export function storeInstallLabel(app) {
+  return canSelfInstall(app) ? "INSTALL" : "INSTALL AS OWNER";
 }
 
 // No foundation, operator, or engineering pearl appears in a normal Bazaar

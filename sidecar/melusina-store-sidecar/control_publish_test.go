@@ -494,7 +494,6 @@ func signedClamAVReportFixture(t *testing.T, target string, spk, metadata, relea
 }
 
 func TestControlPrepareStagesOnlyWithPearlCommandAndPrepareGrant(t *testing.T) {
-	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()
 	cfg.ProgramID = programID.Base58()
@@ -504,6 +503,10 @@ func TestControlPrepareStagesOnlyWithPearlCommandAndPrepareGrant(t *testing.T) {
 	m := newMockChainReader()
 	f.pinAccept(m, operatorSignPub32(t, op))
 	svc := newTestService(t, cfg, m, op)
+	// The durable nonce ledger is initialized by newTestService. Derive this
+	// fixed request clock afterwards so slow fixture setup cannot make it older
+	// than the ledger's high-water clock.
+	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	svc.now = func() time.Time { return clock }
 	// The legacy migration allowlist is empty: this proves the Pearl route gets
 	// its publisher authority only from the governed app-scoped grant.

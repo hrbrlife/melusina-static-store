@@ -22,6 +22,41 @@ trap cleanup EXIT
 cp -a "$ROOT/build-store.sh" "$TMP/"
 cp -a "$ROOT/scripts" "$TMP/"
 cp -a "$ROOT/schemas" "$TMP/"
+mkdir -p "$TMP/sidecar"
+ln -s "$ROOT/sidecar/melusina-store-sidecar" "$TMP/sidecar/melusina-store-sidecar"
+PROFILE="$TMP/estate-profile.json"
+PIN="$(python3 - "$ROOT/sidecar/melusina-store-sidecar/testdata/estate-profile-vectors.json" "$PROFILE" <<'PYVECTOR'
+import json
+import pathlib
+import sys
+
+vectors = json.loads(pathlib.Path(sys.argv[1]).read_text())
+profile = next(row['profile'] for row in vectors['profiles']
+               if row['name'] == 'new-estate-revision-1')
+pins = {row['pin']['ProfileSHA256'] for group in ('acceptVectors', 'guardVectors')
+        for row in vectors[group] if row.get('pin')
+        and row['pin']['EstateID'] == profile['estateId']
+        and row['pin']['Revision'] == profile['revision']}
+assert len(pins) == 1, 'STORE_ATTEST_SIGNED_ESTATE_PIN_MISSING'
+path = pathlib.Path(sys.argv[2])
+path.write_text(json.dumps(profile) + '\n')
+path.chmod(0o600)
+print(pins.pop())
+PYVECTOR
+)"
+export MEL_RELEASE_ESTATE_PROFILE="$PROFILE" MEL_RELEASE_ESTATE_PROFILE_SHA256="$PIN"
+if MEL_RELEASE_ESTATE_PROFILE_SHA256="$(printf '%064d' 0)" \
+    go -C "$TMP/sidecar/melusina-store-sidecar" run ./cmd/estate-origin --origin \
+    > "$TMP/mutation-signed-estate-pin.log" 2>&1; then
+  echo 'STORE_ATTEST_SIGNED_ESTATE_PIN_REFUSED: changed pin was accepted' >&2
+  exit 1
+fi
+grep -Fq 'profile digest is not the reviewed root Store authority' \
+  "$TMP/mutation-signed-estate-pin.log" || {
+    echo 'STORE_ATTEST_SIGNED_ESTATE_PIN_REFUSED: wrong refusal' >&2
+    exit 1
+  }
+echo 'STORE_ATTEST_SIGNED_ESTATE_PIN_REFUSED: expected refusal'
 mkdir -p "$APP"
 mkdir -p "$CONTRACT_APP"
 mkdir -p "$UNMANAGED_APP"
@@ -32,7 +67,7 @@ mkdir -p "$TMP/fleet"
 # policy cannot alter the public install surface.
 printf '%s\n' \
   'schema: melusina-bazaar-catalog/v1' \
-  'catalog_origin: https://bazaar.melusina-os.org' \
+  'catalog_origin: https://bazaar.rehearsal.invalid' \
   'expected_live_app_count: 2' \
   'installation_policy_version: 1' \
   'groups:' \
@@ -89,7 +124,7 @@ printf '%s\n' \
   > "$CONTRACT_APP/metadata.json"
 
 printf '%s\n' \
-  '{"$schema":"https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json","schema":"melusina-app-runtime-contract-v1","app":{"appId":"'"$CONTRACT_APP_ID"'","version":"1.0.0","spkSha256":"'"$CONTRACT_SPK_SHA"'","appHash":"'"$CONTRACT_APP_HASH"'"},"sidecars":[],"launchProbe":{"kind":"visible-ui","steps":[{"action":"Open the demo screen.","expectedResult":"The demo UI renders."}],"expectedResult":"The demo opens without a launch error."},"fixtures":[],"cleanup":{"steps":["No fixture data is retained."]}}' \
+  '{"$schema":"urn:melusina:runtime-contract:v1","schema":"melusina-app-runtime-contract-v1","app":{"appId":"'"$CONTRACT_APP_ID"'","version":"1.0.0","spkSha256":"'"$CONTRACT_SPK_SHA"'","appHash":"'"$CONTRACT_APP_HASH"'"},"sidecars":[],"launchProbe":{"kind":"visible-ui","steps":[{"action":"Open the demo screen.","expectedResult":"The demo UI renders."}],"expectedResult":"The demo opens without a launch error."},"fixtures":[],"cleanup":{"steps":["No fixture data is retained."]}}' \
   > "$CONTRACT_APP/RUNTIME-CONTRACT.json"
 CONTRACT_SHA="$(sha256sum "$CONTRACT_APP/RUNTIME-CONTRACT.json" | awk '{print $1}')"
 
@@ -151,7 +186,7 @@ assert attest["schema"] == release["$schema"], attest
 assert attest["masterNftMint"] == release["MasterNftMint"], attest
 assert attest["programId"] == release["programId"], attest
 assert "$schema" not in attest, attest
-assert schema["$id"] == "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json", schema
+assert schema["$id"] == "urn:melusina:runtime-contract:v1", schema
 assert release_schema["properties"]["programId"]["const"] == release["programId"], release_schema
 assert release_schema["properties"]["licenseSquadsVault"]["const"] == release["licenseSquadsVault"], release_schema
 assert release_schema["properties"]["quorumPolicy"]["properties"]["multisigPda"]["const"] == release["quorumPolicy"]["multisigPda"], release_schema

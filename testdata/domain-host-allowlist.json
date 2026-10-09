@@ -10,7 +10,7 @@
     },
     {
       "host": "a.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "a.data",
@@ -26,7 +26,7 @@
     },
     {
       "host": "a.id",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "a.local",
@@ -34,7 +34,7 @@
     },
     {
       "host": "a.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "a.name",
@@ -42,15 +42,15 @@
     },
     {
       "host": "a.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "a.now",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "a.target",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:9; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:9; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "acceptance.example",
@@ -98,7 +98,7 @@
     },
     {
       "host": "ae.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "aead.open",
@@ -229,10 +229,6 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
     },
     {
-      "host": "at.test",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
-    },
-    {
       "host": "attachments.memstore.save",
       "reason": "Tracked explanatory text in packages/hrbrlife/ccash_go_htmx/popaye/changelog[.]md; it is not an estate endpoint."
     },
@@ -265,16 +261,12 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_trust_bundle_test[.]go; it is not an estate endpoint."
     },
     {
-      "host": "b.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
-    },
-    {
       "host": "b.programs.map",
       "reason": "Tracked dotted filename or identifier in src/main[.]jsx:1734; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "b.top",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "backup.zip",
@@ -466,7 +458,7 @@
     },
     {
       "host": "c.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:9; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:9; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "c.name",
@@ -474,7 +466,7 @@
     },
     {
       "host": "c.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "c.now",
@@ -754,7 +746,7 @@
     },
     {
       "host": "d.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:169; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:169; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "d.name",
@@ -766,7 +758,7 @@
     },
     {
       "host": "d.target",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:8; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:8; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "data.map",
@@ -906,47 +898,47 @@
     },
     {
       "host": "e.author",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "e.author.name",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "e.authority.requires.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "e.blockchains.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "e.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "e.data",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "e.encryption.fields.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "e.events",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "e.httpout.endpoints.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "e.id",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "e.id-t.id",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "e.info",
@@ -954,7 +946,7 @@
     },
     {
       "host": "e.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:168; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:168; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "e.name",
@@ -962,7 +954,7 @@
     },
     {
       "host": "e.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "e.now",
@@ -970,7 +962,7 @@
     },
     {
       "host": "e.programs.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "e.run",
@@ -982,19 +974,19 @@
     },
     {
       "host": "e.search",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "e.style",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "e.target",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:8; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:8; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "e.test",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "edge.estate.test",
@@ -1178,7 +1170,7 @@
     },
     {
       "host": "f.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "f.name",
@@ -1374,7 +1366,7 @@
     },
     {
       "host": "g.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "g.name",
@@ -1562,27 +1554,27 @@
     },
     {
       "host": "i.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "i.data",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "i.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "i.name",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "i.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "i.one",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "i.test",
@@ -1726,11 +1718,11 @@
     },
     {
       "host": "je.test",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "jf.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "job.id",
@@ -1739,6 +1731,10 @@
     {
       "host": "json-schema.org",
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/runtime-contract-schema/melusina-app-runtime-contract-v1.schema.template.json; unrelated to the estate origin."
+    },
+    {
+      "host": "jt.test",
+      "reason": "Minified React regular expression method call in the built Store UI asset; reviewed as code, not a DNS endpoint."
     },
     {
       "host": "keyring.md",
@@ -1750,7 +1746,7 @@
     },
     {
       "host": "l.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "l.claims",
@@ -1758,11 +1754,11 @@
     },
     {
       "host": "l.memoizedprops.style",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "l.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "later.now",
@@ -1833,16 +1829,24 @@
       "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/scripts/mel-release-squads-errors[.]mjs:74; reviewed as source material, not an estate endpoint."
     },
     {
+      "host": "m.bg",
+      "reason": "Minified Store UI color palette property access; reviewed as code, not a DNS endpoint."
+    },
+    {
       "host": "m.build",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap[.]go; reviewed as outside the estate origin."
     },
     {
       "host": "m.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "m.channel",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "m.green",
+      "reason": "Minified Store UI color palette property access; reviewed as code, not a DNS endpoint."
     },
     {
       "host": "m.group",
@@ -1993,52 +1997,44 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
     },
     {
-      "host": "n.bg",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
-    },
-    {
       "host": "n.call",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/served_tls_test[.]go; it is not an estate endpoint."
     },
     {
       "host": "n.compare",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "n.day",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "n.fun",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/enrolled_release_info_test[.]go; it is not an estate endpoint."
     },
     {
-      "host": "n.green",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
-    },
-    {
       "host": "n.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:9; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:9; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "n.media",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "n.name",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "n.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "n.property",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "n.search",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "nacl.box",
@@ -2065,10 +2061,6 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
     },
     {
-      "host": "nn.test",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
-    },
-    {
       "host": "nonzero.data",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/squadsproof/squadsproof_test[.]go; it is not an estate endpoint."
     },
@@ -2078,7 +2070,7 @@
     },
     {
       "host": "o.events",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "o.invalid",
@@ -2090,11 +2082,11 @@
     },
     {
       "host": "o.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "o.now",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "o.store",
@@ -2102,19 +2094,19 @@
     },
     {
       "host": "o.style",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "object.is",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "object.prototype.hasownproperty.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "object.prototype.tostring.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "old.id",
@@ -2266,7 +2258,7 @@
     },
     {
       "host": "p.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "p.target",
@@ -2350,7 +2342,7 @@
     },
     {
       "host": "performance.now",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "permissions.rs",
@@ -2538,11 +2530,15 @@
     },
     {
       "host": "qe.test",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "qi.next",
+      "reason": "Minified React linked-list property access in the built Store UI asset; reviewed as code, not a DNS endpoint."
     },
     {
       "host": "qu.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "quickstart.md",
@@ -2578,7 +2574,7 @@
     },
     {
       "host": "r.data.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:8; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:8; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "r.events",
@@ -2594,7 +2590,7 @@
     },
     {
       "host": "r.is",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "r.job.id",
@@ -2606,7 +2602,7 @@
     },
     {
       "host": "r.media",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "r.name",
@@ -2614,7 +2610,7 @@
     },
     {
       "host": "r.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "r.now",
@@ -2666,7 +2662,7 @@
     },
     {
       "host": "react.dev",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "readiness-snapshot.sh",
@@ -2845,6 +2841,10 @@
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_generation[.]go; reviewed as outside the estate origin."
     },
     {
+      "host": "rn.test",
+      "reason": "Minified React regular expression method call in the built Store UI asset; reviewed as code, not a DNS endpoint."
+    },
+    {
       "host": "rollback-all.sh",
       "reason": "Tracked dotted filename or identifier in STORE-SYNC-MEGA-KILL-LIST[.]md:163; reviewed as source material, not an estate endpoint."
     },
@@ -3002,7 +3002,7 @@
     },
     {
       "host": "s.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:169; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:169; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "s.name",
@@ -3010,7 +3010,7 @@
     },
     {
       "host": "s.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "s.now",
@@ -3410,11 +3410,11 @@
     },
     {
       "host": "t.as",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "t.author",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "t.bg",
@@ -3422,19 +3422,19 @@
     },
     {
       "host": "t.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "t.data",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "t.date",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "t.events",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "t.green",
@@ -3442,15 +3442,15 @@
     },
     {
       "host": "t.id",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "t.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:9; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:9; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "t.media",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "t.name",
@@ -3458,11 +3458,11 @@
     },
     {
       "host": "t.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "t.pearls.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "t.run",
@@ -3470,11 +3470,11 @@
     },
     {
       "host": "t.search",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "t.target",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:8; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:8; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "tabs.map",
@@ -3602,11 +3602,11 @@
     },
     {
       "host": "this.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "this.target",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:8; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:8; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "tidelift.com",
@@ -3650,7 +3650,7 @@
     },
     {
       "host": "u.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "u.host",
@@ -3658,11 +3658,11 @@
     },
     {
       "host": "u.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "unicodetokens.md",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:9; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:9; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "unpkg.com",
@@ -3698,7 +3698,7 @@
     },
     {
       "host": "v.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "v.name",
@@ -3826,7 +3826,7 @@
     },
     {
       "host": "w.call",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "w.open",
@@ -3850,11 +3850,11 @@
     },
     {
       "host": "window.location.search",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "window.open",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "with-publish-lock.sh",
@@ -3890,7 +3890,7 @@
     },
     {
       "host": "x.data",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "x.invalid",
@@ -3906,19 +3906,15 @@
     },
     {
       "host": "y.data",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "y.map",
-      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js:232; reviewed as source material, not an estate endpoint."
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js:232; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "z.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
-    },
-    {
-      "host": "zi.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
+      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
     }
   ]
 }

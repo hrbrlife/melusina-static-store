@@ -17,6 +17,29 @@ cp "$ROOT/build-store.sh" "$TMP/build-store.sh"
 cp "$ROOT/scripts/make-placeholder-icon.py" "$TMP/scripts/make-placeholder-icon.py"
 # build-store.sh resolves its named external inputs before any work.
 cp "$ROOT/scripts/release-inputs.py" "$ROOT/scripts/release-inputs.json" "$TMP/scripts/"
+mkdir -p "$TMP/sidecar"
+ln -s "$ROOT/sidecar/melusina-store-sidecar" "$TMP/sidecar/melusina-store-sidecar"
+PROFILE="$TMP/estate-profile.json"
+PIN="$(python3 - "$ROOT/sidecar/melusina-store-sidecar/testdata/estate-profile-vectors.json" "$PROFILE" <<'PYVECTOR'
+import json
+import pathlib
+import sys
+
+vectors = json.loads(pathlib.Path(sys.argv[1]).read_text())
+profile = next(row['profile'] for row in vectors['profiles']
+               if row['name'] == 'new-estate-revision-1')
+pins = {row['pin']['ProfileSHA256'] for group in ('acceptVectors', 'guardVectors')
+        for row in vectors[group] if row.get('pin')
+        and row['pin']['EstateID'] == profile['estateId']
+        and row['pin']['Revision'] == profile['revision']}
+assert len(pins) == 1, 'STORE_DRYRUN_SIGNED_ESTATE_PIN_MISSING'
+path = pathlib.Path(sys.argv[2])
+path.write_text(json.dumps(profile) + '\n')
+path.chmod(0o600)
+print(pins.pop())
+PYVECTOR
+)"
+export MEL_RELEASE_ESTATE_PROFILE="$PROFILE" MEL_RELEASE_ESTATE_PROFILE_SHA256="$PIN"
 
 printf '%s\n' '{"appId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","name":"Demo","version":"1.0.0","versionNumber":1,"packageId":"0123456789abcdef0123456789abcdef","shortDescription":"Dry-run icon fixture","categories":["Productivity"],"isOpenSource":true,"webLink":"https://example.invalid","codeLink":"https://example.invalid/source","upstreamAuthor":"Example","createdAt":1,"author":{"name":"Example"}}' > "$APP/metadata.json"
 printf '%s\n' '{"schemaVersion":1}' > "$APP/RELEASE.json"

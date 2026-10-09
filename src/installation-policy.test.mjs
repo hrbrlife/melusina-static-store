@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   applyGovernedInstallationPolicy,
   canSelfInstall,
+  canStoreInstall,
+  storeInstallLabel,
   installationFor,
   installationPresentation,
   isVisibleInPublicBazaar,
@@ -21,12 +23,14 @@ const workspace = {
 test("only an explicit valid self-service policy enables direct install", () => {
   assert.ok(installationFor(workspace));
   assert.equal(canSelfInstall(workspace), true);
+  assert.equal(canStoreInstall(workspace), true);
+  assert.equal(storeInstallLabel(workspace), "INSTALL");
   assert.equal(installationPresentation(workspace).label, "INSTALL");
   assert.equal(canSelfInstall({ installation: { install_mode: "self-service" } }), false);
   assert.equal(canSelfInstall({}), false);
 });
 
-test("provisioned and owner-only pearls never expose direct installation", () => {
+test("owner-provisioned pearls offer an owner install while internal pearls remain closed", () => {
   const provisioned = {
     installation: {
       audience: "client", install_mode: "owner-provisions", pearl_role: "workspace",
@@ -40,8 +44,11 @@ test("provisioned and owner-only pearls never expose direct installation", () =>
     },
   };
   assert.equal(canSelfInstall(provisioned), false);
+  assert.equal(canStoreInstall(provisioned), true);
+  assert.equal(storeInstallLabel(provisioned), "INSTALL AS OWNER");
   assert.equal(installationPresentation(provisioned).label, "OWNER PROVISIONS");
   assert.equal(canSelfInstall(foundation), false);
+  assert.equal(canStoreInstall(foundation), false);
   assert.equal(installationPresentation(foundation).label, "OWNER MANAGED");
 });
 
@@ -68,7 +75,9 @@ test("the signed Bazaar policy overrides app metadata and fails closed when abse
   };
   const projected = applyGovernedInstallationPolicy(app, governed);
   assert.equal(canSelfInstall(projected), false);
+  assert.equal(canStoreInstall(projected), false);
   assert.equal(isVisibleInPublicBazaar(projected), false);
   assert.deepEqual(app.installation, workspace.installation);
   assert.equal(canSelfInstall(applyGovernedInstallationPolicy(app, null)), false);
+  assert.equal(canStoreInstall(applyGovernedInstallationPolicy(app, null)), false);
 });

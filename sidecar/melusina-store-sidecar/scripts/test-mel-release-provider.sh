@@ -22,34 +22,6 @@ mkdir -p "$TMP/state/apps/$APP/provider/material" "$TMP/bin"
 printf 'not-a-real-spk' >"$TMP/state/apps/$APP/provider/material/app.spk"
 printf '%s\n' '{"appId":"uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510","version":"1.2.3","packageId":"unused"}' >"$TMP/state/apps/$APP/provider/material/metadata.json"
 
-cat >"$TMP/bin/submit" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-stage=no; out=; release=; program=
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --stage) stage=yes; shift ;;
-    --receipt-out) out="$2"; shift 2 ;;
-    --release) release="$2"; shift 2 ;;
-    --program-id) program="$2"; shift 2 ;;
-    *) shift ;;
-  esac
-done
-# submit compiles no registry: the provider must hand it the estate's.
-[[ -n "$program" && "$program" = "$MEL_PROGRAM_ID" ]] || { echo "fake submit: --program-id '$program' is not MEL_PROGRAM_ID" >&2; exit 64; }
-python3 - "$stage" "$out" "$release" <<'PY'
-import json,sys
-stage,out,release=sys.argv[1:]
-r=json.load(open(release))
-if stage == "yes":
- d={"schema":"melusina-app-stage-receipt-v1","stageId":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","appId":"uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510","appHash":r["appHash"],"releaseHash":r["releaseHash"]}
-else:
- d={"schema":"melusina-app-promotion-receipt-v1","appHash":r["appHash"],"releaseHash":r["releaseHash"],"catalog":{"appId":"uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510","appHash":r["appHash"],"releaseHash":r["releaseHash"],"stageId":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","version":"1.2.3"}}
-json.dump(d,open(out,"w"));open(out,"a").write("\n")
-PY
-SH
-chmod +x "$TMP/bin/submit"
-
 export MEL_RELEASE_STATE_DIR="$TMP/state"
 cat >"$TMP/release-catalog.yaml" <<'YAML'
 schema: melusina-bazaar-catalog/v1
@@ -77,11 +49,10 @@ export MEL_PROGRAM_ID=7DNxWEbxfLQTCcNKnouxcSTNk2Z3SSua1mt5YxEf1nKD
 export MEL_RELEASE_STORE_PUBKEY="$TMP/store.pub"
 export MEL_RELEASE_RPC_URL=https://rpc.example.test
 export MEL_RELEASE_PUBLISHER_KEY=env:TEST_PUBLISHER
-export MEL_RELEASE_SUBMIT_BIN="$TMP/bin/submit"
 export MEL_STAGE_RECEIPT_OUT="$TMP/stage.json"
 
 set +e
-MEL_RELEASE_SQUADS_VAULT=11111111111111111111111111111111 "$PROVIDER" stage >"$TMP/foreign-authority.log" 2>&1
+MEL_RELEASE_SQUADS_VAULT=11111111111111111111111111111111 "$PROVIDER" build >"$TMP/foreign-authority.log" 2>&1
 rc=$?
 set -e
 [[ $rc -ne 0 ]]
@@ -97,33 +68,22 @@ groups:
         squads_vault: 3jfN9rcSMRkEm6NJQ744YJTbwCkfzZZ3iRkKRgf4J2L3
 YAML
 set +e
-MEL_RELEASE_CONFIG="$TMP/app-override-catalog.yaml" "$PROVIDER" stage >"$TMP/app-authority-override.log" 2>&1
+MEL_RELEASE_CONFIG="$TMP/app-override-catalog.yaml" "$PROVIDER" build >"$TMP/app-authority-override.log" 2>&1
 rc=$?
 set -e
 [[ $rc -ne 0 ]]
 grep -Fq 'app-specific Squads authority' "$TMP/app-authority-override.log"
 
-"$PROVIDER" stage
-python3 - "$TMP/state/apps/$APP/provider/release-stage.json" "$TMP/stage.json" <<'PY'
-import json,sys
-release,receipt=map(lambda p:json.load(open(p)),sys.argv[1:])
-assert release["releaseEntryPda"] == "", release
-assert release["appHash"] == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", release
-assert receipt["schema"] == "melusina-app-stage-receipt-v1", receipt
-PY
-
-cp "$TMP/state/apps/$APP/provider/release-stage.json" "$TMP/state/apps/$APP/provider/release.json"
-python3 - "$TMP/state/apps/$APP/provider/release.json" <<'PY'
-import json,sys
-p=sys.argv[1];d=json.load(open(p));d["releaseEntryPda"]="FakeReleasePda111111111111111111111111111111";json.dump(d,open(p,"w"));open(p,"a").write("\n")
-PY
-export MEL_STAGE_ID="$STAGE"
-export MEL_PROMOTE_RECEIPT_OUT="$TMP/promote.json"
-"$PROVIDER" promote
-python3 - "$TMP/promote.json" <<'PY'
-import json,sys
-d=json.load(open(sys.argv[1]));assert d["schema"] == "melusina-app-promotion-receipt-v1",d;assert d["catalog"]["stageId"] == "c"*64,d
-PY
+# The old direct Store publication operations must refuse before writing
+# material or accepting an injected submit binary.
+for op in stage promote; do
+  if "$PROVIDER" "$op" >"$TMP/direct-${op}.log" 2>&1; then
+    echo "direct-app-publish-retired: $op unexpectedly succeeded" >&2
+    exit 1
+  fi
+  grep -Fq 'direct-app-publish-retired' "$TMP/direct-${op}.log"
+done
+[[ ! -e "$TMP/stage.json" && ! -e "$TMP/promote.json" ]]
 
 # One approval rail: the owner-authorized runner registers every ReleaseEntry
 # and mel-release approve only reads it back. Neither the helper nor this

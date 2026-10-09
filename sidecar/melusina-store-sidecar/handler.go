@@ -17,7 +17,9 @@ import (
 
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/appscan"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/installerpublish"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -80,6 +82,7 @@ type appPublishPreflight struct {
 	runtimeContract []byte
 	hint            slotHint
 	release         ReleaseJSON
+	scanReport      appscan.Report
 }
 
 // appPublisherResolver is the narrow injection point between a signed
@@ -126,7 +129,7 @@ func (s *publishService) preflightAppPublish(r *http.Request, route string) (app
 // claims the durable nonce or changes catalog state.
 func (s *publishService) preflightAppPublishWithPublisher(r *http.Request, route string, resolvePublisher appPublisherResolver) (appPublishPreflight, error) {
 	var out appPublishPreflight
-	sig, releaseBytes, spk, metadata, runtimeContract, hint, err := parsePublishBody(r)
+	sig, releaseBytes, spk, metadata, runtimeContract, hint, scanReport, err := parsePublishBody(r)
 	if err != nil {
 		return out, fmt.Errorf("check=request: %w", err)
 	}
@@ -134,8 +137,13 @@ func (s *publishService) preflightAppPublishWithPublisher(r *http.Request, route
 	if err := json.Unmarshal(releaseBytes, &rel); err != nil {
 		return out, fmt.Errorf("check=release_json: %w", err)
 	}
-	out = appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel}
+	out = appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel, scanReport: scanReport}
 	now := s.currentTime()
+	if s.cfg.Policy.RequireScanReport {
+		if err := appscan.Verify(scanReport, s.cfg.Policy.ScannerEd25519PublicKey, r.Method, route, spk, metadata, releaseBytes, runtimeContract, now); err != nil {
+			return out, fmt.Errorf("check=scan_report: %w", err)
+		}
+	}
 	if s.appNonces == nil {
 		return out, errors.New("check=nonce_ledger: durable app nonce ledger is not initialized")
 	}
@@ -239,7 +247,8 @@ type publishRequest struct {
 	// recomputes that AppHash, so a missing/tampered metadata fails check=app_hash.
 	MetadataB64 string `json:"metadata_b64"`
 	// RuntimeContractB64 is the raw RUNTIME-CONTRACT.json bound by RELEASE.json.
-	RuntimeContractB64 string `json:"runtime_contract_b64,omitempty"`
+	RuntimeContractB64 string         `json:"runtime_contract_b64,omitempty"`
+	ScanReport         appscan.Report `json:"scan_report"`
 	// Developer/Repo/Slug OPTIONALLY name the catalog slot
 	// (packages/<developer>/<repo>/<slug>) for the FIRST publish of a new app.
 	// A re-publish resolves its existing slot by the appId in metadata.json and
@@ -294,10 +303,8 @@ func newRouter(cfg Config, operator *identity.Private, cr chainReader, mirror *r
 }
 
 func newRouterWithCatalogRuntime(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime) http.Handler {
-	// Unit and local-development callers retain the combined shape. The real
-	// process uses newRouterSurfaces with isolateControl=true once the dedicated
-	// Pearl mTLS listener is configured.
-	public, _ := newRouterSurfaces(cfg, operator, cr, mirror, runtime, false)
+	// Every public router keeps release control on the private listener.
+	public, _ := newRouterSurfaces(cfg, operator, cr, mirror, runtime, true)
 	return public
 }
 
@@ -317,6 +324,11 @@ func newGovernedRouterSurfaces(cfg Config, operator *identity.Private, cr chainR
 }
 
 func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, isolateControl bool, assembler *CatalogAssembler) (http.Handler, http.Handler) {
+	public, private, _ := newRouterSurfacesAndServiceWithAssembler(cfg, operator, cr, mirror, runtime, isolateControl, assembler)
+	return public, private
+}
+
+func newRouterSurfacesAndServiceWithAssembler(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, isolateControl bool, assembler *CatalogAssembler) (http.Handler, http.Handler, *publishService) {
 	var controlReceipts *controlReceiptLedger
 	var controlReceiptErr error
 	if operator != nil && runtime.appNonces != nil {
@@ -336,7 +348,6 @@ func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr c
 		cr:                          cr,
 		operator:                    operator,
 		assembler:                   assembler,
-		nonces:                      envelope.NewMemoryNonceCache(),
 		appNonces:                   runtime.appNonces,
 		controlReceipts:             controlReceipts,
 		controlReceiptErr:           controlReceiptErr,
@@ -350,7 +361,7 @@ func newRouterSurfacesWithAssembler(cfg Config, operator *identity.Private, cr c
 		catalogExpectedUID:          runtime.expectedUID,
 		catalogExpectedGID:          runtime.expectedGID,
 	}
-	return newPublicRouterWithService(cfg, operator, cr, mirror, runtime, svc, !isolateControl), newControlReleaseRouter(svc)
+	return newPublicRouterWithService(cfg, operator, cr, mirror, runtime, svc, false), newControlReleaseRouter(svc), svc
 }
 
 func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chainReader, mirror *rootMirror, runtime catalogRuntime, svc *publishService, exposeControl bool) http.Handler {
@@ -384,19 +395,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	}
 	mux.Handle(rootTrustBundlePath, rootTrust)
 
-	if cfg.Policy.RequirePearlControlForAppPublish {
-		mux.HandleFunc("/publish", retiredLegacyAppPublish)
-		mux.HandleFunc("/publish/stage", retiredLegacyAppPublish)
-	} else {
-		mux.HandleFunc("/publish", svc.handlePublish)
-		mux.HandleFunc("/publish/stage", svc.handleStagePublish)
-	}
-	// During migration the typed control route remains on the combined test and
-	// local-development surface. A Golden configuration removes it from the
-	// public listener entirely; only the dedicated mTLS listener owns it.
-	// Store status remains private even in local combined-mode development.
-	// Otherwise a development convenience would turn the Home observation into a
-	// public sidecar probe when a production listener is configured.
+	// All Store Link control routes belong to the dedicated mTLS listener.
 	mux.HandleFunc(controlStatusPath, privateControlRouteOnly)
 	mux.HandleFunc(controlPolicyPath, privateControlRouteOnly)
 	mux.HandleFunc(rootControllerStatePath, privateControlRouteOnly)
@@ -408,11 +407,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// plan/proof route must never be reachable through the browser/catalog
 	// listener or the historical sidecar-apply surface.
 	mux.HandleFunc(controllerUpgradeIssuePathPrefix, privateControlRouteOnly)
-	if exposeControl {
-		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
-	} else {
-		mux.HandleFunc("/control/v1/", privateControlRouteOnly)
-	}
+	mux.HandleFunc("/control/v1/", privateControlRouteOnly)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 	// POST /publish/generation: envelope-authorized promote of the next signed
 	// desired generation (canonical publisher's promote step). Re-verifies the
@@ -422,7 +417,6 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// Temporary bootstrap for hosts that still consume the pre-generation shell
 	// manifest.  It derives that compatibility document from the already-signed,
 	// chain-verified current DesiredGeneration; it never accepts artifact facts.
-	mux.HandleFunc("/publish/legacy-manifest-bootstrap", svc.handleLegacyManifestBootstrap)
 
 	// ── DESIRED-GENERATION producers ──────────────────────────────────────────
 	// The operator-signed typed desired-generation document the external host
@@ -497,29 +491,6 @@ func newControlReleaseRouter(svc *publishService) http.Handler {
 // than advertising the private listener or its authentication method.
 func privateControlRouteOnly(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
-}
-
-// retiredLegacyAppPublish is a routing cutover, not an additional publish
-// check. It runs before body parsing, envelope handling, nonce allocation, and
-// stage access, so a direct caller cannot turn a retired endpoint into a
-// partially-completed release. The exact Bazaar Control routes remain separate
-// registrations above.
-func retiredLegacyAppPublish(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, "Direct app publishing is retired. Prepare and approve the release in Bazaar Control.", http.StatusGone)
-}
-
-// handleStagePublish durably stores a candidate in the private content-addressed
-// stage before its ReleaseEntry exists. It verifies the signed publisher
-// envelope, exact app hash, store operator authority, path policy, and
-// blacklists, but deliberately does not assemble or expose the candidate.
-func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
-	s.handleAppStage(w, r, "/publish/stage", func(_ appPublishPreflight, claimed identity.Public) (string, error) {
-		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
-		if !ok {
-			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
-		}
-		return signerKey, nil
-	}, nil, nil)
 }
 
 // handleAppStage is the one private-candidate implementation. Route-specific
@@ -650,19 +621,6 @@ func (s *publishService) handleAppStage(w http.ResponseWriter, r *http.Request, 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(receipt)
-}
-
-// handlePublish retains the legacy transport surface while Bazaar Control is
-// piloted. Its static allowlist is explicitly a migration path; it is not used
-// by the typed Pearl route.
-func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
-	s.handleAppPublish(w, r, "/publish", func(_ appPublishPreflight, claimed identity.Public) (string, error) {
-		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
-		if !ok {
-			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
-		}
-		return signerKey, nil
-	}, nil, nil, nil)
 }
 
 // handleAppPublish is the one gated write implementation. Route-specific
@@ -1039,12 +997,22 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 		http.Error(w, "check=accept_publishers: installer publisher not in store policy accept_publishers", http.StatusForbidden)
 		return
 	}
-	if err := envelope.Verify(sig, envelope.VerifyOptions{
+	bindingDigest, err := installerpublish.Digest(class, name, artifactHashHex,
+		s.cfg.StoreID, s.cfg.Domain, s.cfg.LicenseNFTMint, s.cfg.ProgramID)
+	if err != nil {
+		http.Error(w, "check=installer_binding: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	if sig.Payload.Method != http.MethodPost || sig.Payload.Target != installerpublish.Target ||
+		sig.Payload.BodyHashHex != bindingDigest {
+		http.Error(w, "check=installer_binding: signed method, target, class, name or estate does not match", http.StatusUnauthorized)
+		return
+	}
+	if err := s.verifyDurableEnvelope(sig, envelope.VerifyOptions{
 		ExpectedKind:            envelope.KindPublishRequest,
 		ExpectedSignerPubkeyB58: signerKey,
 		ExpectedDestination:     &operatorIdentity,
 		ExpectedRequestHash:     artifactHashHex,
-		NonceCache:              s.nonces,
 	}); err != nil {
 		http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
 		return
@@ -1206,88 +1174,96 @@ func requireEnvelopePresent(sig envelope.Signed) error {
 // (publishRequest). metadata is REQUIRED (the on-chain AppHash binds
 // {app.spk, metadata.json}); a publish without it cannot recompute the AppHash
 // and is malformed.
-func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, runtimeContract []byte, hint slotHint, err error) {
+func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk []byte, metadata []byte, runtimeContract []byte, hint slotHint, report appscan.Report, err error) {
 	if err := limitPublishBody(r, maxAppPublishBody); err != nil {
-		return sig, nil, nil, nil, nil, hint, err
+		return sig, nil, nil, nil, nil, hint, report, err
 	}
 	ct := r.Header.Get("Content-Type")
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		if perr := r.ParseMultipartForm(32 << 20); perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("parse multipart: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("parse multipart: %w", perr)
 		}
 		envBytes, perr := readFormFile(r, "envelope")
 		if perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("envelope part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("envelope part: %w", perr)
 		}
 		if perr := json.Unmarshal(envBytes, &sig); perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("decode envelope JSON: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("decode envelope JSON: %w", perr)
 		}
 		release, perr = readFormFile(r, "release")
 		if perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("release part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("release part: %w", perr)
 		}
 		spk, perr = readFormFile(r, "spk")
 		if perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("spk part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("spk part: %w", perr)
 		}
 		metadata, perr = readFormFile(r, "metadata")
 		if perr != nil {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("metadata part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("metadata part: %w", perr)
 		}
 		if len(metadata) == 0 {
-			return sig, nil, nil, nil, nil, hint, errors.New("metadata is empty")
+			return sig, nil, nil, nil, nil, hint, report, errors.New("metadata is empty")
 		}
 		runtimeContract, perr = readFormFile(r, "runtime_contract")
 		if perr != nil && !errors.Is(perr, http.ErrMissingFile) {
-			return sig, nil, nil, nil, nil, hint, fmt.Errorf("runtime_contract part: %w", perr)
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("runtime_contract part: %w", perr)
 		}
 		hint = slotHint{
 			Developer: strings.TrimSpace(r.FormValue("developer")),
 			Repo:      strings.TrimSpace(r.FormValue("repo")),
 			Slug:      strings.TrimSpace(r.FormValue("slug")),
 		}
-		return sig, release, spk, metadata, runtimeContract, hint, nil
+		if reportBytes, perr := readFormFile(r, "scan_report"); perr == nil {
+			if perr := json.Unmarshal(reportBytes, &report); perr != nil {
+				return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("scan_report part: %w", perr)
+			}
+		} else if !errors.Is(perr, http.ErrMissingFile) {
+			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("scan_report part: %w", perr)
+		}
+		return sig, release, spk, metadata, runtimeContract, hint, report, nil
 	}
 
 	// JSON wire form (base64 fields).
 	body, perr := io.ReadAll(r.Body)
 	if perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("read body: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("read body: %w", perr)
 	}
 	var req publishRequest
 	if perr := json.Unmarshal(body, &req); perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("decode JSON body: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("decode JSON body: %w", perr)
 	}
 	sig = req.Envelope
+	report = req.ScanReport
 	release, perr = stdB64(req.ReleaseB64)
 	if perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("release_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("release_b64: %w", perr)
 	}
 	spk, perr = stdB64(req.SPKB64)
 	if perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("spk_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("spk_b64: %w", perr)
 	}
 	if len(spk) == 0 {
-		return sig, nil, nil, nil, nil, hint, errors.New("spk is empty")
+		return sig, nil, nil, nil, nil, hint, report, errors.New("spk is empty")
 	}
 	metadata, perr = stdB64(req.MetadataB64)
 	if perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("metadata_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("metadata_b64: %w", perr)
 	}
 	if len(metadata) == 0 {
-		return sig, nil, nil, nil, nil, hint, errors.New("metadata is empty")
+		return sig, nil, nil, nil, nil, hint, report, errors.New("metadata is empty")
 	}
 	runtimeContract, perr = stdB64(req.RuntimeContractB64)
 	if perr != nil {
-		return sig, nil, nil, nil, nil, hint, fmt.Errorf("runtime_contract_b64: %w", perr)
+		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("runtime_contract_b64: %w", perr)
 	}
 	hint = slotHint{
 		Developer: strings.TrimSpace(req.Developer),
 		Repo:      strings.TrimSpace(req.Repo),
 		Slug:      strings.TrimSpace(req.Slug),
 	}
-	return sig, release, spk, metadata, runtimeContract, hint, nil
+	return sig, release, spk, metadata, runtimeContract, hint, report, nil
 }
 
 func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class string, name string, artifact []byte, err error) {

@@ -880,6 +880,18 @@ may be named for two shards (`store-identity-escrow-holder-overlap`).
   shard's commitment, recipients and escrow digest. The recipients file is a
   `melusina.store-identity-escrow-recipients.v1` document with `author`,
   `hostObservation` and `release` lists.
+- `store-identity-foundation-escrow-seal -estate-profile … -identity-report …
+  -shards-dir … -recipients … -out-dir …` is the pre-enrollment producer for
+  original foundation shards on a source host. It verifies the owner-signed
+  root Store profile and source identity report and requires those private
+  shards to derive its exact operator and box keys before using the same
+  production escrow seal.
+- `store-identity-foundation-restore-request -estate-profile … -manifest …
+  -shards-dir … -role … -session-recipient … -expires … -out …` verifies the
+  signed profile, original shards and operator-signed manifest, then signs a
+  one-time holder request with that derived operator. It admits an expiry no
+  more than 24 hours ahead. The holder verifies this signature and the exact
+  role and recipient before resealing.
 - `store-identity-escrow-reseal` is each holder's offline step. It opens the
   holder's own shard, checks it against the manifest's commitment, and seals
   it again to the replacement host's session recipient. The session recipient

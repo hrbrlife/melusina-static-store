@@ -77,8 +77,14 @@ UPSTREAM_MERGE="$(git -C "$ROOT" config --get "branch.$CURRENT_BRANCH.merge" || 
   echo "source velocity ref must name a job and repository" >&2; exit 2; }
 git -C "$ROOT" remote get-url "$UPSTREAM_REMOTE" >/dev/null 2>&1 || {
   echo "source branch upstream remote is unavailable: $UPSTREAM_REMOTE" >&2; exit 2; }
-git -C "$ROOT" fetch "$UPSTREAM_REMOTE" "$UPSTREAM_MERGE"
-UPSTREAM_HEAD="$(git -C "$ROOT" rev-parse FETCH_HEAD)"
+if [[ "$UPSTREAM_MERGE" == refs/heads/* ]]; then
+  UPSTREAM_TRACKING_REF="refs/remotes/$UPSTREAM_REMOTE/${UPSTREAM_MERGE#refs/heads/}"
+else
+  UPSTREAM_TRACKING_REF="refs/remotes/$UPSTREAM_REMOTE/${UPSTREAM_MERGE#refs/}"
+fi
+git -C "$ROOT" fetch "$UPSTREAM_REMOTE" \
+  "+$UPSTREAM_MERGE:$UPSTREAM_TRACKING_REF"
+UPSTREAM_HEAD="$(git -C "$ROOT" rev-parse "$UPSTREAM_TRACKING_REF")"
 git -C "$ROOT" merge-base --is-ancestor "$HEAD" "$UPSTREAM_HEAD" || {
   echo "source HEAD is not reachable from its refreshed upstream ref: $HEAD" >&2; exit 2; }
 

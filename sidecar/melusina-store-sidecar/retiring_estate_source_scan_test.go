@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -218,6 +219,14 @@ func sourceSetIncludes(sources []componentSource, suffix string) bool {
 func TestBootstrapComponentSourceCompilesNoRetiringEstateValue(t *testing.T) {
 	retiring := retiringEstateValues(t)
 	registryOnly := map[string]string{retiringLicenseRegistryField: retiring[retiringLicenseRegistryField]}
+	uiIndex, err := os.ReadFile(filepath.Join("ui", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	asset := regexp.MustCompile(`src="(/assets/index-[A-Za-z0-9_-]+\.js)"`).FindSubmatch(uiIndex)
+	if len(asset) != 2 {
+		t.Fatal("production Store UI index has no exact built JavaScript asset")
+	}
 
 	// Known-positive control for the matcher itself: a literal carrying the
 	// retiring registry is found, and the same value in a comment is not.
@@ -239,7 +248,7 @@ func TestBootstrapComponentSourceCompilesNoRetiringEstateValue(t *testing.T) {
 	} {
 		t.Run(flavor.name, func(t *testing.T) {
 			sources := bootstrapComponentSources(t, flavor.tags)
-			for _, required := range []string{"/verify.go", "/config.go", "/cmd/boot-identity-prep/main.go", "/ui/assets/index-CcjOkH_x.js"} {
+			for _, required := range []string{"/verify.go", "/config.go", "/cmd/boot-identity-prep/main.go", "/ui/index.html", "/ui" + string(asset[1])} {
 				if !sourceSetIncludes(sources, required) {
 					t.Fatalf("scan never reached %s; it cannot vouch for the component", required)
 				}

@@ -229,10 +229,6 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_store_boot_cascade_test[.]go; it is not an estate endpoint."
     },
     {
-      "host": "at.test",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
-    },
-    {
       "host": "attachments.memstore.save",
       "reason": "Tracked explanatory text in packages/hrbrlife/ccash_go_htmx/popaye/changelog[.]md; it is not an estate endpoint."
     },
@@ -263,10 +259,6 @@
     {
       "host": "b.install.id",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/root_trust_bundle_test[.]go; it is not an estate endpoint."
-    },
-    {
-      "host": "b.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "b.programs.map",
@@ -1741,6 +1733,10 @@
       "reason": "External service, documentation, or dotted protocol identifier in sidecar/melusina-store-sidecar/runtime-contract-schema/melusina-app-runtime-contract-v1.schema.template.json; unrelated to the estate origin."
     },
     {
+      "host": "jt.test",
+      "reason": "Minified React regular expression method call in the built Store UI asset; reviewed as code, not a DNS endpoint."
+    },
+    {
       "host": "keyring.md",
       "reason": "Tracked dotted filename or identifier in KEEP - COMPONENTS FOR APPS[.]md:226; reviewed as source material, not an estate endpoint."
     },
@@ -1833,6 +1829,10 @@
       "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/scripts/mel-release-squads-errors[.]mjs:74; reviewed as source material, not an estate endpoint."
     },
     {
+      "host": "m.bg",
+      "reason": "Minified Store UI color palette property access; reviewed as code, not a DNS endpoint."
+    },
+    {
       "host": "m.build",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap[.]go; reviewed as outside the estate origin."
     },
@@ -1843,6 +1843,10 @@
     {
       "host": "m.channel",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/legacy_manifest_bootstrap[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "m.green",
+      "reason": "Minified Store UI color palette property access; reviewed as code, not a DNS endpoint."
     },
     {
       "host": "m.group",
@@ -1993,10 +1997,6 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
     },
     {
-      "host": "n.bg",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
-    },
-    {
       "host": "n.call",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/served_tls_test[.]go; it is not an estate endpoint."
     },
@@ -2011,10 +2011,6 @@
     {
       "host": "n.fun",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/enrolled_release_info_test[.]go; it is not an estate endpoint."
-    },
-    {
-      "host": "n.green",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "n.map",
@@ -2063,10 +2059,6 @@
     {
       "host": "newsnapshot.id",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
-    },
-    {
-      "host": "nn.test",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
     },
     {
       "host": "nonzero.data",
@@ -2541,6 +2533,10 @@
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
     },
     {
+      "host": "qi.next",
+      "reason": "Minified React linked-list property access in the built Store UI asset; reviewed as code, not a DNS endpoint."
+    },
+    {
       "host": "qu.next",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
     },
@@ -2843,6 +2839,10 @@
     {
       "host": "rightstat.dev",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/app_catalog_generation[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "rn.test",
+      "reason": "Minified React regular expression method call in the built Store UI asset; reviewed as code, not a DNS endpoint."
     },
     {
       "host": "rollback-all.sh",
@@ -3914,10 +3914,6 @@
     },
     {
       "host": "z.next",
-      "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
-    },
-    {
-      "host": "zi.next",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CcjOkH_x[.]js; reviewed as outside the estate origin."
     }
   ]

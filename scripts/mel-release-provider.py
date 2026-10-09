@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Governed provider for ``mel-release publish`` and ``mel-release approve``.
 
-The Go CLI owns the durable two-command state machine.  This provider is its
-only real-world adapter: it builds an SPK from a committed app tree, creates a
-private store stage and an *unexecuted* Squads ReleaseEntry proposal, and on
-the approve side reads the ReleaseEntry account back (raw, for mel-release to
-admit), binds the candidate RELEASE.json to it, promotes the staged bytes, and
-revokes only declared stale ReleaseEntries.  It never approves or executes a
+The Go CLI owns the durable two-command state machine. This provider builds an
+SPK from a committed app tree, creates an *unexecuted* Squads ReleaseEntry
+proposal, and reads the ReleaseEntry account back for mel-release to admit.
+Bazaar Control owns the private Store prepare and publish operations; this
+provider refuses the retired direct stage and promote operations. It binds the
+candidate RELEASE.json to the admitted entry and revokes only declared stale
+ReleaseEntries. It never approves or executes a
 register proposal: the owner-authorized runner registers every ReleaseEntry.
 The stale revoke, which mel-release requests only when a release opted into
 global revoke, is the one operation that executes a Squads transaction: it
@@ -2888,50 +2889,6 @@ def bind_runtime_contract_to_release(context: dict[str, Any]) -> Path:
     return release_path
 
 
-def submit_args(context: dict[str, Any], receipt_out: Path, *, stage_only: bool) -> list[str]:
-    store_url = store_origin()
-    domain = store_domain()
-    store_license = env("MEL_RELEASE_STORE_LICENSE_MINT", required=True)
-    program_id = env("MEL_PROGRAM_ID", required=True)
-    rpc = env("MEL_RELEASE_RPC_URL", required=True)
-    slot = context.get("catalogSlot")
-    if not isinstance(slot, dict) or not all(isinstance(slot.get(k), str) and slot[k].strip() for k in ("developer", "repo", "slug")):
-        raise ProviderError("provider context lacks immutable catalogSlot")
-    multipart = env("MEL_RELEASE_SUBMIT_MULTIPART", default="")
-    if multipart not in ("", "yes"):
-        raise ProviderError("MEL_RELEASE_SUBMIT_MULTIPART must be exactly 'yes' when set")
-    args = [
-        str(ensure_bin("submit", "./cmd/submit")), "--store", store_url,
-        "--spk", str(context["spkPath"]), "--metadata", str(context["metadataPath"]),
-        "--release", str(context["releasePath"]), "--publisher-key", env("MEL_RELEASE_PUBLISHER_KEY", required=True),
-        "--runtime-contract", str(context["runtimeContractPath"]),
-        "--store-pubkey", env("MEL_RELEASE_STORE_PUBKEY", required=True), "--license-mint", store_license,
-        "--program-id", program_id,
-        "--domain", domain, "--rpc-url", rpc, "--timeout", submit_timeout(), "--receipt-out", str(receipt_out),
-        "--developer", slot["developer"], "--repo", slot["repo"], "--slug", slot["slug"],
-    ]
-    if multipart == "yes":
-        args.append("--multipart")
-    if stage_only:
-        args.append("--stage")
-    return args
-
-
-def stage(app_id: str, app_hash: str, release_hash: str, nonce: str, receipt_out: Path) -> None:
-    # A Store stage is durable private state. Refuse stale workstation quorum
-    # settings before touching it, rather than discovering the disagreement
-    # only after a candidate has been staged.
-    assert_live_quorum_policy()
-    context = require_context(app_id)
-    release = rewrite_release(context, app_id, app_hash, release_hash, env("MEL_NEW_VERSION", required=True), nonce)
-    context["releasePath"] = str(release)
-    write_json(context_path(app_id), context)
-    run(
-        submit_args(context, receipt_out, stage_only=True),
-        extra_env=submit_transport_env(),
-    )
-
-
 def configured_threshold() -> int:
     """Return the declared signing threshold with a controlled error."""
     try:
@@ -3009,9 +2966,11 @@ def policy_executor_env() -> dict[str, str]:
 
 
 def generic_executor_env() -> dict[str, str]:
+    authority = require_shared_squads_authority()
     return {
         "SOLANA_RPC_URL": env("MEL_RELEASE_RPC_URL", required=True),
         "MELUSINA_RPC_PRIMARY": env("MEL_RELEASE_RPC_URL", required=True),
+        "SQUADS_PROGRAM_ID": authority["programId"],
         "SQUADS_MEMBER_KEYPAIRS": ",".join(str(path) for path in member_keypair_paths()),
     }
 
@@ -3505,24 +3464,6 @@ def reject_register(app_id: str, app_hash: str, release_hash: str, version: str,
     })
 
 
-def promote(app_id: str, app_hash: str, release_hash: str, version: str, stage_id: str, receipt_out: Path) -> None:
-    authority = require_shared_squads_authority()
-    context = require_context(app_id)
-    # A durable WAL may resume directly from REGISTERED after an older provider
-    # finalized the Pearl release but crashed before restoring the Store-only
-    # runtime-contract binding. Repair it from the immutable candidate evidence
-    # before validating or submitting the promotion.
-    release = read_json(bind_runtime_contract_to_release(context))
-    if release.get("appHash") != app_hash or release.get("releaseHash") != release_hash or release.get("version") != version:
-        raise ProviderError("promotion context no longer binds the staged candidate")
-    if release.get("licenseSquadsVault") != authority["vault"]:
-        raise ProviderError("promotion release does not bind the catalog-pinned shared Squads vault")
-    run(
-        submit_args(context, receipt_out, stage_only=False),
-        extra_env=submit_transport_env(),
-    )
-
-
 def active_releases(app_id: str) -> None:
     output = run([
         str(ensure_bin("list-active-releases", "./cmd/list-active-releases")), "-rpc-url", env("MEL_RELEASE_RPC_URL", required=True),
@@ -3613,6 +3554,21 @@ def approved_runner_executor() -> Path:
     return executor
 
 
+def revoke_instruction(pda: str, authority: dict[str, str], master_ata: str) -> dict[str, Any]:
+    """Build the exact registry instruction sent by the governed revoke executor."""
+    return {
+        "programId": env("MEL_PROGRAM_ID", required=True),
+        "accounts": [
+            {"pubkey": pda, "isSigner": False, "isWritable": True},
+            {"pubkey": authority["vault"], "isSigner": True, "isWritable": True},
+            {"pubkey": env("MEL_RELEASE_MASTER_NFT_MINT", required=True), "isSigner": False, "isWritable": False},
+            {"pubkey": master_ata, "isSigner": False, "isWritable": False},
+            {"pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "isSigner": False, "isWritable": False},
+        ],
+        "data": base64.b64encode(hashlib.sha256(b"global:revoke_release_entry").digest()[:8]).decode(),
+    }
+
+
 def revoke(pda: str, receipt_out: Path) -> None:
     authority = require_shared_squads_authority()
     # Fail-closed runner gate before anything else: a revoke without a
@@ -3643,18 +3599,8 @@ def revoke(pda: str, receipt_out: Path) -> None:
             continue
     if not master_ata:
         raise ProviderError("cannot revoke without a prepared release ceremony state carrying masterNftAta")
-    discriminator = base64.b64encode(hashlib.sha256(b"global:revoke_release_entry").digest()[:8]).decode()
     ix_path = status_doc_path.with_suffix(".ix.json")
-    write_json(ix_path, {
-        "programId": env("MEL_PROGRAM_ID", required=True),
-        "accounts": [
-            {"pubkey": pda, "isSigner": False, "isWritable": True},
-            {"pubkey": authority["vault"], "isSigner": True, "isWritable": True},
-            {"pubkey": env("MEL_RELEASE_MASTER_NFT_MINT", required=True), "isSigner": False, "isWritable": False},
-            {"pubkey": master_ata, "isSigner": False, "isWritable": False},
-            {"pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "isSigner": False, "isWritable": False},
-        ], "data": discriminator,
-    })
+    write_json(ix_path, revoke_instruction(pda, authority, master_ata))
     command, confinement = confined_node("MEL_RELEASE_SQUADS_EXECUTOR", executor, executor, str(ix_path),
                                          "--multisig", authority["multisig"], "--vault", authority["vault"])
     result = last_json(run(command, extra_env={**generic_executor_env(), **confinement}))
@@ -3665,8 +3611,8 @@ def revoke(pda: str, receipt_out: Path) -> None:
 
 PROVIDER_OPERATIONS = (
     "estate-scan", "audit-cohort", "audit-msb-cohort", "build", "active-releases", "release-status",
-    "release-entry-account", "served-app-hash", "stage", "propose-register", "finalize-release",
-    "reject-register", "promote", "revoke",
+    "release-entry-account", "served-app-hash", "propose-register", "finalize-release",
+    "reject-register", "revoke",
 )
 
 
@@ -3674,6 +3620,8 @@ def main() -> None:
     if len(sys.argv) != 2:
         raise ProviderError(f"usage: mel-release-provider.py <{'|'.join(PROVIDER_OPERATIONS)}>")
     op = sys.argv[1]
+    if op in {"stage", "promote"}:
+        raise ProviderError("direct-app-publish-retired: Bazaar Control owns prepare and publish")
     if op not in PROVIDER_OPERATIONS:
         raise ProviderError(f"unknown provider operation {op!r}")
     # The catalog is validated and estate-scanned before any operation
@@ -3681,7 +3629,7 @@ def main() -> None:
     # again: no operation runs under a manifest of the retiring estate.
     catalog_config()
     app_id = env("MEL_APP_ID")
-    if op in {"build", "stage", "propose-register", "finalize-release", "promote"}:
+    if op in {"build", "propose-register", "finalize-release"}:
         app_id = env("MEL_APP_ID", required=True)
         require_release_ready(app_id)
     if op == "estate-scan":
@@ -3715,8 +3663,6 @@ def main() -> None:
         release_entry_account(env("MEL_PDA", required=True))
     elif op == "served-app-hash":
         served_hash(app_id)
-    elif op == "stage":
-        stage(app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_RELEASE_HASH", required=True), env("MEL_RELEASE_NONCE", required=True), clean_abs(env("MEL_STAGE_RECEIPT_OUT", required=True), "MEL_STAGE_RECEIPT_OUT"))
     elif op == "propose-register":
         authority = require_shared_squads_authority()
         propose(app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_NEW_VERSION", required=True), env("MEL_RELEASE_NONCE", required=True), authority["multisig"], authority["vault"], clean_abs(env("MEL_RELEASE_JSON_OUT", required=True), "MEL_RELEASE_JSON_OUT"), clean_abs(env("MEL_PROPOSE_RECEIPT_OUT", required=True), "MEL_PROPOSE_RECEIPT_OUT"))
@@ -3733,8 +3679,6 @@ def main() -> None:
             env("MEL_RELEASE_NONCE", required=True), env("MEL_TRANSACTION_PDA", required=True),
             clean_abs(env("MEL_REJECTION_RECEIPT_OUT", required=True), "MEL_REJECTION_RECEIPT_OUT"),
         )
-    elif op == "promote":
-        promote(app_id, env("MEL_NEW_APP_HASH", required=True), env("MEL_RELEASE_HASH", required=True), env("MEL_NEW_VERSION", required=True), env("MEL_STAGE_ID", required=True), clean_abs(env("MEL_PROMOTE_RECEIPT_OUT", required=True), "MEL_PROMOTE_RECEIPT_OUT"))
     elif op == "revoke":
         revoke(env("MEL_PDA", required=True), clean_abs(env("MEL_REVOKE_RECEIPT_OUT", required=True), "MEL_REVOKE_RECEIPT_OUT"))
     else:

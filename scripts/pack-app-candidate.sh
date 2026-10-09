@@ -42,51 +42,36 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
   [[ -z "$dirty" ]] || { echo "source tree is dirty before candidate build" >&2; printf '%s\n' "$dirty" >&2; exit 2; }
   source_revision="$(git -C "$APP_DIR" rev-parse HEAD)"
-  mapfile -t source_remotes < <(git -C "$source_root" remote | LC_ALL=C sort)
-  [[ ${#source_remotes[@]} -gt 0 ]] || { echo "candidate source has no remote" >&2; exit 2; }
-  usable_remotes=0
-  for remote in "${source_remotes[@]}"; do
-    # Git permits a URL-shaped remote *name*. It cannot be embedded in a
-    # refs/remotes/<name>/... destination: the colon makes that fetchspec
-    # invalid. Require a ref-safe name and prove reachability through one of
-    # those remotes (normally origin).
-    [[ "$remote" =~ ^[a-zA-Z0-9._-]+$ ]] || continue
-    usable_remotes=$((usable_remotes + 1))
-    # A source cohort may have been created with --single-branch. Its default
-    # remote fetchspec then omits dev-publish even when that exact committed
-    # revision was pushed moments ago, causing a false "unpushed" refusal.
-    # Refresh remote heads explicitly before the reachability check rather
-    # than trusting a clone-local fetchspec or accepting an unverifiable tip.
-    # This refresh proves source-ref reachability, not archived submodule
-    # availability. The selected checkout's initialized submodules remain
-    # build inputs; unrelated historical gitlinks must not be fetched here.
-    git -C "$source_root" fetch --prune --recurse-submodules=no "$remote" "+refs/heads/*:refs/remotes/$remote/*" || {
-      echo "cannot refresh source remote heads: $remote" >&2
-      exit 2
-    }
-  done
-  [[ $usable_remotes -gt 0 ]] || { echo "candidate source has no ref-safe remote" >&2; exit 2; }
+  # Only origin may prove a candidate's publication. URL-shaped partial-clone
+  # remote names are not release authorities or safe ref destinations.
+  git -C "$source_root" remote get-url origin >/dev/null 2>&1 || {
+    echo "candidate source has no origin remote" >&2
+    exit 2
+  }
+  git -C "$source_root" fetch --prune --recurse-submodules=no origin \
+    '+refs/heads/*:refs/remotes/origin/*' \
+    '+refs/velocity/*:refs/remotes/origin/velocity/*' || {
+    echo "cannot refresh source remote refs: origin" >&2
+    exit 2
+  }
   if [[ -n "$SOURCE_REF" ]]; then
     [[ "$SOURCE_REF" =~ ^refs/velocity/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$ ]] || {
       echo "candidate source ref must be a hidden velocity work ref" >&2
       exit 2
     }
-    hidden_found=0
-    for remote in "${source_remotes[@]}"; do
-      [[ "$remote" =~ ^[a-zA-Z0-9._-]+$ ]] || continue
-      if git -C "$source_root" ls-remote --exit-code "$remote" "$SOURCE_REF" >/dev/null 2>&1; then
-        git -C "$source_root" fetch --recurse-submodules=no "$remote" \
-          "+$SOURCE_REF:refs/remotes/$remote/${SOURCE_REF#refs/}" || {
-          echo "candidate source ref fetch failed: $SOURCE_REF" >&2
-          exit 2
-        }
-        hidden_found=1
-      fi
-    done
-    [[ $hidden_found -eq 1 ]] || { echo "candidate source ref unavailable: $SOURCE_REF" >&2; exit 2; }
+    remote_sha="$(git -C "$source_root" ls-remote --exit-code origin "$SOURCE_REF" | awk '{print $1}')" || {
+      echo "candidate source ref unavailable: $SOURCE_REF" >&2
+      exit 2
+    }
+    [[ "$remote_sha" == "$source_revision" ]] || {
+      echo "candidate source ref does not name source revision: $SOURCE_REF" >&2
+      exit 2
+    }
+    pushed_ref="refs/remotes/origin/${SOURCE_REF#refs/}"
+  else
+    pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/origin/ \
+      | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
   fi
-  pushed_ref="$(git -C "$source_root" for-each-ref --format='%(refname)' --contains "$source_revision" refs/remotes/ \
-    | grep -v '/HEAD$' | LC_ALL=C sort | head -1 || true)"
   [[ -n "$pushed_ref" ]] || { echo "candidate revision is not reachable from any fetched remote ref: $source_revision" >&2; exit 2; }
   source_commit_epoch="$(git -C "$APP_DIR" log -1 --format=%ct HEAD)"
 else
@@ -289,6 +274,10 @@ if [[ -n "$caller_source_epoch" && "$source_epoch" == "$caller_source_epoch" ]];
 fi
 
 if ! cmp -s "$METADATA" "$METADATA_BASELINE"; then
+  if [[ "$PACK_PROFILE" == namedcoin-msb-devnet ]]; then
+    echo "NamedCoin candidate pack mutated source metadata; refusing to publish" >&2
+    exit 2
+  fi
   [[ -n "$METADATA_OUT" ]] || {
     echo "pack generated metadata.json; pass --metadata-out to preserve the exact staged metadata without dirtying source" >&2
     exit 2

@@ -31,6 +31,7 @@ import (
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/rootstore"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/storesecurity"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -57,6 +58,10 @@ const (
 	// The gated routes' private snapshots: a dedicated directory under the
 	// state root, on the same disk, created by the Store at start-up.
 	storeConfigRenderServedSnapshotDir = "/var/lib/melusina-store/served-snapshots"
+	storeConfigRenderControlCert       = "/etc/melusina/store-control/server.crt"
+	storeConfigRenderControlKey        = "/etc/melusina/store-control/server.key"
+	storeConfigRenderControlClientCA   = "/etc/melusina/store-control/ca.crt"
+	storeConfigRenderListingSigner     = "/run/melusina/store-listing-signer.sock"
 )
 
 var errStoreConfigRenderOutputExists = errors.New("store-config-render-output-exists")
@@ -75,6 +80,7 @@ type storeConfigRenderInput struct {
 	RPCAttempts     int
 	ChainID         string
 	OperatorDomain  string
+	SecurityProfile storesecurity.Profile
 }
 
 type estateStoreConfigRenderOptions struct {
@@ -197,6 +203,9 @@ func renderEstateStoreConfig(opts estateStoreConfigRenderOptions) (storeConfigRe
 	if input.ProfileSHA256 != profileSHA256 {
 		return storeConfigRenderReport{}, errors.New("store-config-render-profile-sha256-mismatch")
 	}
+	if err := storesecurity.Verify(input.SecurityProfile, profile, profileSHA256); err != nil {
+		return storeConfigRenderReport{}, err
+	}
 	config, err := buildStoreConfigRenderCandidate(profile, input)
 	if err != nil {
 		return storeConfigRenderReport{}, err
@@ -289,7 +298,7 @@ func loadStoreConfigRenderInput(path string) (storeConfigRenderInput, error) {
 	}
 	known := map[string]struct{}{
 		"schema": {}, "kind": {}, "profileSha256": {}, "licenseNftMint": {}, "rpcUrl": {},
-		"rpcFallbackUrls": {}, "rpcAttempts": {}, "chainId": {}, "operatorDomain": {},
+		"rpcFallbackUrls": {}, "rpcAttempts": {}, "chainId": {}, "operatorDomain": {}, "securityProfile": {},
 	}
 	for field := range fields {
 		if _, ok := known[field]; !ok {
@@ -328,6 +337,13 @@ func loadStoreConfigRenderInput(path string) (storeConfigRenderInput, error) {
 		return input, err
 	}
 	if input.OperatorDomain, err = storeConfigRenderCanonicalDomain(fields, "operatorDomain"); err != nil {
+		return input, err
+	}
+	securityRaw, ok := fields["securityProfile"]
+	if !ok {
+		return input, errors.New("store-config-render-input-missing:securityProfile")
+	}
+	if input.SecurityProfile, err = storesecurity.Decode(securityRaw); err != nil {
 		return input, err
 	}
 
@@ -458,6 +474,8 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 	}
 	domain := profile.Store.RootDomain
 	config := Config{
+		EstateProfile:             &profile,
+		StoreSecurityProfile:      &input.SecurityProfile,
 		LicenseNFTMint:            input.LicenseNFTMint,
 		EstateEnrollmentStatePath: storeConfigRenderStatePath,
 		StoreAuthority:            profile.Store.OperatorKey,
@@ -478,8 +496,9 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 		Policy: Policy{
 			AllowedTiers:                     []string{"regular"},
 			RequireScanReport:                true,
+			ScannerEd25519PublicKey:          input.SecurityProfile.ScannerEd25519PublicKey,
 			AcceptPublishers:                 publishers,
-			RequirePearlControlForAppPublish: false,
+			RequirePearlControlForAppPublish: true,
 		},
 		RPCURL:                   input.RPCURL,
 		RPCFallbackURLs:          append([]string(nil), input.RPCFallbackURLs...),
@@ -491,7 +510,15 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 		CatalogMigrationStateDir: "/var/lib/melusina-store/migrations",
 		CatalogRepoRoot:          "/var/lib/melusina-store/catalog-source",
 		ServedSnapshotDir:        storeConfigRenderServedSnapshotDir,
-		TLS:                      TLSConfig{CertPath: storeConfigRenderTLSCert, KeyPath: storeConfigRenderTLSKey},
+		ListingSignerSocket:      storeConfigRenderListingSigner,
+		StoreLinkControlMTLS: StoreLinkControlMTLSConfig{
+			ListenAddr:                input.SecurityProfile.ControlListenAddr,
+			CertPath:                  storeConfigRenderControlCert,
+			KeyPath:                   storeConfigRenderControlKey,
+			ClientCAPath:              storeConfigRenderControlClientCA,
+			StoreLinkClientCertSHA256: input.SecurityProfile.StoreLinkClientCertSHA256,
+		},
+		TLS: TLSConfig{CertPath: storeConfigRenderTLSCert, KeyPath: storeConfigRenderTLSKey},
 		BootIdentity: BootIdentityConfig{
 			ShardsDir:          storeConfigRenderShardDir,
 			SidecarID:          rootstore.SidecarID,

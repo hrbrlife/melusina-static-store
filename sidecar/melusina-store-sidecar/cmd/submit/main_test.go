@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,6 +20,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/appscan"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -41,6 +41,14 @@ func TestControlRequestCannotMixLegacyPreparedHandoff(t *testing.T) {
 	}
 	if _, err := parseFlags(base); err != nil {
 		t.Fatalf("standalone control request refused: %v", err)
+	}
+}
+
+func TestDirectAppSubmissionProducerRetired(t *testing.T) {
+	args := []string{"--store", "https://store.example.org", "--spk", "missing.spk", "--metadata", "missing-metadata.json", "--release", "missing-release.json", "--publisher-key", "missing-publisher.json", "--store-pubkey", "missing-store.json", "--license-mint", "11111111111111111111111111111111", "--rpc-url", "https://rpc.example.org", "--program-id", testProgramID}
+	var stdout, stderr bytes.Buffer
+	if err := run(args, &stdout, &stderr); err == nil || !strings.Contains(err.Error(), "direct-app-publish-retired") {
+		t.Fatalf("direct-app-publication-producer-retired: %v", err)
 	}
 }
 
@@ -406,7 +414,7 @@ func TestMarshalControlPublishRequestBindsExactPearlRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, nil, "dev", "repo", "app")
+	body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, nil, appscan.Report{}, "dev", "repo", "app")
 	if err != nil {
 		t.Fatalf("marshal control request: %v", err)
 	}
@@ -428,52 +436,8 @@ func TestMarshalControlPublishRequestBindsExactPearlRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := marshalControlPublishRequest(direct, releaseBytes, spk, metadata, nil, "", "", ""); err == nil {
+	if _, err := marshalControlPublishRequest(direct, releaseBytes, spk, metadata, nil, appscan.Report{}, "", "", ""); err == nil {
 		t.Fatal("direct /publish envelope was accepted as a Pearl control request")
-	}
-}
-
-func TestPostPublishRefusesCrossRouteAndMethodMismatchLocally(t *testing.T) {
-	master := randPubkeyB58(t)
-	spk, metadata, releaseBytes, claims := testRelease(t, master)
-	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
-	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
-
-	requests := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		requests++
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-	opts := options{store: server.URL, timeout: time.Second}
-
-	for _, tc := range []struct {
-		name, signedTarget, postTarget string
-	}{
-		{name: "stage-envelope-to-promote", signedTarget: appStageTarget, postTarget: appPromoteTarget},
-		{name: "promote-envelope-to-stage", signedTarget: appPromoteTarget, postTarget: appStageTarget},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			signed, err := buildEnvelope(pub, op.Public(), tc.signedTarget, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, _, err := postPublish(context.Background(), opts, tc.postTarget, signed, releaseBytes, spk, metadata); err == nil {
-				t.Fatalf("POST %q accepted envelope signed for %q", tc.postTarget, tc.signedTarget)
-			}
-		})
-	}
-
-	promote, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
-	if err != nil {
-		t.Fatal(err)
-	}
-	promote.Payload.Method = http.MethodGet
-	if _, _, err := postPublish(context.Background(), opts, appPromoteTarget, promote, releaseBytes, spk, metadata); err == nil {
-		t.Fatal("POST /publish accepted an envelope whose signed method was not POST")
-	}
-	if requests != 0 {
-		t.Fatalf("purpose mismatches reached server %d time(s)", requests)
 	}
 }
 
@@ -1110,131 +1074,6 @@ func TestHostFromURL(t *testing.T) {
 // envelope, POST it (JSON wire form) to an httptest server that re-verifies the
 // envelope exactly as the C2.3 handler does and returns a real store-signed
 // receipt, then verify that receipt against a mock on-chain store_authority.
-func TestE2E_PostPublishAndVerifyReceipt(t *testing.T) {
-	master := randPubkeyB58(t)
-	spk, metadata, releaseBytes, claims := testRelease(t, master)
-
-	licenseMint := randPubkeyB58(t)
-	domain := "store.example.org"
-	op := newTestIdentity(t, "store-operator", licenseMint, domain)
-	opKey := signPub32(t, op)
-	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
-
-	servingDomainHash := primitives.StoreDomainHash(domain)
-	wantDeveloper, wantRepo, wantSlug := "hrbrlife", "melusina_botmother", "botmother"
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/publish" || r.Method != http.MethodPost {
-			http.Error(w, "not found", http.StatusNotFound)
-			return
-		}
-		// Parse EITHER the JSON wire form OR multipart/form-data, mirroring the
-		// C2.3 handler's parsePublishBody.
-		var sigIn envelope.Signed
-		if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
-			if err := r.ParseMultipartForm(32 << 20); err != nil {
-				http.Error(w, "bad multipart", http.StatusBadRequest)
-				return
-			}
-			f, _, err := r.FormFile("envelope")
-			if err != nil {
-				http.Error(w, "no envelope part", http.StatusBadRequest)
-				return
-			}
-			defer f.Close()
-			if err := json.NewDecoder(f).Decode(&sigIn); err != nil {
-				http.Error(w, "bad envelope part", http.StatusBadRequest)
-				return
-			}
-			if r.FormValue("developer") != wantDeveloper ||
-				r.FormValue("repo") != wantRepo || r.FormValue("slug") != wantSlug {
-				http.Error(w, "missing multipart slot hint", http.StatusBadRequest)
-				return
-			}
-		} else {
-			var req publishRequest
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				http.Error(w, "bad body", http.StatusBadRequest)
-				return
-			}
-			sigIn = req.Envelope
-			if req.Developer != wantDeveloper || req.Repo != wantRepo || req.Slug != wantSlug {
-				http.Error(w, "missing JSON slot hint", http.StatusBadRequest)
-				return
-			}
-		}
-		// Re-verify the envelope as the C2.3 handler does.
-		spkSum := sha256.Sum256(spk)
-		opPub := op.Public()
-		if sigIn.Payload.Method != r.Method || sigIn.Payload.Target != r.URL.Path {
-			http.Error(w, "check=envelope_purpose", http.StatusUnauthorized)
-			return
-		}
-		// Fresh nonce cache per request: the e2e reuses one signed envelope
-		// across the JSON + multipart POSTs, which a shared cache would reject as
-		// a replay. The replay path is covered by the handler's own tests.
-		if err := envelope.Verify(sigIn, envelope.VerifyOptions{
-			ExpectedKind:            envelope.KindPublishRequest,
-			ExpectedSignerPubkeyB58: pub.Public().SignPubkeyB58,
-			ExpectedDestination:     &opPub,
-			ExpectedRequestHash:     hex.EncodeToString(spkSum[:]),
-			NonceCache:              envelope.NewMemoryNonceCache(),
-		}); err != nil {
-			http.Error(w, "check=envelope: "+err.Error(), http.StatusUnauthorized)
-			return
-		}
-		// Sign and return a real provenance receipt.
-		var appHash, releaseHash [32]byte
-		ah, _ := hex.DecodeString(claims.AppHash)
-		rh, _ := hex.DecodeString(claims.ReleaseHash)
-		copy(appHash[:], ah)
-		copy(releaseHash[:], rh)
-		receipt := signReceipt(op, appHash, releaseHash, servingDomainHash)
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(receipt)
-	}))
-	defer srv.Close()
-
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, testProgramID, 999, 5*time.Minute)
-	if err != nil {
-		t.Fatalf("buildEnvelope: %v", err)
-	}
-	publishOptions := options{
-		store: srv.URL, timeout: 10 * time.Second,
-		developer: wantDeveloper, repo: wantRepo, slug: wantSlug,
-	}
-	body, status, err := postPublish(context.Background(), publishOptions, appPromoteTarget, sig, releaseBytes, spk, metadata)
-	if err != nil {
-		t.Fatalf("postPublish: %v", err)
-	}
-	if status != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", status, string(body))
-	}
-	var receipt Receipt
-	if err := json.Unmarshal(body, &receipt); err != nil {
-		t.Fatalf("decode receipt: %v", err)
-	}
-
-	m := &mockAuthzReader{byAddr: map[string]mockAuthz{}}
-	pinAuthz(t, m, licenseMint, domain, opKey)
-	if err := verifyReceipt(context.Background(), m, testProgramID, licenseMint, domain, receipt); err != nil {
-		t.Fatalf("e2e receipt verification failed: %v", err)
-	}
-	if receipt.AppHash != claims.AppHash {
-		t.Errorf("receipt appHash %s != %s", receipt.AppHash, claims.AppHash)
-	}
-
-	// Also exercise the multipart path against the same server.
-	publishOptions.useMultipart = true
-	body, status, err = postPublish(context.Background(), publishOptions, appPromoteTarget, sig, releaseBytes, spk, metadata)
-	if err != nil {
-		t.Fatalf("postPublish(multipart): %v", err)
-	}
-	if status != http.StatusOK {
-		t.Fatalf("multipart: expected 200, got %d: %s", status, string(body))
-	}
-}
-
 func TestParseFlagsRequiresCompleteSlotHint(t *testing.T) {
 	required := []string{
 		"--store", "https://store.example", "--spk", "app.spk",
@@ -1254,34 +1093,6 @@ func TestParseFlagsRequiresCompleteSlotHint(t *testing.T) {
 	}
 	if got.developer != "hrbrlife" || got.repo != "repo" || got.slug != "app" {
 		t.Fatalf("slot hint not preserved: %+v", got)
-	}
-}
-
-// TestE2E_StoreRejectionSurfacesCheck asserts a non-200 from the store is
-// surfaced as an error naming the store's failing check (exit-1 path).
-func TestE2E_StoreRejectionSurfacesCheck(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "check=app_hash: apphash(spk,metadata)=deadbeef != release.appHash=cafe", http.StatusForbidden)
-	}))
-	defer srv.Close()
-
-	master := randPubkeyB58(t)
-	spk, metadata, releaseBytes, claims := testRelease(t, master)
-	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
-	op := newTestIdentity(t, "store-operator", randPubkeyB58(t), "store.example.org")
-	sig, err := buildEnvelope(pub, op.Public(), appPromoteTarget, spk, releaseBytes, claims, testProgramID, 1, 5*time.Minute)
-	if err != nil {
-		t.Fatal(err)
-	}
-	body, status, err := postPublish(context.Background(), options{store: srv.URL, timeout: 10 * time.Second}, appPromoteTarget, sig, releaseBytes, spk, metadata)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if status != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d", status)
-	}
-	if !strings.Contains(string(body), "check=app_hash") {
-		t.Fatalf("rejection body %q does not name the failing check", string(body))
 	}
 }
 

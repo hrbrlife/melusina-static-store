@@ -219,6 +219,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
+	if err := requireServingControlMTLS(cfg); err != nil {
+		log.Fatal(err)
+	}
 	if *listenOverride != "" {
 		cfg.ListenAddr = *listenOverride
 	}
@@ -366,7 +369,7 @@ func main() {
 	}
 	log.Printf("served snapshots: %s (created=%t, mode 0700, disk-backed); at most %d bytes held at once, %d per artifact", cfg.ServedSnapshotDir, snapshotsCreated, int64(servedSnapshotBudgetBytes), int64(maxServedArtifactBytes))
 
-	publicHandler, controlHandler := newGovernedRouterSurfaces(cfg, operator, cr, mirror, catalogState, cfg.StoreLinkControlMTLS.configured())
+	publicHandler, controlHandler := newGovernedRouterSurfaces(cfg, operator, cr, mirror, catalogState, true)
 	srv := newPublicServer(cfg.ListenAddr, publicHandler)
 	log.Printf("public listener limits: read %s (the largest request body at %d bytes/s, plus %s), write %s (the largest artifact at the same rate, plus %s), idle %s, read-header %s", srv.ReadTimeout, publicTransferFloorBytesPerSecond, publicTransferSlack/2, srv.WriteTimeout, publicTransferSlack, srv.IdleTimeout, srv.ReadHeaderTimeout)
 	// The served certificate is re-read while the Store runs; a renewed pair
@@ -381,12 +384,9 @@ func main() {
 		srv.TLSConfig = servedTLS.tlsConfig()
 		go servedTLS.watch(ctxRoot, servedTLSReloadInterval)
 	}
-	var storeLinkControlServer *http.Server
-	if cfg.StoreLinkControlMTLS.configured() {
-		storeLinkControlServer, err = newStoreLinkControlServer(cfg.StoreLinkControlMTLS, controlHandler)
-		if err != nil {
-			log.Fatalf("Store Link control mTLS: %v", err)
-		}
+	storeLinkControlServer, err := newStoreLinkControlServer(cfg.StoreLinkControlMTLS, controlHandler)
+	if err != nil {
+		log.Fatalf("Store Link control mTLS: %v", err)
 	}
 
 	idleClosed := make(chan struct{})
@@ -417,12 +417,10 @@ func main() {
 		log.Printf("WARNING: listening WITHOUT TLS on %s — production stores MUST set tls.cert_path/key_path", cfg.ListenAddr)
 		serveErrors <- srv.ListenAndServe()
 	}()
-	if storeLinkControlServer != nil {
-		go func() {
-			log.Printf("listening (Store Link control mTLS) on %s", storeLinkControlServer.Addr)
-			serveErrors <- storeLinkControlServer.ListenAndServeTLS("", "")
-		}()
-	}
+	go func() {
+		log.Printf("listening (Store Link control mTLS) on %s", storeLinkControlServer.Addr)
+		serveErrors <- storeLinkControlServer.ListenAndServeTLS("", "")
+	}()
 	select {
 	case err = <-serveErrors:
 	case enrollmentErr := <-enrollmentRuntimeErrors:

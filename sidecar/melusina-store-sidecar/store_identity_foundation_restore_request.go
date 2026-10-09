@@ -147,7 +147,7 @@ func signFoundationRestoreRequest(value foundationRestoreRequestOptions) (map[st
 	if err := writeNewFoundationRestoreRequest(value.outPath, append(raw, '\n')); err != nil {
 		return nil, err
 	}
-	return map[string]any{"schema": foundationRestoreRequestSchema, "store": request.Store,
+	return map[string]any{"schema": foundationRestoreRequestSchema, "store": manifest.StoreID,
 		"role": request.Role, "sessionRecipient": request.SessionRecipient,
 		"out": value.outPath, "operatorKey": profile.Store.OperatorKey}, nil
 }

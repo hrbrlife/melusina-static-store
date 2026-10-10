@@ -172,6 +172,13 @@ func TestEndorseProductionPathBindsSignedEstateAndFinalizedEntry(t *testing.T) {
 	if err := trust.AdmitWithSignatures(entry, releaseentry.Expectation{AppHash: appHash, AppID: appID, ReleaseHash: releaseHash, Version: "1.0.0"}, []releaseentry.PublisherSignature{endorsement}); err != nil {
 		t.Fatalf("ENDORSE_PRODUCTION_PATH_SIGNATURE_ADMISSION: %v", err)
 	}
+	keyLink := filepath.Join(dir, "publisher-key-link")
+	if err := os.Symlink(keyPath, keyLink); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := keypair(keyLink); err == nil || !strings.Contains(err.Error(), "ENDORSE_SIGNER_KEY_MODE_REQUIRED") {
+		t.Fatalf("ENDORSE_SIGNER_KEY_SYMLINK_MUTATION_CONTROL: %v", err)
+	}
 
 	genesis = "another-genesis"
 	refusedOutput := filepath.Join(dir, "wrong-genesis.json")

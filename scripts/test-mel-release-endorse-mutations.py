@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prove the signed-estate genesis gate protects the real endorsement command."""
+"""Prove the signed-estate and private-key guards on the real endorsement command."""
 
 import argparse
 import json
@@ -10,8 +10,10 @@ ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / "sidecar" / "melusina-store-sidecar"
 SOURCE = MODULE / "cmd" / "mel-release-endorse" / "main.go"
 TEST = "TestEndorseProductionPathBindsSignedEstateAndFinalizedEntry"
-BEFORE = "if genesis != profile.Network.GenesisHash {"
-AFTER = "if false {"
+CONTROLS = [
+    ("signed-genesis", "if genesis != profile.Network.GenesisHash {", "if false {", "ENDORSE_SIGNED_GENESIS_MUTATION_CONTROL"),
+    ("signer-no-follow", "os.O_RDONLY|syscall.O_NOFOLLOW", "os.O_RDONLY|syscall.O_CLOEXEC", "ENDORSE_SIGNER_KEY_SYMLINK_MUTATION_CONTROL"),
+]
 
 
 def run(overlay=None):
@@ -29,21 +31,22 @@ def main():
     out = Path(parser.parse_args().output).resolve()
     out.mkdir(mode=0o700, parents=True, exist_ok=True)
     code, log = run()
-    (out / "signed-genesis.baseline.log").write_text(log)
+    (out / "baseline.log").write_text(log)
     if code != 0:
         raise SystemExit(f"positive control failed: {TEST}\n{log}")
     original = SOURCE.read_text()
-    if original.count(BEFORE) != 1:
-        raise SystemExit("signed-genesis source location changed")
-    mutated = out / "signed-genesis.go"
-    mutated.write_text(original.replace(BEFORE, AFTER))
-    overlay = out / "signed-genesis.overlay.json"
-    overlay.write_text(json.dumps({"Replace": {str(SOURCE): str(mutated)}}))
-    code, log = run(overlay)
-    (out / "signed-genesis.mutation.log").write_text(log)
-    if code == 0 or f"--- FAIL: {TEST}" not in log or "ENDORSE_SIGNED_GENESIS_MUTATION_CONTROL" not in log:
-        raise SystemExit(f"signed-genesis mutant survived or failed for another reason\n{log}")
-    print(f"MUTATION_CAUGHT signed-genesis: {TEST}: ENDORSE_SIGNED_GENESIS_MUTATION_CONTROL")
+    for name, before, after, marker in CONTROLS:
+        if original.count(before) != 1:
+            raise SystemExit(f"source location changed: {name}")
+        mutated = out / f"{name}.go"
+        mutated.write_text(original.replace(before, after))
+        overlay = out / f"{name}.overlay.json"
+        overlay.write_text(json.dumps({"Replace": {str(SOURCE): str(mutated)}}))
+        code, log = run(overlay)
+        (out / f"{name}.mutation.log").write_text(log)
+        if code == 0 or f"--- FAIL: {TEST}" not in log or marker not in log:
+            raise SystemExit(f"{name} mutant survived or failed for another reason\n{log}")
+        print(f"MUTATION_CAUGHT {name}: {TEST}: {marker}")
 
 
 if __name__ == "__main__":

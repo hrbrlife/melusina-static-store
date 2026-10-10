@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
@@ -65,16 +66,24 @@ func callRPC(client *http.Client, origin, method string, params any, target any)
 }
 
 func keypair(path string) (ed25519.PrivateKey, error) {
-	info, err := os.Stat(path)
+	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return nil, fmt.Errorf("ENDORSE_SIGNER_KEY_MODE_REQUIRED: %w", err)
+	}
+	defer file.Close()
+	info, err := file.Stat()
 	if err != nil {
 		return nil, err
 	}
 	if !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 {
 		return nil, errors.New("ENDORSE_SIGNER_KEY_MODE_REQUIRED")
 	}
-	raw, err := os.ReadFile(path)
+	raw, err := io.ReadAll(io.LimitReader(file, 4097))
 	if err != nil {
 		return nil, err
+	}
+	if len(raw) > 4096 {
+		return nil, errors.New("ENDORSE_SIGNER_KEYPAIR_INVALID")
 	}
 	var numbers []int
 	if err := json.Unmarshal(raw, &numbers); err != nil || len(numbers) != 64 {

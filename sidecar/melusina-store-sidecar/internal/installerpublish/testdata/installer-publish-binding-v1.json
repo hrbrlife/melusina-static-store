@@ -1,0 +1,212 @@
+{
+  "schema": "melusina.installer-publish-binding-vectors.v1",
+  "notes": [
+    "Golden vectors for internal/installerpublish.Preimage and Digest: the exact bytes an installer publication envelope binds as its body hash (POST /publish/installer).",
+    "preimage is Binding as compact JSON in fieldOrder, with artifactSha256 lowercased; digest is the lowercase hex SHA-256 of preimage. Neither may change without a new binding schema.",
+    "Every value is a fixture: artifact digests are sha256 of fixed 'store-test-fixture:' labels and the mints and programs are base58 of sha256 of such labels. None names anything that exists.",
+    "Consumers that recompute the binding outside this package (the deployer's firststoregeneration.InstallerPublishBindingDigest) copy this file byte for byte at their Store pin and assert every vector and refusal."
+  ],
+  "fieldOrder": [
+    "schema",
+    "method",
+    "target",
+    "purpose",
+    "class",
+    "name",
+    "artifact_sha256",
+    "store_id",
+    "store_domain",
+    "license_mint",
+    "registry_program"
+  ],
+  "vectors": [
+    {
+      "name": "generation-one-installer-member",
+      "inputs": {
+        "class": "shell",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "preimage": "{\"schema\":\"melusina.installer-publish-binding.v1\",\"method\":\"POST\",\"target\":\"/publish/installer\",\"purpose\":\"installer-artifact-publication\",\"class\":\"shell\",\"name\":\"ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz\",\"artifact_sha256\":\"ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051\",\"store_id\":\"rehearsal-root-store\",\"store_domain\":\"bazaar.rehearsal.invalid\",\"license_mint\":\"G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E\",\"registry_program\":\"CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5\"}",
+      "digest": "4a69e3b434a1336aa6be6df99b7e44df0fd25aa50671a91d1fe112053e2400d1"
+    },
+    {
+      "name": "uppercase-artifact-digest-is-lowercased",
+      "inputs": {
+        "class": "shell",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "CA918BB89309E12C94712C361BB08BF4B6F0C77CF49C8978BAF0EC134DB42051",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "preimage": "{\"schema\":\"melusina.installer-publish-binding.v1\",\"method\":\"POST\",\"target\":\"/publish/installer\",\"purpose\":\"installer-artifact-publication\",\"class\":\"shell\",\"name\":\"ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz\",\"artifact_sha256\":\"ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051\",\"store_id\":\"rehearsal-root-store\",\"store_domain\":\"bazaar.rehearsal.invalid\",\"license_mint\":\"G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E\",\"registry_program\":\"CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5\"}",
+      "digest": "4a69e3b434a1336aa6be6df99b7e44df0fd25aa50671a91d1fe112053e2400d1"
+    },
+    {
+      "name": "generation-one-shell-bundle-member",
+      "inputs": {
+        "class": "shell",
+        "name": "aef2fd1402b9e55a29d306cf54ecf57be8b645d631808ab7d9f81cec0a8cfb9d-melusina-shell-bundle-1.0.0.tar.zst",
+        "artifactSha256": "aef2fd1402b9e55a29d306cf54ecf57be8b645d631808ab7d9f81cec0a8cfb9d",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "preimage": "{\"schema\":\"melusina.installer-publish-binding.v1\",\"method\":\"POST\",\"target\":\"/publish/installer\",\"purpose\":\"installer-artifact-publication\",\"class\":\"shell\",\"name\":\"aef2fd1402b9e55a29d306cf54ecf57be8b645d631808ab7d9f81cec0a8cfb9d-melusina-shell-bundle-1.0.0.tar.zst\",\"artifact_sha256\":\"aef2fd1402b9e55a29d306cf54ecf57be8b645d631808ab7d9f81cec0a8cfb9d\",\"store_id\":\"rehearsal-root-store\",\"store_domain\":\"bazaar.rehearsal.invalid\",\"license_mint\":\"G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E\",\"registry_program\":\"CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5\"}",
+      "digest": "7aad0e8ffe6241f236b87e5da1038173817f8affc54a530147e1f3cbf2f8a157"
+    },
+    {
+      "name": "deployer-class-other-store",
+      "inputs": {
+        "class": "deployer",
+        "name": "melusina-deployer-bootstrap.tar.xz",
+        "artifactSha256": "b656c7cffad62def5591ede9c1315d7400357a78412e221cdbc699e6e09dc576",
+        "storeId": "second-fixture-store",
+        "storeDomain": "store.second-fixture.invalid",
+        "licenseMint": "EM81ZHLeEDzJhyCMQtA1SRTAbQPgyyGFLHh7EaJxk4Tx",
+        "registryProgram": "DwuLuS1g4B4D43YVY6qn6yoVMAudBZMDphmu3ACrf96m"
+      },
+      "preimage": "{\"schema\":\"melusina.installer-publish-binding.v1\",\"method\":\"POST\",\"target\":\"/publish/installer\",\"purpose\":\"installer-artifact-publication\",\"class\":\"deployer\",\"name\":\"melusina-deployer-bootstrap.tar.xz\",\"artifact_sha256\":\"b656c7cffad62def5591ede9c1315d7400357a78412e221cdbc699e6e09dc576\",\"store_id\":\"second-fixture-store\",\"store_domain\":\"store.second-fixture.invalid\",\"license_mint\":\"EM81ZHLeEDzJhyCMQtA1SRTAbQPgyyGFLHh7EaJxk4Tx\",\"registry_program\":\"DwuLuS1g4B4D43YVY6qn6yoVMAudBZMDphmu3ACrf96m\"}",
+      "digest": "65a7eee5d605009e40002e48cacd5750403b0bbe134ae24b8adf9ad66e60b2e1"
+    }
+  ],
+  "refusals": [
+    {
+      "name": "empty-class",
+      "inputs": {
+        "class": "",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "error": "installer-publish-binding: required audience or release field is empty"
+    },
+    {
+      "name": "whitespace-name",
+      "inputs": {
+        "class": "shell",
+        "name": "  ",
+        "artifactSha256": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "error": "installer-publish-binding: required audience or release field is empty"
+    },
+    {
+      "name": "empty-store-id",
+      "inputs": {
+        "class": "shell",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051",
+        "storeId": "",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "error": "installer-publish-binding: required audience or release field is empty"
+    },
+    {
+      "name": "empty-store-domain",
+      "inputs": {
+        "class": "shell",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "error": "installer-publish-binding: required audience or release field is empty"
+    },
+    {
+      "name": "empty-license-mint",
+      "inputs": {
+        "class": "shell",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "error": "installer-publish-binding: required audience or release field is empty"
+    },
+    {
+      "name": "empty-registry-program",
+      "inputs": {
+        "class": "shell",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": ""
+      },
+      "error": "installer-publish-binding: required audience or release field is empty"
+    },
+    {
+      "name": "short-artifact-digest",
+      "inputs": {
+        "class": "shell",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db420",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "error": "installer-publish-binding: artifact digest invalid"
+    },
+    {
+      "name": "long-artifact-digest",
+      "inputs": {
+        "class": "shell",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db4205100",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "error": "installer-publish-binding: artifact digest invalid"
+    },
+    {
+      "name": "non-hex-artifact-digest",
+      "inputs": {
+        "class": "shell",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "zz918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "error": "installer-publish-binding: artifact digest invalid"
+    },
+    {
+      "name": "empty-artifact-digest",
+      "inputs": {
+        "class": "shell",
+        "name": "ca918bb89309e12c94712c361bb08bf4b6f0c77cf49c8978baf0ec134db42051-melusina-installer-1.0.0.tar.xz",
+        "artifactSha256": "",
+        "storeId": "rehearsal-root-store",
+        "storeDomain": "bazaar.rehearsal.invalid",
+        "licenseMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "registryProgram": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5"
+      },
+      "error": "installer-publish-binding: artifact digest invalid"
+    }
+  ]
+}

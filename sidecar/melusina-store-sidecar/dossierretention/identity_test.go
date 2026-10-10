@@ -9,7 +9,10 @@ import (
 )
 
 func TestStorageSourceIdentitiesPersistAndRefuseBroadCustody(t *testing.T) {
-	dir := t.TempDir()
+	dir := filepath.Join(t.TempDir(), "private")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
 	native, nativePublic, nativeID, err := LoadOrCreateIdentity(dir, "native")
 	if err != nil {
 		t.Fatal(err)

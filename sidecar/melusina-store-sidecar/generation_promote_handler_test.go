@@ -405,7 +405,7 @@ func TestGenerationPromoteEnvelopeRestartReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	restarted := *svc
+	restarted := restartPublishServiceForTest(svc)
 	restarted.appNonces = reopened
 	replay := httptest.NewRecorder()
 	restarted.handleGeneratePromote(replay, httptest.NewRequest(http.MethodPost, "/publish/generation", bytes.NewReader(body)))

@@ -361,6 +361,10 @@
       "reason": "Tracked dotted filename or identifier in src/main[.]jsx:1126; reviewed as source material, not an estate endpoint."
     },
     {
+      "host": "build-evidence-pack-custody-bundle.py",
+      "reason": "Python producer filename in a source test; not an estate endpoint."
+    },
+    {
       "host": "build-from-source.sh",
       "reason": "Tracked dotted filename or identifier in scripts/test-self-publish-contract[.]sh:15; reviewed as source material, not an estate endpoint."
     },
@@ -825,6 +829,10 @@
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/coordinator[.]go; reviewed as outside the estate origin."
     },
     {
+      "host": "desc.name",
+      "reason": "Go test descriptor field selector; not a DNS endpoint."
+    },
+    {
       "host": "description.md",
       "reason": "Tracked dotted filename or identifier in KEEP - COMPONENTS FOR APPS[.]md:124; reviewed as source material, not an estate endpoint."
     },
@@ -871,6 +879,10 @@
     {
       "host": "dir.name",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/host_apply_issue[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "dir.open",
+      "reason": "Go os.Root method selector for the pinned TLS pair reader; not a DNS endpoint."
     },
     {
       "host": "doc.channel",
@@ -1193,6 +1205,10 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/identity_escrow_test[.]go; it is not an estate endpoint."
     },
     {
+      "host": "f.rpc.total",
+      "reason": "Go test counter field selector; not a DNS endpoint."
+    },
+    {
       "host": "f.run",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/melusina-update-controller/installer_gate_test[.]go; it is not an estate endpoint."
     },
@@ -1295,6 +1311,10 @@
     {
       "host": "fixture.governance.runner.vote",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/estateprofile/campaign_c1_d14_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "flag.int",
+      "reason": "Go flag constructor selector in the custody daemon; not a DNS endpoint."
     },
     {
       "host": "flavor.name",
@@ -1615,6 +1635,10 @@
     {
       "host": "in.host",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/public_leaf_renew[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "in.name",
+      "reason": "Go test input field selector; not a DNS endpoint."
     },
     {
       "host": "in.read",
@@ -2201,6 +2225,10 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/hostupdate/fetch_test[.]go; it is not an estate endpoint."
     },
     {
+      "host": "other.estate.invalid",
+      "reason": "Synthetic cross-estate RPC host in a refusal test; not a deployed endpoint."
+    },
+    {
       "host": "other.example.org",
       "reason": "Tracked test, fixture, or documentation text in scripts/test-store-script-estate-bindings[.]py; it is not an estate endpoint."
     },
@@ -2215,6 +2243,10 @@
     {
       "host": "other.test",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/control_mtls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "othertarget.payload.target",
+      "reason": "Go test field selector; not a DNS endpoint."
     },
     {
       "host": "out.name",
@@ -2279,6 +2311,10 @@
     {
       "host": "package.open",
       "reason": "Tracked external endpoint or dotted identifier in scripts/generate-app-icon-lock[.]py; reviewed as outside the estate origin."
+    },
+    {
+      "host": "packcustody.open",
+      "reason": "Go package function selector in the custody daemon; not a DNS endpoint."
     },
     {
       "host": "page.keyboard.press",
@@ -2383,6 +2419,10 @@
     {
       "host": "pkix.name",
       "reason": "Tracked test, fixture, or documentation text in sidecar/bazaar-store-link/worker_mtls_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "plain.total",
+      "reason": "Go test counter field selector; not a DNS endpoint."
     },
     {
       "host": "plant.py",
@@ -2515,6 +2555,10 @@
     {
       "host": "publish.sh",
       "reason": "Tracked dotted filename or identifier in scripts/test-domain-literals[.]py:10; reviewed as source material, not an estate endpoint."
+    },
+    {
+      "host": "publisher.binding-test.invalid",
+      "reason": "Synthetic publisher host in the installer binding test; not a deployed endpoint."
     },
     {
       "host": "publisher.example",
@@ -2693,6 +2737,10 @@
       "reason": "Tracked third-party or runtime material in sidecar/melusina-store-sidecar/vendor/github[.]com/hrbrlife/melusina-identity-gate/bundle/dane[.]go; it is not an estate endpoint."
     },
     {
+      "host": "recipients.author",
+      "reason": "Go test map field selector; not a DNS endpoint."
+    },
+    {
       "host": "record.job.id",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/releasefinalizer/repository[.]go; reviewed as outside the estate origin."
     },
@@ -2775,6 +2823,10 @@
     {
       "host": "report.md",
       "reason": "Tracked dotted filename or identifier in fleet/work/ceremony-5apps/brief[.]md:84; reviewed as source material, not an estate endpoint."
+    },
+    {
+      "host": "report.name",
+      "reason": "Go test report field selector; not a DNS endpoint."
     },
     {
       "host": "report.target",
@@ -2899,6 +2951,14 @@
     {
       "host": "rpc-second-fallback.invalid",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/campaign_d41_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "rpc.client.do",
+      "reason": "Go RPC client method selector; not a DNS endpoint."
+    },
+    {
+      "host": "rpc.estate.invalid",
+      "reason": "Synthetic estate RPC host in a refusal test; not a deployed endpoint."
     },
     {
       "host": "rpc.example",
@@ -3027,6 +3087,10 @@
     {
       "host": "s.pin",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/served_tls[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "s.read",
+      "reason": "Go custody receiver method selector; not a DNS endpoint."
     },
     {
       "host": "s.run",
@@ -3337,6 +3401,10 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/scripts/test-mel-release-provider[.]sh; it is not an estate endpoint."
     },
     {
+      "host": "store.read",
+      "reason": "Go custody test receiver method selector; not a DNS endpoint."
+    },
+    {
       "host": "store.recovery.test",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/identity_escrow_test[.]go; it is not an estate endpoint."
     },
@@ -3351,6 +3419,10 @@
     {
       "host": "store.rootdomain",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/README[.]md; it is not an estate endpoint."
+    },
+    {
+      "host": "store.second-fixture.invalid",
+      "reason": "Synthetic second Store host in a signed binding vector; not a deployed endpoint."
     },
     {
       "host": "store.sidecar.host",

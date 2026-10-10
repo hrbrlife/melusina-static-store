@@ -122,9 +122,9 @@ func TestInstallerPublishExactBindingAndRestartReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	restarted := *svc
+	restarted := restartPublishServiceForTest(svc)
 	restarted.appNonces = reopened
-	replay := doPublishInstaller(t, &restarted, jsonInstallerPublishBody(t, signed, "shell", "sandstorm-42.tar.xz", artifact))
+	replay := doPublishInstaller(t, restarted, jsonInstallerPublishBody(t, signed, "shell", "sandstorm-42.tar.xz", artifact))
 	if replay.Code != http.StatusUnauthorized || !strings.Contains(replay.Body.String(), "nonce_ledger") {
 		t.Fatalf("installer-publish-restart-replay: status=%d body=%s", replay.Code, replay.Body.String())
 	}

@@ -171,9 +171,9 @@ func TestInstallerCLIWithLocalValidatorEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	restarted := *svc
+	restarted := restartPublishServiceForTest(svc)
 	restarted.appNonces = reopened
-	after := httptest.NewServer(newPublicRouterWithService(restarted.cfg, op, chain, nil, catalogRuntime{}, &restarted, false))
+	after := httptest.NewServer(newPublicRouterWithService(restarted.cfg, op, chain, nil, catalogRuntime{}, restarted, false))
 	defer after.Close()
 	response, err := http.Get(after.URL + "/releases/" + class + "/" + name)
 	if err != nil {

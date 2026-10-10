@@ -173,6 +173,57 @@ func TestMultisigAcceptsOnlyCanonicalUnsetRentCollectorPadding(t *testing.T) {
 	}
 }
 
+func TestMultisigZeroMemberCapacityPaddingAndNamedMutations(t *testing.T) {
+	_, programID, multisig, _, _ := fixtureAccounts(t)
+	// A real four-member multisigCreateV2 account on the disposable validator
+	// allocated 561 bytes: 232 serialized bytes plus 32 reserved rent-collector
+	// bytes and nine reserved 33-byte Member slots. The SDK deserializes at 232.
+	const reservedMemberSlots = 9
+	canonical := multisig
+	canonical.Data = append(append([]byte(nil), multisig.Data...), make([]byte, 32+reservedMemberSlots*33)...)
+	if _, err := ParseMultisig(canonical, programID); err != nil {
+		t.Fatalf("SQUADS_MEMBER_CAPACITY_POSITIVE: real allocation rejected: %v", err)
+	}
+
+	nonzero := canonical
+	nonzero.Data = append([]byte(nil), canonical.Data...)
+	nonzero.Data[len(nonzero.Data)-1] = 1
+	if _, err := ParseMultisig(nonzero, programID); err == nil || !strings.Contains(err.Error(), "nonzero member allocation padding") {
+		t.Fatalf("SQUADS_MEMBER_CAPACITY_NONZERO_REFUSED: %v", err)
+	}
+
+	wrongLength := multisig
+	wrongLength.Data = append(append([]byte(nil), multisig.Data...), make([]byte, 31+reservedMemberSlots*33)...)
+	if _, err := ParseMultisig(wrongLength, programID); err == nil || !strings.Contains(err.Error(), "trailing") {
+		t.Fatalf("SQUADS_MEMBER_CAPACITY_LENGTH_REFUSED: %v", err)
+	}
+}
+
+func TestProposalZeroVoteCapacityPaddingAndNamedMutations(t *testing.T) {
+	_, programID, _, proposal, _ := fixtureAccounts(t)
+	// The disposable validator's real executed proposal allocated 454 bytes.
+	// Its SDK Borsh decoder consumed 166; the remaining nine voter slots are
+	// zero, and cannot supply a vote outside the three serialized vectors.
+	canonical := proposal
+	canonical.Data = append(append([]byte(nil), proposal.Data...), make([]byte, 9*32)...)
+	if _, err := ParseProposal(canonical, programID); err != nil {
+		t.Fatalf("SQUADS_VOTE_CAPACITY_POSITIVE: real allocation rejected: %v", err)
+	}
+
+	nonzero := canonical
+	nonzero.Data = append([]byte(nil), canonical.Data...)
+	nonzero.Data[len(nonzero.Data)-1] = 1
+	if _, err := ParseProposal(nonzero, programID); err == nil || !strings.Contains(err.Error(), "nonzero vote allocation padding") {
+		t.Fatalf("SQUADS_VOTE_CAPACITY_NONZERO_REFUSED: %v", err)
+	}
+
+	wrongLength := proposal
+	wrongLength.Data = append(append([]byte(nil), proposal.Data...), make([]byte, 9*32-1)...)
+	if _, err := ParseProposal(wrongLength, programID); err == nil || !strings.Contains(err.Error(), "trailing") {
+		t.Fatalf("SQUADS_VOTE_CAPACITY_LENGTH_REFUSED: %v", err)
+	}
+}
+
 // The expected addresses and bumps in this test were emitted by the installed
 // @sqds/multisig v2.1.4 SDK's get*Pda helpers.  This keeps the Go helpers tied
 // to the actual JS client that creates the production Squads accounts.

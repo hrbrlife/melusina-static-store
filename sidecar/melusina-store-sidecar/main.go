@@ -174,6 +174,14 @@ func main() {
 		runStoreIdentityEscrowSealSubcommand(os.Args[2:])
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "store-identity-foundation-escrow-seal" {
+		runStoreIdentityFoundationEscrowSealSubcommand(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "store-identity-foundation-restore-request" {
+		runStoreIdentityFoundationRestoreRequestSubcommand(os.Args[2:])
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "store-recovery-keygen" {
 		runStoreRecoveryKeygenSubcommand(os.Args[2:])
 		return

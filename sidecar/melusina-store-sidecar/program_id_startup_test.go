@@ -113,16 +113,18 @@ func TestStoreStartupRefusesConfigWithoutLicenseRegistryProgramID(t *testing.T) 
 // chain state and therefore pin no registry. Each is an offline document
 // check or renderer; a registry read from one would panic by name.
 var registryFreeStoreSubcommands = map[string]string{
-	"estate-profile-check":         "offline profile/config comparison",
-	"estate-store-config-render":   "offline profile-bound config renderer",
-	"estate-profile-review":        "offline signed-profile review",
-	"store-state-verify":           "offline store-state stream verification",
-	"store-recovery-keygen":        "offline recovery key generation",
-	"store-identity-escrow-reseal": "a holder's offline reseal of one escrowed shard",
-	"genesis-dist-init":            "offline producer of the empty first-install dist snapshot",
-	"provider-pairing-attest":      "client of the local provider pairing signer socket; reads no chain state",
-	"public-leaf-renew":            "renews the public TLS leaf through the estate ACME responder; reads no chain state",
-	"verify-public":                "outside-in public-route probe; reads no chain state",
+	"estate-profile-check":                      "offline profile/config comparison",
+	"estate-store-config-render":                "offline profile-bound config renderer",
+	"estate-profile-review":                     "offline signed-profile review",
+	"store-state-verify":                        "offline store-state stream verification",
+	"store-recovery-keygen":                     "offline recovery key generation",
+	"store-identity-foundation-escrow-seal":     "offline signed-profile foundation escrow sealing",
+	"store-identity-foundation-restore-request": "offline signed-profile foundation holder request signing",
+	"store-identity-escrow-reseal":              "a holder's offline reseal of one escrowed shard",
+	"genesis-dist-init":                         "offline producer of the empty first-install dist snapshot",
+	"provider-pairing-attest":                   "client of the local provider pairing signer socket; reads no chain state",
+	"public-leaf-renew":                         "renews the public TLS leaf through the estate ACME responder; reads no chain state",
+	"verify-public":                             "outside-in public-route probe; reads no chain state",
 }
 
 // storeMainSubcommands derives the dispatched subcommands from main() itself,

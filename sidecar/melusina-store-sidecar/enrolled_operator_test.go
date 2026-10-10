@@ -34,28 +34,30 @@ import (
 const enrollmentVerifiedLog = "estate enrollment verified: "
 
 // enrollmentExemptStoreSubcommands are the dispatched subcommands that do not
-// act with this Store's operator or release authority under an existing
-// enrollment. Each either derives no operator at all or is the enrollment
-// ceremony that creates or advances the state the gate verifies, and so cannot
-// require it (TestOnlyTheEnrollmentGateAndCeremonyDeriveABootIdentity names
-// the ceremony functions that may derive a boot identity without the gate).
+// act under an existing enrollment. They derive no operator, perform the
+// enrollment ceremony, or carry a foundation identity before enrollment
+// under a verified owner-signed estate profile and the exact original shards.
+// TestOnlyTheEnrollmentGateAndCeremonyDeriveABootIdentity names the
+// permitted pre-enrollment identity producers.
 var enrollmentExemptStoreSubcommands = map[string]string{
-	"estate-profile-check":                "offline profile/config comparison; derives no operator",
-	"estate-store-config-render":          "offline profile-bound config renderer; derives no operator",
-	"estate-profile-review":               "offline signed-profile review; derives no operator",
-	"estate-enrollment-request":           "emits the unsigned candidate the owners sign; precedes any enrollment state",
-	"estate-enroll":                       "the one writer of the initial enrollment state the gate verifies",
-	"estate-enrollment-successor-request": "verifies the held enrollment itself and emits its successor candidate",
-	"estate-enroll-successor":             "verifies the held enrollment itself and replaces it with its successor",
-	"store-state-verify":                  "offline check of a store-state stream against an explicit operator key; derives no operator",
-	"store-state-import":                  "restores a stream signed by an explicit operator key onto empty roots; derives no operator, and the restored Store passes this gate at startup",
-	"store-recovery-keygen":               "generates a holder or restore session key; reads no Store state",
-	"store-identity-escrow-reseal":        "a holder's offline step on its own escrowed shard; reads no Store state",
-	"store-identity-restore":              "rebuilds the shards on a replacement host and proves them against an explicit operator key; acts with no release authority, and the restored Store passes this gate at startup",
-	"genesis-dist-init":                   "creates the empty first-install dist snapshot before enrollment exists; derives no operator and reads no chain state",
-	"provider-pairing-attest":             "client of the provider pairing signer socket; derives no operator and verifies the returned attestation against -expect-keyid",
-	"public-leaf-renew":                   "renews the public TLS leaf through the estate ACME responder; derives no operator and writes no chain or enrollment state",
-	"verify-public":                       "outside-in public-route probe; derives no operator and writes nothing",
+	"estate-profile-check":                      "offline profile/config comparison; derives no operator",
+	"estate-store-config-render":                "offline profile-bound config renderer; derives no operator",
+	"estate-profile-review":                     "offline signed-profile review; derives no operator",
+	"estate-enrollment-request":                 "emits the unsigned candidate the owners sign; precedes any enrollment state",
+	"estate-enroll":                             "the one writer of the initial enrollment state the gate verifies",
+	"estate-enrollment-successor-request":       "verifies the held enrollment itself and emits its successor candidate",
+	"estate-enroll-successor":                   "verifies the held enrollment itself and replaces it with its successor",
+	"store-state-verify":                        "offline check of a store-state stream against an explicit operator key; derives no operator",
+	"store-state-import":                        "restores a stream signed by an explicit operator key onto empty roots; derives no operator, and the restored Store passes this gate at startup",
+	"store-recovery-keygen":                     "generates a holder or restore session key; reads no Store state",
+	"store-identity-foundation-escrow-seal":     "pre-enrollment foundation only: verifies the owner-signed profile and derives its exact operator from original private shards before sealing",
+	"store-identity-foundation-restore-request": "pre-enrollment foundation only: verifies the owner-signed profile and original private shards before signing a one-time holder request",
+	"store-identity-escrow-reseal":              "a holder's offline step on its own escrowed shard; reads no Store state",
+	"store-identity-restore":                    "rebuilds the shards on a replacement host and proves them against an explicit operator key; acts with no release authority, and the restored Store passes this gate at startup",
+	"genesis-dist-init":                         "creates the empty first-install dist snapshot before enrollment exists; derives no operator and reads no chain state",
+	"provider-pairing-attest":                   "client of the provider pairing signer socket; derives no operator and verifies the returned attestation against -expect-keyid",
+	"public-leaf-renew":                         "renews the public TLS leaf through the estate ACME responder; derives no operator and writes no chain or enrollment state",
+	"verify-public":                             "outside-in public-route probe; derives no operator and writes nothing",
 }
 
 // enrollmentGatedEntryPoint is one process entry point that acts with this

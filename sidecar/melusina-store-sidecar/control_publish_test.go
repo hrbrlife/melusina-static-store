@@ -176,10 +176,12 @@ func TestControlPublishRunsTheOrdinaryGateOnlyAfterExactGrantCommand(t *testing.
 	clock := time.Now().UTC().Add(time.Second).Truncate(time.Millisecond)
 	svc.now = func() time.Time { return clock }
 	publisherRef := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org").Public().Ref
-	var publisherSignSeed, publisherBoxSeed [32]byte
-	if _, err := rand.Read(publisherSignSeed[:]); err != nil {
-		t.Fatal(err)
-	}
+	// The serving Store accepts only signers its signed estate profile names
+	// (requireAcceptPublishersNamedByProfile), so this publisher is release
+	// publisher 1 of the fixture profile; its key is derived from a fixed
+	// label and holds no authority anywhere.
+	publisherSignSeed := sha256.Sum256([]byte("melusina-estate-profile-vector-key:rehearsal/publisher-1"))
+	var publisherBoxSeed [32]byte
 	if _, err := rand.Read(publisherBoxSeed[:]); err != nil {
 		t.Fatal(err)
 	}

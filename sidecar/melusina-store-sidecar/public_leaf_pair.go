@@ -180,6 +180,11 @@ func readPublishedPublicLeafPairWithHook(certPath, keyPath string, betweenReads 
 	if err != nil || info.Mode()&os.ModeSymlink == 0 {
 		return nil, nil, fmt.Errorf("%s: current must be one symlink: %v", publicLeafPairLayoutRefused, err)
 	}
+	target, err := os.Readlink(link)
+	if err != nil || filepath.Clean(target) != target || filepath.Dir(target) != "versions" ||
+		!strings.HasPrefix(filepath.Base(target), "v-") {
+		return nil, nil, fmt.Errorf("%s: current must target a version directory: %q: %v", publicLeafPairLayoutRefused, target, err)
+	}
 	dir, err := os.OpenRoot(link)
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", servedTLSReadFailed, err)

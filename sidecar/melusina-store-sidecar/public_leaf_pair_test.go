@@ -224,4 +224,15 @@ func TestPublicLeafPairRenewalRefusesOrdinaryAndSplitPathsByName(t *testing.T) {
 		!strings.HasPrefix(err.Error(), publicLeafPairLayoutRefused) {
 		t.Fatalf("PUBLIC_LEAF_PAIR_LOADER_ACCEPTED_REAL_DIRECTORY: %v", err)
 	}
+	linkRoot, linkCert, linkKey := testPublicLeafPairPaths(t)
+	if err := os.Mkdir(filepath.Join(linkRoot, "outside"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("outside", filepath.Join(linkRoot, "current")); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := readServedTLSFiles(linkCert, linkKey); err == nil ||
+		!strings.HasPrefix(err.Error(), publicLeafPairLayoutRefused) {
+		t.Fatalf("PUBLIC_LEAF_PAIR_LOADER_ACCEPTED_FOREIGN_TARGET: %v", err)
+	}
 }

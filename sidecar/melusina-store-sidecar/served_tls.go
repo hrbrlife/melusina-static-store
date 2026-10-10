@@ -7,7 +7,10 @@ package main
 // restart. The listener now takes its certificate from servedTLSCertificate.
 // It re-reads both files every servedTLSReloadInterval and replaces the
 // certificate it gives new handshakes only when the new pair passes the same
-// validation as the start-up load. Each refusal has a name:
+// validation as the start-up load. For a public leaf, both paths are beneath
+// one current symlink, opened once as a directory for each load. At startup,
+// complete matching versions are scanned newest first and current is repaired
+// before the listener starts. Each refusal has a name:
 //
 //   - tls.cert_path holds at least one CERTIFICATE block, and every block
 //     parses (served-tls-chain-empty, served-tls-chain-unparsable:<i>);
@@ -101,6 +104,26 @@ func newServedTLSCertificate(cfg Config, bound *verifiedBootIdentity, now func()
 	if cfg.TLS.CertPath == "" || cfg.TLS.KeyPath == "" {
 		return nil, errors.New("served TLS certificate needs both tls.cert_path and tls.key_path")
 	}
+	_, paired, err := publicLeafPairRoot(cfg.TLS.CertPath, cfg.TLS.KeyPath)
+	if err != nil {
+		return nil, err
+	}
+	if paired {
+		if bound != nil {
+			identityPath := bootIdentityTLSCertPath(cfg)
+			if filepath.Clean(identityPath) == filepath.Clean(cfg.TLS.CertPath) {
+				return nil, fmt.Errorf("%s: the rotating public leaf is the bound boot identity", servedTLSIdentityPinned)
+			}
+			identityInfo, identityErr := os.Stat(identityPath)
+			servedInfo, servedErr := os.Stat(cfg.TLS.CertPath)
+			if identityErr == nil && servedErr == nil && os.SameFile(identityInfo, servedInfo) {
+				return nil, fmt.Errorf("%s: the rotating public leaf aliases the bound boot identity", servedTLSIdentityPinned)
+			}
+		}
+		if err := recoverPublicLeafPair(cfg.TLS.CertPath, cfg.TLS.KeyPath, now(), logf); err != nil {
+			return nil, err
+		}
+	}
 	pin, err := servedTLSIdentityPinFor(cfg, bound)
 	if err != nil {
 		return nil, err
@@ -154,6 +177,13 @@ func servedTLSIdentityPinFor(cfg Config, bound *verifiedBootIdentity) (*servedTL
 }
 
 func readServedTLSFiles(certPath, keyPath string) ([]byte, []byte, error) {
+	_, paired, err := publicLeafPairRoot(certPath, keyPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	if paired {
+		return readPublishedPublicLeafPair(certPath, keyPath)
+	}
 	certPEM, err := os.ReadFile(certPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", servedTLSReadFailed, err)

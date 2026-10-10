@@ -12,7 +12,7 @@ package main
 //
 //   - public-leaf-renew: an explicit subcommand that asks the estate's root
 //     ACME responder (deploy-ui internal/acmeresponder, POST /v1/new-leaf)
-//     for a fresh public leaf and publishes it atomically at the tls paths.
+//     for a fresh public leaf and publishes its pair through one symlink.
 //     The Store generates the leaf's private key itself and sends only a CSR
 //     for exactly its domain, signed with the Store's own Ed25519 challenge
 //     delegation key, which the owner-signed provider edge profile pins as the
@@ -292,10 +292,14 @@ func renewPublicLeafLoop(opts publicLeafRenewalOptions) error {
 // publicLeafRenewalDue is true when the published pair is unreadable or does
 // not match, names another host, or has less than a third of its lifetime left.
 func publicLeafRenewalDue(certPath, keyPath, domain string, now time.Time) bool {
-	if _, err := tls.LoadX509KeyPair(certPath, keyPath); err != nil {
+	certPEM, keyPEM, err := readServedTLSFiles(certPath, keyPath)
+	if err != nil {
 		return true
 	}
-	leaf, err := parsePublicLeafCertFile(certPath)
+	if _, err := tls.X509KeyPair(certPEM, keyPEM); err != nil {
+		return true
+	}
+	leaf, err := parsePublicLeafCert(certPEM)
 	if err != nil || leaf.VerifyHostname(domain) != nil {
 		return true
 	}
@@ -385,7 +389,7 @@ func renewPublicLeaf(opts publicLeafRenewalOptions, client *http.Client) (time.T
 	if _, err := tls.X509KeyPair([]byte(leafResponse.ChainPEM), keyPEM); err != nil {
 		return time.Time{}, fmt.Errorf("%s: %v", publicLeafRenewTLSDiver, err)
 	}
-	if err := writePublicLeafPair(opts.certPath, opts.keyPath, []byte(leafResponse.ChainPEM), keyPEM); err != nil {
+	if err := publishPublicLeafPair(opts.certPath, opts.keyPath, []byte(leafResponse.ChainPEM), keyPEM); err != nil {
 		return time.Time{}, err
 	}
 	return leaf.NotAfter, nil
@@ -463,47 +467,6 @@ func loadPublicLeafDelegationKey(path string) (ed25519.PrivateKey, error) {
 	key := ed25519.NewKeyFromSeed(seed)
 	clear(seed)
 	return key, nil
-}
-
-// writePublicLeafPair replaces each file atomically, key first and then cert.
-// The pair is not atomic as a unit: a failure or crash between the renames
-// can leave mismatched files. The running Store's watcher rejects that pair
-// and keeps serving its previous in-memory certificate.
-func writePublicLeafPair(certPath, keyPath string, certPEM, keyPEM []byte) error {
-	if err := writeAtomicFile(keyPath, keyPEM, 0o600); err != nil {
-		return fmt.Errorf("public-leaf-renew-write-key: %w", err)
-	}
-	if err := writeAtomicFile(certPath, certPEM, 0o644); err != nil {
-		return fmt.Errorf("public-leaf-renew-write-cert: %w", err)
-	}
-	return nil
-}
-
-func writeAtomicFile(path string, content []byte, mode os.FileMode) error {
-	temporary := path + ".renew-tmp"
-	file, err := os.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
-	if err != nil {
-		return err
-	}
-	if _, err := file.Write(content); err != nil {
-		file.Close()
-		os.Remove(temporary)
-		return err
-	}
-	if err := file.Sync(); err != nil {
-		file.Close()
-		os.Remove(temporary)
-		return err
-	}
-	if err := file.Close(); err != nil {
-		os.Remove(temporary)
-		return err
-	}
-	if err := os.Rename(temporary, path); err != nil {
-		os.Remove(temporary)
-		return err
-	}
-	return nil
 }
 
 // runStoreHostVerifyPublicSubcommand is the --store-host=verify-public mode:
@@ -736,6 +699,10 @@ func parsePublicLeafCertFile(path string) (*x509.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parsePublicLeafCert(raw)
+}
+
+func parsePublicLeafCert(raw []byte) (*x509.Certificate, error) {
 	for len(raw) > 0 {
 		block, rest := pem.Decode(raw)
 		if block == nil {
@@ -746,5 +713,5 @@ func parsePublicLeafCertFile(path string) (*x509.Certificate, error) {
 		}
 		raw = rest
 	}
-	return nil, fmt.Errorf("no certificate leaf in %s", path)
+	return nil, fmt.Errorf("no certificate leaf in public leaf PEM")
 }

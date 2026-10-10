@@ -237,12 +237,19 @@ func TestRunRefusesAnotherEstatesStateBeforeTheProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// The estate RPC must serve the signed profile's genesis before any
+	// provider call (estate_chain.go); this one serves the new estate's.
+	genesisServer, _ := genesisRPC(t, vectorBinding(t, newEstateVector).GenesisHash)
+	previousClient := rpcGenesisClient
+	rpcGenesisClient = genesisServer.Client()
+	t.Cleanup(func() { rpcGenesisClient = previousClient })
+	rpcURL := genesisServer.URL
 	runWith := func(state string, args ...string) error {
 		setNewEstateReleaseEnv(t)
 		t.Setenv("MEL_RELEASE_CONFIG", catalogPath)
 		t.Setenv("MEL_RELEASE_SIGNER_PROVIDER", provider)
 		t.Setenv("MEL_RELEASE_STATE_DIR", state)
-		t.Setenv("MEL_RELEASE_RPC_URL", "https://rpc.invalid")
+		t.Setenv("MEL_RELEASE_RPC_URL", rpcURL)
 		return run(args)
 	}
 	for name, tc := range map[string]struct{ state, want string }{
@@ -275,6 +282,18 @@ func TestRunRefusesAnotherEstatesStateBeforeTheProvider(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(fresh, stateEstateName)); err != nil {
 		t.Fatalf("control: fresh state directory not stamped: %v", err)
+	}
+
+	// Named negative: an RPC serving another estate's genesis stops run()
+	// before the provider is reached.
+	foreignRPC, _ := genesisRPC(t, vectorBinding(t, "paype-devnet-revision-1").GenesisHash)
+	rpcGenesisClient = foreignRPC.Client()
+	rpcURL = foreignRPC.URL
+	if err := runWith(filepath.Join(dir, "fresh-state-foreign-rpc"), "preflight", "--app", testAppID, "--version", "1.0.2"); err == nil || !strings.Contains(err.Error(), refusalRPCGenesisDiffers) {
+		t.Fatalf("an RPC serving another genesis was not refused by name: %v", err)
+	}
+	if raw, err := os.ReadFile(calls); err != nil || strings.TrimSpace(string(raw)) != "build" {
+		t.Fatalf("the provider ran behind an RPC serving another genesis: %q, %v", raw, err)
 	}
 }
 

@@ -63,6 +63,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -120,6 +121,13 @@ func run(args []string) error {
 	// state_estate.go); every subcommand below reads or writes it.
 	if err := cfg.bindStateDir(); err != nil {
 		return err
+	}
+	// The chain is the signed profile's network: every provider-backed
+	// subcommand proves its RPC serves that genesis first (estate_chain.go).
+	if subcommandReadsChain(sub) {
+		if err := requireEstateRPCGenesis(context.Background(), cfg.RPCURL, cfg.estate, rpcGenesisClient); err != nil {
+			return fmt.Errorf("MEL_RELEASE_RPC_URL: %w", err)
+		}
 	}
 
 	switch sub {

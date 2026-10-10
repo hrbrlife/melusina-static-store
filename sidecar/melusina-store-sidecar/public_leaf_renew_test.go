@@ -208,6 +208,30 @@ func TestPublicLeafRenewalRefusesByName(t *testing.T) {
 	}
 }
 
+func TestPublicLeafRenewalIsDueOnlyInTheLastThird(t *testing.T) {
+	fixture := newPublicLeafResponderFixture(t)
+	opts := fixture.options(t)
+	if !publicLeafRenewalDue(opts.certPath, testPublicLeafDomain, time.Now()) {
+		t.Fatal("an absent public leaf was not due")
+	}
+	if _, err := fixture.renew(opts); err != nil {
+		t.Fatal(err)
+	}
+	leaf, err := parsePublicLeafCertFile(opts.certPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if publicLeafRenewalDue(opts.certPath, testPublicLeafDomain, leaf.NotBefore.Add(time.Minute)) {
+		t.Fatal("PUBLIC_LEAF_RENEWED_EARLY: a fresh leaf was due, spending the CA budget every interval")
+	}
+	if !publicLeafRenewalDue(opts.certPath, testPublicLeafDomain, leaf.NotAfter.Add(-time.Minute)) {
+		t.Fatal("a leaf in its last third was not due")
+	}
+	if !publicLeafRenewalDue(opts.certPath, "other.example.test", leaf.NotBefore.Add(time.Minute)) {
+		t.Fatal("a leaf for another host was not due")
+	}
+}
+
 // TestPublicLeafRequestBytesAreTheResponderContract pins the exact signed
 // bytes. deploy-ui internal/acmeresponder TestLeafCanonicalBytesAreTheStoreContract
 // asserts the same literal, so either side drifting fails by this name.

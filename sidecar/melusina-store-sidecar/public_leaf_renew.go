@@ -266,22 +266,38 @@ func publicLeafResponderClient(responderURL, pin string) *http.Client {
 	}}
 }
 
-// renewPublicLeafLoop renews once, then (unless --once) keeps renewing on the
-// interval. Each renewal publishes the pair atomically; the running Store's
-// served TLS watcher reloads it without a restart.
+// renewPublicLeafLoop renews once (--once), or checks on the interval and
+// renews only when the published leaf is absent, for another name, or in the
+// last third of its lifetime: every order spends the responder's daily leaf
+// budget and the estate's production CA budget. Each renewal publishes the
+// pair atomically; the running Store's served TLS watcher reloads it without
+// a restart.
 func renewPublicLeafLoop(opts publicLeafRenewalOptions) error {
 	client := publicLeafResponderClient(opts.responderURL, opts.responderSPKI)
 	for {
-		notAfter, err := renewPublicLeaf(opts, client)
-		if err != nil {
-			return err
+		if opts.once || publicLeafRenewalDue(opts.certPath, opts.domain, time.Now()) {
+			notAfter, err := renewPublicLeaf(opts, client)
+			if err != nil {
+				return err
+			}
+			log.Printf("public-leaf-renew: published public leaf for %s, not after %s; the running Store reloads it from %s", opts.domain, notAfter.UTC().Format(time.RFC3339), opts.certPath)
 		}
-		log.Printf("public-leaf-renew: published public leaf for %s, not after %s; the running Store reloads it from %s", opts.domain, notAfter.UTC().Format(time.RFC3339), opts.certPath)
 		if opts.once {
 			return nil
 		}
 		time.Sleep(opts.interval)
 	}
+}
+
+// publicLeafRenewalDue is true when the published public leaf is unreadable,
+// names another host, or has less than a third of its lifetime left.
+func publicLeafRenewalDue(certPath, domain string, now time.Time) bool {
+	leaf, err := parsePublicLeafCertFile(certPath)
+	if err != nil || leaf.VerifyHostname(domain) != nil {
+		return true
+	}
+	lifetime := leaf.NotAfter.Sub(leaf.NotBefore)
+	return lifetime <= 0 || leaf.NotAfter.Sub(now) < lifetime/3
 }
 
 // renewPublicLeaf generates a fresh P-256 key, asks the root responder for a

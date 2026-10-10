@@ -118,7 +118,7 @@ func newPublicLeafResponderFixture(t *testing.T) *publicLeafResponderFixture {
 	return fixture
 }
 
-func (f *publicLeafResponderFixture) pin() string {
+func (f *publicLeafResponderFixture) responderPin() string {
 	sum := sha256.Sum256(f.server.Certificate().RawSubjectPublicKeyInfo)
 	return "spki-sha256:" + hex.EncodeToString(sum[:])
 }
@@ -126,7 +126,7 @@ func (f *publicLeafResponderFixture) pin() string {
 func (f *publicLeafResponderFixture) options(t *testing.T) publicLeafRenewalOptions {
 	t.Helper()
 	dir := t.TempDir()
-	return publicLeafRenewalOptions{responderURL: f.server.URL, responderSPKI: f.pin(), delegationKey: f.seedPath,
+	return publicLeafRenewalOptions{responderURL: f.server.URL, responderSPKI: f.responderPin(), delegationKey: f.seedPath,
 		delegationID: testPublicLeafDelegationID, domain: testPublicLeafDomain,
 		certPath: filepath.Join(dir, "cert.pem"), keyPath: filepath.Join(dir, "key.pem"), roots: f.root.pool()}
 }
@@ -212,13 +212,13 @@ func TestPublicLeafRenewalRefusesByName(t *testing.T) {
 // bytes. deploy-ui internal/acmeresponder TestLeafCanonicalBytesAreTheStoreContract
 // asserts the same literal, so either side drifting fails by this name.
 func TestPublicLeafRequestBytesAreTheResponderContract(t *testing.T) {
-	raw, err := publicLeafCanonicalBytes(publicLeafRequest{Schema: publicLeafRequestSchema, DelegationID: "acme-store-store-example-com-0123456789ab",
-		Domain: "store.example.com", CSR: "MIIB", IssuedAt: "2026-10-10T00:00:00Z", Nonce: strings.Repeat("A", 43)})
+	raw, err := publicLeafCanonicalBytes(publicLeafRequest{Schema: publicLeafRequestSchema, DelegationID: "acme-store-store-example-test-0123456789ab",
+		Domain: "store.example.test", CSR: "MIIB", IssuedAt: "2026-10-10T00:00:00Z", Nonce: strings.Repeat("A", 43)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := "MELUSINA_ACME_LEAF_REQUEST_V1\n" +
-		`{"schema":"melusina-acme-leaf-request-v1","delegationId":"acme-store-store-example-com-0123456789ab","domain":"store.example.com","csr":"MIIB","issuedAt":"2026-10-10T00:00:00Z","nonce":"` + strings.Repeat("A", 43) + `"}`
+		`{"schema":"melusina-acme-leaf-request-v1","delegationId":"acme-store-store-example-test-0123456789ab","domain":"store.example.test","csr":"MIIB","issuedAt":"2026-10-10T00:00:00Z","nonce":"` + strings.Repeat("A", 43) + `"}`
 	if string(raw) != want {
 		t.Fatalf("STORE_LEAF_REQUEST_WIRE_DRIFTED:\n got %q\nwant %q", raw, want)
 	}

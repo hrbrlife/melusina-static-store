@@ -43,11 +43,12 @@ type publicLeafResponderFixture struct {
 	delegation ed25519.PrivateKey
 	seedPath   string
 	// leafHost and leafKey override the issued leaf to model a hostile CA.
-	leafHost string
-	leafKey  crypto.PublicKey
-	status   int
-	requests int
-	headers  http.Header
+	leafHost       string
+	leafKey        crypto.PublicKey
+	status         int
+	responseSuffix string
+	requests       int
+	headers        http.Header
 }
 
 func newPublicLeafResponderFixture(t *testing.T) *publicLeafResponderFixture {
@@ -113,6 +114,9 @@ func newPublicLeafResponderFixture(t *testing.T) *publicLeafResponderFixture {
 		_ = pem.Encode(&chain, &pem.Block{Type: "CERTIFICATE", Bytes: fixture.inter.cert.Raw})
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(publicLeafResponse{Schema: publicLeafResponseSchema, Domain: signed.Request.Domain, ChainPEM: chain.String()})
+		if fixture.responseSuffix != "" {
+			_, _ = w.Write([]byte(fixture.responseSuffix))
+		}
 	}))
 	t.Cleanup(fixture.server.Close)
 	return fixture
@@ -167,6 +171,9 @@ func TestPublicLeafRenewalRefusesByName(t *testing.T) {
 		"unpinned responder": {func(_ *publicLeafResponderFixture, o *publicLeafRenewalOptions) {
 			o.responderSPKI = "spki-sha256:" + strings.Repeat("0", 64)
 		}, publicLeafRenewRefused},
+		"absent responder pin": {func(_ *publicLeafResponderFixture, o *publicLeafRenewalOptions) {
+			o.responderSPKI = ""
+		}, publicLeafRenewResponderUnpinned},
 		"plain http responder": {func(_ *publicLeafResponderFixture, o *publicLeafRenewalOptions) {
 			o.responderURL = strings.Replace(o.responderURL, "https://", "http://", 1)
 		}, publicLeafRenewResponderUnpinned},
@@ -177,7 +184,10 @@ func TestPublicLeafRenewalRefusesByName(t *testing.T) {
 		"untrusted chain": {func(_ *publicLeafResponderFixture, o *publicLeafRenewalOptions) {
 			o.roots = newServedTLSTestRoot(t, "another root").pool()
 		}, publicLeafRenewUntrusted},
-		"responder refusal": {func(f *publicLeafResponderFixture, _ *publicLeafRenewalOptions) { f.status = http.StatusTooManyRequests }, publicLeafRenewRefused},
+		"responder refusal": {func(f *publicLeafResponderFixture, _ *publicLeafRenewalOptions) {
+			f.status = http.StatusTooManyRequests
+		}, publicLeafRenewRefused},
+		"second response object": {func(f *publicLeafResponderFixture, _ *publicLeafRenewalOptions) { f.responseSuffix = "{}\n" }, publicLeafRenewInvalid},
 		"foreign delegation key": {func(f *publicLeafResponderFixture, _ *publicLeafRenewalOptions) {
 			_, foreign, _ := ed25519.GenerateKey(rand.Reader)
 			if err := os.WriteFile(f.seedPath, foreign.Seed(), 0o600); err != nil {
@@ -197,6 +207,8 @@ func TestPublicLeafRenewalRefusesByName(t *testing.T) {
 			item.setup(fixture, &opts)
 			if _, err := fixture.renew(opts); err == nil || !strings.HasPrefix(err.Error(), item.prefix) {
 				t.Fatalf("%s: got %v, want %s", name, err, item.prefix)
+			} else if name == "unpinned responder" && !strings.Contains(err.Error(), publicLeafRenewResponderPinFailed) {
+				t.Fatalf("%s: got %v, want %s by name", name, err, publicLeafRenewResponderPinFailed)
 			}
 			if _, err := os.Stat(opts.certPath); !os.IsNotExist(err) {
 				t.Fatalf("%s: a refused renewal wrote the public leaf: %v", name, err)
@@ -211,7 +223,7 @@ func TestPublicLeafRenewalRefusesByName(t *testing.T) {
 func TestPublicLeafRenewalIsDueOnlyInTheLastThird(t *testing.T) {
 	fixture := newPublicLeafResponderFixture(t)
 	opts := fixture.options(t)
-	if !publicLeafRenewalDue(opts.certPath, testPublicLeafDomain, time.Now()) {
+	if !publicLeafRenewalDue(opts.certPath, opts.keyPath, testPublicLeafDomain, time.Now()) {
 		t.Fatal("an absent public leaf was not due")
 	}
 	if _, err := fixture.renew(opts); err != nil {
@@ -221,14 +233,20 @@ func TestPublicLeafRenewalIsDueOnlyInTheLastThird(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if publicLeafRenewalDue(opts.certPath, testPublicLeafDomain, leaf.NotBefore.Add(time.Minute)) {
+	if publicLeafRenewalDue(opts.certPath, opts.keyPath, testPublicLeafDomain, leaf.NotBefore.Add(time.Minute)) {
 		t.Fatal("PUBLIC_LEAF_RENEWED_EARLY: a fresh leaf was due, spending the CA budget every interval")
 	}
-	if !publicLeafRenewalDue(opts.certPath, testPublicLeafDomain, leaf.NotAfter.Add(-time.Minute)) {
+	if !publicLeafRenewalDue(opts.certPath, opts.keyPath, testPublicLeafDomain, leaf.NotAfter.Add(-time.Minute)) {
 		t.Fatal("a leaf in its last third was not due")
 	}
-	if !publicLeafRenewalDue(opts.certPath, "other.example.test", leaf.NotBefore.Add(time.Minute)) {
+	if !publicLeafRenewalDue(opts.certPath, opts.keyPath, "other.example.test", leaf.NotBefore.Add(time.Minute)) {
 		t.Fatal("a leaf for another host was not due")
+	}
+	if err := os.WriteFile(opts.keyPath, []byte("invalid key"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !publicLeafRenewalDue(opts.certPath, opts.keyPath, testPublicLeafDomain, leaf.NotBefore.Add(time.Minute)) {
+		t.Fatal("PUBLIC_LEAF_INVALID_KEY_NOT_RENEWED: a valid certificate with a broken key was treated as current")
 	}
 }
 

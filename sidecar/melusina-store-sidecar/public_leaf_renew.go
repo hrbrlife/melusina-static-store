@@ -275,7 +275,7 @@ func publicLeafResponderClient(responderURL, pin string) *http.Client {
 func renewPublicLeafLoop(opts publicLeafRenewalOptions) error {
 	client := publicLeafResponderClient(opts.responderURL, opts.responderSPKI)
 	for {
-		if opts.once || publicLeafRenewalDue(opts.certPath, opts.domain, time.Now()) {
+		if opts.once || publicLeafRenewalDue(opts.certPath, opts.keyPath, opts.domain, time.Now()) {
 			notAfter, err := renewPublicLeaf(opts, client)
 			if err != nil {
 				return err
@@ -289,9 +289,12 @@ func renewPublicLeafLoop(opts publicLeafRenewalOptions) error {
 	}
 }
 
-// publicLeafRenewalDue is true when the published public leaf is unreadable,
-// names another host, or has less than a third of its lifetime left.
-func publicLeafRenewalDue(certPath, domain string, now time.Time) bool {
+// publicLeafRenewalDue is true when the published pair is unreadable or does
+// not match, names another host, or has less than a third of its lifetime left.
+func publicLeafRenewalDue(certPath, keyPath, domain string, now time.Time) bool {
+	if _, err := tls.LoadX509KeyPair(certPath, keyPath); err != nil {
+		return true
+	}
 	leaf, err := parsePublicLeafCertFile(certPath)
 	if err != nil || leaf.VerifyHostname(domain) != nil {
 		return true
@@ -362,8 +365,8 @@ func renewPublicLeaf(opts publicLeafRenewalOptions, client *http.Client) (time.T
 	var leafResponse publicLeafResponse
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&leafResponse); err != nil {
-		return time.Time{}, fmt.Errorf("%s: %w", publicLeafRenewInvalid, err)
+	if err := decoder.Decode(&leafResponse); err != nil || decoder.Decode(new(any)) != io.EOF {
+		return time.Time{}, fmt.Errorf("%s: responder did not return one exact leaf response", publicLeafRenewInvalid)
 	}
 	if leafResponse.Schema != publicLeafResponseSchema || leafResponse.Domain != opts.domain || strings.Contains(leafResponse.ChainPEM, "PRIVATE KEY") {
 		return time.Time{}, fmt.Errorf("%s: schema %q domain %q", publicLeafRenewInvalid, leafResponse.Schema, leafResponse.Domain)

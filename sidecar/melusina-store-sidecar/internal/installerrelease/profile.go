@@ -105,22 +105,32 @@ func LoadProfileTrust(path, pin string) (*Trust, estateprofile.EstateProfileV1, 
 // entry admitted under one estate's publisher keys must come from the same
 // estate's registry.
 func LoadBoundTrust(path, pin string, program, masterMint [32]byte) (*Trust, error) {
+	trust, _, err := LoadBoundProfileTrust(path, pin, program, masterMint)
+	return trust, err
+}
+
+// LoadBoundProfileTrust is LoadBoundTrust that also returns the verified,
+// pinned profile, for a reader that needs more of the profile than its
+// release trust (verify-installer-release takes the network genesis and the
+// owner policy that signs its RPC trust from it).
+func LoadBoundProfileTrust(path, pin string, program, masterMint [32]byte) (*Trust, estateprofile.EstateProfileV1, error) {
+	var zero estateprofile.EstateProfileV1
 	trust, profile, err := LoadProfileTrust(path, pin)
 	if err != nil {
-		return nil, err
+		return nil, zero, err
 	}
 	programB58, ok := LicenseRegistryProgramID(profile)
 	if !ok {
-		return nil, fmt.Errorf("%w:programId: the profile names no programs.license-registry", ErrEstateMismatch)
+		return nil, zero, fmt.Errorf("%w:programId: the profile names no programs.license-registry", ErrEstateMismatch)
 	}
 	profileProgram, err := primitives.PubkeyFromBase58(programB58)
 	if err != nil || [32]byte(profileProgram) != program {
-		return nil, fmt.Errorf("%w:programId: pinned program %s is not the profile's programs.license-registry %s", ErrEstateMismatch, primitives.Pubkey(program).Base58(), programB58)
+		return nil, zero, fmt.Errorf("%w:programId: pinned program %s is not the profile's programs.license-registry %s", ErrEstateMismatch, primitives.Pubkey(program).Base58(), programB58)
 	}
 	if trust.MasterNFTMint() != masterMint {
-		return nil, fmt.Errorf("%w:masterNftMint: pinned master %s is not the profile's anchors.masterMint %s", ErrEstateMismatch, primitives.Pubkey(masterMint).Base58(), profile.Anchors.MasterMint)
+		return nil, zero, fmt.Errorf("%w:masterNftMint: pinned master %s is not the profile's anchors.masterMint %s", ErrEstateMismatch, primitives.Pubkey(masterMint).Base58(), profile.Anchors.MasterMint)
 	}
-	return trust, nil
+	return trust, profile, nil
 }
 
 // LicenseRegistryProgramID is the profile's programs.license-registry id.

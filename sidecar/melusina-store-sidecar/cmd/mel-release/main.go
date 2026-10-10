@@ -122,6 +122,27 @@ func run(args []string) error {
 	if err := cfg.bindStateDir(); err != nil {
 		return err
 	}
+	// Reject a held app or missing version before contacting an RPC. A valid
+	// preflight still proves the estate genesis before it can call the builder.
+	var preflightApp, preflightVersion string
+	if sub == "preflight" {
+		fs := flag.NewFlagSet("preflight", flag.ContinueOnError)
+		fs.StringVar(&preflightApp, "app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
+		fs.StringVar(&preflightVersion, "version", "", "requested release version (required)")
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		app, err := catalog.Select(preflightApp)
+		if err != nil {
+			return err
+		}
+		if err := app.RequireReleaseReady(); err != nil {
+			return err
+		}
+		if preflightVersion == "" {
+			return fmt.Errorf("--version is required")
+		}
+	}
 	// The chain is the signed profile's network: every provider-backed
 	// subcommand proves its RPC serves that genesis first (estate_chain.go).
 	if subcommandReadsChain(sub) {
@@ -132,13 +153,7 @@ func run(args []string) error {
 
 	switch sub {
 	case "preflight":
-		fs := flag.NewFlagSet("preflight", flag.ContinueOnError)
-		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
-		version := fs.String("version", "", "requested release version (required)")
-		if err := fs.Parse(rest); err != nil {
-			return err
-		}
-		path, err := runPreflight(cfg, catalog, *app, *version)
+		path, err := runPreflight(cfg, catalog, preflightApp, preflightVersion)
 		if err != nil {
 			return err
 		}

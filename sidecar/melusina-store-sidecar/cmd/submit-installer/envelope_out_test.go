@@ -292,20 +292,42 @@ func TestEnvelopeSelfVerifyRefusesUnboundOrUnsignedEnvelopes(t *testing.T) {
 		t.Fatalf("INSTALLER_ENVELOPE_SELF_VERIFY_POSITIVE_BINDING: %s want %s (%v)", binding, want, err)
 	}
 	other, _, _ := testPrivate(t, "unnamed-publisher")
+	unsigned := good
+	unsigned.SignatureB58 = ""
+	otherTarget := good
+	otherTarget.Payload.Target = "/publish/generation"
+	otherArtifact := good
+	otherArtifact.Payload.RequestHashHex = strings.Repeat("ab", 32)
+	tamperedExpiry := good
+	tamperedExpiry.Payload.ExpiresAtMs += 1000
 	for name, tc := range map[string]struct {
 		signed envelope.Signed
 		want   string
 	}{
-		"unsigned": {func() envelope.Signed { s := good; s.SignatureB58 = ""; return s }(), "carries no signature"},
-		"other-member": {sign(t, f.publisher, "other-member.tar.xz"), "does not bind POST"},
-		"other-target": {func() envelope.Signed { s := good; s.Payload.Target = "/publish/generation"; return s }(), "does not bind POST"},
-		"other-artifact": {func() envelope.Signed {
-			s := good
-			s.Payload.RequestHashHex = strings.Repeat("ab", 32)
-			return s
-		}(), "does not bind POST"},
-		"other-signer":    {sign(t, other, o.name), refuseSelfVerify + ":"},
-		"tampered-expiry": {func() envelope.Signed { s := good; s.Payload.ExpiresAtMs += 1000; return s }(), refuseSelfVerify + ":"},
+		"unsigned": {
+			signed: unsigned,
+			want:   "carries no signature",
+		},
+		"other-member": {
+			signed: sign(t, f.publisher, "other-member.tar.xz"),
+			want:   "does not bind POST",
+		},
+		"other-target": {
+			signed: otherTarget,
+			want:   "does not bind POST",
+		},
+		"other-artifact": {
+			signed: otherArtifact,
+			want:   "does not bind POST",
+		},
+		"other-signer": {
+			signed: sign(t, other, o.name),
+			want:   refuseSelfVerify + ":",
+		},
+		"tampered-expiry": {
+			signed: tamperedExpiry,
+			want:   refuseSelfVerify + ":",
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := verifySignedInstallerEnvelope(tc.signed, f.publisher.Public(), operator, o, f.artifactSHA256())

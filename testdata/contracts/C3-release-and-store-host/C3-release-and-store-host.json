@@ -1433,7 +1433,7 @@
         "tlsTermination": false
       },
       "identityLeafCertPath": "/etc/melusina/store/identity/cert.pem",
-      "publicLeafCertPath": "/etc/melusina/store/tls/cert.pem"
+      "publicLeafCertPath": "/etc/melusina/store/tls/current/cert.pem"
     }
   },
   "tls": {
@@ -1446,8 +1446,8 @@
       "chainBound": true
     },
     "publicLeaf": {
-      "certPath": "/etc/melusina/store/tls/cert.pem",
-      "keyPath": "/etc/melusina/store/tls/key.pem",
+      "certPath": "/etc/melusina/store/tls/current/cert.pem",
+      "keyPath": "/etc/melusina/store/tls/current/key.pem",
       "renewal": "acme-responder",
       "served": true,
       "renewalFingerprintsSha256": [

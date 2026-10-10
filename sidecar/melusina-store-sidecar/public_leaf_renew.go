@@ -7,16 +7,22 @@ package main
 // on-chain SidecarIdentityEntry fingerprints it, so it may only change through
 // an owner-signed successor. The public leaf (config.TLS.CertPath) is what the
 // public listener actually serves to store.<zone>; it is self-renewing through
-// the estate ACME responder and must be able to rotate WITHOUT touching the
-// identity binding. This file owns both sides of that split:
+// the estate's root ACME responder and must be able to rotate WITHOUT touching
+// the identity binding. This file owns both sides of that split:
 //
-//   - public-leaf-renew: an explicit subcommand that asks the estate ACME
-//     responder for a fresh public leaf and publishes it atomically at the
-//     tls paths. The running Store never renews by itself: its
-//     servedTLSCertificate watcher (served_tls.go) picks the new pair up on
-//     its next tick, which is the hot reload. The watcher's identity pin
-//     applies to the boot-identity leaf ONLY — a renewed public pair is
-//     deliberately never pinned.
+//   - public-leaf-renew: an explicit subcommand that asks the estate's root
+//     ACME responder (deploy-ui internal/acmeresponder, POST /v1/new-leaf)
+//     for a fresh public leaf and publishes it atomically at the tls paths.
+//     The Store generates the leaf's private key itself and sends only a CSR
+//     for exactly its domain, signed with the Store's own Ed25519 challenge
+//     delegation key, which the owner-signed provider edge profile pins as the
+//     Store's estate-service delegation. The responder is pinned by its TLS
+//     SPKI and returns the chain only; no bearer token and no private key ever
+//     cross the wire (V-STEP4-STORE). The running Store never renews by
+//     itself: its servedTLSCertificate watcher (served_tls.go) picks the new
+//     pair up on its next tick, which is the hot reload. The watcher's
+//     identity pin applies to the boot-identity leaf ONLY — a renewed public
+//     pair is deliberately never pinned.
 //   - --store-host=verify-public: an outside-in probe that resolves the
 //     Store's public route through the CONFIGURED PUBLIC RESOLVER ONLY,
 //     refuses an /etc/hosts or split-horizon answer by name
@@ -30,9 +36,16 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -44,9 +57,12 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -61,30 +77,87 @@ const (
 	storePublicProbeResolverRequired = "store_public_probe_resolver_required"
 	storePublicProbeResolverInvalid  = "store_public_probe_resolver_invalid"
 
-	publicLeafRenewRefused  = "public-leaf-renew-responder-refused"
-	publicLeafRenewInvalid  = "public-leaf-renew-invalid-leaf"
-	publicLeafRenewTLSDiver = "public-leaf-renew-tls-pair-refused"
+	publicLeafRenewRefused            = "public-leaf-renew-responder-refused"
+	publicLeafRenewInvalid            = "public-leaf-renew-invalid-leaf"
+	publicLeafRenewTLSDiver           = "public-leaf-renew-tls-pair-refused"
+	publicLeafRenewWrongKey           = "public-leaf-renew-leaf-not-for-store-key"
+	publicLeafRenewUntrusted          = "public-leaf-renew-chain-untrusted"
+	publicLeafRenewDelegationUnsafe   = "public-leaf-renew-delegation-key-unsafe"
+	publicLeafRenewResponderUnpinned  = "public-leaf-renew-responder-unpinned"
+	publicLeafRenewResponderPinFailed = "public-leaf-renew-responder-pin-mismatch"
 )
 
 const (
-	publicLeafRenewalSchema = "melusina.store-public-leaf.v1"
+	// The wire shared with deploy-ui internal/acmeresponder (leaf.go). The
+	// field order of publicLeafRequest is part of the signed bytes.
+	publicLeafRequestSchema  = "melusina-acme-leaf-request-v1"
+	publicLeafResponseSchema = "melusina-acme-leaf-v1"
+	publicLeafRequestTag     = "MELUSINA_ACME_LEAF_REQUEST_V1\n"
+	publicLeafRoute          = "/v1/new-leaf"
+	// A leaf holds the request open through the responder's staging order,
+	// its production order and both authorization waits (15 minutes).
+	publicLeafRequestTimeout = 17 * time.Minute
+	publicLeafMaxChainBytes  = 64 << 10
+
 	// The probe fetches exactly these routes through the public route; both
 	// must answer for the probe to pass.
 	storePublicProbePaths = "/healthz,/apps/index.json"
 )
 
-// publicLeafRenewalOptions is deliberately closed: the responder endpoint,
-// domain and output paths are operator inputs, never rendered defaults, so a
-// config file cannot quietly redirect the identity leaf's neighbor files.
+var (
+	publicLeafDelegationIDPattern = regexp.MustCompile(`^acme-[a-z0-9-]{1,46}-[0-9a-f]{12}$`)
+	publicLeafSPKIPattern         = regexp.MustCompile(`^spki-sha256:[0-9a-f]{64}$`)
+)
+
+// publicLeafRequest is the exact statement the Store signs.
+type publicLeafRequest struct {
+	Schema       string `json:"schema"`
+	DelegationID string `json:"delegationId"`
+	Domain       string `json:"domain"`
+	CSR          string `json:"csr"`
+	IssuedAt     string `json:"issuedAt"`
+	Nonce        string `json:"nonce"`
+}
+
+type publicLeafSignedRequest struct {
+	Request   publicLeafRequest `json:"request"`
+	Signature string            `json:"signature"`
+}
+
+type publicLeafResponse struct {
+	Schema   string `json:"schema"`
+	Domain   string `json:"domain"`
+	ChainPEM string `json:"chainPem"`
+}
+
+// publicLeafCanonicalBytes is byte for byte acmeresponder.LeafCanonicalBytes.
+func publicLeafCanonicalBytes(request publicLeafRequest) ([]byte, error) {
+	raw, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	return append([]byte(publicLeafRequestTag), raw...), nil
+}
+
+// publicLeafRenewalOptions is deliberately closed: the responder endpoint and
+// its SPKI pin, the delegation key file and ID, the domain and the output
+// paths are rendered inputs, so a config file cannot quietly redirect the
+// identity leaf's neighbor files.
 type publicLeafRenewalOptions struct {
-	configPath   string
-	responderURL string
-	token        string
-	domain       string
-	certPath     string
-	keyPath      string
-	once         bool
-	interval     time.Duration
+	configPath    string
+	responderURL  string
+	responderSPKI string
+	delegationKey string
+	delegationID  string
+	domain        string
+	certPath      string
+	keyPath       string
+	once          bool
+	interval      time.Duration
+	// roots verifies the issued chain; nil is the system roots. Only tests
+	// set it: no flag reaches it.
+	roots *x509.CertPool
+	now   func() time.Time
 }
 
 // storeHostVerifyPublicOptions carries the probe inputs. resolver must be the
@@ -108,8 +181,10 @@ func runPublicLeafRenewSubcommand(args []string) {
 	fs := flag.NewFlagSet("public-leaf-renew", flag.ExitOnError)
 	opts := publicLeafRenewalOptions{}
 	fs.StringVar(&opts.configPath, "config", "store.config.json", "path to operator config (JSON)")
-	fs.StringVar(&opts.responderURL, "acme-responder", "", "required base URL of the estate ACME responder")
-	fs.StringVar(&opts.token, "acme-token", "", "required bearer token for the estate ACME responder")
+	fs.StringVar(&opts.responderURL, "acme-responder", "", "required https origin of the estate's root ACME responder")
+	fs.StringVar(&opts.responderSPKI, "acme-responder-spki", "", "required spki-sha256:<hex> pin of the responder's TLS key")
+	fs.StringVar(&opts.delegationKey, "delegation-key", "", "required 0600 file holding the Store's Ed25519 leaf delegation seed")
+	fs.StringVar(&opts.delegationID, "delegation-id", "", "required estate-service delegation ID the signed edge profile registers for the Store")
 	fs.StringVar(&opts.domain, "domain", "", "public leaf domain (default: config domain)")
 	fs.StringVar(&opts.certPath, "cert-path", "", "required public leaf cert path (tls.cert_path)")
 	fs.StringVar(&opts.keyPath, "key-path", "", "required public leaf key path (tls.key_path)")
@@ -119,9 +194,8 @@ func runPublicLeafRenewSubcommand(args []string) {
 	if fs.NArg() != 0 {
 		log.Fatalf("public-leaf-renew: unexpected positional arguments: %v", fs.Args())
 	}
-	if strings.TrimSpace(opts.responderURL) == "" || strings.TrimSpace(opts.token) == "" ||
-		strings.TrimSpace(opts.certPath) == "" || strings.TrimSpace(opts.keyPath) == "" {
-		log.Fatalf("public-leaf-renew: --acme-responder, --acme-token, --cert-path and --key-path are required")
+	if strings.TrimSpace(opts.certPath) == "" || strings.TrimSpace(opts.keyPath) == "" {
+		log.Fatalf("public-leaf-renew: --cert-path and --key-path are required")
 	}
 	if opts.domain == "" {
 		cfg, err := LoadConfig(opts.configPath)
@@ -133,16 +207,70 @@ func runPublicLeafRenewSubcommand(args []string) {
 	if strings.TrimSpace(opts.domain) == "" {
 		log.Fatalf("public-leaf-renew: --domain or config domain is required")
 	}
+	if err := validatePublicLeafRenewalOptions(opts); err != nil {
+		log.Fatalf("public-leaf-renew: %v", err)
+	}
 	if err := renewPublicLeafLoop(opts); err != nil {
 		log.Fatalf("public-leaf-renew: %v", err)
 	}
+}
+
+// validatePublicLeafRenewalOptions refuses an unpinned or non-https
+// responder, a malformed delegation ID and a non-absolute key path by name.
+func validatePublicLeafRenewalOptions(opts publicLeafRenewalOptions) error {
+	endpoint, err := url.Parse(opts.responderURL)
+	if err != nil || endpoint.Scheme != "https" || endpoint.Hostname() == "" || endpoint.User != nil || endpoint.RawQuery != "" ||
+		endpoint.Fragment != "" || (endpoint.Path != "" && endpoint.Path != "/") {
+		return fmt.Errorf("%s: --acme-responder must be the responder's https origin", publicLeafRenewResponderUnpinned)
+	}
+	if !publicLeafSPKIPattern.MatchString(opts.responderSPKI) {
+		return fmt.Errorf("%s: --acme-responder-spki must be spki-sha256:<64 hex>", publicLeafRenewResponderUnpinned)
+	}
+	if !publicLeafDelegationIDPattern.MatchString(opts.delegationID) {
+		return fmt.Errorf("%s: --delegation-id is not an estate-service delegation ID", publicLeafRenewDelegationUnsafe)
+	}
+	if !filepath.IsAbs(opts.delegationKey) || filepath.Clean(opts.delegationKey) != opts.delegationKey {
+		return fmt.Errorf("%s: --delegation-key must be an absolute clean path", publicLeafRenewDelegationUnsafe)
+	}
+	return nil
+}
+
+// publicLeafResponderClient trusts exactly the responder's pinned TLS key:
+// the responder serves a self-issued certificate for acme.<zone> from its
+// journaled responder-tls identity, and the owner-signed profile pins that
+// key, so the pin (with the leaf's name and validity) is the trust anchor.
+func publicLeafResponderClient(responderURL, pin string) *http.Client {
+	endpoint, _ := url.Parse(responderURL)
+	hostname := endpoint.Hostname()
+	transport := &http.Transport{
+		Proxy: nil,
+		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, ServerName: hostname, InsecureSkipVerify: true,
+			VerifyConnection: func(state tls.ConnectionState) error {
+				if len(state.PeerCertificates) == 0 {
+					return fmt.Errorf("%s: the responder presented no certificate", publicLeafRenewResponderPinFailed)
+				}
+				leaf := state.PeerCertificates[0]
+				now := time.Now()
+				if now.Before(leaf.NotBefore) || now.After(leaf.NotAfter) || leaf.VerifyHostname(hostname) != nil {
+					return fmt.Errorf("%s: the responder certificate is not valid for %s", publicLeafRenewResponderPinFailed, hostname)
+				}
+				sum := sha256.Sum256(leaf.RawSubjectPublicKeyInfo)
+				if subtle.ConstantTimeCompare([]byte("spki-sha256:"+hex.EncodeToString(sum[:])), []byte(pin)) != 1 {
+					return fmt.Errorf("%s: the responder key differs from the pinned key", publicLeafRenewResponderPinFailed)
+				}
+				return nil
+			}},
+	}
+	return &http.Client{Timeout: publicLeafRequestTimeout, Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error {
+		return errors.New("public-leaf-renew never follows a responder redirect")
+	}}
 }
 
 // renewPublicLeafLoop renews once, then (unless --once) keeps renewing on the
 // interval. Each renewal publishes the pair atomically; the running Store's
 // served TLS watcher reloads it without a restart.
 func renewPublicLeafLoop(opts publicLeafRenewalOptions) error {
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := publicLeafResponderClient(opts.responderURL, opts.responderSPKI)
 	for {
 		notAfter, err := renewPublicLeaf(opts, client)
 		if err != nil {
@@ -156,60 +284,166 @@ func renewPublicLeafLoop(opts publicLeafRenewalOptions) error {
 	}
 }
 
-// renewPublicLeaf asks the estate ACME responder for a fresh leaf for the
-// public domain and writes the pair to the public paths. The response's leaf
-// must be currently valid and its key must pair, or the pair is refused by
-// name and the previous pair stays in place.
+// renewPublicLeaf generates a fresh P-256 key, asks the root responder for a
+// leaf for exactly the public domain with a CSR signed by the Store's
+// delegation key, and writes the pair to the public paths. The chain must be
+// for the Store's own key, name exactly the domain, be currently valid and
+// verify to the trusted roots, or it is refused by name and the previous pair
+// stays in place.
 func renewPublicLeaf(opts publicLeafRenewalOptions, client *http.Client) (time.Time, error) {
-	body, err := json.Marshal(map[string]string{"schema": publicLeafRenewalSchema, "domain": opts.domain})
+	now := time.Now
+	if opts.now != nil {
+		now = opts.now
+	}
+	if err := validatePublicLeafRenewalOptions(opts); err != nil {
+		return time.Time{}, err
+	}
+	delegation, err := loadPublicLeafDelegationKey(opts.delegationKey)
 	if err != nil {
 		return time.Time{}, err
 	}
-	request, err := http.NewRequest(http.MethodPost, strings.TrimRight(opts.responderURL, "/")+"/new-leaf", bytes.NewReader(body))
+	defer clear(delegation)
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return time.Time{}, err
 	}
-	request.Header.Set("Authorization", "Bearer "+opts.token)
-	request.Header.Set("Content-Type", "application/json")
-	response, err := client.Do(request)
+	csr, err := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{Subject: pkix.Name{CommonName: opts.domain}, DNSNames: []string{opts.domain}}, key)
+	if err != nil {
+		return time.Time{}, err
+	}
+	nonce := make([]byte, 32)
+	if _, err := rand.Read(nonce); err != nil {
+		return time.Time{}, err
+	}
+	request := publicLeafRequest{Schema: publicLeafRequestSchema, DelegationID: opts.delegationID, Domain: opts.domain,
+		CSR: base64.RawURLEncoding.EncodeToString(csr), IssuedAt: now().UTC().Truncate(time.Second).Format(time.RFC3339),
+		Nonce: base64.RawURLEncoding.EncodeToString(nonce)}
+	message, err := publicLeafCanonicalBytes(request)
+	if err != nil {
+		return time.Time{}, err
+	}
+	body, err := json.Marshal(publicLeafSignedRequest{Request: request, Signature: base64.RawURLEncoding.EncodeToString(ed25519.Sign(delegation, message))})
+	if err != nil {
+		return time.Time{}, err
+	}
+	httpRequest, err := http.NewRequest(http.MethodPost, strings.TrimRight(opts.responderURL, "/")+publicLeafRoute, bytes.NewReader(body))
+	if err != nil {
+		return time.Time{}, err
+	}
+	httpRequest.Header.Set("Content-Type", "application/json")
+	response, err := client.Do(httpRequest)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("%s: %w", publicLeafRenewRefused, err)
 	}
 	defer response.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
+	raw, err := io.ReadAll(io.LimitReader(response.Body, publicLeafMaxChainBytes+4096))
 	if err != nil {
 		return time.Time{}, fmt.Errorf("%s: %w", publicLeafRenewRefused, err)
 	}
 	if response.StatusCode != http.StatusOK {
 		return time.Time{}, fmt.Errorf("%s: responder answered %d: %s", publicLeafRenewRefused, response.StatusCode, strings.TrimSpace(string(raw)))
 	}
-	var leaf struct {
-		Schema  string `json:"schema"`
-		Domain  string `json:"domain"`
-		CertPEM string `json:"certPem"`
-		KeyPEM  string `json:"keyPem"`
-	}
-	if err := json.Unmarshal(raw, &leaf); err != nil {
+	var leafResponse publicLeafResponse
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&leafResponse); err != nil {
 		return time.Time{}, fmt.Errorf("%s: %w", publicLeafRenewInvalid, err)
 	}
-	if leaf.Schema != publicLeafRenewalSchema || leaf.Domain != opts.domain || strings.TrimSpace(leaf.CertPEM) == "" || strings.TrimSpace(leaf.KeyPEM) == "" {
-		return time.Time{}, fmt.Errorf("%s: schema %q domain %q", publicLeafRenewInvalid, leaf.Schema, leaf.Domain)
+	if leafResponse.Schema != publicLeafResponseSchema || leafResponse.Domain != opts.domain || strings.Contains(leafResponse.ChainPEM, "PRIVATE KEY") {
+		return time.Time{}, fmt.Errorf("%s: schema %q domain %q", publicLeafRenewInvalid, leafResponse.Schema, leafResponse.Domain)
 	}
-	pair, err := tls.X509KeyPair([]byte(leaf.CertPEM), []byte(leaf.KeyPEM))
-	if err != nil || pair.Leaf == nil {
-		return time.Time{}, fmt.Errorf("%s: %v", publicLeafRenewTLSDiver, err)
-	}
-	now := time.Now()
-	if now.Before(pair.Leaf.NotBefore) || now.After(pair.Leaf.NotAfter) {
-		return time.Time{}, fmt.Errorf("%s: leaf not valid now (not before %s, not after %s)", publicLeafRenewInvalid, pair.Leaf.NotBefore.UTC().Format(time.RFC3339), pair.Leaf.NotAfter.UTC().Format(time.RFC3339))
-	}
-	if err := pair.Leaf.VerifyHostname(opts.domain); err != nil {
-		return time.Time{}, fmt.Errorf("%s: %w", publicLeafRenewInvalid, err)
-	}
-	if err := writePublicLeafPair(opts.certPath, opts.keyPath, []byte(leaf.CertPEM), []byte(leaf.KeyPEM)); err != nil {
+	leaf, err := verifyPublicLeafChain([]byte(leafResponse.ChainPEM), opts.domain, &key.PublicKey, opts.roots, now())
+	if err != nil {
 		return time.Time{}, err
 	}
-	return pair.Leaf.NotAfter, nil
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return time.Time{}, err
+	}
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+	clear(der)
+	defer clear(keyPEM)
+	if _, err := tls.X509KeyPair([]byte(leafResponse.ChainPEM), keyPEM); err != nil {
+		return time.Time{}, fmt.Errorf("%s: %v", publicLeafRenewTLSDiver, err)
+	}
+	if err := writePublicLeafPair(opts.certPath, opts.keyPath, []byte(leafResponse.ChainPEM), keyPEM); err != nil {
+		return time.Time{}, err
+	}
+	return leaf.NotAfter, nil
+}
+
+// verifyPublicLeafChain requires a PEM chain of certificates only, leaf
+// first with at least one intermediate, whose leaf names exactly domain, is
+// for the Store's key, is valid now and verifies to roots (system when nil).
+func verifyPublicLeafChain(chainPEM []byte, domain string, storeKey *ecdsa.PublicKey, roots *x509.CertPool, now time.Time) (*x509.Certificate, error) {
+	if len(chainPEM) == 0 || len(chainPEM) > publicLeafMaxChainBytes {
+		return nil, fmt.Errorf("%s: the chain is empty or oversized", publicLeafRenewInvalid)
+	}
+	var certificates []*x509.Certificate
+	for rest := chainPEM; ; {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			if len(bytes.TrimSpace(rest)) != 0 {
+				return nil, fmt.Errorf("%s: the chain has trailing data", publicLeafRenewInvalid)
+			}
+			break
+		}
+		if block.Type != "CERTIFICATE" {
+			return nil, fmt.Errorf("%s: the chain holds a non-certificate block", publicLeafRenewInvalid)
+		}
+		certificate, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %v", publicLeafRenewInvalid, err)
+		}
+		certificates = append(certificates, certificate)
+	}
+	if len(certificates) < 2 {
+		return nil, fmt.Errorf("%s: the chain has no intermediate", publicLeafRenewInvalid)
+	}
+	leaf := certificates[0]
+	leafKey, leafErr := x509.MarshalPKIXPublicKey(leaf.PublicKey)
+	ownKey, ownErr := x509.MarshalPKIXPublicKey(storeKey)
+	if leafErr != nil || ownErr != nil || !bytes.Equal(leafKey, ownKey) {
+		return nil, fmt.Errorf("%s: the leaf is not for the key this Store generated", publicLeafRenewWrongKey)
+	}
+	if len(leaf.DNSNames) != 1 || leaf.DNSNames[0] != domain || len(leaf.IPAddresses) != 0 || len(leaf.URIs) != 0 || len(leaf.EmailAddresses) != 0 {
+		return nil, fmt.Errorf("%s: the leaf does not name exactly %s", publicLeafRenewInvalid, domain)
+	}
+	if now.Before(leaf.NotBefore) || now.After(leaf.NotAfter) {
+		return nil, fmt.Errorf("%s: leaf not valid now (not before %s, not after %s)", publicLeafRenewInvalid, leaf.NotBefore.UTC().Format(time.RFC3339), leaf.NotAfter.UTC().Format(time.RFC3339))
+	}
+	intermediates := x509.NewCertPool()
+	for _, certificate := range certificates[1:] {
+		intermediates.AddCert(certificate)
+	}
+	if _, err := leaf.Verify(x509.VerifyOptions{DNSName: domain, Intermediates: intermediates, Roots: roots, CurrentTime: now,
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}); err != nil {
+		return nil, fmt.Errorf("%s: %v", publicLeafRenewUntrusted, err)
+	}
+	return leaf, nil
+}
+
+// loadPublicLeafDelegationKey reads the Store's 32-byte Ed25519 delegation
+// seed from a private (0600) regular file, never following a symlink.
+func loadPublicLeafDelegationKey(path string) (ed25519.PrivateKey, error) {
+	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %v", publicLeafRenewDelegationUnsafe, err)
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || info.Size() != ed25519.SeedSize {
+		return nil, fmt.Errorf("%s: the delegation key is not a private %d-byte seed file", publicLeafRenewDelegationUnsafe, ed25519.SeedSize)
+	}
+	seed := make([]byte, ed25519.SeedSize)
+	if _, err := io.ReadFull(file, seed); err != nil {
+		clear(seed)
+		return nil, fmt.Errorf("%s: %v", publicLeafRenewDelegationUnsafe, err)
+	}
+	key := ed25519.NewKeyFromSeed(seed)
+	clear(seed)
+	return key, nil
 }
 
 // writePublicLeafPair publishes cert and key atomically: each file is written

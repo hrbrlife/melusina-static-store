@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -333,19 +332,12 @@ func TestD41VerifyPublicRefusesWrongHostname(t *testing.T) {
 }
 
 func TestD41RenewalRefusesWrongHostname(t *testing.T) {
-	root := newServedTLSTestRoot(t, "D41 renewal test issuer")
-	wrong := d41Leaf(t, root, "other.example.test")
-	wrongKey := string(wrong.keyPEM(t))
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"schema": publicLeafRenewalSchema, "domain": "store.example.test",
-			"certPem": string(wrong.certPEM()), "keyPem": wrongKey,
-		})
-	}))
-	defer server.Close()
-	dir := t.TempDir()
-	opts := publicLeafRenewalOptions{responderURL: server.URL, token: "test", domain: "store.example.test", certPath: filepath.Join(dir, "cert.pem"), keyPath: filepath.Join(dir, "key.pem")}
-	_, err := renewPublicLeaf(opts, server.Client())
+	// The root responder protocol (public_leaf_renew_test.go fixture): the
+	// responder returns a leaf for another host; nothing is written.
+	fixture := newPublicLeafResponderFixture(t)
+	fixture.leafHost = "other.example.test"
+	opts := fixture.options(t)
+	_, err := fixture.renew(opts)
 	if err == nil || !strings.Contains(err.Error(), publicLeafRenewInvalid) {
 		t.Fatalf("D41-renewal-wrong-hostname-accepted: %v", err)
 	}

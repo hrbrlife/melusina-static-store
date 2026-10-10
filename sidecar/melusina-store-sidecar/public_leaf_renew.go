@@ -465,9 +465,10 @@ func loadPublicLeafDelegationKey(path string) (ed25519.PrivateKey, error) {
 	return key, nil
 }
 
-// writePublicLeafPair publishes cert and key atomically: each file is written
-// to a same-directory temporary, fsynced, and renamed. A partial renewal can
-// therefore never reach the running Store's watcher.
+// writePublicLeafPair replaces each file atomically, key first and then cert.
+// The pair is not atomic as a unit: a failure or crash between the renames
+// can leave mismatched files. The running Store's watcher rejects that pair
+// and keeps serving its previous in-memory certificate.
 func writePublicLeafPair(certPath, keyPath string, certPEM, keyPEM []byte) error {
 	if err := writeAtomicFile(keyPath, keyPEM, 0o600); err != nil {
 		return fmt.Errorf("public-leaf-renew-write-key: %w", err)

@@ -218,6 +218,11 @@ func runPublicLeafRenewSubcommand(args []string) {
 // validatePublicLeafRenewalOptions refuses an unpinned or non-https
 // responder, a malformed delegation ID and a non-absolute key path by name.
 func validatePublicLeafRenewalOptions(opts publicLeafRenewalOptions) error {
+	if _, paired, err := publicLeafPairRoot(opts.certPath, opts.keyPath); err != nil {
+		return err
+	} else if !paired {
+		return fmt.Errorf("%s: --cert-path and --key-path must name one current link", publicLeafPairLayoutRefused)
+	}
 	endpoint, err := url.Parse(opts.responderURL)
 	if err != nil || endpoint.Scheme != "https" || endpoint.Hostname() == "" || endpoint.User != nil || endpoint.RawQuery != "" ||
 		endpoint.Fragment != "" || (endpoint.Path != "" && endpoint.Path != "/") {

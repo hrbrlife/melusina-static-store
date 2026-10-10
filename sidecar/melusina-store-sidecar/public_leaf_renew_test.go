@@ -132,7 +132,7 @@ func (f *publicLeafResponderFixture) options(t *testing.T) publicLeafRenewalOpti
 	dir := t.TempDir()
 	return publicLeafRenewalOptions{responderURL: f.server.URL, responderSPKI: f.responderPin(), delegationKey: f.seedPath,
 		delegationID: testPublicLeafDelegationID, domain: testPublicLeafDomain,
-		certPath: filepath.Join(dir, "cert.pem"), keyPath: filepath.Join(dir, "key.pem"), roots: f.root.pool()}
+		certPath: filepath.Join(dir, "current", "cert.pem"), keyPath: filepath.Join(dir, "current", "key.pem"), roots: f.root.pool()}
 }
 
 func (f *publicLeafResponderFixture) renew(opts publicLeafRenewalOptions) (time.Time, error) {
@@ -168,6 +168,10 @@ func TestPublicLeafRenewalRefusesByName(t *testing.T) {
 		setup  func(*publicLeafResponderFixture, *publicLeafRenewalOptions)
 		prefix string
 	}{
+		"unpaired output paths": {func(_ *publicLeafResponderFixture, o *publicLeafRenewalOptions) {
+			root := filepath.Dir(filepath.Dir(o.certPath))
+			o.certPath, o.keyPath = filepath.Join(root, "cert.pem"), filepath.Join(root, "key.pem")
+		}, publicLeafPairLayoutRefused},
 		"unpinned responder": {func(_ *publicLeafResponderFixture, o *publicLeafRenewalOptions) {
 			o.responderSPKI = "spki-sha256:" + strings.Repeat("0", 64)
 		}, publicLeafRenewRefused},
@@ -209,6 +213,9 @@ func TestPublicLeafRenewalRefusesByName(t *testing.T) {
 				t.Fatalf("%s: got %v, want %s", name, err, item.prefix)
 			} else if name == "unpinned responder" && !strings.Contains(err.Error(), publicLeafRenewResponderPinFailed) {
 				t.Fatalf("%s: got %v, want %s by name", name, err, publicLeafRenewResponderPinFailed)
+			}
+			if name == "unpaired output paths" && fixture.requests != 0 {
+				t.Fatal("PUBLIC_LEAF_PAIR_BAD_PATH_SPENT_CA_BUDGET: the responder was called before the path refusal")
 			}
 			if _, err := os.Stat(opts.certPath); !os.IsNotExist(err) {
 				t.Fatalf("%s: a refused renewal wrote the public leaf: %v", name, err)

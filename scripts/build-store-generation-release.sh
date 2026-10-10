@@ -174,6 +174,11 @@ build_once() {
     # assembled ad hoc on whatever workstation happens to run the install.
     go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/verify-installer-release" ./cmd/verify-installer-release
+    # The signed Store generation carries the separate, private evidence-pack
+    # custody producer. Installer placement and the grain socket group remain
+    # signed setup inputs; no tenant roster or signing key enters this archive.
+    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
+      -o "$stage/bin/evidence-pack-custody" ./cmd/evidence-pack-custody
   )
   install -m 0644 "$work/deploy/store-generation/melusina-store-sidecar.service" \
     "$stage/systemd/melusina-store-sidecar.service"
@@ -195,7 +200,8 @@ build_once() {
     >"$stage/BUILD-PROVENANCE.json"
   find "$stage" -type d -exec chmod 0755 {} +
   chmod 0755 "$stage/bin/melusina-store-sidecar" "$stage/bin/boot-identity-prep" \
-    "$stage/bin/melusina-update-controller" "$stage/bin/verify-installer-release"
+    "$stage/bin/melusina-update-controller" "$stage/bin/verify-installer-release" \
+    "$stage/bin/evidence-pack-custody"
   chmod 0644 "$stage/BUILD-PROVENANCE.json"
   find "$stage" -exec touch -h -d "@$SOURCE_EPOCH" {} +
   (
@@ -208,6 +214,7 @@ build_once() {
   )
   sha256sum "$stage/bin/melusina-store-sidecar" "$stage/bin/boot-identity-prep" \
     "$stage/bin/melusina-update-controller" "$stage/bin/verify-installer-release" \
+    "$stage/bin/evidence-pack-custody" \
     "$out/store-generation-$VERSION.tar.xz" \
     | sed "s#  $stage/bin/#  #; s#  $out/#  #" >"$out/SHA256SUMS"
 }
@@ -219,6 +226,7 @@ cmp "$TMP/out-1/stage/bin/melusina-store-sidecar" "$TMP/out-2/stage/bin/melusina
 cmp "$TMP/out-1/stage/bin/boot-identity-prep" "$TMP/out-2/stage/bin/boot-identity-prep"
 cmp "$TMP/out-1/stage/bin/melusina-update-controller" "$TMP/out-2/stage/bin/melusina-update-controller"
 cmp "$TMP/out-1/stage/bin/verify-installer-release" "$TMP/out-2/stage/bin/verify-installer-release"
+cmp "$TMP/out-1/stage/bin/evidence-pack-custody" "$TMP/out-2/stage/bin/evidence-pack-custody"
 cmp "$TMP/out-1/store-generation-$VERSION.tar.xz" "$TMP/out-2/store-generation-$VERSION.tar.xz"
 cmp "$TMP/out-1/SHA256SUMS" "$TMP/out-2/SHA256SUMS"
 
@@ -228,6 +236,7 @@ install -m 0755 "$TMP/out-1/stage/bin/melusina-store-sidecar" "$PUBLISH_TMP/melu
 install -m 0755 "$TMP/out-1/stage/bin/boot-identity-prep" "$PUBLISH_TMP/boot-identity-prep"
 install -m 0755 "$TMP/out-1/stage/bin/melusina-update-controller" "$PUBLISH_TMP/melusina-update-controller"
 install -m 0755 "$TMP/out-1/stage/bin/verify-installer-release" "$PUBLISH_TMP/verify-installer-release"
+install -m 0755 "$TMP/out-1/stage/bin/evidence-pack-custody" "$PUBLISH_TMP/evidence-pack-custody"
 install -m 0644 "$TMP/out-1/store-generation-$VERSION.tar.xz" "$PUBLISH_TMP/store-generation-$VERSION.tar.xz"
 install -m 0644 "$TMP/out-1/SHA256SUMS" "$PUBLISH_TMP/SHA256SUMS"
 install -m 0644 "$TMP/out-1/stage/BUILD-PROVENANCE.json" "$PUBLISH_TMP/BUILD-PROVENANCE.json"

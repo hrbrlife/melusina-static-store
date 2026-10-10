@@ -66,6 +66,7 @@ members = {
     "bin/boot-identity-prep": b"identity fixture\n",
     "bin/melusina-update-controller": b"controller fixture\n",
     "bin/verify-installer-release": b"verifier fixture\n",
+    "bin/evidence-pack-custody": b"custody fixture\n",
     "config/store.config.template.json": b'{"domain":"REPLACE_WITH_STORE_IDENTITY_DOMAIN"}\n',
     "config/component-registry.template.json": b'{"schema":"component-registry-fixture"}\n',
     "config/update-controller.config.template.json": b'{"schema":"update-controller-fixture"}\n',
@@ -96,12 +97,13 @@ for name, raw in {
     "boot-identity-prep": members["bin/boot-identity-prep"],
     "melusina-update-controller": members["bin/melusina-update-controller"],
     "verify-installer-release": members["bin/verify-installer-release"],
+    "evidence-pack-custody": members["bin/evidence-pack-custody"],
 }.items():
     with open(os.path.join(out, name), "wb") as handle:
         handle.write(raw)
 sha_names = [
     "melusina-store-sidecar", "boot-identity-prep", "melusina-update-controller",
-    "verify-installer-release", f"store-generation-{version}.tar.xz",
+    "verify-installer-release", "evidence-pack-custody", f"store-generation-{version}.tar.xz",
 ]
 with open(os.path.join(out, "SHA256SUMS"), "w", encoding="ascii") as handle:
     for name in sha_names:
@@ -137,6 +139,7 @@ with gzip.open(archive, "rb") as compressed:
             "STORE_BOOTSTRAP_PROVENANCE.json",
             "BUILD-PROVENANCE.json",
             "bin/melusina-store-sidecar",
+            "bin/evidence-pack-custody",
             "config/store-config-render-input.template.json",
         }
         if not required.issubset(members):

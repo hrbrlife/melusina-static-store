@@ -202,6 +202,7 @@ expected_output = {
     "boot-identity-prep",
     "melusina-update-controller",
     "verify-installer-release",
+    "evidence-pack-custody",
     f"store-generation-{version}.tar.xz",
 }
 try:
@@ -242,6 +243,7 @@ expected_sum_names = {
     "boot-identity-prep",
     "melusina-update-controller",
     "verify-installer-release",
+    "evidence-pack-custody",
     archive_name,
 }
 sums = {}
@@ -298,6 +300,7 @@ for output_name, archive_path in {
     "boot-identity-prep": "bin/boot-identity-prep",
     "melusina-update-controller": "bin/melusina-update-controller",
     "verify-installer-release": "bin/verify-installer-release",
+    "evidence-pack-custody": "bin/evidence-pack-custody",
 }.items():
     if files.get(archive_path, (b"", 0))[0] != regular_file(build_dir, output_name):
         fail(f"generation archive does not contain the checksummed {output_name}")

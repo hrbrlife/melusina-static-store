@@ -197,7 +197,7 @@ func newCeremonyFixture(t *testing.T) *ceremonyFixture {
 	f.factsPath = f.writeFacts(t, "facts.json", f.ownerSigned(t, f.facts, "owner-a", "owner-b"))
 	f.configFields = map[string]any{
 		"schema": "melusina-update-controller-config-v1", "programId": f.program,
-		"masterNftMint": f.profile.Profile.Anchors.MasterMint,
+		"masterNftMint":     f.profile.Profile.Anchors.MasterMint,
 		"estateProfilePath": releasetest.Write(t, f.profile), "estateProfileSha256": f.profile.SHA256,
 		"storeHostFactsPath": f.factsPath,
 	}

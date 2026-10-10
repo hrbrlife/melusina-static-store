@@ -191,13 +191,17 @@ func TestInstallerPublishBindingEveryFieldIsBound(t *testing.T) {
 		return "a" + value[1:]
 	}
 	for field, mutate := range map[string]func(*bindingInputs){
-		"class":           func(in *bindingInputs) { in.Class = "data" },
-		"name":            func(in *bindingInputs) { in.Name += ".other" },
-		"artifactSha256":  func(in *bindingInputs) { in.ArtifactSHA256 = flipHex(in.ArtifactSHA256) },
-		"storeId":         func(in *bindingInputs) { in.StoreID += "-other" },
-		"storeDomain":     func(in *bindingInputs) { in.StoreDomain = "other." + in.StoreDomain },
-		"licenseMint":     func(in *bindingInputs) { in.LicenseMint = vectorByName(t, loadBindingVectors(t), "deployer-class-other-store").Inputs.LicenseMint },
-		"registryProgram": func(in *bindingInputs) { in.RegistryProgram = vectorByName(t, loadBindingVectors(t), "deployer-class-other-store").Inputs.RegistryProgram },
+		"class":          func(in *bindingInputs) { in.Class = "data" },
+		"name":           func(in *bindingInputs) { in.Name += ".other" },
+		"artifactSha256": func(in *bindingInputs) { in.ArtifactSHA256 = flipHex(in.ArtifactSHA256) },
+		"storeId":        func(in *bindingInputs) { in.StoreID += "-other" },
+		"storeDomain":    func(in *bindingInputs) { in.StoreDomain = "other." + in.StoreDomain },
+		"licenseMint": func(in *bindingInputs) {
+			in.LicenseMint = vectorByName(t, loadBindingVectors(t), "deployer-class-other-store").Inputs.LicenseMint
+		},
+		"registryProgram": func(in *bindingInputs) {
+			in.RegistryProgram = vectorByName(t, loadBindingVectors(t), "deployer-class-other-store").Inputs.RegistryProgram
+		},
 	} {
 		inputs := vector.Inputs
 		mutate(&inputs)

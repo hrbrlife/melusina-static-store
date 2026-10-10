@@ -454,6 +454,12 @@ func requireServingControlMTLS(cfg Config) error {
 	if err := storesecurity.Verify(*cfg.StoreSecurityProfile, *cfg.EstateProfile, profileSHA256); err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
+	// Every envelope signer the serving Store accepts is one the signed
+	// profile names (generation one's off-host installer and promote
+	// envelopes are signed by release publishers).
+	if err := requireAcceptPublishersNamedByProfile(cfg.Policy.AcceptPublishers, *cfg.EstateProfile); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
 	security := cfg.StoreSecurityProfile
 	if cfg.StoreID != security.StoreID || cfg.StoreLinkControlMTLS.ListenAddr != security.ControlListenAddr || cfg.StoreLinkControlMTLS.StoreLinkClientCertSHA256 != security.StoreLinkClientCertSHA256 || cfg.Policy.ScannerEd25519PublicKey != security.ScannerEd25519PublicKey {
 		return fmt.Errorf("config: signed Store security fields do not match serving config")

@@ -1,0 +1,111 @@
+{
+  "schema": "melusina.store-host-facts-digest-vectors.v1",
+  "notes": [
+    "Golden vectors for the owner-signed melusina.store-host-facts.v1 digest: sha256(domain || preimage), lowercase hex.",
+    "preimage is the facts document as compact JSON in fieldOrder with the top-level signatures left out; an omitted optional field (rpcFallbackUrls, rpcTlsSpkiPins) is absent, so documents signed before rpcTlsSpkiPins existed keep their digest.",
+    "The deployer (deploy-ui/internal/storehost StoreHostFactsDigest, the producer and verifier) and the Store (cmd/verify-installer-release, the chain-read consumer) each carry this file byte for byte and assert every vector.",
+    "Every value is a fixture: digests are sha256 of fixed 'store-test-fixture:' labels and the signatures are placeholder strings that the digest excludes. None names anything that exists."
+  ],
+  "domain": "MELUSINA_STORE_HOST_FACTS_V1\n",
+  "fieldOrder": [
+    "schema",
+    "licenseNftMint",
+    "licenseRegistryProgramId",
+    "chainId",
+    "operatorDomain",
+    "rpcUrl",
+    "rpcFallbackUrls",
+    "rpcAttempts",
+    "rpcTlsSpkiPins",
+    "securityProfile",
+    "controlTlsBundlePath",
+    "signatures"
+  ],
+  "vectors": [
+    {
+      "name": "facts-with-rpc-tls-pins",
+      "facts": {
+        "schema": "melusina.store-host-facts.v1",
+        "licenseNftMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "licenseRegistryProgramId": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5",
+        "chainId": "solana:melusina-rehearsal",
+        "operatorDomain": "bazaar.rehearsal.invalid",
+        "rpcUrl": "https://10.77.0.1:8899",
+        "rpcAttempts": 2,
+        "rpcTlsSpkiPins": [
+          "spki-sha256:b99e3c7288661162992a5d9ec0300161688d66bac860200be34ace3411b6ee04",
+          "spki-sha256:e3517b0b06b1aa68178ccde6f9da2fd0025be0c5e68c80f99e0b5e7d3d2dc520"
+        ],
+        "securityProfile": {
+          "schema": "melusina.store-security-profile.v1",
+          "estateProfileSha256": "1c6d70ad3ea47461244e239135e8ee27dfb85e4a4273430117b0a5802dc586f5",
+          "storeId": "rehearsal-root-store",
+          "controlListenAddr": "10.77.0.2:9443",
+          "storeLinkClientCertSha256": "c73548d76263651588fe9e57e3a9d0200f14db31e8215fa75e45c34ba7b31484",
+          "scannerEd25519PublicKey": "64ce1a069c5293ebfa8380cf0cf7fd65c6f8c9e069649fd2b069fbf8eaaba33a",
+          "signatures": [
+            {
+              "keyId": "owner-a",
+              "signature": "c2VjdXJpdHktZml4dHVyZS1zaWduYXR1cmUtYQ"
+            }
+          ]
+        },
+        "controlTlsBundlePath": "/var/lib/melusina-first-store/enrolled-f0/control-tls-bundle.json",
+        "signatures": [
+          {
+            "keyId": "owner-a",
+            "signature": "ZmFjdHMtZml4dHVyZS1zaWduYXR1cmUtYQ"
+          },
+          {
+            "keyId": "owner-b",
+            "signature": "ZmFjdHMtZml4dHVyZS1zaWduYXR1cmUtYg"
+          }
+        ]
+      },
+      "preimage": "{\"schema\":\"melusina.store-host-facts.v1\",\"licenseNftMint\":\"G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E\",\"licenseRegistryProgramId\":\"CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5\",\"chainId\":\"solana:melusina-rehearsal\",\"operatorDomain\":\"bazaar.rehearsal.invalid\",\"rpcUrl\":\"https://10.77.0.1:8899\",\"rpcAttempts\":2,\"rpcTlsSpkiPins\":[\"spki-sha256:b99e3c7288661162992a5d9ec0300161688d66bac860200be34ace3411b6ee04\",\"spki-sha256:e3517b0b06b1aa68178ccde6f9da2fd0025be0c5e68c80f99e0b5e7d3d2dc520\"],\"securityProfile\":{\"schema\":\"melusina.store-security-profile.v1\",\"estateProfileSha256\":\"1c6d70ad3ea47461244e239135e8ee27dfb85e4a4273430117b0a5802dc586f5\",\"storeId\":\"rehearsal-root-store\",\"controlListenAddr\":\"10.77.0.2:9443\",\"storeLinkClientCertSha256\":\"c73548d76263651588fe9e57e3a9d0200f14db31e8215fa75e45c34ba7b31484\",\"scannerEd25519PublicKey\":\"64ce1a069c5293ebfa8380cf0cf7fd65c6f8c9e069649fd2b069fbf8eaaba33a\",\"signatures\":[{\"keyId\":\"owner-a\",\"signature\":\"c2VjdXJpdHktZml4dHVyZS1zaWduYXR1cmUtYQ\"}]},\"controlTlsBundlePath\":\"/var/lib/melusina-first-store/enrolled-f0/control-tls-bundle.json\"}",
+      "digest": "4591359d39e9009f9f35c69e53b051e4c9600ac4cd793e3971dcab307a7b2710"
+    },
+    {
+      "name": "legacy-facts-without-pins",
+      "facts": {
+        "schema": "melusina.store-host-facts.v1",
+        "licenseNftMint": "G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E",
+        "licenseRegistryProgramId": "CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5",
+        "chainId": "solana:melusina-rehearsal",
+        "operatorDomain": "bazaar.rehearsal.invalid",
+        "rpcUrl": "https://10.77.0.1:8899",
+        "rpcFallbackUrls": [
+          "https://rpc-fallback.rehearsal.invalid"
+        ],
+        "rpcAttempts": 2,
+        "securityProfile": {
+          "schema": "melusina.store-security-profile.v1",
+          "estateProfileSha256": "1c6d70ad3ea47461244e239135e8ee27dfb85e4a4273430117b0a5802dc586f5",
+          "storeId": "rehearsal-root-store",
+          "controlListenAddr": "10.77.0.2:9443",
+          "storeLinkClientCertSha256": "c73548d76263651588fe9e57e3a9d0200f14db31e8215fa75e45c34ba7b31484",
+          "scannerEd25519PublicKey": "64ce1a069c5293ebfa8380cf0cf7fd65c6f8c9e069649fd2b069fbf8eaaba33a",
+          "signatures": [
+            {
+              "keyId": "owner-a",
+              "signature": "c2VjdXJpdHktZml4dHVyZS1zaWduYXR1cmUtYQ"
+            }
+          ]
+        },
+        "controlTlsBundlePath": "/var/lib/melusina-first-store/enrolled-f0/control-tls-bundle.json",
+        "signatures": [
+          {
+            "keyId": "owner-a",
+            "signature": "ZmFjdHMtZml4dHVyZS1zaWduYXR1cmUtYQ"
+          },
+          {
+            "keyId": "owner-b",
+            "signature": "ZmFjdHMtZml4dHVyZS1zaWduYXR1cmUtYg"
+          }
+        ]
+      },
+      "preimage": "{\"schema\":\"melusina.store-host-facts.v1\",\"licenseNftMint\":\"G7yFvXK6AuBHzybrVbmNbQ8P8JGFCoHbgfaBXQ22DT5E\",\"licenseRegistryProgramId\":\"CydR6d4QUsWGwVaRVYXTebJSKHb8nYn3R8WqC6GJjAR5\",\"chainId\":\"solana:melusina-rehearsal\",\"operatorDomain\":\"bazaar.rehearsal.invalid\",\"rpcUrl\":\"https://10.77.0.1:8899\",\"rpcFallbackUrls\":[\"https://rpc-fallback.rehearsal.invalid\"],\"rpcAttempts\":2,\"securityProfile\":{\"schema\":\"melusina.store-security-profile.v1\",\"estateProfileSha256\":\"1c6d70ad3ea47461244e239135e8ee27dfb85e4a4273430117b0a5802dc586f5\",\"storeId\":\"rehearsal-root-store\",\"controlListenAddr\":\"10.77.0.2:9443\",\"storeLinkClientCertSha256\":\"c73548d76263651588fe9e57e3a9d0200f14db31e8215fa75e45c34ba7b31484\",\"scannerEd25519PublicKey\":\"64ce1a069c5293ebfa8380cf0cf7fd65c6f8c9e069649fd2b069fbf8eaaba33a\",\"signatures\":[{\"keyId\":\"owner-a\",\"signature\":\"c2VjdXJpdHktZml4dHVyZS1zaWduYXR1cmUtYQ\"}]},\"controlTlsBundlePath\":\"/var/lib/melusina-first-store/enrolled-f0/control-tls-bundle.json\"}",
+      "digest": "4bf42997f306612f251af7a8ae01661380f588f3aa0c3b8595730d981dd5c25b"
+    }
+  ]
+}

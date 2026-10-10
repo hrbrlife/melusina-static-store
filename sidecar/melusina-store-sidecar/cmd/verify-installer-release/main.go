@@ -12,9 +12,12 @@
 //
 // This command is that missing evidence step, and only that step. It never
 // writes, installs, restarts, or touches the chain with a transaction. It reads
-// the controller's OWN root-owned config for its pins, so the ceremony cannot be
-// pointed at a different program, mint, or RPC than the controller itself
-// trusts, and emits one bounded JSON evidence object on success.
+// its program, mint and profile pins from a root-owned controller-shaped
+// config, and its chain endpoint ONLY from the owner-signed Store-host facts
+// that config names (rpc_trust.go): https, TLS pinned to the owner-signed SPKI
+// keys (never the system CA pool), the profile's genesis, and an
+// InstallerReleaseEntry owned by the pinned program. It emits one bounded JSON
+// evidence object on success.
 package main
 
 import (
@@ -41,12 +44,18 @@ import (
 // for fields it has no business judging. The estate profile pin is among them:
 // the ceremony admits an entry by exactly the rule the controller's gate does
 // (internal/installerrelease), under the same pinned profile.
+//
+// StoreHostFactsPath names the owner-signed Store-host facts, the only source
+// of the RPC endpoint and its TLS pins. SolanaRPCURL is not a source: when the
+// config carries one it must be the signed endpoint exactly, or the ceremony
+// refuses by name (check=rpc_endpoint_unsigned).
 type controllerPins struct {
 	MasterNftMint       string `json:"masterNftMint"`
 	ProgramID           string `json:"programId"`
 	SolanaRPCURL        string `json:"solanaRpcUrl"`
 	EstateProfilePath   string `json:"estateProfilePath"`
 	EstateProfileSha256 string `json:"estateProfileSha256"`
+	StoreHostFactsPath  string `json:"storeHostFactsPath"`
 }
 
 type evidence struct {
@@ -76,21 +85,24 @@ func main() {
 
 func run(configPath, artifact string) error {
 	if !filepath.IsAbs(configPath) || !filepath.IsAbs(artifact) {
-		return fmt.Errorf("both -config and -artifact must be absolute paths")
+		return fmt.Errorf("%w: both -config and -artifact must be absolute paths", errConfig)
 	}
 	raw, err := os.ReadFile(configPath)
 	if err != nil {
-		return fmt.Errorf("read config: %w", err)
+		return fmt.Errorf("%w: read config: %v", errConfig, err)
 	}
 	var pins controllerPins
 	if err := json.Unmarshal(raw, &pins); err != nil {
-		return fmt.Errorf("decode config: %w", err)
+		return fmt.Errorf("%w: decode config: %v", errConfig, err)
 	}
-	if pins.MasterNftMint == "" || pins.ProgramID == "" || pins.SolanaRPCURL == "" {
-		return fmt.Errorf("config is missing masterNftMint, programId or solanaRpcUrl")
+	if pins.MasterNftMint == "" || pins.ProgramID == "" {
+		return fmt.Errorf("%w: config is missing masterNftMint or programId", errConfig)
 	}
 	if pins.EstateProfilePath == "" || pins.EstateProfileSha256 == "" {
-		return fmt.Errorf("config is missing estateProfilePath or estateProfileSha256")
+		return fmt.Errorf("%w: config is missing estateProfilePath or estateProfileSha256", errConfig)
+	}
+	if pins.StoreHostFactsPath == "" {
+		return fmt.Errorf("%w: config is missing storeHostFactsPath, the owner-signed source of the RPC endpoint", errRPCTrustAbsent)
 	}
 
 	sum, size, err := hashNoFollow(artifact)
@@ -99,15 +111,22 @@ func run(configPath, artifact string) error {
 	}
 	master, err := primitives.PubkeyFromBase58(pins.MasterNftMint)
 	if err != nil {
-		return fmt.Errorf("masterNftMint: %w", err)
+		return fmt.Errorf("%w: masterNftMint: %v", errConfig, err)
 	}
 	program, err := primitives.PubkeyFromBase58(pins.ProgramID)
 	if err != nil {
-		return fmt.Errorf("programId: %w", err)
+		return fmt.Errorf("%w: programId: %v", errConfig, err)
 	}
-	trust, err := installerrelease.LoadBoundTrust(pins.EstateProfilePath, pins.EstateProfileSha256, program, master)
+	trust, profile, err := installerrelease.LoadBoundProfileTrust(pins.EstateProfilePath, pins.EstateProfileSha256, program, master)
 	if err != nil {
 		return fmt.Errorf("estate profile: %w", err)
+	}
+	rpcTrust, err := loadSignedRPCTrust(pins.StoreHostFactsPath, profile, pins.EstateProfileSha256, program.Base58())
+	if err != nil {
+		return err
+	}
+	if pins.SolanaRPCURL != "" && pins.SolanaRPCURL != rpcTrust.endpoint.String() {
+		return fmt.Errorf("%w: config solanaRpcUrl %q is not the owner-signed endpoint", errRPCEndpointUnsigned, pins.SolanaRPCURL)
 	}
 	pda, _, err := primitives.DeriveInstallerRelease(master, sum, program)
 	if err != nil {
@@ -116,14 +135,25 @@ func run(configPath, artifact string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
-	data, err := verify.NewRPCClient(pins.SolanaRPCURL).GetAccountInfo(ctx, pda.Base58())
-	if err != nil {
-		return fmt.Errorf("fetch InstallerReleaseEntry %s: %w", pda.Base58(), err)
+	rpc := newPinnedRPC(rpcTrust, time.Now)
+	if err := requireProfileGenesis(ctx, rpc, profile); err != nil {
+		return err
 	}
-	if data == nil {
+	reader := &verify.RPCClient{Endpoint: rpc.endpoint, HTTPClient: rpc.client}
+	account, err := reader.GetAccount(ctx, pda.Base58())
+	if err != nil {
+		return rpc.classify(fmt.Errorf("fetch InstallerReleaseEntry %s: %w", pda.Base58(), err))
+	}
+	if account == nil {
 		return fmt.Errorf("fetch InstallerReleaseEntry %s: %w", pda.Base58(), verify.ErrPDANotFound)
 	}
-	entry, err := installerrelease.Decode(data)
+	// Only the pinned program can have written an account it owns; bytes at
+	// the derived address owned by anything else are not an entry.
+	if account.Owner != program.Base58() {
+		return fmt.Errorf("%w: InstallerReleaseEntry %s is owned by %q, not the pinned program %s", errAccountOwner,
+			pda.Base58(), account.Owner, program.Base58())
+	}
+	entry, err := installerrelease.Decode(account.Data)
 	if err != nil {
 		return fmt.Errorf("decode InstallerReleaseEntry %s: %w", pda.Base58(), err)
 	}

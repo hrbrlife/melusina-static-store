@@ -33,8 +33,8 @@
   "catalog_repo_root": "/var/lib/melusina-store/catalog-source",
   "served_snapshot_dir": "/var/lib/melusina-store/served-snapshots",
   "tls": {
-    "cert_path": "/etc/melusina/store/tls/cert.pem",
-    "key_path": "/etc/melusina/store/tls/key.pem"
+    "cert_path": "/etc/melusina/store/tls/current/cert.pem",
+    "key_path": "/etc/melusina/store/tls/current/key.pem"
   },
   "_comment_store_link_control_mtls": "REQUIRED when policy.require_pearl_control_for_app_publish=true. This is a private listener for the Store Link; do not route it through the public catalog edge. The SHA-256 is over the Store Link client certificate DER, not a Pearl public key or CA certificate.",
   "store_link_control_mtls": {

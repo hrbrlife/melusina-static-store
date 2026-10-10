@@ -45,8 +45,8 @@ const (
 	maxStoreConfigRenderOutputJSON = 128 << 10
 
 	storeConfigRenderStatePath = "/var/lib/melusina-store/estate-enrollment.json"
-	storeConfigRenderTLSCert   = "/etc/melusina/store/tls/cert.pem"
-	storeConfigRenderTLSKey    = "/etc/melusina/store/tls/key.pem"
+	storeConfigRenderTLSCert   = "/etc/melusina/store/tls/current/cert.pem"
+	storeConfigRenderTLSKey    = "/etc/melusina/store/tls/current/key.pem"
 	storeConfigRenderShardDir  = "/etc/melusina/store/shards"
 	// The root Store's boot-identity certificate is the chain-bound,
 	// self-issued leaf its SidecarIdentityEntry fingerprints. It is a
@@ -528,7 +528,7 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 			OperatorDomain:     input.OperatorDomain,
 			// The chain-bound identity leaf is deliberately a separate file
 			// from the public, self-renewing leaf above: the ACME responder
-			// may rotate tls/cert.pem freely only because the SidecarIdentity
+			// may rotate tls/current/cert.pem freely only because the SidecarIdentity
 			// fingerprint pins identity/cert.pem instead.
 			TLSCertPath: storeConfigRenderIdentityCert,
 		},

@@ -31,8 +31,8 @@
   "catalog_repo_root": "/var/lib/melusina-store/catalog-source",
   "served_snapshot_dir": "/var/lib/melusina-store/served-snapshots",
   "tls": {
-    "cert_path": "/etc/melusina/store/tls/cert.pem",
-    "key_path": "/etc/melusina/store/tls/key.pem"
+    "cert_path": "/etc/melusina/store/tls/current/cert.pem",
+    "key_path": "/etc/melusina/store/tls/current/key.pem"
   },
   "boot_identity": {
     "shards_dir": "/etc/melusina/store/shards",

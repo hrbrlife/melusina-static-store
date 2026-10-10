@@ -164,12 +164,18 @@ PY
 
 for mutation in bad-link bad-provenance; do
   target="$TMP/$mutation"
+  failure="$TMP/$mutation.stderr"
   if FAKE_STORE_BOOTSTRAP_MUTATION="$mutation" \
-    bash "$REPO/scripts/build-store-bootstrap-component.sh" --version 1.2.3 --out-dir "$target" >/dev/null 2>&1; then
+    bash "$REPO/scripts/build-store-bootstrap-component.sh" --version 1.2.3 --out-dir "$target" >/dev/null 2>"$failure"; then
     echo "producer accepted $mutation" >&2
     exit 1
   fi
+  case "$mutation" in
+    bad-link) grep -Fq 'generation archive contains a non-regular or oversized entry' "$failure" ;;
+    bad-provenance) grep -Fq 'BUILD-PROVENANCE.json does not attest this deterministic Store build' "$failure" ;;
+  esac || { echo "producer failed for the wrong reason: $mutation" >&2; exit 1; }
   [[ ! -e "$target" ]] || { echo "producer left output after $mutation" >&2; exit 1; }
+  echo "MUTATION_CAUGHT $mutation"
 done
 
 echo "Store bootstrap component regression passed"

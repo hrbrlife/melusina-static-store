@@ -210,3 +210,37 @@ func TestSignedPackCustodyRetainsAndRefusesForeignTesterAndTamper(t *testing.T) 
 		t.Fatalf("expired read claim accepted: %v", err)
 	}
 }
+
+func TestCustodyRootRequiresPrivateCanonicalInstallerPath(t *testing.T) {
+	_, pins, _ := buildSignedPack(t)
+	base := t.TempDir()
+	pearl := filepath.Join(base, "grain")
+	if err := os.Mkdir(pearl, 0700); err != nil {
+		t.Fatal(err)
+	}
+	privateRoot := filepath.Join(base, "private")
+	if _, err := Open(privateRoot, pearl, pins); err != nil {
+		t.Fatalf("CUSTODY_PRIVATE_ROOT_POSITIVE: %v", err)
+	}
+	broadRoot := filepath.Join(base, "broad")
+	if err := os.Mkdir(broadRoot, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(broadRoot, pearl, pins); err == nil || !strings.Contains(err.Error(), "root-private-0700-required") {
+		t.Fatalf("CUSTODY_BROAD_ROOT_MUTATION_CONTROL: %v", err)
+	}
+	alias := filepath.Join(base, "alias")
+	if err := os.Symlink(privateRoot, alias); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(alias, pearl, pins); err == nil || !strings.Contains(err.Error(), "root-private-0700-required") {
+		t.Fatalf("CUSTODY_SYMLINK_ROOT_REFUSED: %v", err)
+	}
+	parentAlias := filepath.Join(base, "parent-alias")
+	if err := os.Symlink(base, parentAlias); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(filepath.Join(parentAlias, "private"), pearl, pins); err == nil || !strings.Contains(err.Error(), "root-path-drift") {
+		t.Fatalf("CUSTODY_PARENT_ALIAS_MUTATION_CONTROL: %v", err)
+	}
+}

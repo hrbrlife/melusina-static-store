@@ -25,7 +25,11 @@ func LoadOrCreateIdentity(dataDir, purpose string) (ed25519.PrivateKey, ed25519.
 	default:
 		return nil, nil, "", errors.New("evidence-pack-storage-key-purpose-invalid")
 	}
-	if !filepath.IsAbs(dataDir) {
+	if !filepath.IsAbs(dataDir) || filepath.Clean(dataDir) != dataDir {
+		return nil, nil, "", errors.New("evidence-pack-storage-key-custody-invalid")
+	}
+	directory, err := os.Lstat(dataDir)
+	if err != nil || !directory.IsDir() || directory.Mode().Perm() != 0700 {
 		return nil, nil, "", errors.New("evidence-pack-storage-key-custody-invalid")
 	}
 	path := filepath.Join(dataDir, file)

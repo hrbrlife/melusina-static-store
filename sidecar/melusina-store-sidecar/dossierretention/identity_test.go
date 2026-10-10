@@ -37,3 +37,28 @@ func TestStorageSourceIdentitiesPersistAndRefuseBroadCustody(t *testing.T) {
 		t.Fatalf("foreign signer purpose admitted: %v", err)
 	}
 }
+
+func TestStorageSourceIdentityRequiresPrivateDirectory(t *testing.T) {
+	base := t.TempDir()
+	broad := filepath.Join(base, "broad")
+	if err := os.Mkdir(broad, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := LoadOrCreateIdentity(broad, "member"); err == nil || !strings.Contains(err.Error(), "custody-invalid") {
+		t.Fatalf("STORAGE_MEMBER_BROAD_DIRECTORY_MUTATION_CONTROL: %v", err)
+	}
+	private := filepath.Join(base, "private")
+	if err := os.Mkdir(private, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := LoadOrCreateIdentity(private, "member"); err != nil {
+		t.Fatalf("STORAGE_MEMBER_PRIVATE_DIRECTORY_POSITIVE: %v", err)
+	}
+	alias := filepath.Join(base, "alias")
+	if err := os.Symlink(private, alias); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := LoadOrCreateIdentity(alias, "member"); err == nil || !strings.Contains(err.Error(), "custody-invalid") {
+		t.Fatalf("STORAGE_MEMBER_SYMLINK_DIRECTORY_REFUSED: %v", err)
+	}
+}

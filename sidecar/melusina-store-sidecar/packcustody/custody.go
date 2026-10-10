@@ -110,15 +110,19 @@ func within(path, parent string) bool {
 // Open refuses an in-grain root and copies the public roster so later caller
 // mutations cannot replace an accepted authority.
 func Open(root, pearl string, pins map[string]ed25519.PublicKey) (*Custody, error) {
-	if !filepath.IsAbs(root) || !filepath.IsAbs(pearl) || len(pins) < 6 {
+	if !filepath.IsAbs(root) || filepath.Clean(root) != root || !filepath.IsAbs(pearl) || len(pins) < 6 {
 		return nil, errors.New("evidence-pack-custody-setup-invalid")
 	}
 	if err := os.MkdirAll(root, 0700); err != nil {
 		return nil, err
 	}
+	rootInfo, err := os.Lstat(root)
+	if err != nil || !rootInfo.IsDir() || rootInfo.Mode().Perm() != 0700 {
+		return nil, errors.New("evidence-pack-custody-root-private-0700-required")
+	}
 	actualRoot, err := filepath.EvalSymlinks(root)
-	if err != nil {
-		return nil, err
+	if err != nil || actualRoot != root {
+		return nil, errors.New("evidence-pack-custody-root-path-drift")
 	}
 	actualPearl, err := filepath.EvalSymlinks(pearl)
 	if err != nil || within(actualRoot, actualPearl) || within(actualPearl, actualRoot) {

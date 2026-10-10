@@ -42,6 +42,10 @@ type estateBinding struct {
 	// these keys signed it (see releaseEntryTrust).
 	PublisherKeys      []string // releaseTrust.publisherKeys (lowercase hex)
 	PublisherThreshold uint32   // releaseTrust.threshold
+	// GenesisHash and Cluster are network.genesisHash and network.label: the
+	// chain MEL_RELEASE_RPC_URL must serve (estate_chain.go).
+	GenesisHash string
+	Cluster     string
 }
 
 // loadEstateBinding reads, verifies and pins the owner-signed profile, then
@@ -254,6 +258,8 @@ func estateBindingOf(profile estateprofile.EstateProfileV1, digest string) (esta
 		},
 		PublisherKeys:      append([]string(nil), profile.ReleaseTrust.PublisherKeys...),
 		PublisherThreshold: profile.ReleaseTrust.Threshold,
+		GenesisHash:        profile.Network.GenesisHash,
+		Cluster:            profile.Network.Label,
 	}
 	return binding, nil
 }

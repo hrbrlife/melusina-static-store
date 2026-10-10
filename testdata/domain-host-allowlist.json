@@ -605,6 +605,10 @@
       "reason": "Tracked explanatory text in PUBLISH_QC[.]md; it is not an estate endpoint."
     },
     {
+      "host": "cfg.estate",
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/cmd/mel-release/main[.]go:128; reviewed as source material, not an estate endpoint."
+    },
+    {
       "host": "cfg.name",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/publish_admission_test[.]go; it is not an estate endpoint."
     },
@@ -3221,6 +3225,10 @@
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/catalog_rehydrate[.]go; reviewed as outside the estate origin."
     },
     {
+      "host": "source.name",
+      "reason": "Tracked dotted filename or identifier in scripts/test-mel-release-estate-chain-mutations[.]py:63; reviewed as source material, not an estate endpoint."
+    },
+    {
       "host": "source.read",
       "reason": "Tracked external endpoint or dotted identifier in scripts/generate-app-icon-lock[.]py; reviewed as outside the estate origin."
     },
@@ -3509,6 +3517,10 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
     },
     {
+      "host": "tc.estate",
+      "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/cmd/mel-release/estate_chain_test[.]go:108; reviewed as source material, not an estate endpoint."
+    },
+    {
       "host": "tc.id",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/componentrelease/bundle_location_test[.]go; it is not an estate endpoint."
     },
@@ -3575,6 +3587,10 @@
     {
       "host": "test-launcher.sh",
       "reason": "Tracked dotted filename or identifier in fleet/DEFAULT_BAZAAR_SOURCE_VERIFICATION_LOG[.]md:25; reviewed as source material, not an estate endpoint."
+    },
+    {
+      "host": "test-mel-release-estate-chain-mutations.py",
+      "reason": "Tracked dotted filename or identifier in scripts/test-mel-release-estate-chain-mutations[.]py:9; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "test-mel-release-provider-cli-contract.py",

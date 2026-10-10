@@ -750,7 +750,13 @@ such as a display name the owners accept, is added there by name.
 Still supplied by the operator, with no default: `MEL_RELEASE_STORE_LICENSE_MINT`
 (the Store's operating licence, which the profile does not carry),
 `MEL_RELEASE_STORE_PUBKEY`, `MEL_RELEASE_PUBLISHER_KEY` and
-`MEL_RELEASE_RPC_URL`. `MEL_RELEASE_STORE_PUBKEY` is the Store operator's
+`MEL_RELEASE_RPC_URL`. The RPC is transport, not identity: every subcommand
+except `manifest` first asks it for `getGenesisHash` and refuses
+`rpc-genesis-differs-from-estate-profile` unless it serves the profile's
+`network.genesisHash` (an absent endpoint is `estate-rpc-endpoint-absent`; a
+non-https one, or one with userinfo, `estate-rpc-endpoint-invalid`), so a
+rehearsal estate on its own validator and the devnet estate run the same CLI
+under their own signed profiles. `MEL_RELEASE_STORE_PUBKEY` is the Store operator's
 `identity.Public` file, the destination `submit` seals each stage and promote
 request to. `publish`, `approve` and the other mutating subcommands refuse it
 unless it is a regular file holding a sidecar identity whose `sign_pubkey_b58`

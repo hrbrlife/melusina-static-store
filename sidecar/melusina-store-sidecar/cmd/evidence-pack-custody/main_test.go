@@ -34,6 +34,18 @@ func TestLoadPinsRequiresExactInstallerDigest(t *testing.T) {
 }
 
 func TestPackCustodySocketRequiresInstallerGrainGroup(t *testing.T) {
+	if got, err := socketGroupID("", os.Getgid()); err != nil || got != os.Getgid() {
+		t.Fatalf("installer numeric grain group positive: gid=%d err=%v", got, err)
+	}
+	if _, err := socketGroupID("", -1); err == nil || !strings.Contains(err.Error(), "socket-group-missing") {
+		t.Fatalf("evidence-pack-custody-socket-group-missing: absent group admitted: %v", err)
+	}
+	if _, err := socketGroupID("root", -1); err == nil || !strings.Contains(err.Error(), "socket-group-invalid") {
+		t.Fatalf("evidence-pack-custody-socket-group-invalid: alternate service group admitted: %v", err)
+	}
+	if _, err := socketGroupID("melusina", os.Getgid()); err == nil || !strings.Contains(err.Error(), "socket-group-invalid") {
+		t.Fatalf("evidence-pack-custody-socket-group-invalid: conflicting group authorities admitted: %v", err)
+	}
 	path := filepath.Join(t.TempDir(), "pack.sock")
 	listener, err := net.Listen("unix", path)
 	if err != nil {

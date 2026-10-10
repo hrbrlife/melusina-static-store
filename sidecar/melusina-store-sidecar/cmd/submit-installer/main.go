@@ -4,6 +4,15 @@
 // first, then becomes downloadable only after a signed DesiredGeneration and
 // SidecarIdentity cascade verify its exact bytes; it never writes the catalog
 // directly.
+//
+// With --envelope-out it only signs: it writes the signed /publish/installer
+// envelope (the exact bytes of the multipart "envelope" part this command
+// would otherwise send) and contacts nothing, as submit-generation
+// --envelope-out does for /publish/generation. A release publisher produces it
+// off-host; the Store host later sends it with the artifact through the
+// Store's own /publish/installer gate, which re-verifies the signer against
+// accept_publishers, the purpose binding, the durable nonce and the
+// InstallerReleaseEntry exactly as for an online publication.
 package main
 
 import (
@@ -21,6 +30,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -34,6 +44,22 @@ import (
 const systemProgramID = "11111111111111111111111111111111"
 
 const sidecarClass = "sidecar"
+
+// maxEnvelopeBytes bounds the signed envelope written by --envelope-out. A
+// signed installer envelope is about two kilobytes; the Store host reads a
+// pre-signed envelope through the same 64 KiB ceiling.
+const maxEnvelopeBytes = 64 << 10
+
+// Named refusals. Each names the input or check that refused, so an operator
+// who reads one knows which file or flag to fix.
+const (
+	refuseArtifact     = "check=artifact"
+	refusePublisherKey = "check=publisher_key"
+	refuseStorePubkey  = "check=store_pubkey"
+	refuseLifetime     = "check=envelope_lifetime"
+	refuseSelfVerify   = "check=envelope_self_verify"
+	refuseEnvelopeOut  = "check=envelope_out"
+)
 
 type publisherKeyFile struct {
 	Ref      identity.Ref `json:"ref"`
@@ -54,6 +80,7 @@ type options struct {
 	programID    string
 	verifiedSlot uint64
 	timeout      time.Duration
+	envelopeOut  string
 }
 
 type publishResult struct {
@@ -84,7 +111,8 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.licenseMint, "license-mint", "", "destination Store install licence mint (required)")
 	fs.StringVar(&o.programID, "program-id", "", "license-registry program named in the envelope chain evidence: the estate profile's programs.license-registry.programId (required; there is no default registry)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "publisher chain-evidence slot")
-	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "upload + read-back timeout")
+	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "upload + read-back timeout; the signed envelope lives --timeout plus two minutes (at least five minutes, at most one hour)")
+	fs.StringVar(&o.envelopeOut, "envelope-out", "", "write the signed /publish/installer envelope (the exact multipart envelope part) atomically to this path; do not contact the store. --store names the Store the envelope is for and is not contacted")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -124,21 +152,21 @@ func run(args []string, stdout io.Writer) error {
 	}
 	artifact, err := os.ReadFile(o.artifactPath)
 	if err != nil {
-		return fmt.Errorf("read artifact: %w", err)
+		return fmt.Errorf("%s: read --artifact: %w", refuseArtifact, err)
 	}
 	if len(artifact) == 0 {
-		return errors.New("artifact is empty")
+		return fmt.Errorf("%s: artifact is empty", refuseArtifact)
 	}
 	artifactHash := sha256.Sum256(artifact)
 	hashHex := hex.EncodeToString(artifactHash[:])
 
 	publisher, err := loadPublisherKey(o.publisherKey)
 	if err != nil {
-		return fmt.Errorf("publisher key: %w", err)
+		return fmt.Errorf("%s: %w", refusePublisherKey, err)
 	}
 	destination, err := loadStorePubkey(o.storePubkey)
 	if err != nil {
-		return fmt.Errorf("store pubkey: %w", err)
+		return fmt.Errorf("%s: %w", refuseStorePubkey, err)
 	}
 	// A publisher key minted under another registry belongs to another
 	// estate; refuse the mix instead of letting either program win.
@@ -154,14 +182,51 @@ func run(args []string, stdout io.Writer) error {
 	if ttl < 5*time.Minute {
 		ttl = 5 * time.Minute
 	}
+	if ttl > envelope.MaxTransportLifetime {
+		return fmt.Errorf("%s: --timeout %s gives a %s envelope; the Store accepts at most %s", refuseLifetime, o.timeout, ttl, envelope.MaxTransportLifetime)
+	}
 	signed, err := installerpublish.Sign(publisher, destination, o.class, o.name, hashHex,
 		o.storeID, o.storeDomain, o.licenseMint, o.programID, o.verifiedSlot, ttl)
 	if err != nil {
 		return fmt.Errorf("sign envelope: %w", err)
 	}
+	bindingDigest, err := verifySignedInstallerEnvelope(signed, publisher.Public(), destination, o, hashHex)
+	if err != nil {
+		return err
+	}
+	envelopeBytes, err := json.Marshal(signed)
+	if err != nil {
+		return fmt.Errorf("marshal signed installer envelope: %w", err)
+	}
+	if len(envelopeBytes) > maxEnvelopeBytes {
+		return fmt.Errorf("%s: signed envelope is %d bytes, above the %d byte ceiling", refuseSelfVerify, len(envelopeBytes), maxEnvelopeBytes)
+	}
+
+	// Envelope-only: the release publisher signs off-host and the Store host
+	// sends these exact bytes with the artifact later. Nothing is contacted
+	// and no publisher key reaches the host. The file is immutable input to a
+	// later authorized POST, not a publication receipt.
+	if strings.TrimSpace(o.envelopeOut) != "" {
+		if err := atomicWrite(o.envelopeOut, envelopeBytes); err != nil {
+			return fmt.Errorf("%s: write signed installer envelope: %w", refuseEnvelopeOut, err)
+		}
+		envelopeSum := sha256.Sum256(envelopeBytes)
+		return json.NewEncoder(stdout).Encode(map[string]any{
+			"status":          "SIGNED_INSTALLER_ENVELOPE_OK",
+			"envelopePath":    o.envelopeOut,
+			"envelopeSha256":  hex.EncodeToString(envelopeSum[:]),
+			"class":           o.class,
+			"name":            o.name,
+			"artifactSha256":  hashHex,
+			"bindingSha256":   bindingDigest,
+			"signerPubkeyB58": publisher.Public().SignPubkeyB58,
+			"target":          installerpublish.Target,
+			"expiresAtMs":     signed.Payload.ExpiresAtMs,
+		})
+	}
 
 	client := &http.Client{Timeout: o.timeout}
-	result, err := publish(context.Background(), client, o, signed, artifact)
+	result, err := publish(context.Background(), client, o, envelopeBytes, artifact)
 	if err != nil {
 		return err
 	}
@@ -188,14 +253,44 @@ func run(args []string, stdout io.Writer) error {
 	return nil
 }
 
-func publish(ctx context.Context, client *http.Client, o options, signed envelope.Signed, artifact []byte) (publishResult, error) {
+// verifySignedInstallerEnvelope re-verifies the envelope this command just
+// signed the way the Store's /publish/installer gate will: the signature
+// against the publisher's own key, the Store operator destination, the
+// artifact digest and the purpose binding (POST /publish/installer, class,
+// name and the Store audience). It returns the binding digest. An envelope
+// that would not pass is never written or sent.
+func verifySignedInstallerEnvelope(signed envelope.Signed, publisher identity.Public, destination identity.Public,
+	o options, artifactSHA256 string) (string, error) {
+	binding, err := installerpublish.Digest(o.class, o.name, artifactSHA256,
+		o.storeID, o.storeDomain, o.licenseMint, o.programID)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", refuseSelfVerify, err)
+	}
+	if strings.TrimSpace(signed.SignatureB58) == "" {
+		return "", fmt.Errorf("%s: the envelope carries no signature", refuseSelfVerify)
+	}
+	if signed.Payload.Method != http.MethodPost || signed.Payload.Target != installerpublish.Target ||
+		signed.Payload.BodyHashHex != binding || signed.Payload.RequestHashHex != artifactSHA256 {
+		return "", fmt.Errorf("%s: the envelope does not bind POST %s, this artifact and this Store audience", refuseSelfVerify, installerpublish.Target)
+	}
+	if err := envelope.Verify(signed, envelope.VerifyOptions{
+		ExpectedKind:            envelope.KindPublishRequest,
+		ExpectedSignerPubkeyB58: publisher.SignPubkeyB58,
+		ExpectedDestination:     &destination,
+		ExpectedRequestHash:     artifactSHA256,
+		NonceCache:              envelope.NewMemoryNonceCache(),
+	}); err != nil {
+		return "", fmt.Errorf("%s: %w", refuseSelfVerify, err)
+	}
+	return binding, nil
+}
+
+// publish sends the exact signed envelope bytes (the same bytes
+// --envelope-out writes) with the artifact as the Store's multipart form.
+func publish(ctx context.Context, client *http.Client, o options, envelopeBytes []byte, artifact []byte) (publishResult, error) {
 	var result publishResult
 	var body bytes.Buffer
 	mw := multipart.NewWriter(&body)
-	envelopeBytes, err := json.Marshal(signed)
-	if err != nil {
-		return result, err
-	}
 	if err := writePart(mw, "envelope", "envelope.json", envelopeBytes); err != nil {
 		return result, err
 	}
@@ -345,4 +440,35 @@ func safeSegment(value string) bool {
 		}
 	}
 	return true
+}
+
+// atomicWrite writes data to path through a private temporary file in the
+// same directory, as submit-generation --envelope-out does.
+func atomicWrite(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, ".installer-envelope-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }

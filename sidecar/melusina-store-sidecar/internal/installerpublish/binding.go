@@ -17,6 +17,24 @@ import (
 
 const Target = "/publish/installer"
 
+// MaxPublishBodyBytes is the Store's ceiling on one whole /publish/installer
+// request body (handler.go maxInstallerPublishBody; the root package's
+// TestInstallerArtifactCeilingFitsThePublishBody holds the two equal).
+// PublishBodyHeadroomBytes is what a publication carries besides the member:
+// the signed envelope part (at most 64 KiB, the ceiling every reader of a
+// pre-signed envelope applies), the class and name fields and the multipart
+// boundaries and part headers (a few hundred bytes), rounded up to 128 KiB.
+// MaxArtifactBytes is therefore the largest member that is never refused as
+// an oversized body after its envelope was signed: submit-installer refuses
+// a larger member before signing, and the deployer's generation-one tooling
+// refuses one in the signed F1 before any publisher signs (deploy-ui
+// internal/firststoregeneration MaxInstallerMemberBytes, the same value).
+const (
+	MaxPublishBodyBytes      int64 = 512 << 20
+	PublishBodyHeadroomBytes int64 = 128 << 10
+	MaxArtifactBytes               = MaxPublishBodyBytes - PublishBodyHeadroomBytes
+)
+
 // BindingSchema and BindingPurpose are the fixed values of Binding. They and
 // the field order of Binding are part of the signed bytes: the golden vectors
 // in testdata/installer-publish-binding-v1.json pin them, and a consumer that

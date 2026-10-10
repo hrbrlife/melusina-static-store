@@ -54,6 +54,7 @@ const maxEnvelopeBytes = 64 << 10
 // who reads one knows which file or flag to fix.
 const (
 	refuseArtifact     = "check=artifact"
+	refuseArtifactSize = "check=artifact_size"
 	refusePublisherKey = "check=publisher_key"
 	refuseStorePubkey  = "check=store_pubkey"
 	refuseLifetime     = "check=envelope_lifetime"
@@ -150,12 +151,21 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+	// A member the Store's /publish/installer body ceiling cannot carry is
+	// refused before it is read or signed, never discovered as a 400 on the
+	// Store host after the envelope exists.
+	if info, err := os.Stat(o.artifactPath); err == nil && info.Size() > installerpublish.MaxArtifactBytes {
+		return fmt.Errorf("%s: artifact is %d bytes, above the %d byte member ceiling of the Store's /publish/installer body", refuseArtifactSize, info.Size(), installerpublish.MaxArtifactBytes)
+	}
 	artifact, err := os.ReadFile(o.artifactPath)
 	if err != nil {
 		return fmt.Errorf("%s: read --artifact: %w", refuseArtifact, err)
 	}
 	if len(artifact) == 0 {
 		return fmt.Errorf("%s: artifact is empty", refuseArtifact)
+	}
+	if int64(len(artifact)) > installerpublish.MaxArtifactBytes {
+		return fmt.Errorf("%s: artifact is %d bytes, above the %d byte member ceiling of the Store's /publish/installer body", refuseArtifactSize, len(artifact), installerpublish.MaxArtifactBytes)
 	}
 	artifactHash := sha256.Sum256(artifact)
 	hashHex := hex.EncodeToString(artifactHash[:])

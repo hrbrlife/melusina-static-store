@@ -109,6 +109,8 @@ var (
 	ErrCustodianMismatch     = errors.New("release-entry-custodian-mismatch")
 	ErrPayloadHashMismatch   = errors.New("release-entry-payload-hash-mismatch")
 	ErrPublisherUntrusted    = errors.New("release-entry-publisher-untrusted")
+	ErrPublisherDuplicate    = errors.New("release-entry-publisher-duplicate")
+	ErrPublisherOrder        = errors.New("release-entry-publisher-order")
 	ErrThresholdUnmet        = errors.New("release-entry-publisher-threshold-unmet")
 	ErrSignatureInvalid      = errors.New("release-entry-signature-invalid")
 	ErrTrustUnconfigured     = errors.New("release-entry-trust-unconfigured")
@@ -132,6 +134,14 @@ type Entry struct {
 	// RevokedAt is nil for None.
 	RevokedAt *int64
 	Bump      uint8
+}
+
+// PublisherSignature is an additional endorsement of the exact payload hash
+// recorded in ReleaseEntry. The chain verifies the primary signature; Store
+// verifies every additional signature against the owner-signed publisher set.
+type PublisherSignature struct {
+	PublicKey [32]byte
+	Signature [64]byte
 }
 
 // Discriminator returns sha256("account:ReleaseEntry")[:8].
@@ -374,9 +384,16 @@ func (e Entry) Attests(want Expectation) error {
 // version (Attests), the custodian (registered_by == publisher_squads_vault
 // == the estate's release custodian), the recorded digest against one
 // recomputed from the entry's own fields, the publisher key against the
-// estate's releaseTrust.publisherKeys, the threshold (an entry records ONE
-// publisher signature), and that signature over the digest.
+// estate's releaseTrust.publisherKeys, the threshold, and each signature over
+// the digest. Admit has only the chain-recorded signature; additional signatures
+// can be supplied by the release descriptor through AdmitWithSignatures.
 func (t *Trust) Admit(e Entry, want Expectation) error {
+	return t.AdmitWithSignatures(e, want, nil)
+}
+
+// AdmitWithSignatures enforces the enrolled threshold over the chain-recorded
+// primary publisher and distinct additional signatures on that same digest.
+func (t *Trust) AdmitWithSignatures(e Entry, want Expectation, additional []PublisherSignature) error {
 	if t == nil || len(t.publishers) == 0 {
 		return fmt.Errorf("%w: no estate release trust is bound", ErrTrustUnconfigured)
 	}
@@ -407,11 +424,27 @@ func (t *Trust) Admit(e Entry, want Expectation) error {
 	if _, ok := t.publishers[e.PublisherEd25519Pubkey]; !ok {
 		return fmt.Errorf("%w: publisher key %x is not in the estate profile's releaseTrust.publisherKeys", ErrPublisherUntrusted, e.PublisherEd25519Pubkey[:])
 	}
-	if t.threshold > 1 {
-		return fmt.Errorf("%w: the entry records one publisher signature; releaseTrust.threshold is %d", ErrThresholdUnmet, t.threshold)
+	if 1+len(additional) < int(t.threshold) {
+		return fmt.Errorf("%w: %d signatures for releaseTrust.threshold %d", ErrThresholdUnmet, 1+len(additional), t.threshold)
 	}
 	if !ed25519.Verify(ed25519.PublicKey(e.PublisherEd25519Pubkey[:]), e.SignedPayloadHash[:], e.Signature[:]) {
 		return fmt.Errorf("%w: publisher %x", ErrSignatureInvalid, e.PublisherEd25519Pubkey[:])
+	}
+	var previous [32]byte
+	for i, signer := range additional {
+		if signer.PublicKey == e.PublisherEd25519Pubkey || (i > 0 && signer.PublicKey == previous) {
+			return fmt.Errorf("%w: publisher %x", ErrPublisherDuplicate, signer.PublicKey[:])
+		}
+		if i > 0 && bytes.Compare(previous[:], signer.PublicKey[:]) > 0 {
+			return fmt.Errorf("%w: additional publisher keys must be ordered", ErrPublisherOrder)
+		}
+		if _, ok := t.publishers[signer.PublicKey]; !ok {
+			return fmt.Errorf("%w: additional publisher %x", ErrPublisherUntrusted, signer.PublicKey[:])
+		}
+		if !ed25519.Verify(ed25519.PublicKey(signer.PublicKey[:]), e.SignedPayloadHash[:], signer.Signature[:]) {
+			return fmt.Errorf("%w: additional publisher %x", ErrSignatureInvalid, signer.PublicKey[:])
+		}
+		previous = signer.PublicKey
 	}
 	return nil
 }

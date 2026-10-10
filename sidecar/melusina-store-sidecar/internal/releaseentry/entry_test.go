@@ -1,6 +1,7 @@
 package releaseentry
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
@@ -457,6 +458,53 @@ func TestAdmitAcceptsTheRegisteredRelease(t *testing.T) {
 	if err := vectorTrust(t, e, other, e.PublisherEd25519Pubkey).Admit(e, expectationOf(e)); err != nil {
 		t.Fatalf("Admit with two enrolled publishers: %v", err)
 	}
+}
+
+func TestH09AppReleasePublisherThresholdUsesSignedEndorsement(t *testing.T) {
+	_, entry := activeVector(t)
+	var second [32]byte
+	copy(second[:], otherPublisher().Public().(ed25519.PublicKey))
+	trust, err := NewTrust(entry.MasterNFTMint, entry.PublisherSquadsVault,
+		[][32]byte{entry.PublisherEd25519Pubkey, second}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	endorsement := PublisherSignature{PublicKey: second}
+	copy(endorsement.Signature[:], ed25519.Sign(otherPublisher(), entry.SignedPayloadHash[:]))
+	if err := trust.AdmitWithSignatures(entry, expectationOf(entry), []PublisherSignature{endorsement}); err != nil {
+		t.Fatalf("signed two-publisher control: %v", err)
+	}
+	requireRefusal(t, trust.Admit(entry, expectationOf(entry)), ErrThresholdUnmet, "missing second publisher")
+	changed := endorsement
+	changed.Signature[0] ^= 1
+	requireRefusal(t, trust.AdmitWithSignatures(entry, expectationOf(entry), []PublisherSignature{changed}),
+		ErrSignatureInvalid, "MUTATION_APP_RELEASE_SECOND_PUBLISHER_SIGNATURE_REQUIRED")
+	changed = endorsement
+	changed.PublicKey = entry.PublisherEd25519Pubkey
+	requireRefusal(t, trust.AdmitWithSignatures(entry, expectationOf(entry), []PublisherSignature{changed}),
+		ErrPublisherDuplicate, "MUTATION_APP_RELEASE_DISTINCT_PUBLISHER_REQUIRED")
+	thirdSeed := sha256.Sum256([]byte("melusina-app-release-third-publisher-test-vector"))
+	third := ed25519.NewKeyFromSeed(thirdSeed[:])
+	var thirdKey [32]byte
+	copy(thirdKey[:], third.Public().(ed25519.PublicKey))
+	changed = PublisherSignature{PublicKey: thirdKey}
+	copy(changed.Signature[:], ed25519.Sign(third, entry.SignedPayloadHash[:]))
+	requireRefusal(t, trust.AdmitWithSignatures(entry, expectationOf(entry), []PublisherSignature{changed}),
+		ErrPublisherUntrusted, "MUTATION_APP_RELEASE_PINNED_PUBLISHER_REQUIRED")
+	three, err := NewTrust(entry.MasterNFTMint, entry.PublisherSquadsVault,
+		[][32]byte{entry.PublisherEd25519Pubkey, second, thirdKey}, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordered := []PublisherSignature{endorsement, changed}
+	if bytes.Compare(ordered[0].PublicKey[:], ordered[1].PublicKey[:]) > 0 {
+		ordered[0], ordered[1] = ordered[1], ordered[0]
+	}
+	if err := three.AdmitWithSignatures(entry, expectationOf(entry), ordered); err != nil {
+		t.Fatalf("three signed publisher control: %v", err)
+	}
+	requireRefusal(t, three.AdmitWithSignatures(entry, expectationOf(entry), []PublisherSignature{ordered[1], ordered[0]}),
+		ErrPublisherOrder, "MUTATION_APP_RELEASE_PUBLISHER_ORDER_REQUIRED")
 }
 
 // TestAdmitRefusesByName: each mutation is refused by its own name. The

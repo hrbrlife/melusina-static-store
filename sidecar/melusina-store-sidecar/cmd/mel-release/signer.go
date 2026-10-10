@@ -127,17 +127,18 @@ func newExecProvider(c Config) *execProvider {
 	return &execProvider{
 		command: c.SignerProvider,
 		env: map[string]string{
-			"MEL_RELEASE_CONFIG":             c.ConfigPath,
-			"MEL_RELEASE_RPC_URL":            c.RPCURL,
-			"MEL_RELEASE_STATE_DIR":          c.StateDir,
-			"MEL_RELEASE_STORE_URL":          c.StoreURL,
-			"MEL_RELEASE_STORE_DOMAIN":       c.StoreDomain,
-			"MEL_RELEASE_STORE_PUBKEY":       c.StorePubkey,
-			"MEL_RELEASE_STORE_LICENSE_MINT": c.StoreLicenseMint,
-			"MEL_RELEASE_PUBLISHER_KEY":      c.PublisherKey,
-			"MEL_RELEASE_SQUADS_MULTISIG":    c.SquadsMultisig,
-			"MEL_RELEASE_SQUADS_VAULT":       c.SquadsVault,
-			"MEL_RELEASE_SQUADS_PROGRAM_ID":  c.SquadsProgramID,
+			"MEL_RELEASE_CONFIG":                 c.ConfigPath,
+			"MEL_RELEASE_RPC_URL":                c.RPCURL,
+			"MEL_RELEASE_STATE_DIR":              c.StateDir,
+			"MEL_RELEASE_STORE_URL":              c.StoreURL,
+			"MEL_RELEASE_STORE_DOMAIN":           c.StoreDomain,
+			"MEL_RELEASE_STORE_PUBKEY":           c.StorePubkey,
+			"MEL_RELEASE_STORE_LICENSE_MINT":     c.StoreLicenseMint,
+			"MEL_RELEASE_PUBLISHER_KEY":          c.PublisherKey,
+			"MEL_RELEASE_PUBLISHER_ENDORSEMENTS": c.PublisherEndorsements,
+			"MEL_RELEASE_SQUADS_MULTISIG":        c.SquadsMultisig,
+			"MEL_RELEASE_SQUADS_VAULT":           c.SquadsVault,
+			"MEL_RELEASE_SQUADS_PROGRAM_ID":      c.SquadsProgramID,
 			// Estate-derived values replace whatever the caller's environment
 			// held, so the provider sees exactly the profile's estate.
 			"MEL_RELEASE_SQUADS_THRESHOLD":    strconv.Itoa(c.SquadsThreshold),
@@ -161,6 +162,7 @@ func newPreflightExecProvider(c Config) *execProvider {
 		"MEL_RELEASE_STORE_PUBKEY",
 		"MEL_RELEASE_STORE_LICENSE_MINT",
 		"MEL_RELEASE_PUBLISHER_KEY",
+		"MEL_RELEASE_PUBLISHER_ENDORSEMENTS",
 	} {
 		delete(p.env, name)
 	}
@@ -210,6 +212,7 @@ func isPreflightCredentialName(name string) bool {
 		"MEL_RELEASE_STORE_LICENSE_MINT",
 		"MEL_RELEASE_LICENSE_MINT",
 		"MEL_RELEASE_PUBLISHER_KEY",
+		"MEL_RELEASE_PUBLISHER_ENDORSEMENTS",
 		"MEL_RELEASE_AUTHOR_KEYPAIR",
 		"MEL_RELEASE_SQUADS_MEMBERS",
 		"MEL_RELEASE_SQUADS_NODE_MODULES",

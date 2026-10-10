@@ -95,6 +95,51 @@ func TestApproveAdmitsTheRunnerRegisteredReleaseEntry(t *testing.T) {
 	}
 }
 
+func TestReadbackAdmitsDetachedPublisherEndorsement(t *testing.T) {
+	h := newHarness(t)
+	mustNoErr(t, "publish", h.publish("1.0.1"))
+	entry := h.runnerRegister(releasetest.TrustedPublisher(), nil)
+	second := releasetest.UntrustedPublisher()
+	h.cfg.ReleasePublisherKeys = append(h.cfg.ReleasePublisherKeys,
+		hex.EncodeToString(second.Public().(ed25519.PublicKey)))
+	h.cfg.ReleasePublisherThreshold = 2
+	rec := h.wal()
+	file := publisherEndorsementFile{Schema: "melusina-app-release-endorsements-v1",
+		ReleaseEntryPDA:   rec.NewReleasePDA,
+		SignedPayloadHash: hex.EncodeToString(entry.SignedPayloadHash[:]),
+		Signatures: []publisherEndorsement{{
+			PublisherEd25519PublicKey: hex.EncodeToString(second.Public().(ed25519.PublicKey)),
+			Signature:                 hex.EncodeToString(ed25519.Sign(second, entry.SignedPayloadHash[:])),
+		}},
+	}
+	h.cfg.PublisherEndorsements = h.cfg.receiptPath(testAppID, "second-publisher.json")
+	write := func() {
+		b, err := json.Marshal(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(h.cfg.PublisherEndorsements, append(b, '\n'), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write()
+	if _, _, err := readbackReleaseEntry(h.cfg, newExecProvider(h.cfg), &rec); err != nil {
+		t.Fatalf("detached two-publisher readback: %v", err)
+	}
+	file.Signatures[0].Signature = strings.Repeat("0", 128)
+	write()
+	requireNamedRefusal(t, func() error {
+		_, _, err := readbackReleaseEntry(h.cfg, newExecProvider(h.cfg), &rec)
+		return err
+	}(), releaseentry.ErrSignatureInvalid)
+	file.Signatures = nil
+	write()
+	requireNamedRefusal(t, func() error {
+		_, _, err := readbackReleaseEntry(h.cfg, newExecProvider(h.cfg), &rec)
+		return err
+	}(), releaseentry.ErrThresholdUnmet)
+}
+
 // Mutation control: missing entry. With no registration approve refuses by
 // name and runs nothing that could change a file or the Store.
 func TestApproveRefusesAMissingReleaseEntry(t *testing.T) {

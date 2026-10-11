@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -60,6 +61,24 @@ func TestEstateDrillGenerationPromoteAndServe(t *testing.T) {
 			"generation-operator-key.txt": []byte(svc.operator.Public().SignPubkeyB58),
 		} {
 			if err := os.WriteFile(filepath.Join(dir, name), raw, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if deployerRoot := os.Getenv("ESTATE_DRILL_DEPLOYER_ROOT"); deployerRoot != "" {
+			cmd := exec.Command("go", "test", "-run", "^TestEstateDrillProductGenerationFromStoreFixture$",
+				"-count=1", "./internal/storegeneration")
+			cmd.Dir = deployerRoot
+			cmd.Env = append(os.Environ(), "ESTATE_DRILL_GENERATION_FIXTURE_DIR="+dir)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("generation product profile: %v: %s", err, output)
+			}
+			server := httptest.NewServer(http.HandlerFunc(svc.handleDesiredGeneration))
+			defer server.Close()
+			joined := exec.Command("python3", "-B", os.Getenv("ESTATE_DRILL_GENERATION_JOIN_SCRIPT"),
+				dir, server.URL)
+			if output, err := joined.CombinedOutput(); err != nil {
+				t.Fatalf("generation mapped readback: %v: %s", err, output)
+			} else if err := os.WriteFile(filepath.Join(dir, "joined-generation.log"), output, 0o600); err != nil {
 				t.Fatal(err)
 			}
 		}

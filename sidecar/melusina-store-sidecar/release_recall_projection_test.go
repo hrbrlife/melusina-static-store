@@ -166,6 +166,34 @@ func TestRecallCrossProductGate(t *testing.T) {
 	if err := os.Mkdir(out, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	deployerRoot := os.Getenv("ESTATE_DRILL_DEPLOYER_ROOT")
+	if deployerRoot == "" {
+		t.Fatal("drill-recall-signed-scope-input-missing")
+	}
+	signedScopePath := filepath.Join(out, "signed-estate-scope.json")
+	scopeProducer := exec.Command("go", "test", "-run", "^TestSignedRecallOperatorScope$",
+		"-count=1", "./testdata/estate-drill-signed-scope")
+	scopeProducer.Dir = deployerRoot
+	scopeProducer.Env = append(os.Environ(),
+		"ESTATE_DRILL_RECALL_OPERATOR_KEY="+fx.cfg.StoreAuthority,
+		"ESTATE_DRILL_RECALL_SCOPE_OUT="+signedScopePath)
+	if output, err := scopeProducer.CombinedOutput(); err != nil {
+		t.Fatalf("drill-recall-signed-scope-producer: %v: %s", err, output)
+	}
+	var signedScope struct {
+		Profile struct {
+			Store struct{ OperatorKey string `json:"operatorKey"` } `json:"store"`
+		} `json:"profile"`
+		ProfileSHA256 string `json:"profileSha256"`
+	}
+	if raw, err := os.ReadFile(signedScopePath); err != nil {
+		t.Fatal(err)
+	} else if err := json.Unmarshal(raw, &signedScope); err != nil {
+		t.Fatal(err)
+	}
+	if signedScope.Profile.Store.OperatorKey != fx.cfg.StoreAuthority || signedScope.ProfileSHA256 == "" {
+		t.Fatal("drill-recall-foreign-operator")
+	}
 	inputRaw, err := json.Marshal(input)
 	if err != nil {
 		t.Fatal(err)
@@ -307,6 +335,7 @@ print(json.dumps(effects,sort_keys=True))`
 		t.Fatal(err)
 	}
 	trace := map[string]any{"operatorKey": fx.cfg.StoreAuthority,
+		"signedScopePath": signedScopePath,
 		"storeDomain": fx.cfg.Domain, "masterMint": fx.cfg.ReleaseMasterNftMint,
 		"storeOrigin": server.URL, "chainRpcOrigin": fmt.Sprintf("http://127.0.0.1:%s", os.Getenv("ESTATE_REVOKE_RPC_PORT")),
 		"genesisHash": readback.Genesis, "releaseEntryPda": readback.ReleaseEntryPda,

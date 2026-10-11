@@ -399,6 +399,39 @@ func TestEstateStoreConfigRenderRefusesDuplicateInputKeysAndInsecureInputMode(t 
 	}
 }
 
+func TestEstateStoreConfigRenderExactInterruptedRetryAndChangedOutputRefusal(t *testing.T) {
+	_, profilePath, inputPath, outputPath, input := newStoreConfigRenderFixture(t)
+	writeStoreConfigRenderInput(t, inputPath, input)
+	opts := estateStoreConfigRenderOptions{profilePath: profilePath, inputPath: inputPath, outputPath: outputPath}
+	first, err := renderEstateStoreConfig(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := renderEstateStoreConfig(opts)
+	if err != nil || second.ConfigSHA256 != first.ConfigSHA256 {
+		t.Fatalf("exact interrupted retry refused: second=%+v err=%v", second, err)
+	}
+	retained, err := os.ReadFile(outputPath)
+	if err != nil || !reflect.DeepEqual(retained, initial) {
+		t.Fatalf("exact interrupted retry changed output: %v", err)
+	}
+	changed := append(append([]byte(nil), initial...), ' ')
+	if err := os.WriteFile(outputPath, changed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := renderEstateStoreConfig(opts); !errors.Is(err, errStoreConfigRenderOutputExists) {
+		t.Fatalf("STORE_CONFIG_RENDER_CHANGED_OUTPUT_ACCEPTED: %v", err)
+	}
+	retained, err = os.ReadFile(outputPath)
+	if err != nil || !reflect.DeepEqual(retained, changed) {
+		t.Fatalf("changed output was overwritten: %v", err)
+	}
+}
+
 func TestEstateStoreConfigRenderNeverOverwritesAndProfileCheckCatchesQuorumDrift(t *testing.T) {
 	_, profilePath, inputPath, outputPath, input := newStoreConfigRenderFixture(t)
 	writeStoreConfigRenderInput(t, inputPath, input)

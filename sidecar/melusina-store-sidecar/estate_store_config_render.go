@@ -13,6 +13,7 @@ package main
 // transaction.
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -600,7 +601,8 @@ func marshalStoreConfigRenderCandidate(config Config) ([]byte, error) {
 	return raw, nil
 }
 
-// writeStoreConfigRenderCandidate writes only a new file.  The temporary is
+// writeStoreConfigRenderCandidate writes only a new file or accepts the exact
+// byte-identical, root-owned output of an interrupted earlier invocation. The temporary is
 // fully fsynced and validated through the ordinary Config loader before a
 // same-directory hard link publishes it.  link(2), unlike rename(2), cannot
 // replace a concurrent file, including a symlink.
@@ -617,7 +619,7 @@ func writeStoreConfigRenderCandidate(path string, raw []byte, profile estateprof
 		return "", fmt.Errorf("store-config-render-output-directory: %w", err)
 	}
 	if _, err := os.Lstat(path); err == nil {
-		return "", errStoreConfigRenderOutputExists
+		return storeConfigRenderExistingCandidate(path, raw)
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return "", fmt.Errorf("store-config-render-output-target: %w", err)
 	}
@@ -667,7 +669,7 @@ func writeStoreConfigRenderCandidate(path string, raw []byte, profile estateprof
 	}
 	if err := os.Link(temporary, path); err != nil {
 		if errors.Is(err, os.ErrExist) {
-			return "", errStoreConfigRenderOutputExists
+			return storeConfigRenderExistingCandidate(path, raw)
 		}
 		return "", err
 	}
@@ -682,6 +684,25 @@ func writeStoreConfigRenderCandidate(path string, raw []byte, profile estateprof
 		return "", err
 	}
 	digest := sha256.Sum256(raw)
+	return hex.EncodeToString(digest[:]), nil
+}
+
+// A later Store host step can fail after a valid config was published. An
+// exact retry needs that candidate, while a changed or unsafe file must never
+// be adopted as if the owner-signed inputs had produced it.
+func storeConfigRenderExistingCandidate(path string, want []byte) (string, error) {
+	got, err := readStoreConfigRenderRegular(path, maxStoreConfigRenderOutputJSON, true)
+	if err != nil || !bytes.Equal(got, want) {
+		return "", errStoreConfigRenderOutputExists
+	}
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || fileUID(info) != uint32(os.Geteuid()) {
+		return "", errStoreConfigRenderOutputExists
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); !ok || stat.Nlink != 1 {
+		return "", errStoreConfigRenderOutputExists
+	}
+	digest := sha256.Sum256(got)
 	return hex.EncodeToString(digest[:]), nil
 }
 

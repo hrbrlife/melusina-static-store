@@ -8,11 +8,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
@@ -57,17 +61,49 @@ type recallFixture struct {
 // the configured release_master_nft_mint, each with its exact Active program
 // ReleaseEntry account and an Active listing on this Store.
 func newRecallFixture(t *testing.T) *recallFixture {
+	return newRecallFixtureWithAuthority(t, nil)
+}
+
+func newRecallFixtureWithAuthority(t *testing.T, authority *ReleaseSquadsAuthority) *recallFixture {
 	t.Helper()
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
 	operator := newTestIdentity(t, "store-release-recall", cfg.LicenseNFTMint, cfg.Domain)
 	cfg.StoreAuthority = operator.Public().SignPubkeyB58
-	cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	if authority == nil {
+		cfg.ReleaseMasterNftMint = randPubkeyB58(t)
+	} else {
+		cfg.ReleaseSquadsAuthority = *authority
+		cfg.ReleaseMasterNftMint = os.Getenv("ESTATE_REVOKE_MASTER_MINT")
+	}
 	survivor := variantFixture(t, cfg, cfg.ReleaseMasterNftMint, "survivor")
 	recalled := variantFixture(t, cfg, cfg.ReleaseMasterNftMint, "recalled")
 	survivorPackage := writeServeFixture(t, cfg.DistDir, survivor)
 	recalledPackage, recalledAppID := appendServeFixture(t, cfg.DistDir, recalled)
 	survivorAppID := "app-" + survivorPackage[:8]
+	if authority != nil {
+		// The cross estate uses the actual Sandstorm app IDs carried by the
+		// registered ReleaseEntry, metadata, catalog and pointer alike.
+		for _, pair := range [][2]string{{survivorAppID, survivor.appIDText}, {recalledAppID, recalled.appIDText}} {
+			for _, directory := range []string{"attest", "signatures"} {
+				if err := os.Rename(filepath.Join(cfg.DistDir, directory, pair[0]),
+					filepath.Join(cfg.DistDir, directory, pair[1])); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		survivorAppID, recalledAppID = survivor.appIDText, recalled.appIDText
+		index := catalogIndex{Apps: []catalogIndexApp{
+			{AppID: survivorAppID, PackageID: survivorPackage},
+			{AppID: recalledAppID, PackageID: recalledPackage}}}
+		indexRaw, err := json.Marshal(index)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(cfg.DistDir, "apps", "index.json"), indexRaw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 	sourceCatalog, err := os.ReadFile(filepath.Join(cfg.DistDir, "apps", "index.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -91,6 +127,241 @@ func newRecallFixture(t *testing.T) *recallFixture {
 		fx.pinAccount(fx.activeEntry(t, f), f)
 	}
 	return fx
+}
+
+// TestRecallCrossProductGate joins the exact product fixture to a governed
+// local-validator revoke and then reads the real Store serving router.
+func TestRecallCrossProductGate(t *testing.T) {
+	out := os.Getenv("ESTATE_RECALL_CROSS_DIR")
+	if out == "" {
+		t.Fatal("ESTATE_RECALL_CROSS_DIR required for joined product recall")
+	}
+	authorityRaw, err := os.ReadFile(os.Getenv("ESTATE_RECALL_AUTHORITY_FILE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var authority struct{ Vault, SquadsProgramID, Multisig, ProgramID string }
+	if err := json.Unmarshal(authorityRaw, &authority); err != nil {
+		t.Fatal(err)
+	}
+	if authority.Vault == "" || authority.SquadsProgramID == "" || authority.Multisig == "" || authority.ProgramID == "" {
+		t.Fatal("recall authority missing")
+	}
+	cfgAuthority := ReleaseSquadsAuthority{Multisig: authority.Multisig,
+		Vault: authority.Vault, ProgramID: authority.SquadsProgramID,
+		Threshold: defaultBazaarSquadsThreshold, MemberCount: defaultBazaarSquadsMemberCount}
+	// The standalone cross fixture uses the exact vault, mint and product release
+	// hashes that the registry receives; no separately signed Store response exists.
+	fx := newRecallFixtureWithAuthority(t, &cfgAuthority)
+	input := map[string]string{
+		"appHash":       fx.recalled.rel.AppHash,
+		"appIdHash":     hex.EncodeToString(fx.recalled.appID[:]),
+		"releaseHash":   fx.recalled.rel.ReleaseHash,
+		"recalledAppId": fx.recalledAppID,
+	}
+	if err := os.MkdirAll(out, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	out = filepath.Join(out, fmt.Sprintf("run-%d", time.Now().UnixNano()))
+	if err := os.Mkdir(out, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	inputRaw, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inputFile := filepath.Join(out, "product-input.json")
+	if err := os.WriteFile(inputFile, inputRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gate := fx.gate(fx.cfg)
+	before := serveGet(t, gate, http.MethodGet, "/apps/index.json")
+	if before.Code != http.StatusOK {
+		t.Fatalf("recall product before: %d %s", before.Code, before.Body.String())
+	}
+	cmd := exec.Command("node", "../../scripts/test-release-revoke-validator.mjs")
+	stopFile := filepath.Join(out, "stop-validator")
+	cmd.Env = append(os.Environ(), "ESTATE_RECALL_PRODUCT_INPUT="+inputFile,
+		"ESTATE_REVOKE_READBACK_DIR="+out, "ESTATE_REVOKE_HOLD_FILE="+stopFile)
+	validatorLog, err := os.Create(filepath.Join(out, "validator.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer validatorLog.Close()
+	cmd.Stdout, cmd.Stderr = validatorLog, validatorLog
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	validatorStopped := false
+	defer func() {
+		if !validatorStopped {
+			_ = os.WriteFile(stopFile, []byte("stop"), 0o600)
+			_ = cmd.Wait()
+		}
+	}()
+	deadline := time.Now().Add(90 * time.Second)
+	for {
+		if _, err := os.Stat(filepath.Join(out, "release-readback.json")); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("governed local-validator recall did not produce readback")
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	readbackRaw, err := os.ReadFile(filepath.Join(out, "release-readback.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var readback struct {
+		ReleaseEntryPda, ReleaseAppHash, ReleaseHash, ReleaseVault, MasterNftMint, RevokedStatus, Genesis, RevokeTx string
+		RevokedAt                                                                                                   int64
+	}
+	if err := json.Unmarshal(readbackRaw, &readback); err != nil {
+		t.Fatal(err)
+	}
+	if readback.ReleaseEntryPda != fx.recalled.relPDA || readback.ReleaseAppHash != fx.recalled.rel.AppHash ||
+		readback.ReleaseHash != fx.recalled.rel.ReleaseHash || readback.ReleaseVault != fx.cfg.ReleaseSquadsAuthority.Vault ||
+		readback.MasterNftMint != fx.cfg.ReleaseMasterNftMint || readback.RevokedStatus != "Revoked" {
+		t.Fatalf("drill-recall-product-chain-mismatch: %s", readbackRaw)
+	}
+	revokedRaw, err := os.ReadFile(filepath.Join(out, "revoked-release-entry.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fx.pinRaw(revokedRaw, fx.recalled)
+	server := httptest.NewServer(gate)
+	defer server.Close()
+	get := func(path string) (int, []byte) {
+		response, err := http.Get(server.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer response.Body.Close()
+		var body bytes.Buffer
+		if _, err := body.ReadFrom(response.Body); err != nil {
+			t.Fatal(err)
+		}
+		return response.StatusCode, body.Bytes()
+	}
+	afterStatus, after := get("/apps/index.json")
+	recalledStatus, _ := get("/apps/pointers/" + fx.recalledAppID + ".json")
+	survivorStatus, survivorPointer := get("/apps/pointers/" + fx.survivorAppID + ".json")
+	packageStatus, packageBody := get("/packages/" + fx.recalledPackage)
+	if afterStatus != 200 || recalledStatus != 404 || survivorStatus != 200 || packageStatus != 403 ||
+		!bytes.Contains(packageBody, []byte("release_entry: status Revoked not Active")) {
+		t.Fatalf("drill-recall-product-gate-mismatch: catalog=%d recalled=%d survivor=%d package=%d body=%s",
+			afterStatus, recalledStatus, survivorStatus, packageStatus, packageBody)
+	}
+	var pointer AppCatalogPointer
+	if err := json.Unmarshal(survivorPointer, &pointer); err != nil {
+		t.Fatal(err)
+	}
+	public, err := operatorSignPublicKey(fx.operator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyAppCatalogPointer(public, pointer); err != nil {
+		t.Fatal(err)
+	}
+	probeInput := map[string]any{
+		"scope": map[string]any{
+			"storeOrigin":               server.URL,
+			"installedStoreOperatorKey": fx.cfg.StoreAuthority,
+			"drillAuthority": map[string]string{
+				"storeOperatorKey": fx.cfg.StoreAuthority,
+				"storeDomainHash":  fx.sourceRecalled.ServingDomainHash}},
+		"before": before.Body.Bytes(), "after": after,
+		"beforePointer": fx.sourceRecalled,
+		"state": map[string]string{
+			"recalledAppId":     fx.recalledAppID,
+			"survivorAppId":     fx.survivorAppID,
+			"recalledPackageId": fx.recalledPackage,
+			"recalledAppHash":   fx.recalled.rel.AppHash},
+	}
+	probeRaw, err := json.Marshal(probeInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeCode := `import base64,json,sys
+from estate_drill_producer import probe_store
+x=json.load(sys.stdin)
+before=base64.b64decode(x["before"])
+after=base64.b64decode(x["after"])
+pointer=json.dumps(x["beforePointer"],separators=(",", ":")).encode()
+effects=probe_store(x["scope"],before,after,x["state"],pointer)
+assert effects["recalledPointerStatus"]==404 and effects["recalledPackageStatus"]==403
+x["scope"]["installedStoreOperatorKey"]="foreign-operator"
+try: probe_store(x["scope"],before,after,x["state"],pointer)
+except ValueError as e: assert "drill-recall-foreign-operator" in str(e)
+else: raise AssertionError("foreign operator admitted")
+print(json.dumps(effects,sort_keys=True))`
+	probe := exec.Command("python3", "-B", "-c", probeCode)
+	probe.Env = append(os.Environ(), "PYTHONPATH=../../scripts")
+	probe.Stdin = bytes.NewReader(probeRaw)
+	probeResult, err := probe.CombinedOutput()
+	if err != nil {
+		t.Fatalf("product Store probe: %v: %s", err, probeResult)
+	}
+	if err := os.WriteFile(filepath.Join(out, "product-probe-effects.json"), probeResult, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	trace := map[string]any{"operatorKey": fx.cfg.StoreAuthority,
+		"storeDomain": fx.cfg.Domain, "masterMint": fx.cfg.ReleaseMasterNftMint,
+		"storeOrigin": server.URL, "chainRpcOrigin": fmt.Sprintf("http://127.0.0.1:%s", os.Getenv("ESTATE_REVOKE_RPC_PORT")),
+		"genesisHash": readback.Genesis, "releaseEntryPda": readback.ReleaseEntryPda,
+		"revokeTx": readback.RevokeTx, "revokedAt": readback.RevokedAt,
+		"releaseProgramId": authority.ProgramID,
+		"releaseVault":     authority.Vault, "squadsProgramId": authority.SquadsProgramID,
+		"multisig":      authority.Multisig,
+		"recalledAppId": fx.recalledAppID, "survivorAppId": fx.survivorAppID,
+		"recalledPackageId": fx.recalledPackage, "recalledAppHash": fx.recalled.rel.AppHash,
+		"beforeCatalog":    json.RawMessage(before.Body.Bytes()),
+		"afterCatalog":     json.RawMessage(after),
+		"beforeCatalogRaw": before.Body.Bytes(), "afterCatalogRaw": after,
+		"beforePointer":   fx.sourceRecalled,
+		"survivorPointer": pointer, "recalledPointerStatus": recalledStatus,
+		"recalledPackageStatus": packageStatus, "recalledPackageResponse": string(packageBody)}
+	traceRaw, err := json.Marshal(trace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(out, "product-store-gate.json"), traceRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runner := os.Getenv("ESTATE_DRILL_RECALL_JOIN_SCRIPT")
+	if runner == "" {
+		t.Fatal("ESTATE_DRILL_RECALL_JOIN_SCRIPT is required")
+	}
+	joined := exec.Command("python3", "-B", runner,
+		filepath.Join(out, "product-store-gate.json"))
+	joined.Env = append(os.Environ(), "PYTHONPATH=../../../agentchat:../../scripts")
+	joinedOutput, err := joined.CombinedOutput()
+	if err != nil {
+		t.Fatalf("joined product recall: %v: %s", err, joinedOutput)
+	}
+	if err := os.WriteFile(filepath.Join(out, "joined-product-recall.log"), joinedOutput, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fx.pinAccount(fx.activeEntry(t, fx.recalled), fx.recalled)
+	broken := exec.Command("python3", "-B", runner,
+		filepath.Join(out, "product-store-gate.json"), "--expect-product-break")
+	broken.Env = append(os.Environ(), "PYTHONPATH=../../../agentchat:../../scripts")
+	brokenOutput, err := broken.CombinedOutput()
+	if err != nil {
+		t.Fatalf("product gate mutation: %v: %s", err, brokenOutput)
+	}
+	if err := os.WriteFile(filepath.Join(out, "product-gate-break.log"), brokenOutput, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fx.pinRaw(revokedRaw, fx.recalled)
+	if err := os.WriteFile(stopFile, []byte("stop"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	validatorStopped = true
 }
 
 // activeEntry is the ReleaseEntry the program writes when the estate's release

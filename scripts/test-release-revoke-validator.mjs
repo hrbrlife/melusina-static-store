@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -36,11 +36,15 @@ const squadsSource = process.env.ESTATE_REVOKE_SQUADS_SOURCE;
 const squadsKeyFile = squadsSource && join(squadsSource, 'test-program-keypair.json');
 const squadsProgram = multisig && Keypair.fromSecretKey(
   Buffer.from(JSON.parse(readFileSync(squadsKeyFile)))).publicKey;
-const createKey = multisig && Keypair.generate();
+const productInput = process.env.ESTATE_RECALL_PRODUCT_INPUT ?
+  JSON.parse(readFileSync(process.env.ESTATE_RECALL_PRODUCT_INPUT, 'utf8')) : null;
+const createKey = multisig && (process.env.ESTATE_REVOKE_CREATE_KEY ?
+  Keypair.fromSecretKey(Buffer.from(JSON.parse(readFileSync(process.env.ESTATE_REVOKE_CREATE_KEY)))) :
+  Keypair.generate());
 const [multisigPda] = multisig ? multisig.getMultisigPda({ createKey: createKey.publicKey, programId: squadsProgram }) : [];
 const [vaultPda] = multisig ? multisig.getVaultPda({ multisigPda, index: 0, programId: squadsProgram }) : [];
 const authority = vaultPda || holder.publicKey;
-const appHash = crypto.randomBytes(32);
+const appHash = productInput ? Buffer.from(productInput.appHash, 'hex') : crypto.randomBytes(32);
 const approval = crypto.randomBytes(32);
 function sandstormAppId(bytes) {
   const alphabet = '0123456789acdefghjkmnpqrstuvwxyz';
@@ -57,9 +61,16 @@ function sandstormAppId(bytes) {
   if (bits) out += alphabet[(carry << (5 - bits)) & 31];
   return out;
 }
-const appId = crypto.createHash('sha256').update(sandstormAppId(approval)).digest();
-const releaseHash = crypto.randomBytes(32);
-const publisher = crypto.generateKeyPairSync('ed25519');
+const appId = productInput ? Buffer.from(productInput.appIdHash, 'hex') :
+  crypto.createHash('sha256').update(sandstormAppId(approval)).digest();
+const releaseHash = productInput ? Buffer.from(productInput.releaseHash, 'hex') : crypto.randomBytes(32);
+const publisher = productInput ? {
+  privateKey: crypto.createPrivateKey({ key: Buffer.concat([
+    Buffer.from('302e020100300506032b657004220420', 'hex'),
+    crypto.createHash('sha256').update('melusina-store-release-recall-test-publisher').digest(),
+  ]), format: 'der', type: 'pkcs8' }),
+} : crypto.generateKeyPairSync('ed25519');
+if (productInput) publisher.publicKey = crypto.createPublicKey(publisher.privateKey);
 const pubRaw = publisher.publicKey.export({ format: 'der', type: 'spki' }).subarray(-32);
 const [releasePda] = PublicKey.findProgramAddressSync(
   [Buffer.from('release_v2'), mint.toBuffer(), appHash], registry);
@@ -242,7 +253,7 @@ try {
     tokenProgramId: tokenProgram.toBase58(),
     ataProgramId: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
     releaseEntryPda: releasePda.toBase58(), publisherPubkey: pubRaw.toString('hex'),
-    packageId: sandstormAppId(approval), approvalHash: approval.toString('hex'),
+    packageId: productInput?.recalledAppId || sandstormAppId(approval), approvalHash: approval.toString('hex'),
     releaseAppHash: appHash.toString('hex'),
     releaseHash: releaseHash.toString('hex'), masterNftMint: mint.toBase58(),
     signedPayloadHash: payload.toString('hex'), activeStatus: active.status,
@@ -312,6 +323,13 @@ try {
     writeFileSync(join(readbackDir, 'release-readback.json'), `${JSON.stringify(result, null, 2)}\n`);
   }
   console.log(`RELEASE_REVOKE_VALIDATOR_PASS ${JSON.stringify(result)}`);
+  if (process.env.ESTATE_REVOKE_HOLD_FILE) {
+    const deadline = Date.now() + 180_000;
+    while (!existsSync(process.env.ESTATE_REVOKE_HOLD_FILE)) {
+      assert.ok(Date.now() < deadline, 'RELEASE_REVOKE_HOLD_TIMEOUT');
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
 } finally {
   const socket = rpc._rpcWebSocket;
   if (socket) { socket.reconnect = false; clearTimeout(socket.reconnect_timer_id); socket.close(); }

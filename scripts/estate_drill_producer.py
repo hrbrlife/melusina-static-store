@@ -80,6 +80,10 @@ def _catalog_ids(raw: bytes) -> set[str]:
 def probe_store(scope: dict, before_raw: bytes, after_raw: bytes, state: dict,
                 before_pointer_raw: bytes, *, ca_file: Path | None = None) -> dict:
     """Read the installed Store gate after recall; no caller-supplied HTTP verdict."""
+    if (not isinstance(scope.get("installedStoreOperatorKey"), str) or
+            scope["installedStoreOperatorKey"] !=
+            scope.get("drillAuthority", {}).get("storeOperatorKey")):
+        raise ValueError("drill-recall-foreign-operator")
     origin = scope.get("storeOrigin")
     parsed = urlsplit(origin if isinstance(origin, str) else "")
     if (parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.path or
@@ -223,6 +227,10 @@ def produce(manifest: dict, scope: dict, *, before_raw: bytes, after_raw: bytes,
             chain: dict | None = None) -> dict:
     """Construct and quorum-sign one closed operation; no caller-supplied verdicts."""
     name = manifest.get("clause")
+    if (not isinstance(scope.get("installedStoreOperatorKey"), str) or
+            scope["installedStoreOperatorKey"] !=
+            scope.get("drillAuthority", {}).get("storeOperatorKey")):
+        raise ValueError("drill-recall-foreign-operator:" + str(name))
     operation = ALLOWED.get(name)
     if (operation is None or manifest.get("operation") != operation or
             set(manifest) != {"clause", "operation", "estateId", "installId", "profileSha256",

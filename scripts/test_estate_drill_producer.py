@@ -99,6 +99,7 @@ class RecallProducerTests(unittest.TestCase):
             scope = {"estateId": "a" * 64, "installId": "tenant-a", "profileSha256": "b" * 64,
                      "cutDigest": "c" * 64, "storeOrigin": "https://127.0.0.1",
                      "chainRpcOrigin": "https://127.0.0.2", "genesisHash": "local-genesis",
+                     "installedStoreOperatorKey": authority["storeOperatorKey"],
                      "drillAuthority": authority,
                      "ownerPolicy": {"threshold": 2, "signers": [
                          {"keyId": name, "ed25519PublicKey": raw_public(key).hex()}
@@ -153,7 +154,7 @@ class RecallProducerTests(unittest.TestCase):
                         producer.produce(manifest, scope, **{**kwargs, "effects": bad})
                     foreign = copy.deepcopy(scope)
                     foreign["drillAuthority"]["storeOperatorKey"] = crypto.b58encode(bytes([8]) * 32)
-                    with self.assertRaisesRegex(ValueError, "estate-drill-producer-store-pointer-invalid:" + clause):
+                    with self.assertRaisesRegex(ValueError, "drill-recall-foreign-operator:" + clause):
                         producer.produce(manifest, foreign, **kwargs)
                     wrong_chain = {**chain, "genesisHash": "another-genesis"}
                     with self.assertRaisesRegex(ValueError, "estate-drill-producer-chain-readback-invalid:" + clause):

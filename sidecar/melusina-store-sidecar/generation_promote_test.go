@@ -1,17 +1,70 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
+
+// A product-issued pair for the cross-repo estate drill. The same promotion
+// method and public handler used by the Store produce both signed generations.
+func TestEstateDrillGenerationPromoteAndServe(t *testing.T) {
+	svc := promoteTestService(t)
+	svc.cfg.StoreID = "rehearsal-root-store"
+	svc.cfg.PublicBaseURL = "https://bazaar.rehearsal.invalid"
+	now := time.Now().UTC().Truncate(time.Second)
+	first, err := svc.promoteGeneration(promoteReq(0,
+		promotableShellComp(t, svc, "estate-drill-before", "build-1")), now.Add(-2*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := svc.promoteGeneration(promoteReq(1,
+		promotableShellComp(t, svc, "estate-drill-after", "build-2")), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorder := httptest.NewRecorder()
+	svc.handleDesiredGeneration(recorder, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
+	if recorder.Code != http.StatusOK || !bytes.Equal(recorder.Body.Bytes(), second) {
+		t.Fatalf("product served generation differs from promoted bytes: HTTP %d", recorder.Code)
+	}
+	pub, err := operatorSignPublicKey(svc.operator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range [][]byte{first, second} {
+		var doc componentrelease.DesiredGeneration
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatal(err)
+		}
+		if err := componentrelease.Verify(pub, svc.cfg.StoreID, doc); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if dir := os.Getenv("ESTATE_DRILL_GENERATION_FIXTURE_DIR"); dir != "" {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		for name, raw := range map[string][]byte{
+			"before-generation.json": first, "after-generation.json": second,
+			"generation-operator-key.txt": []byte(svc.operator.Public().SignPubkeyB58),
+		} {
+			if err := os.WriteFile(filepath.Join(dir, name), raw, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
 
 func promoteTestService(t *testing.T) *publishService {
 	t.Helper()

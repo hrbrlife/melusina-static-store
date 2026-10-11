@@ -19,11 +19,11 @@ from pathlib import Path
 import re
 import ssl
 import stat
-import struct
 from urllib.parse import urlsplit
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+import estate_drill_crypto as crypto
 
 
 DOMAIN = b"MSB_ESTATE_DRILL_RECEIPT_V1\n"
@@ -77,7 +77,8 @@ def _catalog_ids(raw: bytes) -> set[str]:
     return set(ids)
 
 
-def probe_store(scope: dict, after_raw: bytes, state: dict, *, ca_file: Path | None = None) -> dict:
+def probe_store(scope: dict, before_raw: bytes, after_raw: bytes, state: dict,
+                before_pointer_raw: bytes, *, ca_file: Path | None = None) -> dict:
     """Read the installed Store gate after recall; no caller-supplied HTTP verdict."""
     origin = scope.get("storeOrigin")
     parsed = urlsplit(origin if isinstance(origin, str) else "")
@@ -116,22 +117,34 @@ def probe_store(scope: dict, after_raw: bytes, state: dict, *, ca_file: Path | N
     except (UnicodeError, ValueError) as exc:
         raise ValueError("estate-drill-producer-store-effects-invalid") from exc
     catalog_sha = hashlib.sha256(after_raw).hexdigest()
+    before_sha = hashlib.sha256(before_raw).hexdigest()
+    try:
+        before_pointer = json.loads(before_pointer_raw)
+        authority = scope["drillAuthority"]
+        crypto.verify_pointer(before_pointer, authority, before_sha)
+        crypto.verify_pointer(pointer, authority, catalog_sha)
+        if (before_pointer["appId"] != recalled or pointer["appId"] != survivor or
+                before_pointer["appHash"] != state["recalledAppHash"]):
+            raise ValueError("pointer target")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("estate-drill-producer-store-pointer-invalid") from exc
     if (catalog_status != 200 or catalog != after_raw or pointer_status != 404 or
             survivor_status != 200 or not isinstance(pointer, dict) or
-            pointer.get("catalogSha256") != catalog_sha or
-            not isinstance(pointer.get("operatorSignature"), str) or
-            not pointer["operatorSignature"] or package_status != 403 or
+            pointer.get("catalogSha256") != catalog_sha or package_status != 403 or
             b"release-entry-recalled" not in package_raw and b"4.17::title-claim" not in package_raw):
         raise ValueError("estate-drill-producer-store-effects-invalid")
     return {"origin": origin, "catalogStatus": catalog_status, "catalogSha256": catalog_sha,
+            "beforePointerSha256": hashlib.sha256(canonical(before_pointer)).hexdigest(),
+            "beforePointer": before_pointer, "survivorPointer": pointer,
             "recalledPointerStatus": pointer_status, "survivorPointerStatus": survivor_status,
-            "survivorPointerSha256": hashlib.sha256(pointer_raw).hexdigest(),
+            "survivorPointerSha256": hashlib.sha256(canonical(pointer)).hexdigest(),
             "survivorPointerCatalogSha256": pointer["catalogSha256"],
             "recalledPackageStatus": package_status,
             "recalledPackageResponseSha256": hashlib.sha256(package_raw).hexdigest()}
 
 
-def probe_finalized_release(scope: dict, native: dict, state: dict,
+def probe_finalized_release(scope: dict, native: dict, state: dict, started: datetime,
+                            completed: datetime,
                             *, ca_file: Path | None = None) -> dict:
     """Read the exact ReleaseEntry at finalized commitment and decode its terminal fields."""
     origin = scope.get("chainRpcOrigin")
@@ -171,28 +184,38 @@ def probe_finalized_release(scope: dict, native: dict, state: dict,
         account = result["value"]
         raw = base64.b64decode(account["data"][0], validate=True)
         owner = account["owner"]
+        authority = scope["drillAuthority"]
+        expected_pda = crypto.release_pda(authority, state["recalledAppHash"])
         if (account["data"][1] != "base64" or account.get("executable") is not False or
-                owner != state["releaseProgramId"] or genesis != scope["genesisHash"] or
-                type(slot) is not int or slot <= 0 or len(raw) != 383 or
-                raw[:8] != hashlib.sha256(b"account:ReleaseEntry").digest()[:8] or
-                raw[72:104] != hashlib.sha256(state["recalledAppId"].encode()).digest()):
+                owner != authority["releaseProgramId"] or pda != expected_pda or
+                state["releaseProgramId"] != owner or genesis != scope["genesisHash"] or
+                type(slot) is not int or slot <= 0):
             raise ValueError("account")
-        version_len = struct.unpack_from("<I", raw, 136)[0]
-        if version_len > 32:
-            raise ValueError("version")
-        offset = 140 + version_len + 32 + 32 + 64 + 32 + 32
-        registered_at = struct.unpack_from("<q", raw, offset)[0]
-        status, option = raw[offset + 8], raw[offset + 9]
-        revoked_at = struct.unpack_from("<q", raw, offset + 10)[0]
-        if (status != 1 or option != 1 or revoked_at <= registered_at or
-                revoked_at <= 0 or raw[offset + 19:] != bytes(len(raw) - offset - 19)):
-            raise ValueError("terminal")
-    except (KeyError, TypeError, ValueError, IndexError, struct.error) as exc:
+        revoked_at = int(_time(state["revokedAt"]).timestamp())
+        crypto.verify_revoked_account(raw, authority, state["recalledAppHash"],
+                                      state["recalledAppId"], revoked_at)
+        tx = rpc("getTransaction", [native["transactionSignature"],
+                  {"encoding": "base64", "commitment": "finalized",
+                   "maxSupportedTransactionVersion": 0}])
+        if (not isinstance(tx, dict) or tx.get("slot", 0) > slot or
+                type(tx.get("blockTime")) is not int or
+                not started <= datetime.fromtimestamp(tx["blockTime"], timezone.utc) <= completed or
+                not isinstance(tx.get("transaction"), list) or
+                tx["transaction"][1] != "base64"):
+            raise ValueError("transaction")
+        tx_raw = base64.b64decode(tx["transaction"][0], validate=True)
+        keys, programs = crypto.verify_signed_transaction(tx_raw, native["transactionSignature"])
+        crypto.verify_revoke_instruction(tx["meta"], keys, programs, authority, pda)
+    except (KeyError, TypeError, ValueError, IndexError) as exc:
         raise ValueError("estate-drill-producer-chain-readback-invalid") from exc
     return {"rpcOrigin": origin, "genesisHash": genesis, "pda": pda, "owner": owner,
             "commitment": "finalized", "slot": slot,
             "accountSha256": hashlib.sha256(raw).hexdigest(),
-            "status": "Revoked", "revokedAtUnix": revoked_at}
+            "status": "Revoked", "revokedAtUnix": revoked_at,
+            "transactionSlot": tx["slot"], "transactionTime": tx["blockTime"],
+            "transactionSha256": hashlib.sha256(tx_raw).hexdigest(),
+            "transactionBase64": tx["transaction"][0],
+            "transactionMeta": tx["meta"]}
 
 
 def produce(manifest: dict, scope: dict, *, before_raw: bytes, after_raw: bytes,
@@ -233,6 +256,9 @@ def produce(manifest: dict, scope: dict, *, before_raw: bytes, after_raw: bytes,
     before_state, after_state = manifest["beforeState"], manifest["afterState"]
     recalled, survivor = after_state.get("recalledAppId"), after_state.get("survivorAppId")
     if (not isinstance(recalled, str) or not isinstance(survivor, str) or recalled == survivor or
+            before_state.get("status") != "Active" or
+            not isinstance(after_state.get("recalledAppHash"), str) or
+            not HEX64.fullmatch(after_state["recalledAppHash"]) or
             recalled not in before_ids or recalled in after_ids or
             survivor not in before_ids or survivor not in after_ids or
             before_ids - after_ids != {recalled} or after_ids - before_ids or
@@ -252,6 +278,17 @@ def produce(manifest: dict, scope: dict, *, before_raw: bytes, after_raw: bytes,
             not all(isinstance(effects.get(field), str) and HEX64.fullmatch(effects[field])
                     for field in ("survivorPointerSha256", "recalledPackageResponseSha256"))):
         raise ValueError("estate-drill-producer-store-effects-invalid:" + name)
+    try:
+        authority = scope["drillAuthority"]
+        crypto.verify_pointer(effects["beforePointer"], authority, hashlib.sha256(before_raw).hexdigest())
+        crypto.verify_pointer(effects["survivorPointer"], authority, hashlib.sha256(after_raw).hexdigest())
+        if (effects["beforePointer"]["appId"] != recalled or
+                effects["beforePointer"]["appHash"] != after_state["recalledAppHash"] or
+                effects["survivorPointer"]["appId"] != survivor or
+                effects["beforePointerSha256"] != hashlib.sha256(canonical(effects["beforePointer"])).hexdigest()):
+            raise ValueError("pointer target")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("estate-drill-producer-store-pointer-invalid:" + name) from exc
     body = {"schema": SCHEMA, "clause": name, "kind": "recall", "operation": operation,
             "estateId": manifest["estateId"], "installId": manifest["installId"],
             "profileSha256": manifest["profileSha256"], "cutDigest": manifest["cutDigest"],
@@ -263,14 +300,16 @@ def produce(manifest: dict, scope: dict, *, before_raw: bytes, after_raw: bytes,
                       "sha256": hashlib.sha256(after_raw).hexdigest(), "state": manifest["afterState"]},
             "native": {"schema": schema, "sha256": hashlib.sha256(canonical(native)).hexdigest(),
                        "document": native}, "effects": effects}
-    if name == "4.18::title-claim":
+    # Both recall clauses require the same finalized transaction and terminal account.
+    if operation in ALLOWED.values():
         try:
             revoked_at = _time(after_state["revokedAt"])
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError("estate-drill-producer-chain-readback-invalid:" + name) from exc
         if (not isinstance(chain, dict) or
                 chain.get("pda") != after_state.get("releaseEntryPda") or
-                chain.get("owner") != after_state.get("releaseProgramId") or
+                chain.get("owner") != scope["drillAuthority"]["releaseProgramId"] or
+                after_state.get("releaseProgramId") != chain.get("owner") or
                 chain.get("rpcOrigin") != scope.get("chainRpcOrigin") or
                 chain.get("genesisHash") != scope.get("genesisHash") or
                 chain.get("commitment") != "finalized" or chain.get("status") != "Revoked" or
@@ -278,9 +317,23 @@ def produce(manifest: dict, scope: dict, *, before_raw: bytes, after_raw: bytes,
                 type(chain.get("revokedAtUnix")) is not int or
                 chain["revokedAtUnix"] != int(revoked_at.timestamp()) or
                 not started <= revoked_at <= completed or
+                not started.timestamp() <= chain.get("transactionTime", 0) <= completed.timestamp() or
+                type(chain.get("transactionSlot")) is not int or chain["transactionSlot"] <= 0 or
+                chain["transactionSlot"] > chain["slot"] or
                 not isinstance(chain.get("accountSha256"), str) or
                 not HEX64.fullmatch(chain["accountSha256"])):
             raise ValueError("estate-drill-producer-chain-readback-invalid:" + name)
+        try:
+            tx_raw = base64.b64decode(chain["transactionBase64"], validate=True)
+            if hashlib.sha256(tx_raw).hexdigest() != chain["transactionSha256"]:
+                raise ValueError("transaction hash")
+            keys, programs = crypto.verify_signed_transaction(tx_raw, native["transactionSignature"])
+            crypto.verify_revoke_instruction(chain["transactionMeta"], keys, programs,
+                                             scope["drillAuthority"], chain["pda"])
+            if crypto.release_pda(scope["drillAuthority"], after_state["recalledAppHash"]) != chain["pda"]:
+                raise ValueError("PDA")
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("estate-drill-producer-chain-readback-invalid:" + name) from exc
         body["chain"] = chain
     policy = scope.get("ownerPolicy")
     if not isinstance(policy, dict) or not isinstance(policy.get("signers"), list):
@@ -307,7 +360,7 @@ def produce(manifest: dict, scope: dict, *, before_raw: bytes, after_raw: bytes,
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    for flag in ("manifest", "scope", "before", "after", "native-receipt", "out"):
+    for flag in ("manifest", "scope", "before", "after", "before-pointer", "native-receipt", "out"):
         parser.add_argument("--" + flag, type=Path, required=True)
     parser.add_argument("--owner-key", action="append", required=True, metavar="KEY_ID=ABSOLUTE_PATH")
     parser.add_argument("--ca-file", type=Path)
@@ -320,12 +373,13 @@ def main() -> int:
         keys[key_id] = Path(path)
     manifest, scope = json.loads(_read(args.manifest)), json.loads(_read(args.scope))
     before_raw, after_raw = _read(args.before), _read(args.after)
-    effects = probe_store(scope, after_raw, manifest.get("afterState", {}), ca_file=args.ca_file)
+    effects = probe_store(scope, before_raw, after_raw, manifest.get("afterState", {}),
+                          _read(args.before_pointer), ca_file=args.ca_file)
     native_raw = _read(args.native_receipt)
     native = json.loads(native_raw)
-    chain = (probe_finalized_release(scope, native, manifest.get("afterState", {}),
+    chain = probe_finalized_release(scope, native, manifest.get("afterState", {}),
+                                    _time(manifest["startedAt"]), _time(manifest["completedAt"]),
                                     ca_file=args.ca_file)
-             if manifest.get("clause") == "4.18::title-claim" else None)
     receipt = produce(manifest, scope, before_raw=before_raw, after_raw=after_raw,
         native_raw=native_raw, key_files=keys, effects=effects, chain=chain)
     if not args.out.is_absolute():

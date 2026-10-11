@@ -10,6 +10,7 @@ the exact bytes left by that operation for independent KIT verification.
 from __future__ import annotations
 
 import argparse
+import base64
 from datetime import datetime, timezone
 import hashlib
 import http.client
@@ -18,6 +19,7 @@ from pathlib import Path
 import re
 import ssl
 import stat
+import struct
 from urllib.parse import urlsplit
 
 from cryptography.hazmat.primitives import serialization
@@ -129,8 +131,73 @@ def probe_store(scope: dict, after_raw: bytes, state: dict, *, ca_file: Path | N
             "recalledPackageResponseSha256": hashlib.sha256(package_raw).hexdigest()}
 
 
+def probe_finalized_release(scope: dict, native: dict, state: dict,
+                            *, ca_file: Path | None = None) -> dict:
+    """Read the exact ReleaseEntry at finalized commitment and decode its terminal fields."""
+    origin = scope.get("chainRpcOrigin")
+    parsed = urlsplit(origin if isinstance(origin, str) else "")
+    if (parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.path or parsed.query or
+            parsed.fragment or parsed.username or parsed.password or
+            (parsed.scheme == "http" and parsed.hostname != "127.0.0.1")):
+        raise ValueError("estate-drill-producer-chain-origin-invalid")
+
+    def rpc(method: str, params: list):
+        if parsed.scheme == "https":
+            context = ssl.create_default_context(cafile=str(ca_file) if ca_file else None)
+            connection = http.client.HTTPSConnection(parsed.hostname, parsed.port, timeout=10, context=context)
+        else:
+            connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=10)
+        try:
+            body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method,
+                               "params": params}).encode()
+            connection.request("POST", parsed.path or "/", body=body,
+                               headers={"Content-Type": "application/json"})
+            response = connection.getresponse()
+            raw = response.read(4 * 1024 * 1024 + 1)
+            if response.status != 200 or len(raw) > 4 * 1024 * 1024:
+                raise ValueError("estate-drill-producer-chain-readback-invalid")
+            answer = json.loads(raw)
+            if answer.get("id") != 1 or "error" in answer:
+                raise ValueError("estate-drill-producer-chain-readback-invalid")
+            return answer["result"]
+        finally:
+            connection.close()
+
+    try:
+        genesis = rpc("getGenesisHash", [])
+        pda = native["releaseEntryPda"]
+        result = rpc("getAccountInfo", [pda, {"encoding": "base64", "commitment": "finalized"}])
+        slot = result["context"]["slot"]
+        account = result["value"]
+        raw = base64.b64decode(account["data"][0], validate=True)
+        owner = account["owner"]
+        if (account["data"][1] != "base64" or account.get("executable") is not False or
+                owner != state["releaseProgramId"] or genesis != scope["genesisHash"] or
+                type(slot) is not int or slot <= 0 or len(raw) != 383 or
+                raw[:8] != hashlib.sha256(b"account:ReleaseEntry").digest()[:8] or
+                raw[72:104] != hashlib.sha256(state["recalledAppId"].encode()).digest()):
+            raise ValueError("account")
+        version_len = struct.unpack_from("<I", raw, 136)[0]
+        if version_len > 32:
+            raise ValueError("version")
+        offset = 140 + version_len + 32 + 32 + 64 + 32 + 32
+        registered_at = struct.unpack_from("<q", raw, offset)[0]
+        status, option = raw[offset + 8], raw[offset + 9]
+        revoked_at = struct.unpack_from("<q", raw, offset + 10)[0]
+        if (status != 1 or option != 1 or revoked_at <= registered_at or
+                revoked_at <= 0 or raw[offset + 19:] != bytes(len(raw) - offset - 19)):
+            raise ValueError("terminal")
+    except (KeyError, TypeError, ValueError, IndexError, struct.error) as exc:
+        raise ValueError("estate-drill-producer-chain-readback-invalid") from exc
+    return {"rpcOrigin": origin, "genesisHash": genesis, "pda": pda, "owner": owner,
+            "commitment": "finalized", "slot": slot,
+            "accountSha256": hashlib.sha256(raw).hexdigest(),
+            "status": "Revoked", "revokedAtUnix": revoked_at}
+
+
 def produce(manifest: dict, scope: dict, *, before_raw: bytes, after_raw: bytes,
-            native_raw: bytes, key_files: dict[str, Path], effects: dict) -> dict:
+            native_raw: bytes, key_files: dict[str, Path], effects: dict,
+            chain: dict | None = None) -> dict:
     """Construct and quorum-sign one closed operation; no caller-supplied verdicts."""
     name = manifest.get("clause")
     operation = ALLOWED.get(name)
@@ -196,6 +263,25 @@ def produce(manifest: dict, scope: dict, *, before_raw: bytes, after_raw: bytes,
                       "sha256": hashlib.sha256(after_raw).hexdigest(), "state": manifest["afterState"]},
             "native": {"schema": schema, "sha256": hashlib.sha256(canonical(native)).hexdigest(),
                        "document": native}, "effects": effects}
+    if name == "4.18::title-claim":
+        try:
+            revoked_at = _time(after_state["revokedAt"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("estate-drill-producer-chain-readback-invalid:" + name) from exc
+        if (not isinstance(chain, dict) or
+                chain.get("pda") != after_state.get("releaseEntryPda") or
+                chain.get("owner") != after_state.get("releaseProgramId") or
+                chain.get("rpcOrigin") != scope.get("chainRpcOrigin") or
+                chain.get("genesisHash") != scope.get("genesisHash") or
+                chain.get("commitment") != "finalized" or chain.get("status") != "Revoked" or
+                type(chain.get("slot")) is not int or chain["slot"] <= 0 or
+                type(chain.get("revokedAtUnix")) is not int or
+                chain["revokedAtUnix"] != int(revoked_at.timestamp()) or
+                not started <= revoked_at <= completed or
+                not isinstance(chain.get("accountSha256"), str) or
+                not HEX64.fullmatch(chain["accountSha256"])):
+            raise ValueError("estate-drill-producer-chain-readback-invalid:" + name)
+        body["chain"] = chain
     policy = scope.get("ownerPolicy")
     if not isinstance(policy, dict) or not isinstance(policy.get("signers"), list):
         raise ValueError("estate-drill-producer-authority-invalid")
@@ -235,8 +321,13 @@ def main() -> int:
     manifest, scope = json.loads(_read(args.manifest)), json.loads(_read(args.scope))
     before_raw, after_raw = _read(args.before), _read(args.after)
     effects = probe_store(scope, after_raw, manifest.get("afterState", {}), ca_file=args.ca_file)
+    native_raw = _read(args.native_receipt)
+    native = json.loads(native_raw)
+    chain = (probe_finalized_release(scope, native, manifest.get("afterState", {}),
+                                    ca_file=args.ca_file)
+             if manifest.get("clause") == "4.18::title-claim" else None)
     receipt = produce(manifest, scope, before_raw=before_raw, after_raw=after_raw,
-        native_raw=_read(args.native_receipt), key_files=keys, effects=effects)
+        native_raw=native_raw, key_files=keys, effects=effects, chain=chain)
     if not args.out.is_absolute():
         raise ValueError("estate-drill-producer-output-path-invalid")
     with args.out.open("xb") as output:

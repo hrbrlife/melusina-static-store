@@ -11,6 +11,15 @@ the new catalog hash, and the recalled package must refuse with 403. KIT reads
 the catalog again and joins the exact post byte hash to the owner signed drill
 receipt.
 
+For `4.18`, the scope also names `chainRpcOrigin` and `genesisHash`, and the
+after state names `releaseProgramId`. The producer reads the exact PDA from
+the revoke receipt at finalized commitment, checks the genesis, program owner,
+Anchor discriminator, ReleaseEntry byte layout, `app_id` hash for the recalled
+app, `Revoked` status, and non-null `revoked_at` within the drill window. Its
+signed `chain` object binds
+the account hash and finalized slot. KIT independently reads that PDA again
+and requires the same account bytes at a slot no earlier than the producer's.
+
 The JSON manifest fields are `clause`, `operation`, `estateId`, `installId`,
 `profileSha256`, `cutDigest`, `planStepSha256`, `startedAt`, `completedAt`,
 `beforeObservedAt`, `afterObservedAt`, `beforeState`, and `afterState`. The
@@ -29,7 +38,7 @@ python3 scripts/estate_drill_producer.py \
   --out /private/4.17__title-claim.json
 ```
 
-Use `--ca-file` when the Store has a private CA. Owner key files must be mode
-0600. Output is created exclusively. KIT verifies the signatures against the
+Use `--ca-file` when the Store or RPC endpoint has a private CA. Owner key
+files must be mode 0600. Output is created exclusively. KIT verifies the signatures against the
 installed signed owner policy; the scope passed to the producer is not an
 independent authority.

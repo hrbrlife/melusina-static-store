@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import tempfile
 import unittest
@@ -29,6 +30,8 @@ class RecallProducerTests(unittest.TestCase):
                     serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()})
             scope = {"estateId": "a" * 64, "installId": "tenant-a", "profileSha256": "b" * 64,
                      "cutDigest": "c" * 64, "storeOrigin": "https://store.example.invalid",
+                     "chainRpcOrigin": "https://rpc.example.invalid",
+                     "genesisHash": "synthetic-genesis",
                      "ownerPolicy": {"threshold": 2, "signers": signers}}
             native = {"schema": "melusina-revoke-release-receipt-v1",
                       "releaseEntryPda": "release-pda", "status": "Revoked",
@@ -37,6 +40,8 @@ class RecallProducerTests(unittest.TestCase):
             after_raw = b'{"apps":[{"appId":"survivor"}]}'
             before = {"status": "Active", "catalogSha256": hashlib.sha256(before_raw).hexdigest()}
             after = {"releaseEntryPda": "release-pda", "status": "Revoked",
+                     "releaseProgramId": "release-program",
+                     "revokedAt": "2026-10-11T12:02:00Z",
                      "transactionSignature": "finalized-tx", "recalledAppId": "recalled",
                      "recalledPackageId": "recalled-package",
                      "survivorAppId": "survivor", "catalogSha256": hashlib.sha256(after_raw).hexdigest(),
@@ -48,8 +53,14 @@ class RecallProducerTests(unittest.TestCase):
                        "survivorPointerCatalogSha256": after["catalogSha256"],
                        "recalledPackageStatus": 403,
                        "recalledPackageResponseSha256": "2" * 64}
+            chain = {"rpcOrigin": scope["chainRpcOrigin"], "genesisHash": scope["genesisHash"],
+                     "pda": after["releaseEntryPda"], "owner": after["releaseProgramId"],
+                     "commitment": "finalized", "slot": 42, "accountSha256": "5" * 64,
+                     "status": "Revoked", "revokedAtUnix": int(datetime(
+                         2026, 10, 11, 12, 2, tzinfo=timezone.utc).timestamp())}
             for clause, operation in producer.ALLOWED.items():
                 with self.subTest(clause=clause):
+                    proof = chain if clause == "4.18::title-claim" else None
                     manifest = {"clause": clause, "operation": operation,
                         "estateId": scope["estateId"], "installId": scope["installId"],
                         "profileSha256": scope["profileSha256"], "cutDigest": scope["cutDigest"],
@@ -60,7 +71,7 @@ class RecallProducerTests(unittest.TestCase):
                         "beforeState": before, "afterState": after}
                     receipt = producer.produce(manifest, scope, before_raw=before_raw,
                         after_raw=after_raw, native_raw=json.dumps(native).encode(), key_files=keys,
-                        effects=effects)
+                        effects=effects, chain=proof)
                     self.assertEqual(receipt["body"]["operation"], operation)
                     for signature in receipt["signatures"]:
                         public = next(row["ed25519PublicKey"] for row in signers
@@ -72,10 +83,15 @@ class RecallProducerTests(unittest.TestCase):
                         producer.produce(manifest, scope, before_raw=before_raw,
                             after_raw=after_raw, native_raw=json.dumps(
                             {**native, "transactionSignature": "different"}).encode(), key_files=keys,
-                            effects=effects)
+                            effects=effects, chain=proof)
                     with self.assertRaisesRegex(ValueError, "estate-drill-state-unchanged:" + clause):
                         producer.produce(manifest, scope, before_raw=before_raw, after_raw=before_raw,
                             native_raw=json.dumps(native).encode(), key_files=keys, effects=effects)
+                    if proof is not None:
+                        with self.assertRaisesRegex(ValueError, "estate-drill-producer-chain-readback-invalid:" + clause):
+                            producer.produce(manifest, scope, before_raw=before_raw,
+                                after_raw=after_raw, native_raw=json.dumps(native).encode(),
+                                key_files=keys, effects=effects)
 
 
 if __name__ == "__main__":

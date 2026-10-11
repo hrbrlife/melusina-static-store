@@ -13,6 +13,40 @@ import (
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerrelease/releasetest"
 )
 
+// F1 signs unprefixed member names, while its Store generation publishes
+// sha256-basename paths. RELEASE_SET_GENERATION_MEMBER_REFUSED is the live
+// failure this test guards; a changed prefix or unsigned role stays refused.
+func TestF1GenerationContentAddressedMembersStayUnderSignedSet(t *testing.T) {
+	const one = "7cbadcadd22318691dea0862127fe3167880e8c15d6d735fdb1845b0cb17218d"
+	const two = "832d4bb11fa176c734cd8be10aad16fdc7c5e4aec711e2e6c82dd466e8cdb810"
+	const three = "c2b047bcf9f5dcb8de02e1598fa347b68aef32f19309c6a3b28da4aa352c31aa"
+	var set servedReleaseSet
+	if err := json.Unmarshal([]byte(`{"artifacts":[{"role":"installer","name":"melusina-installer","sha256":"`+one+`","sizeBytes":11},{"role":"shell-bundle","name":"sandstorm-1.tar.xz","sha256":"`+two+`","sizeBytes":22},{"role":"update-controller","name":"melusina-update-controller","sha256":"`+three+`","sizeBytes":33}]}`), &set); err != nil {
+		t.Fatal(err)
+	}
+	for _, member := range []struct {
+		name, hash string
+		size       int64
+	}{
+		{one + "-melusina-installer", one, 11},
+		{two + "-sandstorm-1.tar.xz", two, 22},
+		{three + "-melusina-update-controller", three, 33},
+	} {
+		if err := requireSignedSetArtifact(set, "shell", member.name, member.hash, member.size); err != nil {
+			t.Fatalf("RELEASE_SET_GENERATION_MEMBER_REFUSED %s: %v", member.name, err)
+		}
+		if err := requireSignedSetArtifact(set, "shell", member.name, member.hash, member.size+1); err == nil || !strings.Contains(err.Error(), "release-set-artifact-mismatch") {
+			t.Fatalf("content-addressed size mutation accepted: %v", err)
+		}
+	}
+	if err := requireSignedSetArtifact(set, "shell", strings.Repeat("0", 64)+"-melusina-installer", one, 11); err == nil || !strings.Contains(err.Error(), "release-set-artifact-prefix-mismatch") {
+		t.Fatalf("content-addressed prefix mutation accepted: %v", err)
+	}
+	if err := requireSignedSetArtifact(set, "data", one+"-melusina-installer", one, 11); err == nil || !strings.Contains(err.Error(), "release-set-artifact-absent") {
+		t.Fatalf("wrong release class accepted: %v", err)
+	}
+}
+
 func TestH09_3_1PublisherSignedSetBindsInstallerReleaseBytes(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
 	if err != nil {
@@ -66,8 +100,8 @@ func TestH09_3_1PublisherSignedSetBindsInstallerReleaseBytes(t *testing.T) {
 	}
 	for _, negative := range []struct {
 		label, hash string
-		size       int64
-		want       string
+		size        int64
+		want        string
 	}{
 		{"different hash", strings.Repeat("0", 64), shell.SizeBytes, "release-set-artifact-mismatch"},
 		{"different size", shell.SHA256, shell.SizeBytes + 1, "release-set-artifact-mismatch"},

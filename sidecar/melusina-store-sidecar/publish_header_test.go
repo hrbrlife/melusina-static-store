@@ -81,3 +81,43 @@ func TestPublicPublishHeaderAuthBeforeBodyAndExactBodyBinding(t *testing.T) {
 		t.Fatalf("PUBLISH_CHANGED_BODY_ENVELOPE_ACCEPTED: %d %s", w.Code, w.Body.String())
 	}
 }
+
+func TestCXGStoreInstallerHeaderWindowKeepsAppWindowTight(t *testing.T) {
+	cfg, _ := testConfig(t)
+	op := newTestIdentity(t, "cxg-window-operator", cfg.LicenseNFTMint, cfg.Domain)
+	pub := newTestIdentity(t, "cxg-window-publisher", randPubkeyB58(t), "publisher.example.org")
+	svc := newTestService(t, cfg, newMockChainReader(), op)
+	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}
+	now := time.Now().UTC().Truncate(time.Second)
+	svc.now = func() time.Time { return now }
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	release := mustJSON(t, f.rel)
+	check := func(signedTarget, checkedRoute string, issued time.Time, ttl time.Duration, nonce string) (bool, string) {
+		t.Helper()
+		signed := signPublishForRoute(t, pub, op.Public(), f.spk, release, signedTarget, issued, ttl, nonce)
+		raw, err := json.Marshal(signed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := httptest.NewRequest(http.MethodPost, checkedRoute, http.NoBody)
+		r.Header.Set(publisherEnvelopeHeader, base64.RawURLEncoding.EncodeToString(raw))
+		w := httptest.NewRecorder()
+		return svc.requirePublisherHeader(w, r, checkedRoute), w.Body.String()
+	}
+	if accepted, detail := check("/publish/installer", "/publish/installer", now, 48*time.Minute, "cxg-installer-48m"); !accepted {
+		t.Fatalf("CXG_INSTALLER_48M_HEADER_REFUSED: %s", detail)
+	}
+	for _, item := range []struct {
+		name, signedTarget, checkedRoute, refusal string
+		issued                                    time.Time
+		ttl                                       time.Duration
+	}{
+		{"app-40m", "/publish", "/publish", "check=envelope_header_ttl", now, 40 * time.Minute},
+		{"installer-expired", "/publish/installer", "/publish/installer", "check=envelope_header_ttl", now.Add(-49 * time.Minute), 48 * time.Minute},
+		{"installer-wrong-route", "/publish", "/publish/installer", "check=envelope_purpose", now, 48 * time.Minute},
+	} {
+		if accepted, detail := check(item.signedTarget, item.checkedRoute, item.issued, item.ttl, "cxg-"+item.name); accepted || !strings.Contains(detail, item.refusal) {
+			t.Fatalf("CXG_%s_HEADER_MUTATION_ACCEPTED: %s", item.name, detail)
+		}
+	}
+}

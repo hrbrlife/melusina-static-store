@@ -495,11 +495,15 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 			MemberCount: int(releaseRole.MemberCount),
 		},
 		Policy: Policy{
-			AllowedTiers:                     []string{"regular"},
-			RequireScanReport:                true,
-			ScannerEd25519PublicKey:          input.SecurityProfile.ScannerEd25519PublicKey,
-			AcceptPublishers:                 publishers,
-			RequirePearlControlForAppPublish: true,
+			AllowedTiers:            []string{"regular"},
+			RequireScanReport:       true,
+			ScannerEd25519PublicKey: input.SecurityProfile.ScannerEd25519PublicKey,
+			AcceptPublishers:        publishers,
+			// This binary's app publication authority is the profile's
+			// enrolled publishers on the direct route until the Bazaar
+			// Control pilot passes (owner decision N-1467). A successor
+			// binary re-retires the direct route by rendering true.
+			RequirePearlControlForAppPublish: false,
 		},
 		RPCURL:                   input.RPCURL,
 		RPCFallbackURLs:          append([]string(nil), input.RPCFallbackURLs...),

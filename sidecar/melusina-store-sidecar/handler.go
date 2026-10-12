@@ -407,11 +407,18 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// listener or the historical sidecar-apply surface.
 	mux.HandleFunc(controllerUpgradeIssuePathPrefix, privateControlRouteOnly)
 	mux.HandleFunc("/control/v1/", privateControlRouteOnly)
-	// Until the Bazaar Control pilot is complete, owner-enrolled release
-	// publishers may use the original two-phase app route. Both actions enter
-	// the same single-writer stage/publish gates as the private control route.
-	mux.HandleFunc("/publish", svc.handlePublish)
-	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
+	// The serving policy names exactly one app publication authority. While
+	// require_pearl_control_for_app_publish is false, owner-enrolled release
+	// publishers use the two-phase direct route and the private control router
+	// refuses app releases. When it is true, these routes are retired before a
+	// body is read and only Bazaar Control publishes apps.
+	if cfg.Policy.RequirePearlControlForAppPublish {
+		mux.HandleFunc("/publish", retiredDirectAppPublish)
+		mux.HandleFunc("/publish/stage", retiredDirectAppPublish)
+	} else {
+		mux.HandleFunc("/publish", svc.handlePublish)
+		mux.HandleFunc("/publish/stage", svc.handleStagePublish)
+	}
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 	// POST /publish/generation: envelope-authorized promote of the next signed
 	// desired generation (canonical publisher's promote step). Re-verifies the
@@ -483,7 +490,11 @@ func newControlReleaseRouter(svc *publishService) http.Handler {
 	mux.HandleFunc(controlStatusPath, svc.handleControlStatus)
 	mux.HandleFunc(controlPolicyPath, svc.handleControlPolicy)
 	mux.Handle(rootControllerStatePath, newRootControllerStateHandler("/"))
-	mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
+	if svc.cfg.Policy.RequirePearlControlForAppPublish {
+		mux.HandleFunc("/control/v1/releases/", svc.handleControlRelease)
+	} else {
+		mux.HandleFunc("/control/v1/releases/", directAppPublicationAuthorityActive)
+	}
 	mux.HandleFunc("/control/v1/authority/", svc.handleControlAuthority)
 	mux.HandleFunc(hostApplyIssuePathPrefix, svc.handleHostApplyPlanRoute)
 	mux.HandleFunc(controllerUpgradeIssuePathPrefix, svc.handleControllerUpgradeRoute)
@@ -495,6 +506,18 @@ func newControlReleaseRouter(svc *publishService) http.Handler {
 // than advertising the private listener or its authentication method.
 func privateControlRouteOnly(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
+}
+
+// retiredDirectAppPublish and directAppPublicationAuthorityActive are routing
+// cutovers, not publish checks. Each answers before body parsing, envelope
+// handling, nonce allocation or stage access, so the inactive authority can
+// never leave a partially completed release.
+func retiredDirectAppPublish(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, "check=app_publication_authority: direct app publishing is retired by this Store's serving policy; Bazaar Control publishes apps.", http.StatusGone)
+}
+
+func directAppPublicationAuthorityActive(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, "check=app_publication_authority: this Store's serving policy names the direct enrolled-publisher route as its app publication authority; Bazaar Control app releases are not accepted.", http.StatusConflict)
 }
 
 func (s *publishService) directAppPublisher(_ appPublishPreflight, claimed identity.Public) (string, error) {

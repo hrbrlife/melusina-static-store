@@ -258,8 +258,13 @@ func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.
 		t.Fatalf("Store identity = domain %q id %q authority %q", cfg.Domain, cfg.StoreID, cfg.StoreAuthority)
 	}
 	security := input["securityProfile"].(storesecurity.Profile)
-	if cfg.StoreLinkControlMTLS.ListenAddr != security.ControlListenAddr || cfg.StoreLinkControlMTLS.StoreLinkClientCertSHA256 != security.StoreLinkClientCertSHA256 || !cfg.Policy.RequirePearlControlForAppPublish || cfg.ListingSignerSocket == "" {
+	if cfg.StoreLinkControlMTLS.ListenAddr != security.ControlListenAddr || cfg.StoreLinkControlMTLS.StoreLinkClientCertSHA256 != security.StoreLinkClientCertSHA256 || cfg.ListingSignerSocket == "" {
 		t.Fatalf("rendered-governed-store-link-control-missing: control=%+v policy=%+v signer=%q", cfg.StoreLinkControlMTLS, cfg.Policy, cfg.ListingSignerSocket)
+	}
+	// This binary's renderer declares the direct enrolled-publisher route as
+	// the Store's one app publication authority (owner decision N-1467).
+	if cfg.Policy.RequirePearlControlForAppPublish || len(cfg.Policy.AcceptPublishers) == 0 {
+		t.Fatalf("rendered-app-publication-authority-not-direct: policy=%+v", cfg.Policy)
 	}
 	if err := requireServingControlMTLS(cfg); err != nil {
 		t.Fatalf("rendered-governed-store-link-control-refused: %v", err)

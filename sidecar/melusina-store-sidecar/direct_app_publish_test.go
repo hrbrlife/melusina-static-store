@@ -142,9 +142,9 @@ func TestRestoredDirectRouteFirstPublishAndLaterUpdate(t *testing.T) {
 	publisher := newTestIdentity(t, "direct-route-publisher", randPubkeyB58(t), "publisher.example.org")
 	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
 	svc.cfg.Policy.RequireScanReport = true
-	// D1's owner-signed serving configuration keeps this true for the private
-	// Store Link; it cannot be relaxed to make the direct route usable.
-	svc.cfg.Policy.RequirePearlControlForAppPublish = true
+	// The profile-bound renderer declares the direct enrolled-publisher route
+	// as this Store's one app publication authority.
+	svc.cfg.Policy.RequirePearlControlForAppPublish = false
 	scannerSeed := sha256.Sum256([]byte("store-security-rehearsal-scanner"))
 	svc.cfg.Policy.ScannerEd25519PublicKey = hex.EncodeToString(ed25519.NewKeyFromSeed(scannerSeed[:]).Public().(ed25519.PublicKey))
 	svc.listingRegistrationRequired = true
@@ -225,6 +225,27 @@ func TestRestoredDirectRouteFirstPublishAndLaterUpdate(t *testing.T) {
 		t.Fatalf("missing signed scan = %d: %s", missingScan.Code, missingScan.Body.String())
 	}
 
+	// Re-retirement is a policy change, not a refusal deep in the gate: with
+	// the Pearl-only policy a fully valid signed stage is answered 410 before
+	// its nonce is claimed, so the same envelope still stages afterwards.
+	retiredCfg := svc.cfg
+	retiredCfg.Policy.RequirePearlControlForAppPublish = true
+	retiredRouter := newPublicRouterWithService(retiredCfg, operator, chain, nil, catalogRuntime{appNonces: svc.appNonces, catalogGenerations: svc.catalogGenerations}, svc, false)
+	{
+		sig, scan := signedInput("/publish/stage", first, publisher, "first-stage")
+		release := mustJSON(t, first.rel)
+		body, err := json.Marshal(publishRequest{Envelope: sig, ReleaseB64: b64(release), SPKB64: b64(first.spk), MetadataB64: b64(first.metadata), RuntimeContractB64: b64(first.runtimeContract), ScanReport: scan, Developer: "hrbrlife", Repo: "direct", Slug: "app"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/publish/stage", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		out := httptest.NewRecorder()
+		retiredRouter.ServeHTTP(out, req)
+		if out.Code != http.StatusGone || !strings.Contains(out.Body.String(), "check=app_publication_authority") {
+			t.Fatalf("Pearl-only policy left direct stage live = %d: %s", out.Code, out.Body.String())
+		}
+	}
 	stage1 := request("/publish/stage", first, true, "first-stage")
 	if stage1.Code != http.StatusOK {
 		t.Fatalf("first stage = %d: %s", stage1.Code, stage1.Body.String())

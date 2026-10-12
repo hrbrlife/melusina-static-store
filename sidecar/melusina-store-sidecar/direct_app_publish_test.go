@@ -225,6 +225,19 @@ func TestRestoredDirectRouteFirstPublishAndLaterUpdate(t *testing.T) {
 		t.Fatalf("missing signed scan = %d: %s", missingScan.Code, missingScan.Body.String())
 	}
 
+	// Stage selects nothing public, but it persists private bytes and claims
+	// a nonce, so it takes the same enrolled-publisher authority as promotion.
+	rogueStager := newTestIdentity(t, "rogue-stager", randPubkeyB58(t), "publisher.example.org")
+	rogueStageSig, rogueStageScan := signedInput("/publish/stage", first, rogueStager, "rogue-stage")
+	rogueStage := post("/publish/stage", first, rogueStageSig, rogueStageScan, true)
+	if rogueStage.Code != http.StatusForbidden || !strings.Contains(rogueStage.Body.String(), "check=accept_publishers") {
+		t.Fatalf("stage by non-enrolled publisher = %d: %s", rogueStage.Code, rogueStage.Body.String())
+	}
+	_, unsignedStageScan := signedInput("/publish/stage", first, publisher, "unsigned-stage")
+	unsignedStage := post("/publish/stage", first, envelope.Signed{}, unsignedStageScan, true)
+	if unsignedStage.Code != http.StatusUnauthorized || !strings.Contains(unsignedStage.Body.String(), "check=envelope") {
+		t.Fatalf("unsigned stage = %d: %s", unsignedStage.Code, unsignedStage.Body.String())
+	}
 	// Re-retirement is a policy change, not a refusal deep in the gate: with
 	// the Pearl-only policy a fully valid signed stage is answered 410 before
 	// its nonce is claimed, so the same envelope still stages afterwards.
@@ -332,6 +345,27 @@ func TestRestoredDirectRouteFirstPublishAndLaterUpdate(t *testing.T) {
 	chain.rawAccounts[authorClearPDA.Base58()] = authorClear
 	if absentAuthorClear.Code == http.StatusOK || !strings.Contains(absentAuthorClear.Body.String(), "check=blacklist[author]: clearance-absent") {
 		t.Fatalf("absent Author Clear = %d: %s", absentAuthorClear.Code, absentAuthorClear.Body.String())
+	}
+	// The Author comes from the canonical global approval, which must itself
+	// be Active: a Revoked approval refuses even while Author Clear stands.
+	masterKey, err := primitives.PubkeyFromBase58(cfg.ReleaseMasterNftMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	globalPDA, globalBump, err := pda.GlobalApp(masterKey, second.appKey, licenseRegistryProgramID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	activeApproval := chain.rawAccounts[globalPDA.Base58()]
+	chain.rawAccounts[globalPDA.Base58()] = verify.EncodeGlobalAppApproval(verify.GlobalAppApproval{
+		AppHash: first.appKey, AppID: first.appKey, AppName: "Direct app", Version: first.rel.Version,
+		Author: authorKey, AuthorApproved: true, MasterNftMint: [32]byte(masterKey),
+		ApprovedBy: [32]byte(masterKey), Status: verify.ApprovalStatusRevoked, ApprovedAt: first.rel.SignedAtUnix, Bump: uint8(globalBump),
+	})
+	revokedApproval := request("/publish", second, false, "revoked-global-approval")
+	chain.rawAccounts[globalPDA.Base58()] = activeApproval
+	if revokedApproval.Code != http.StatusForbidden || !strings.Contains(revokedApproval.Body.String(), "check=blacklist[author]: global approval") {
+		t.Fatalf("Revoked global approval = %d: %s", revokedApproval.Code, revokedApproval.Body.String())
 	}
 	failed := request("/publish", second, false, "second-listing-failure")
 	if failed.Code != http.StatusBadGateway || !strings.Contains(failed.Body.String(), "check=store_release_listing") {

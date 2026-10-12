@@ -223,6 +223,7 @@ func b64(b []byte) string {
 
 func doPublish(t *testing.T, svc *publishService, body *bytes.Buffer) *httptest.ResponseRecorder {
 	t.Helper()
+	pinDirectAuthorClearForRequest(t, svc, body.Bytes())
 	r := httptest.NewRequest(http.MethodPost, "/publish", body)
 	r.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

@@ -75,7 +75,7 @@ func verifyAppClear(ctx context.Context, cr chainReader, appIDText string, relea
 // verifyAppAuthorClear derives the Author from the canonical Active global
 // approval under the estate master mint. A publisher cannot choose an Author
 // target in RELEASE.json or metadata. The direct owner/publisher route uses
-// this before either private staging or promotion.
+// this before promotion can select any public content.
 func verifyAppAuthorClear(ctx context.Context, cr chainReader, cfg Config, appIDText string) error {
 	appKey, err := primitives.DecodeSandstormAppID(appIDText)
 	if err != nil {

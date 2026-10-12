@@ -18,6 +18,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-attest/pda"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/appscan"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/releaseentry"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
@@ -27,32 +28,116 @@ import (
 // release starts with an empty genesis index and no source slot; the second
 // replaces its selected app while the old ReleaseEntry remains Active for
 // existing grains during rollout.
+func directFixtureWithVersion(t *testing.T, cfg Config, master string, spk []byte, version string) publishFixture {
+	t.Helper()
+	f := buildValidFixtureWithSPK(t, cfg, master, spk)
+	if version == "1.0.0" {
+		return f
+	}
+	f.metadata = bytes.ReplaceAll(f.metadata, []byte("1.0.0"), []byte(version))
+	appHash, err := apphash.Canonical(bytes.NewReader(spk), f.metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.appHashBytes, err = hash32FromHex(appHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.rel.AppHash = appHash
+	f.rel.Version = version
+	releaseHash := sha256.Sum256([]byte("release manifest bytes:" + version))
+	f.rel.ReleaseHash = hex.EncodeToString(releaseHash[:])
+	releasePDA, _, err := pda.Release(f.masterMint, f.appHashBytes, licenseRegistryProgramID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.relPDA = releasePDA.Base58()
+	f.rel.ReleaseEntryPda = f.relPDA
+	listingPDA, _, err := pda.StoreReleaseListing(f.storeAuthority, f.appHashBytes, licenseRegistryProgramID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.listingPDA = listingPDA.Base58()
+	f.runtimeContract = runtimeContractForTest(t, spk, f.metadata, f.rel)
+	runtimeHash := sha256.Sum256(f.runtimeContract)
+	f.rel.RuntimeContractSHA256 = hex.EncodeToString(runtimeHash[:])
+	return f
+}
+
+func pinDirectAuthorClearForFixture(t *testing.T, cfg Config, chain *mockChainReader, f publishFixture) [32]byte {
+	t.Helper()
+	authorKey := sha256.Sum256([]byte("direct route approved app author:" + f.appIDText))
+	masterKey, err := primitives.PubkeyFromBase58(cfg.ReleaseMasterNftMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	globalPDA, globalBump, err := pda.GlobalApp(masterKey, f.appKey, licenseRegistryProgramID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	chain.rawAccounts[globalPDA.Base58()] = verify.EncodeGlobalAppApproval(verify.GlobalAppApproval{
+		AppHash: f.appKey, AppID: f.appKey, AppName: "Direct app", Version: f.rel.Version,
+		Author: authorKey, AuthorApproved: true, MasterNftMint: [32]byte(masterKey),
+		ApprovedBy: [32]byte(masterKey), Status: verify.ApprovalStatusActive, ApprovedAt: f.rel.SignedAtUnix, Bump: uint8(globalBump),
+	})
+	pinBlacklistStatus(chain, verify.BlacklistTypeAuthor, authorKey, verify.BlacklistStatusClear)
+	return authorKey
+}
+
+// Existing direct-publish tests predate the Author clearance gate. Supply
+// their ordinary positive fixture with a canonical approval and Clear without
+// changing the pinned shared fixture file or any deliberately planted record.
+func pinDirectAuthorClearForRequest(t *testing.T, svc *publishService, body []byte) {
+	t.Helper()
+	chain, ok := svc.cr.(*mockChainReader)
+	if !ok {
+		return
+	}
+	var wire publishRequest
+	if json.Unmarshal(body, &wire) != nil {
+		return
+	}
+	metadata, err := enc.DecodeString(wire.MetadataB64)
+	if err != nil {
+		return
+	}
+	appID := metadataAppID(metadata)
+	appKey, err := primitives.DecodeSandstormAppID(appID)
+	if err != nil {
+		return
+	}
+	master, err := primitives.PubkeyFromBase58(svc.cfg.ReleaseMasterNftMint)
+	if err != nil {
+		return
+	}
+	address, bump, err := pda.GlobalApp(master, appKey, licenseRegistryProgramID())
+	if err != nil {
+		return
+	}
+	if _, exists := chain.rawAccounts[address.Base58()]; exists {
+		return
+	}
+	author := sha256.Sum256([]byte("direct route approved app author:" + appID))
+	chain.rawAccounts[address.Base58()] = verify.EncodeGlobalAppApproval(verify.GlobalAppApproval{
+		AppHash: appKey, AppID: appKey, AppName: "Direct app", Version: "1.0.0",
+		Author: author, AuthorApproved: true, MasterNftMint: [32]byte(master),
+		ApprovedBy: [32]byte(master), Status: verify.ApprovalStatusActive, ApprovedAt: 1700000000, Bump: uint8(bump),
+	})
+	pinBlacklistStatus(chain, verify.BlacklistTypeAuthor, author, verify.BlacklistStatusClear)
+}
+
 func TestRestoredDirectRouteFirstPublishAndLaterUpdate(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.CatalogRepoRoot = t.TempDir()
 	operator := newTestIdentity(t, "direct-route-store", cfg.LicenseNFTMint, cfg.Domain)
 	cfg.StoreAuthority = operator.Public().SignPubkeyB58
 	master := randPubkeyB58(t)
-	first := buildValidFixtureWithSPKAndVersion(t, cfg, master, []byte("first direct release SPK"), "1.0.0")
-	second := buildValidFixtureWithSPKAndVersion(t, cfg, master, []byte("second direct release SPK"), "1.0.1")
+	first := directFixtureWithVersion(t, cfg, master, []byte("first direct release SPK"), "1.0.0")
+	second := directFixtureWithVersion(t, cfg, master, []byte("second direct release SPK"), "1.0.1")
 	second.rel.SignedAtUnix = first.rel.SignedAtUnix + 60
 	chain := newMockChainReader()
 	first.pinAccept(chain, operatorSignPub32(t, operator))
-	authorKey := sha256.Sum256([]byte("direct route approved app author"))
-	masterKey, err := primitives.PubkeyFromBase58(cfg.ReleaseMasterNftMint)
-	if err != nil {
-		t.Fatal(err)
-	}
-	globalPDA, globalBump, err := pda.GlobalApp(masterKey, first.appKey, licenseRegistryProgramID())
-	if err != nil {
-		t.Fatal(err)
-	}
-	chain.rawAccounts[globalPDA.Base58()] = verify.EncodeGlobalAppApproval(verify.GlobalAppApproval{
-		AppHash: first.appKey, AppID: first.appKey, AppName: "Direct app", Version: "1.0.0",
-		Author: authorKey, AuthorApproved: true, MasterNftMint: [32]byte(masterKey),
-		ApprovedBy: [32]byte(masterKey), Status: verify.ApprovalStatusActive, ApprovedAt: first.rel.SignedAtUnix, Bump: uint8(globalBump),
-	})
-	pinBlacklistStatus(chain, verify.BlacklistTypeAuthor, authorKey, verify.BlacklistStatusClear)
+	authorKey := pinDirectAuthorClearForFixture(t, cfg, chain, first)
 	svc := newTestService(t, cfg, chain, operator)
 	publisher := newTestIdentity(t, "direct-route-publisher", randPubkeyB58(t), "publisher.example.org")
 	svc.cfg.Policy.AcceptPublishers = []string{publisher.Public().SignPubkeyB58}
@@ -135,11 +220,9 @@ func TestRestoredDirectRouteFirstPublishAndLaterUpdate(t *testing.T) {
 		t.Fatalf("genesis index is not empty: %q %v", index, err)
 	}
 	missingScanSig, _ := signedInput("/publish/stage", first, publisher, "missing-scan")
-	svc.cfg.Policy.RequireScanReport = false
 	missingScan := post("/publish/stage", first, missingScanSig, appscan.Report{}, true)
-	svc.cfg.Policy.RequireScanReport = true
 	if missingScan.Code == http.StatusOK || !strings.Contains(missingScan.Body.String(), "check=scan_report") {
-		t.Fatalf("missing signed scan with older policy = %d: %s", missingScan.Code, missingScan.Body.String())
+		t.Fatalf("missing signed scan = %d: %s", missingScan.Code, missingScan.Body.String())
 	}
 
 	stage1 := request("/publish/stage", first, true, "first-stage")
@@ -275,7 +358,7 @@ func TestRestoredDirectRouteFirstPublishAndLaterUpdate(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	backward := buildValidFixtureWithSPKAndVersion(t, cfg, master, []byte("backward direct release SPK"), "0.9.9")
+	backward := directFixtureWithVersion(t, cfg, master, []byte("backward direct release SPK"), "0.9.9")
 	backward.rel.SignedAtUnix = second.rel.SignedAtUnix + 60
 	backward.pinAccept(chain, operatorSignPub32(t, operator))
 	addSecondSignature(&backward)

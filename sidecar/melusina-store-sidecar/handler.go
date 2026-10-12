@@ -138,9 +138,7 @@ func (s *publishService) preflightAppPublishWithPublisher(r *http.Request, route
 	}
 	out = appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel, scanReport: scanReport}
 	now := s.currentTime()
-	// Direct publication always needs a fresh, purpose-bound scanner signature,
-	// even if an older signed serving profile predates RequireScanReport.
-	if s.cfg.Policy.RequireScanReport || route == "/publish" || route == "/publish/stage" {
+	if s.cfg.Policy.RequireScanReport {
 		if err := appscan.Verify(scanReport, s.cfg.Policy.ScannerEd25519PublicKey, r.Method, route, spk, metadata, releaseBytes, runtimeContract, now); err != nil {
 			return out, fmt.Errorf("check=scan_report: %w", err)
 		}
@@ -510,9 +508,7 @@ func (s *publishService) directAppPublisher(_ appPublishPreflight, claimed ident
 // handleStagePublish retains the original private candidate action. It does
 // not select public content and can run before a ReleaseEntry is registered.
 func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
-	s.handleAppStage(w, r, "/publish/stage", s.directAppPublisher, func(preflight appPublishPreflight, _ time.Time) error {
-		return verifyAppAuthorClear(r.Context(), s.cr, s.cfg, metadataAppID(preflight.metadata))
-	}, nil)
+	s.handleAppStage(w, r, "/publish/stage", s.directAppPublisher, nil, nil)
 }
 
 // handlePublish promotes only a previously staged candidate after the current

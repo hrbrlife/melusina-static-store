@@ -622,10 +622,6 @@ func buildValidFixture(t *testing.T, cfg Config, masterMintB58 string) publishFi
 
 // buildValidFixtureWithSPK is buildValidFixture for the given SPK bytes.
 func buildValidFixtureWithSPK(t *testing.T, cfg Config, masterMintB58 string, spk []byte) publishFixture {
-	return buildValidFixtureWithSPKAndVersion(t, cfg, masterMintB58, spk, "1.0.0")
-}
-
-func buildValidFixtureWithSPKAndVersion(t *testing.T, cfg Config, masterMintB58 string, spk []byte, version string) publishFixture {
 	t.Helper()
 	// Individual tests often construct only the fields they exercise. Give
 	// fixture-backed release tests a complete shared-authority tuple while
@@ -656,7 +652,7 @@ func buildValidFixtureWithSPKAndVersion(t *testing.T, cfg Config, masterMintB58 
 	// and its decoded key is the App clearance target. It is a canonical
 	// 52-character appId, one per master mint (testAppIDText).
 	appIDText := testAppIDText(masterMintB58)
-	metadata := []byte(`{"appTitle":"Test App","appVersion":"` + version + `","version":"` + version + `","packageId":"` + packageID + `","appId":"` + appIDText + `"}`)
+	metadata := []byte(`{"appTitle":"Test App","appVersion":"1.0.0","version":"1.0.0","packageId":"` + packageID + `","appId":"` + appIDText + `"}`)
 	// The on-chain app_hash is the TREE-HASH over {app.spk, metadata.json}, not
 	// sha256(spk) — exactly what apphash.Canonical (and the pearl ceremony) compute.
 	appHashHex, err := apphash.Canonical(bytes.NewReader(spk), metadata)
@@ -668,11 +664,7 @@ func buildValidFixtureWithSPKAndVersion(t *testing.T, cfg Config, masterMintB58 
 		t.Fatal(err)
 	}
 
-	releaseIdentity := "release manifest bytes"
-	if version != "1.0.0" {
-		releaseIdentity += ":" + version
-	}
-	releaseSum := sha256.Sum256([]byte(releaseIdentity))
+	releaseSum := sha256.Sum256([]byte("release manifest bytes"))
 	releaseHashHex := hex.EncodeToString(releaseSum[:])
 
 	masterMint, err := primitives.PubkeyFromBase58(masterMintB58)
@@ -726,7 +718,7 @@ func buildValidFixtureWithSPKAndVersion(t *testing.T, cfg Config, masterMintB58 
 		Schema:             "melusina-release-v1",
 		AppHash:            appHashHex,
 		ReleaseHash:        releaseHashHex,
-		Version:            version,
+		Version:            "1.0.0",
 		SignedAtUnix:       1700000000,
 		MasterNftMint:      masterMintB58,
 		LicenseSquadsVault: cfg.ReleaseSquadsAuthority.Vault,

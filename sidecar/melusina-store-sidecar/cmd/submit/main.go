@@ -895,6 +895,11 @@ func postDirectPublish(ctx context.Context, o options, endpoint string, sig enve
 		return nil, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	headerEnvelope, err := json.Marshal(sig)
+	if err != nil || len(headerEnvelope) > 16<<10 {
+		return nil, 0, errors.New("signed publisher envelope exceeds header limit")
+	}
+	req.Header.Set("X-Melusina-Publisher-Envelope", base64.RawURLEncoding.EncodeToString(headerEnvelope))
 	resp, err := (&http.Client{Timeout: o.timeout}).Do(req)
 	if err != nil {
 		return nil, 0, err

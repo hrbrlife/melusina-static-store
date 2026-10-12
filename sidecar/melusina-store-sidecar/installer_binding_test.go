@@ -107,7 +107,11 @@ func TestInstallerPublishExactBindingAndRestartReplay(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			signed := sign(tc.signedClass, tc.signedName, tc.method, tc.target, tc.storeID)
 			response := doPublishInstaller(t, svc, jsonInstallerPublishBody(t, signed, tc.requestClass, tc.requestName, artifact))
-			if response.Code != http.StatusUnauthorized || !strings.Contains(response.Body.String(), "check=installer_binding") {
+			wantCheck := "check=installer_binding"
+			if tc.name == "installer-publish-wrong-target" || tc.name == "installer-publish-wrong-method" {
+				wantCheck = "check=envelope_purpose"
+			}
+			if response.Code != http.StatusUnauthorized || !strings.Contains(response.Body.String(), wantCheck) {
 				t.Fatalf("%s: status=%d body=%s", tc.name, response.Code, response.Body.String())
 			}
 		})

@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -322,6 +323,10 @@ func publish(ctx context.Context, client *http.Client, o options, envelopeBytes 
 		return result, err
 	}
 	req.Header.Set("Content-Type", mw.FormDataContentType())
+	if len(envelopeBytes) > 16<<10 {
+		return result, fmt.Errorf("check=envelope_header: signed envelope exceeds 16 KiB")
+	}
+	req.Header.Set("X-Melusina-Publisher-Envelope", base64.RawURLEncoding.EncodeToString(envelopeBytes))
 	resp, err := client.Do(req)
 	if err != nil {
 		return result, fmt.Errorf("publish POST: %w", err)

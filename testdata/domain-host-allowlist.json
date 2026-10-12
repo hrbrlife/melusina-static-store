@@ -189,6 +189,10 @@
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/internal/hostupdate/authorized_once[.]go; reviewed as outside the estate origin."
     },
     {
+      "host": "approval.author",
+      "reason": "Go selector for the canonical on-chain GlobalAppApproval Author in blacklist_status.go; it is not a network endpoint."
+    },
+    {
       "host": "apps.md",
       "reason": "Tracked dotted filename or identifier in KILL-LIST[.]md:842; reviewed as source material, not an estate endpoint."
     },
@@ -351,6 +355,10 @@
     {
       "host": "body.envelope.payload.target",
       "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/cmd/submit-generation/main_test[.]go:73; reviewed as source material, not an estate endpoint."
+    },
+    {
+      "host": "body.scanreport.target",
+      "reason": "Go test selector for an exact signed scan target in cmd/submit/main_test.go; it is not a network endpoint."
     },
     {
       "host": "bootstrap.nonce.now",
@@ -1659,6 +1667,10 @@
     {
       "host": "info.pid",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/runtime_release_info_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "initial.id",
+      "reason": "Go test selector for an immutable catalogue generation ID in direct_app_publish_test.go; it is not a network endpoint."
     },
     {
       "host": "inner.data",
@@ -3133,6 +3145,10 @@
       "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/vendor/filippo[.]io/edwards25519/scalar[.]go:268; reviewed as source material, not an estate endpoint."
     },
     {
+      "host": "scanreport.target",
+      "reason": "Go selector for the exact signed scan route in cmd/submit/main.go; it is not a network endpoint."
+    },
+    {
       "host": "schema-coherence.sh",
       "reason": "Tracked dotted filename or identifier in KILL-LIST[.]md:264; reviewed as source material, not an estate endpoint."
     },
@@ -3155,6 +3171,14 @@
     {
       "host": "selected.id",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "selected1.id",
+      "reason": "Go test selector for an immutable catalogue generation ID in direct_app_publish_test.go; it is not a network endpoint."
+    },
+    {
+      "host": "selected2.id",
+      "reason": "Go test selector for an immutable catalogue generation ID in direct_app_publish_test.go; it is not a network endpoint."
     },
     {
       "host": "selector.sel.name",
@@ -3343,6 +3367,10 @@
     {
       "host": "step.run",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/genesis_writer_lock[.]go; reviewed as outside the estate origin."
+    },
+    {
+      "host": "stillfirst.id",
+      "reason": "Go test selector for an immutable catalogue generation ID in direct_app_publish_test.go; it is not a network endpoint."
     },
     {
       "host": "stop.store",

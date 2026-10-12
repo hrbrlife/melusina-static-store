@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestRequirePearlControlRetiresLegacyAppRoutesBeforeAnyMutation(t *testing.T) {
+func TestRestoredDirectAppRoutesFailClosedWithoutStoreAuthority(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.PrivateStageDir = t.TempDir()
 	cfg.Policy.RequirePearlControlForAppPublish = true
@@ -18,8 +18,8 @@ func TestRequirePearlControlRetiresLegacyAppRoutesBeforeAnyMutation(t *testing.T
 		request := httptest.NewRequest(http.MethodPost, path, bytes.NewReader([]byte(`{"looks":"like a publish request"}`)))
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, request)
-		if response.Code != http.StatusNotFound {
-			t.Fatalf("retired route %s = %d: %s", path, response.Code, response.Body.String())
+		if response.Code != http.StatusServiceUnavailable {
+			t.Fatalf("restored route %s without chain/operator = %d: %s", path, response.Code, response.Body.String())
 		}
 	}
 	cfg.Policy.RequirePearlControlForAppPublish = false
@@ -27,8 +27,8 @@ func TestRequirePearlControlRetiresLegacyAppRoutesBeforeAnyMutation(t *testing.T
 	for _, path := range []string{"/publish", "/publish/stage"} {
 		response := httptest.NewRecorder()
 		legacyPolicyRouter.ServeHTTP(response, httptest.NewRequest(http.MethodPost, path, bytes.NewReader([]byte(`{"candidate":"app"}`))))
-		if response.Code != http.StatusNotFound {
-			t.Fatalf("direct-app-publication-retired-with-stale-policy: %s returned %d", path, response.Code)
+		if response.Code != http.StatusServiceUnavailable {
+			t.Fatalf("direct-app-publication-with-stale-policy: %s returned %d", path, response.Code)
 		}
 	}
 	entries, err := os.ReadDir(cfg.PrivateStageDir)
@@ -48,12 +48,12 @@ func TestRequirePearlControlRetiresLegacyAppRoutesBeforeAnyMutation(t *testing.T
 	}
 }
 
-func TestStoreUIBypassRefused(t *testing.T) {
+func TestControlRouteRemainsPrivateWhileDirectRoutesUseTheirGate(t *testing.T) {
 	cfg, _ := testConfig(t)
 	cfg.DistDir = t.TempDir()
 	cfg.PrivateStageDir = t.TempDir()
 	public, _ := newGovernedRouterSurfaces(cfg, nil, nil, nil, catalogRuntime{}, true)
-	for _, path := range []string{"/publish", "/publish/stage", "/control/v1/releases/0123456789abcdef01234567/publish"} {
+	for _, path := range []string{"/control/v1/releases/0123456789abcdef01234567/publish"} {
 		response := httptest.NewRecorder()
 		public.ServeHTTP(response, httptest.NewRequest(http.MethodPost, path, bytes.NewReader([]byte(`{"candidate":"app"}`))))
 		if response.Code != http.StatusNotFound {

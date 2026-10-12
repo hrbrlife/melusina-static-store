@@ -86,10 +86,9 @@ type appPublishPreflight struct {
 }
 
 // appPublisherResolver is the narrow injection point between a signed
-// publisher envelope and the source of publisher authority.  The legacy
-// /publish route resolves its signer from the static migration allowlist;
-// Bazaar Control resolves the exact signer from a verified, app-scoped
-// on-chain grant.  The rest of the publish gate is deliberately shared.
+// publisher envelope and the source of publisher authority. Direct app
+// publication resolves its signer from the enrolled profile-bound Store
+// publisher list; Bazaar Control uses its app-scoped on-chain grant.
 type appPublisherResolver func(appPublishPreflight, identity.Public) (string, error)
 
 // appPublishCriticalCheck re-reads dynamic authorization inside the single
@@ -139,7 +138,9 @@ func (s *publishService) preflightAppPublishWithPublisher(r *http.Request, route
 	}
 	out = appPublishPreflight{sig: sig, releaseBytes: releaseBytes, spk: spk, metadata: metadata, runtimeContract: runtimeContract, hint: hint, release: rel, scanReport: scanReport}
 	now := s.currentTime()
-	if s.cfg.Policy.RequireScanReport {
+	// Direct publication always needs a fresh, purpose-bound scanner signature,
+	// even if an older signed serving profile predates RequireScanReport.
+	if s.cfg.Policy.RequireScanReport || route == "/publish" || route == "/publish/stage" {
 		if err := appscan.Verify(scanReport, s.cfg.Policy.ScannerEd25519PublicKey, r.Method, route, spk, metadata, releaseBytes, runtimeContract, now); err != nil {
 			return out, fmt.Errorf("check=scan_report: %w", err)
 		}
@@ -408,6 +409,11 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// listener or the historical sidecar-apply surface.
 	mux.HandleFunc(controllerUpgradeIssuePathPrefix, privateControlRouteOnly)
 	mux.HandleFunc("/control/v1/", privateControlRouteOnly)
+	// Until the Bazaar Control pilot is complete, owner-enrolled release
+	// publishers may use the original two-phase app route. Both actions enter
+	// the same single-writer stage/publish gates as the private control route.
+	mux.HandleFunc("/publish", svc.handlePublish)
+	mux.HandleFunc("/publish/stage", svc.handleStagePublish)
 	mux.HandleFunc("/publish/installer", svc.handlePublishInstaller)
 	// POST /publish/generation: envelope-authorized promote of the next signed
 	// desired generation (canonical publisher's promote step). Re-verifies the
@@ -491,6 +497,30 @@ func newControlReleaseRouter(svc *publishService) http.Handler {
 // than advertising the private listener or its authentication method.
 func privateControlRouteOnly(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
+}
+
+func (s *publishService) directAppPublisher(_ appPublishPreflight, claimed identity.Public) (string, error) {
+	signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
+	if !ok {
+		return "", errors.New("check=accept_publishers: publisher identity not in owner-enrolled store policy accept_publishers")
+	}
+	return signerKey, nil
+}
+
+// handleStagePublish retains the original private candidate action. It does
+// not select public content and can run before a ReleaseEntry is registered.
+func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
+	s.handleAppStage(w, r, "/publish/stage", s.directAppPublisher, func(preflight appPublishPreflight, _ time.Time) error {
+		return verifyAppAuthorClear(r.Context(), s.cr, s.cfg, metadataAppID(preflight.metadata))
+	}, nil)
+}
+
+// handlePublish promotes only a previously staged candidate after the current
+// on-chain, profile, clearance, scan, listing and pointer gates all pass.
+func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
+	s.handleAppPublish(w, r, "/publish", s.directAppPublisher, func(preflight appPublishPreflight, _ time.Time) error {
+		return verifyAppAuthorClear(r.Context(), s.cr, s.cfg, metadataAppID(preflight.metadata))
+	}, nil, nil)
 }
 
 // handleAppStage is the one private-candidate implementation. Route-specific

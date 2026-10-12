@@ -65,11 +65,10 @@ type Policy struct {
 	// resolve to a signer key. Empty fails closed on /publish and
 	// /publish/installer.
 	AcceptPublishers []string `json:"accept_publishers"`
-	// RequirePearlControlForAppPublish is the deliberate post-pilot cutover.
-	// When true, the legacy app /publish and /publish/stage routes return before
-	// parsing a body, claiming a nonce, or touching private stage state. Typed
-	// Pearl release commands remain available. System-update routes are outside
-	// this app-release switch and are unaffected.
+	// RequirePearlControlForAppPublish is retained in the signed serving
+	// configuration for the private Store Link listener. Until the Bazaar
+	// Control pilot passes, the owner-enrolled publishers can also use the
+	// direct app routes; this flag does not disable their shared admission gate.
 	RequirePearlControlForAppPublish bool `json:"require_pearl_control_for_app_publish"`
 }
 

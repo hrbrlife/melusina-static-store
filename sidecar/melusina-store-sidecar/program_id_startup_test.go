@@ -121,6 +121,8 @@ var registryFreeStoreSubcommands = map[string]string{
 	"store-identity-escrow-reseal": "a holder's offline reseal of one escrowed shard",
 	"genesis-dist-init":            "offline producer of the empty first-install dist snapshot",
 	"provider-pairing-attest":      "client of the local provider pairing signer socket; reads no chain state",
+	"public-leaf-renew":            "renews the public TLS leaf through the estate ACME responder; reads no chain state",
+	"verify-public":                "outside-in public-route probe; reads no chain state",
 }
 
 // storeMainSubcommands derives the dispatched subcommands from main() itself,

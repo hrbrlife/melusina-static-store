@@ -210,6 +210,26 @@ var ErrKeylessSidecarNamesIdentity = errors.New("keyless-sidecar-names-identity:
 // round 4, finding 9).
 var ErrSidecarIdentityKeyVersionZero = errors.New("sidecar-identity-key-version-zero: a sidecar_identity (key-bearing) component must name keyVersion 1 or higher; an omitted keyVersion is 0, and 0 is refused, never read as 1")
 
+// ErrChainProgramNotPinned: a component's chain.program is not the
+// licence-registry program the gate reading it is pinned to. Every address the
+// component names is derived under its program, so a gate that followed
+// another program would be judging another estate's accounts. The tenant
+// update controller pins its root-owned config's programId, and the Store's
+// promote and serve gates pin the Store's configured licence registry; both
+// refuse by this name, before any chain read.
+var ErrChainProgramNotPinned = errors.New("chain-program-not-pinned: the component's chain.program is not the licence-registry program this gate is pinned to")
+
+// ErrSidecarMasterMintNotPinned: a sidecar component's masterNftMint, the seed
+// of its GlobalSidecarApproval address, is not the master mint the gate pins.
+// The tenant update controller pins its root-owned config's masterNftMint and
+// refuses before any chain read; the Store, which serves many licences, pins
+// the master the component's own LicenseEntry names. The five-fact cascade
+// derives the Global approval from that master, so a component naming another
+// one would be promoted on one Global approval and applied on another. Both
+// sidecar rules (sidecar_identity and sidecar_cascade) are refused by this
+// name at promote, serve and apply.
+var ErrSidecarMasterMintNotPinned = errors.New("sidecar-master-mint-not-pinned: the sidecar component's masterNftMint (the Global approval seed) is not the master mint this gate pins")
+
 // IsSidecarAuthority reports whether kind is one of the two sidecar rules.
 func IsSidecarAuthority(kind string) bool {
 	return kind == AuthoritySidecarIdentity || kind == AuthoritySidecarCascade

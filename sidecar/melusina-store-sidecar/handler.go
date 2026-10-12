@@ -437,6 +437,7 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// store operator key + storeId. The legacy manifest is generated from that same
 	// verified document on every request, never maintained as a second pointer.
 	mux.HandleFunc("/update/generation.json", svc.handleDesiredGeneration)
+	mux.HandleFunc("/update/sidecar-classes-v1.json", svc.handleSidecarClasses)
 	mux.HandleFunc("/update/manifest.json", svc.handleLegacyManifest)
 	// One-shot receipts are intentionally public-but-unforgeable bearer
 	// documents: the root-owned controller is pinned to this exact origin and

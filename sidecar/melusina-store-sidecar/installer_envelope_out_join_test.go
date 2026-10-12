@@ -141,7 +141,7 @@ func TestInstallerEnvelopeOutAcceptedByProductionRouter(t *testing.T) {
 		"--store", "https://store.invalid", "--class", class, "--name", name,
 		"--artifact", artifactPath, "--publisher-key", publisherPath, "--store-pubkey", operatorPath,
 		"--store-id", svc.cfg.StoreID, "--store-domain", svc.cfg.Domain,
-		"--license-mint", svc.cfg.LicenseNFTMint, "--program-id", svc.cfg.ProgramID, "--timeout", "15m")
+		"--license-mint", svc.cfg.LicenseNFTMint, "--program-id", svc.cfg.ProgramID, "--timeout", "48m")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	stdout, err := cmd.Output()

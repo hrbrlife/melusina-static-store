@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -25,6 +27,8 @@ import (
 )
 
 const (
+	publisherEnvelopeHeader    = "X-Melusina-Publisher-Envelope"
+	maxPublisherEnvelopeHeader = 16 << 10
 	// maxAppPublishBody bounds /publish (envelope + RELEASE.json + SPK).
 	// Catalog SPKs stay under 100 MiB; keep this narrow because app publication
 	// has no reason to accept shell-sized payloads.
@@ -532,12 +536,32 @@ func (s *publishService) directAppPublisher(_ appPublishPreflight, claimed ident
 // handleStagePublish retains the original private candidate action. It does
 // not select public content and can run before a ReleaseEntry is registered.
 func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
+	if rejectReceiveBypass(w) {
+		return
+	}
+	if s.cr == nil || s.operator == nil {
+		http.Error(w, "publish stage gate not initialized", http.StatusServiceUnavailable)
+		return
+	}
+	if !s.requirePublisherHeader(w, r, "/publish/stage") {
+		return
+	}
 	s.handleAppStage(w, r, "/publish/stage", s.directAppPublisher, nil, nil)
 }
 
 // handlePublish promotes only a previously staged candidate after the current
 // on-chain, profile, clearance, scan, listing and pointer gates all pass.
 func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
+	if rejectReceiveBypass(w) {
+		return
+	}
+	if s.cr == nil || s.operator == nil {
+		http.Error(w, "publish gate not initialized", http.StatusServiceUnavailable)
+		return
+	}
+	if !s.requirePublisherHeader(w, r, "/publish") {
+		return
+	}
 	s.handleAppPublish(w, r, "/publish", s.directAppPublisher, func(preflight appPublishPreflight, _ time.Time) error {
 		return verifyAppAuthorClear(r.Context(), s.cr, s.cfg, metadataAppID(preflight.metadata))
 	}, nil, nil)
@@ -1026,6 +1050,9 @@ func (s *publishService) handlePublishInstaller(w http.ResponseWriter, r *http.R
 		http.Error(w, "installer publish gate not initialized (no chain reader / operator identity)", http.StatusServiceUnavailable)
 		return
 	}
+	if !s.requirePublisherHeader(w, r, installerpublish.Target) {
+		return
+	}
 
 	sig, class, name, artifact, err := parseInstallerPublishBody(r)
 	if err != nil {
@@ -1217,6 +1244,78 @@ func requireEnvelopePresent(sig envelope.Signed) error {
 	return nil
 }
 
+// requirePublisherHeader authenticates the small envelope before any route
+// reads, decodes, scans, or spills a body. Its nonce cache is deliberately
+// temporary; the durable route check still claims the nonce after admission.
+func (s *publishService) requirePublisherHeader(w http.ResponseWriter, r *http.Request, route string) bool {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return false
+	}
+	values := r.Header.Values(publisherEnvelopeHeader)
+	if len(values) != 1 || len(values[0]) == 0 || len(values[0]) > maxPublisherEnvelopeHeader {
+		http.Error(w, "check=envelope_header: one bounded publisher envelope is required", http.StatusUnauthorized)
+		return false
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(values[0])
+	if err != nil || len(raw) == 0 || len(raw) > maxPublisherEnvelopeHeader {
+		http.Error(w, "check=envelope_header: malformed or oversized", http.StatusUnauthorized)
+		return false
+	}
+	var signed envelope.Signed
+	if json.Unmarshal(raw, &signed) != nil {
+		http.Error(w, "check=envelope_header: malformed envelope", http.StatusUnauthorized)
+		return false
+	}
+	canonical, _ := json.Marshal(signed)
+	if !bytes.Equal(raw, canonical) || requireEnvelopePresent(signed) != nil {
+		http.Error(w, "check=envelope_header: noncanonical or missing signature", http.StatusUnauthorized)
+		return false
+	}
+	key, ok := s.resolveAcceptedPublisherKey(signed.Payload.Source)
+	if !ok {
+		http.Error(w, "check=accept_publishers: publisher identity not in store policy accept_publishers", http.StatusForbidden)
+		return false
+	}
+	if s.operator == nil {
+		http.Error(w, "check=envelope_header: Store operator unavailable", http.StatusServiceUnavailable)
+		return false
+	}
+	operator := s.operator.Public()
+	now := s.currentTime()
+	if err := envelope.Verify(signed, envelope.VerifyOptions{
+		Now: now, ExpectedKind: envelope.KindPublishRequest,
+		ExpectedSignerPubkeyB58: key, ExpectedDestination: &operator,
+		NonceCache: envelope.NewMemoryNonceCache(),
+	}); err != nil {
+		http.Error(w, "check=envelope_header: "+err.Error(), http.StatusUnauthorized)
+		return false
+	}
+	if signed.Payload.Method != http.MethodPost || signed.Payload.Target != route {
+		http.Error(w, "check=envelope_purpose: signed header method or target differs", http.StatusUnauthorized)
+		return false
+	}
+	if err := verifyTightAppEnvelopeWindow(signed.Payload, now); err != nil {
+		http.Error(w, "check=envelope_header_ttl: "+err.Error(), http.StatusUnauthorized)
+		return false
+	}
+	return true
+}
+
+// The body must carry the exact canonical JSON bytes that were authenticated
+// in the header; equal decoded structs with different wire bytes are refused.
+func matchPublisherHeader(r *http.Request, bodyEnvelope []byte) error {
+	encoded := r.Header.Get(publisherEnvelopeHeader)
+	if encoded == "" {
+		return nil
+	} // private Bazaar Control uses its own authority.
+	raw, err := base64.RawURLEncoding.DecodeString(encoded)
+	if err != nil || !bytes.Equal(raw, bodyEnvelope) {
+		return errors.New("check=envelope_header_body_mismatch")
+	}
+	return nil
+}
+
 // parsePublishBody extracts the signed envelope, the RELEASE.json bytes, the raw
 // SPK bytes, the metadata.json bytes, and the optional catalog-slot hint from
 // either a multipart/form-data request (file fields: envelope, release, spk,
@@ -1237,6 +1336,9 @@ func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk
 		envBytes, perr := readFormFile(r, "envelope")
 		if perr != nil {
 			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("envelope part: %w", perr)
+		}
+		if err := matchPublisherHeader(r, envBytes); err != nil {
+			return sig, nil, nil, nil, nil, hint, report, err
 		}
 		if perr := json.Unmarshal(envBytes, &sig); perr != nil {
 			return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("decode envelope JSON: %w", perr)
@@ -1279,6 +1381,14 @@ func parsePublishBody(r *http.Request) (sig envelope.Signed, release []byte, spk
 	body, perr := io.ReadAll(r.Body)
 	if perr != nil {
 		return sig, nil, nil, nil, nil, hint, report, fmt.Errorf("read body: %w", perr)
+	}
+	if r.Header.Get(publisherEnvelopeHeader) != "" {
+		var wire struct {
+			Envelope json.RawMessage `json:"envelope"`
+		}
+		if json.Unmarshal(body, &wire) != nil || matchPublisherHeader(r, wire.Envelope) != nil {
+			return sig, nil, nil, nil, nil, hint, report, errors.New("check=envelope_header_body_mismatch")
+		}
 	}
 	var req publishRequest
 	if perr := json.Unmarshal(body, &req); perr != nil {
@@ -1330,6 +1440,9 @@ func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class stri
 		if perr != nil {
 			return sig, "", "", nil, fmt.Errorf("envelope part: %w", perr)
 		}
+		if err := matchPublisherHeader(r, envBytes); err != nil {
+			return sig, "", "", nil, err
+		}
 		if perr := json.Unmarshal(envBytes, &sig); perr != nil {
 			return sig, "", "", nil, fmt.Errorf("decode envelope JSON: %w", perr)
 		}
@@ -1343,6 +1456,14 @@ func parseInstallerPublishBody(r *http.Request) (sig envelope.Signed, class stri
 		body, perr := io.ReadAll(r.Body)
 		if perr != nil {
 			return sig, "", "", nil, fmt.Errorf("read body: %w", perr)
+		}
+		if r.Header.Get(publisherEnvelopeHeader) != "" {
+			var wire struct {
+				Envelope json.RawMessage `json:"envelope"`
+			}
+			if json.Unmarshal(body, &wire) != nil || matchPublisherHeader(r, wire.Envelope) != nil {
+				return sig, "", "", nil, errors.New("check=envelope_header_body_mismatch")
+			}
 		}
 		var req installerPublishRequest
 		if perr := json.Unmarshal(body, &req); perr != nil {

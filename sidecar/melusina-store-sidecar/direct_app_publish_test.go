@@ -191,6 +191,7 @@ func TestRestoredDirectRouteFirstPublishAndLaterUpdate(t *testing.T) {
 		}
 		req := httptest.NewRequest(http.MethodPost, route, bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
+		setTestPublisherHeader(t, req, body)
 		out := httptest.NewRecorder()
 		router.ServeHTTP(out, req)
 		return out

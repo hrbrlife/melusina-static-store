@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,7 +14,7 @@ import (
 
 type unreadBodyProbe struct{ reads int }
 
-func (p *unreadBodyProbe) Read(_ []byte) (int, error) { p.reads++; return 0, nil }
+func (p *unreadBodyProbe) Read(_ []byte) (int, error) { p.reads++; return 0, io.EOF }
 
 func TestPublicPublishHeaderAuthBeforeBodyAndExactBodyBinding(t *testing.T) {
 	cfg, _ := testConfig(t)

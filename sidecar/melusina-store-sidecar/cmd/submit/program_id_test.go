@@ -22,6 +22,7 @@ func TestParseFlagsRequireTheEstateRegistryInEveryMode(t *testing.T) {
 			"--metadata", "metadata.json", "--release", "RELEASE.json",
 			"--publisher-key", "publisher.json", "--store-pubkey", "store.json",
 			"--license-mint", randPubkeyB58(t), "--rpc-url", "https://rpc.example",
+			"--scan-report", "scan-report.json",
 		},
 		"verify-receipt": {
 			"--verify-receipt", "/tmp/publish-receipt.json",

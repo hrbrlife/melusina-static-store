@@ -65,11 +65,14 @@ type Policy struct {
 	// resolve to a signer key. Empty fails closed on /publish and
 	// /publish/installer.
 	AcceptPublishers []string `json:"accept_publishers"`
-	// RequirePearlControlForAppPublish is the deliberate post-pilot cutover.
-	// When true, the legacy app /publish and /publish/stage routes return before
-	// parsing a body, claiming a nonce, or touching private stage state. Typed
-	// Pearl release commands remain available. System-update routes are outside
-	// this app-release switch and are unaffected.
+	// RequirePearlControlForAppPublish names the Store's one app publication
+	// authority. False: the owner-enrolled profile publishers in
+	// AcceptPublishers use the direct /publish/stage and /publish routes, and
+	// the private /control/v1/releases/ route refuses app releases. True: the
+	// direct routes are retired before a body is read and only Bazaar Control
+	// publishes. The two authorities are never live together. The profile-bound
+	// renderer declares this binary's authority; re-retiring the direct route
+	// is a successor binary whose renderer declares true.
 	RequirePearlControlForAppPublish bool `json:"require_pearl_control_for_app_publish"`
 }
 
@@ -441,8 +444,8 @@ func requireServingControlMTLS(cfg Config) error {
 	if !cfg.StoreLinkControlMTLS.configured() {
 		return fmt.Errorf("config: store_link_control_mtls is required for the serving Store")
 	}
-	if !cfg.Policy.RequirePearlControlForAppPublish {
-		return fmt.Errorf("config: policy.require_pearl_control_for_app_publish is required for the serving Store")
+	if !cfg.Policy.RequirePearlControlForAppPublish && len(cfg.Policy.AcceptPublishers) == 0 {
+		return fmt.Errorf("config: policy.accept_publishers must name the enrolled publishers when policy.require_pearl_control_for_app_publish is false")
 	}
 	if cfg.EstateProfile == nil || cfg.StoreSecurityProfile == nil {
 		return fmt.Errorf("config: signed Store security profile is required for the serving Store")

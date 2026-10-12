@@ -79,9 +79,22 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   Every other state (an unreadable or absent entry, `Superseded`, an unknown
   status, `Revoked` without `revoked_at`, another master mint, or no
   `release_master_nft_mint` configured) refuses the whole catalog with `503`.
-- **WRITE** (gated; the sidecar is the SINGLE WRITER): typed, human-approved
-  `/control/v1/releases/<dossier>/prepare|publish` commands are the app-release
-  write path. They exist only on the
+- **WRITE** (gated; the sidecar is the SINGLE WRITER): exactly one app-release
+  write path is live, selected by `policy.require_pearl_control_for_app_publish`.
+  This binary's profile-bound renderer declares `false` (owner decision
+  N-1467, until the Bazaar Control pilot passes): owner-enrolled profile
+  publishers (`policy.accept_publishers`, pinned to the enrolled estate
+  profile) use the public two-phase `POST /publish/stage` then `POST /publish`,
+  and the private control route answers `409 check=app_publication_authority`.
+  Both direct actions require a fresh signed scan report and enter the same
+  single-writer stage/publish gates: Active exact ReleaseEntry with the
+  profile's publisher threshold, explicit App, Author (from the canonical
+  Active GlobalAppApproval) and Store licence Clear, forward version and time,
+  durable nonce/stage/WAL, `StoreReleaseListing` before the selector moves, and
+  the Store-signed catalogue pointer. With `true`, the direct routes answer
+  `410` before reading a body and only the typed, human-approved
+  `/control/v1/releases/<dossier>/prepare|publish` commands publish. Those
+  exist only on the
   separate `store_link_control_mtls.listen_addr`: TLS 1.3, a verified Store
   Link control-plane client CA, and the exact pinned Store Link client
   certificate are all required. That listener additionally exposes two exact
@@ -92,8 +105,7 @@ configured `root_store_url`), never a code fork. Each tier mirrors its parent
   policy identifier, revision, and public Pearl command-key binding. Neither
   is public catalog health, a chain diagnostic, a policy/Pearl selector, or a
   transaction/signing API.
-  The public catalog listener returns `404` for those routes and for retired
-  direct app `POST /publish` and `/publish/stage`. **No
+  The public catalog listener returns `404` for every control route. **No
   `MELUSINA_ATTEST_OFFLINE`/`SKIP_STEPS`/`SCAN_NOOP` bypass exists on either
   path.**
 - **Internal preflight** (not an HTTP route):

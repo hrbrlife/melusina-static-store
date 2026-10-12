@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -98,7 +99,14 @@ func uploadInPieces(t *testing.T, addr string, body []byte, pieces [][2]int, gap
 	responded := make(chan struct{})
 	var sent atomic.Int64
 	go func() {
-		header := fmt.Sprintf("POST /publish/installer HTTP/1.1\r\nHost: store.test\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n", len(body))
+		var wire struct {
+			Envelope json.RawMessage `json:"envelope"`
+		}
+		envelopeHeader := ""
+		if json.Unmarshal(body, &wire) == nil && len(wire.Envelope) != 0 {
+			envelopeHeader = fmt.Sprintf("X-Melusina-Publisher-Envelope: %s\r\n", base64.RawURLEncoding.EncodeToString(wire.Envelope))
+		}
+		header := fmt.Sprintf("POST /publish/installer HTTP/1.1\r\nHost: store.test\r\nContent-Type: application/json\r\n%sContent-Length: %d\r\n\r\n", envelopeHeader, len(body))
 		if _, err := io.WriteString(conn, header); err != nil {
 			return
 		}

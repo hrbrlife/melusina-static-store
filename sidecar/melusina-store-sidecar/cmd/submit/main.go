@@ -1,8 +1,5 @@
-// Command submit prepares one signed Bazaar Control publication request.
-// It binds the canonical RELEASE.json and SPK digest to the exact dossier
-// publish route, then writes the request to an owner-only file. The Pearl
-// sends that request over the private Store Link mTLS channel after its
-// command and approval checks. This command makes no publication HTTP call.
+// Command submit signs and submits the two-phase direct app publication to a
+// Store, or prepares an exact Bazaar Control request for the private Pearl.
 //
 // Its read-only receipt mode re-derives the store's on-chain
 // StoreOperatorAuthorization and verifies the operator signature over the
@@ -259,14 +256,14 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.domain, "domain", "", "store serving domain (bare host); store_domain_hash seed for receipt verification (defaults to the host in --store)")
 	fs.StringVar(&o.rpcURL, "rpc-url", "", "Solana JSON-RPC endpoint used to read the on-chain store_authority for receipt verification (required)")
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "ChainEvidence verified_slot for the envelope (publisher's local on-chain pre-check slot)")
-	fs.BoolVar(&o.useMultipart, "multipart", false, "retired direct publication option; use --request-out")
-	fs.BoolVar(&o.stageOnly, "stage", false, "retired direct publication option; use --request-out")
+	fs.BoolVar(&o.useMultipart, "multipart", false, "legacy multipart transport (unsupported; use JSON)")
+	fs.BoolVar(&o.stageOnly, "stage", false, "POST /publish/stage; run again without --stage after ReleaseEntry activation")
 	fs.StringVar(&o.developer, "developer", "", "catalog developer path segment (required with --repo/--slug for a first publish)")
 	fs.StringVar(&o.repo, "repo", "", "catalog repository path segment (required with --developer/--slug for a first publish)")
 	fs.StringVar(&o.slug, "slug", "", "catalog app path segment (required with --developer/--repo for a first publish)")
-	fs.StringVar(&o.receiptOut, "receipt-out", "", "retired direct publication option; use --verify-receipt for read-only checking")
+	fs.StringVar(&o.receiptOut, "receipt-out", "", "save the verified Store-signed stage or promotion receipt")
 	fs.StringVar(&o.verifyReceiptPath, "verify-receipt", "", "verify a saved promotion or app-publish receipt against the on-chain store authority without publishing")
-	fs.StringVar(&o.prepareOut, "prepare-out", "", "retired direct publication option; use --request-out")
+	fs.StringVar(&o.prepareOut, "prepare-out", "", "write a locally signed direct-route handoff without posting")
 	fs.StringVar(&o.preparedSubmission, "prepared-submission", "", "prepared handoff to bind a --verify-receipt result to the exact submitted candidate")
 	fs.StringVar(&o.requestOut, "request-out", "", "owner-only path for one 15-minute exact Pearl control publish request; performs no HTTP call")
 	fs.StringVar(&o.controlDossier, "control-dossier", "", "24-character lower-hex Bazaar Control dossier id; required with --request-out")
@@ -313,6 +310,9 @@ func parseFlags(args []string) (options, error) {
 	}
 	if o.preparedSubmission != "" {
 		return o, errors.New("--prepared-submission requires --verify-receipt")
+	}
+	if o.useMultipart {
+		return o, errors.New("--multipart is unsupported; signed scan reports require the JSON transport")
 	}
 	if o.prepareOut != "" && o.receiptOut != "" {
 		return o, errors.New("--prepare-out cannot be combined with --receipt-out")
@@ -368,6 +368,12 @@ func parseFlags(args []string) (options, error) {
 		// envelope.ChainEvidence.Validate rejects verified_slot==0.
 		return o, errors.New("--verified-slot must be > 0 (envelope chain evidence requires it)")
 	}
+	if o.requestOut == "" && strings.TrimSpace(o.scanReportPath) == "" {
+		return o, errors.New("check=scan_report: --scan-report is required for direct app publication")
+	}
+	if o.timeout <= 0 || o.timeout > 27*time.Minute {
+		return o, errors.New("--timeout must be positive and at most 27m to fit the Store's signed app envelope window")
+	}
 	if err := validateSlotHint(o); err != nil {
 		return o, err
 	}
@@ -397,9 +403,6 @@ func run(args []string, stdout, stderr io.Writer) error {
 	}
 	if o.verifyReceiptPath != "" {
 		return runVerifyReceipt(o, stdout)
-	}
-	if o.requestOut == "" {
-		return errors.New("direct-app-publish-retired: prepare one signed Bazaar Control request with --request-out")
 	}
 	spk, err := os.ReadFile(o.spkPath)
 	if err != nil {
@@ -453,6 +456,13 @@ func run(args []string, stdout, stderr io.Writer) error {
 			return errors.New("check=scan_report: content mismatch")
 		}
 	}
+	if o.requestOut == "" && strings.TrimSpace(scanReport.Schema) == "" {
+		return errors.New("check=scan_report: signed scan report is required")
+	}
+	expectedReceipt, err := buildSubmittedReceiptIntentWithRuntimeContract(spk, metadata, runtimeContract, claims, o.developer, o.repo, o.slug)
+	if err != nil {
+		return fmt.Errorf("check=receipt_submission: %w", err)
+	}
 	pubPriv, err := loadPublisherKey(o.publisherKey)
 	if err != nil {
 		return fmt.Errorf("publisher key: %w", err)
@@ -462,11 +472,18 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("store pubkey: %w", err)
 	}
 
-	// The file-only control mode derives its target from the Pearl dossier; it
-	// never accepts a route supplied by a worker or terminal.
-	target, err := controlPublishTarget(o.controlDossier)
-	if err != nil {
-		return fmt.Errorf("control target: %w", err)
+	target := appPromoteTarget
+	if o.stageOnly {
+		target = appStageTarget
+	}
+	if o.requestOut != "" {
+		target, err = controlPublishTarget(o.controlDossier)
+		if err != nil {
+			return fmt.Errorf("control target: %w", err)
+		}
+	}
+	if scanReport.Schema != "" && (scanReport.Method != http.MethodPost || scanReport.Target != target) {
+		return fmt.Errorf("check=scan_report: signed scan purpose must be POST %s", target)
 	}
 
 	// Build the signed publish-request envelope: KindPublishRequest addressed
@@ -477,9 +494,50 @@ func run(args []string, stdout, stderr io.Writer) error {
 	//
 	// A control request is a final transport envelope, not a durable approval
 	// object. A worker cannot extend its lifetime by inflating --timeout.
-	sig, err := buildEnvelope(pubPriv, dst, target, spk, releaseBytes, claims, o.programID, o.verifiedSlot, controlRequestEnvelopeTTL)
+	envTTL := o.timeout + 2*time.Minute
+	if envTTL < 5*time.Minute {
+		envTTL = 5 * time.Minute
+	}
+	if o.requestOut != "" {
+		envTTL = controlRequestEnvelopeTTL
+	}
+	sig, err := buildEnvelope(pubPriv, dst, target, spk, releaseBytes, claims, o.programID, o.verifiedSlot, envTTL)
 	if err != nil {
 		return fmt.Errorf("envelope: %w", err)
+	}
+	if o.prepareOut != "" {
+		prepared := preparedSubmission{Schema: preparedSubmissionSchema, Target: target, Envelope: sig, Expected: expectedReceipt}
+		if err := writePreparedSubmission(o.prepareOut, prepared); err != nil {
+			return err
+		}
+		fmt.Fprintf(stdout, "PREPARED OK — signed direct app request written to %s; no POST was made\n", o.prepareOut)
+		return nil
+	}
+	if o.requestOut == "" {
+		resp, status, err := postDirectPublish(context.Background(), o, target, sig, releaseBytes, spk, metadata, runtimeContract, scanReport)
+		if err != nil {
+			return fmt.Errorf("publish POST: %w", err)
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("store rejected publish: HTTP %d: %s", status, strings.TrimSpace(string(resp)))
+		}
+		cr := verify.NewRPCClient(o.rpcURL)
+		if o.stageOnly {
+			receipt, err := acceptStageReceipt(context.Background(), cr, o.programID, o.licenseMint, o.domain, resp, expectedReceipt, o.receiptOut)
+			if err != nil {
+				return fmt.Errorf("stage receipt verification: %w", err)
+			}
+			out, _ := json.MarshalIndent(receipt, "", "  ")
+			fmt.Fprintf(stdout, "STAGE OK — Store receipt verified against on-chain authority\n%s\n", out)
+			return nil
+		}
+		receipt, err := acceptPromotionReceipt(context.Background(), cr, o.programID, o.licenseMint, o.domain, resp, expectedReceipt, o.receiptOut)
+		if err != nil {
+			return fmt.Errorf("promotion receipt verification: %w", err)
+		}
+		out, _ := json.MarshalIndent(receipt, "", "  ")
+		fmt.Fprintf(stdout, "PUBLISH OK — Store receipt verified against on-chain authority\n%s\n", out)
+		return nil
 	}
 	body, err := marshalControlPublishRequest(sig, releaseBytes, spk, metadata, runtimeContract, scanReport, o.developer, o.repo, o.slug)
 	if err != nil {
@@ -809,6 +867,52 @@ func isControlPublishTarget(target string) bool {
 
 func isAllowedPublisherEnvelopeTarget(target string) bool {
 	return target == appPromoteTarget || target == appStageTarget || isControlPublishTarget(target)
+}
+
+// postDirectPublish sends the exact signed candidate to the restored Store
+// route. The Store recomputes every byte binding and verifies the scanner's
+// signature; the client subsequently verifies the Store's signed receipt.
+func postDirectPublish(ctx context.Context, o options, endpoint string, sig envelope.Signed, releaseBytes, spk, metadata, runtimeContract []byte, scanReport appscan.Report) ([]byte, int, error) {
+	if endpoint != appPromoteTarget && endpoint != appStageTarget {
+		return nil, 0, fmt.Errorf("direct app endpoint must be %q or %q", appPromoteTarget, appStageTarget)
+	}
+	if sig.Payload.Method != http.MethodPost || sig.Payload.Target != endpoint {
+		return nil, 0, fmt.Errorf("signed app publish purpose %s %q does not match POST %q", sig.Payload.Method, sig.Payload.Target, endpoint)
+	}
+	if o.store == "" {
+		return nil, 0, errors.New("Store URL is required")
+	}
+	body, err := json.Marshal(publishRequest{
+		Envelope: sig, ReleaseB64: stdB64(releaseBytes), SPKB64: stdB64(spk),
+		MetadataB64: stdB64(metadata), RuntimeContractB64: stdB64(runtimeContract),
+		ScanReport: scanReport, Developer: o.developer, Repo: o.repo, Slug: o.slug,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("marshal JSON body: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(o.store, "/")+endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	headerEnvelope, err := json.Marshal(sig)
+	if err != nil || len(headerEnvelope) > 16<<10 {
+		return nil, 0, errors.New("signed publisher envelope exceeds header limit")
+	}
+	req.Header.Set("X-Melusina-Publisher-Envelope", base64.RawURLEncoding.EncodeToString(headerEnvelope))
+	resp, err := (&http.Client{Timeout: o.timeout}).Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	response, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20+1))
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+	if len(response) > 1<<20 {
+		return nil, resp.StatusCode, errors.New("Store response exceeds 1 MiB")
+	}
+	return response, resp.StatusCode, nil
 }
 
 // marshalControlPublishRequest emits the exact normal JSON publish wire body

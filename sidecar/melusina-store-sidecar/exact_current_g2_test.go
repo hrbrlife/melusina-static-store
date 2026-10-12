@@ -98,6 +98,7 @@ func TestG2ExactCurrentBootstrapStagePromoteIsReadOnlyIdempotentAndReplayDurable
 
 	baseChain := newMockChainReader()
 	fixture.pinAccept(baseChain, operatorSignPub32(t, operator))
+	pinDirectAuthorClearForFixture(t, cfg, baseChain, fixture)
 	fixture.pinServeListingActive(baseChain)
 	chain := &exactCurrentReadOnlyChain{mockChainReader: baseChain}
 	activeBefore := exactActiveSetBytes(t, baseChain, fixture.appID)

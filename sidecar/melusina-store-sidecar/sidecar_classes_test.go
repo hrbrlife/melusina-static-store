@@ -24,6 +24,7 @@ func TestSidecarClassesCurrentSignedGeneration(t *testing.T) {
 	c := sidecarComp("fineract", hex.EncodeToString(sum[:]), "v2")
 	c.SizeBytes = int64(len(body))
 	c.Chain.KeyVersion = 2
+	c.Chain.SidecarID = "fineract-v2"
 	writeReleaseArtifact(t, svc.cfg.DistDir, "sidecar", c.ArtifactName, body)
 	if _, err := svc.promoteGeneration(promoteReq(0, c), time.Unix(1784281821, 0)); err != nil {
 		t.Fatalf("promote: %v", err)

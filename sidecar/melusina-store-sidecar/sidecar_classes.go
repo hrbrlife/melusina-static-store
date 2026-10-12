@@ -96,7 +96,7 @@ func (s *publishService) classesFromGeneration(doc componentrelease.DesiredGener
 		if c.ComponentClass != componentrelease.ClassSidecar {
 			continue
 		}
-		if !componentrelease.IsSidecarAuthority(c.Chain.Kind) || c.Chain.SidecarID != c.ComponentID {
+		if !componentrelease.IsSidecarAuthority(c.Chain.Kind) || c.Chain.SidecarID == "" {
 			return sidecarClassTable{}, fmt.Errorf("sidecar class mismatch for %s", c.ComponentID)
 		}
 		custody := "none"

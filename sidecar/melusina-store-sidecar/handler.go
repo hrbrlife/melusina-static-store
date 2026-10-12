@@ -1295,7 +1295,17 @@ func (s *publishService) requirePublisherHeader(w http.ResponseWriter, r *http.R
 		http.Error(w, "check=envelope_purpose: signed header method or target differs", http.StatusUnauthorized)
 		return false
 	}
-	if err := verifyTightAppEnvelopeWindow(signed.Payload, now); err != nil {
+	if route == installerpublish.Target {
+		// Installer publishers retain the one-hour transport window admitted
+		// by submit-installer and the ordinary installer publish gate. The app
+		// routes have their separate, tighter 30-minute window below.
+		lifetime := signed.Payload.ExpiresAtMs - signed.Payload.TimestampMs
+		if signed.Payload.ExpiresAtMs < now.UnixMilli() || lifetime <= 0 ||
+			lifetime > envelope.MaxTransportLifetime.Milliseconds() {
+			http.Error(w, "check=envelope_header_ttl: installer envelope expired or exceeds transport lifetime", http.StatusUnauthorized)
+			return false
+		}
+	} else if err := verifyTightAppEnvelopeWindow(signed.Payload, now); err != nil {
 		http.Error(w, "check=envelope_header_ttl: "+err.Error(), http.StatusUnauthorized)
 		return false
 	}

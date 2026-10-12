@@ -70,6 +70,11 @@ func TestPublicPublishHeaderAuthBeforeBodyAndExactBodyBinding(t *testing.T) {
 	if w, probe := makeProbe(base64.RawURLEncoding.EncodeToString(staleRaw)); w.Code != http.StatusUnauthorized || probe.reads != 0 {
 		t.Fatalf("PUBLISH_EXPIRED_HEADER_BODY_READ: %d %s reads=%d", w.Code, w.Body.String(), probe.reads)
 	}
+	tooLong := signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish", now, 45*time.Minute, "long-header")
+	tooLongRaw, _ := json.Marshal(tooLong)
+	if w, probe := makeProbe(base64.RawURLEncoding.EncodeToString(tooLongRaw)); w.Code != http.StatusUnauthorized || probe.reads != 0 || !strings.Contains(w.Body.String(), "check=envelope_header_ttl: check=envelope_ttl") {
+		t.Fatalf("PUBLISH_LONG_HEADER_TTL_BODY_READ: %d %s reads=%d", w.Code, w.Body.String(), probe.reads)
+	}
 	other := signPublishForRoute(t, pub, op.Public(), f.spk, release, "/publish", now, 5*time.Minute, "different-body")
 	body := jsonPublishBody(t, other, release, f.spk, f.metadata)
 	r := httptest.NewRequest(http.MethodPost, "/publish", bytes.NewReader(body.Bytes()))

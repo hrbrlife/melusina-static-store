@@ -44,7 +44,10 @@ func vectorAddress(b byte) string {
 
 func main() {
 	ref := identity.Ref{
-		Kind: identity.KindSidecar, ChainID: "solana:devnet",
+		// No retiring-estate literal: the vector's chain reference is a
+		// deterministic rehearsal stand-in, never a real network name
+		// (census scans in both build flavors pass).
+		Kind: identity.KindSidecar, ChainID: "rehearsal:parity",
 		ProgramID: vectorAddress(0xC0),
 		// Deterministic stand-in addresses for vector generation ONLY —
 		// these vectors never touch a chain.
@@ -65,7 +68,11 @@ func main() {
 		SignedAtUnix: 1789000000,
 		Rows: []sidecarclasses.Row{
 			{ID: "mermail", Class: sidecarclasses.ClassCascade, KeyCustody: sidecarclasses.CustodyNone, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+chaingate.go:262"},
-			{ID: "swaprail", Class: sidecarclasses.ClassIdentity, KeyCustody: sidecarclasses.CustodySidecarHeldIdentity, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+repos"},
+			// swap-rail's boot gate reads no SidecarIdentityEntry (the
+			// b01 read-only repo census), so its row is CASCADE/none. The
+			// identity row the deployer's older vectors carried was a
+			// fixture convenience, not a derivation.
+			{ID: "swaprail", Class: sidecarclasses.ClassCascade, KeyCustody: sidecarclasses.CustodyNone, DeclaredAt: "2026-09-27T00:00:00Z", Source: "registry.go@0c695588+repos:no-sidecaridentityentry-read"},
 		},
 	})
 	if err != nil {

@@ -2949,6 +2949,10 @@
       "reason": "Tracked dotted filename or identifier in src/main[.]jsx:1116; reviewed as source material, not an estate endpoint."
     },
     {
+      "host": "row.id",
+      "reason": "Go field selector row.ID in sidecar/melusina-store-sidecar/sidecar_classes.go reads a signed class row identifier; it is not a network host."
+    },
+    {
       "host": "row.name",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/cmd/mel-release/campaign_c1_d33_test[.]go; it is not an estate endpoint."
     },

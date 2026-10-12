@@ -59,6 +59,19 @@ func TestSidecarClassesCurrentSignedGeneration(t *testing.T) {
 	if !ed25519.Verify(pub, message, signature) {
 		t.Fatal("operator signature does not verify")
 	}
+	for name, mutate := range map[string]func(*sidecarClassTable){
+		"foreign-store":      func(v *sidecarClassTable) { v.StoreID = "foreign-store" },
+		"foreign-generation": func(v *sidecarClassTable) { v.Rows[0].Source = "foreign-generation" },
+		"wrong-custody":      func(v *sidecarClassTable) { v.Rows[0].KeyCustody = "none" },
+	} {
+		changed := table
+		changed.Rows = append([]sidecarClassRow(nil), table.Rows...)
+		mutate(&changed)
+		altered, err := classSigningMessage(changed)
+		if err == nil && ed25519.Verify(pub, altered, signature) {
+			t.Fatalf("%s accepted by signed class table", name)
+		}
+	}
 	// Named mutation: the signed generation's artifact is no longer served.
 	if err := os.WriteFile(filepath.Join(svc.cfg.DistDir, "releases", "sidecar", c.ArtifactName), []byte("changed"), 0o644); err != nil {
 		t.Fatal(err)

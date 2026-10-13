@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -25,12 +26,81 @@ const sidecarClassPreparePath = "/publish/sidecar-classes"
 var stagedClassComponentID = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$`)
 
 type stagedSidecarClassRow struct {
-	ID           string `json:"id"`
-	Class        string `json:"class"`
-	KeyCustody   string `json:"keyCustody"`
-	ArtifactName string `json:"artifactName"`
-	SHA256       string `json:"sha256"`
-	SizeBytes    int64  `json:"sizeBytes"`
+	ID           string                           `json:"id"`
+	Class        string                           `json:"class"`
+	KeyCustody   string                           `json:"keyCustody"`
+	ArtifactName string                           `json:"artifactName"`
+	SHA256       string                           `json:"sha256"`
+	SizeBytes    int64                            `json:"sizeBytes"`
+	Chain        *componentrelease.ChainAuthority `json:"chain,omitempty"`
+}
+
+const parentSidecarPrepareSchema = "melusina.sidecar-classes-parent-prepare.v1"
+
+func (s *publishService) classesFromParentStagedRequest(ctx context.Context, req stagedSidecarClassRequest, requestHash string, now time.Time) (sidecarClassTable, error) {
+	if req.Schema != parentSidecarPrepareSchema || s.cr == nil {
+		return sidecarClassTable{}, errors.New("sidecar-parent-prepare-invalid")
+	}
+	base := req
+	base.Schema = "melusina.sidecar-classes-prepare.v1"
+	table, err := s.classesFromStagedRequest(base, requestHash, now)
+	if err != nil {
+		return sidecarClassTable{}, err
+	}
+	rr, ok := s.cr.(rawAccountReader)
+	if !ok {
+		return sidecarClassTable{}, errors.New("sidecar-parent-prepare-chain-reader-required")
+	}
+	for _, row := range req.Rows {
+		chain := row.Chain
+		wantSidecarID := row.ID
+		if row.ID == "fineract" {
+			wantSidecarID = "fineract-v2"
+		}
+		if chain == nil || chain.Kind != row.Class || chain.Program != licenseRegistryProgramID().Base58() || chain.SidecarID != wantSidecarID || chain.IdentityPDA != "" && chain.Kind == componentrelease.AuthoritySidecarCascade {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-chain-invalid:%s", row.ID)
+		}
+		license, err := primitives.PubkeyFromBase58(chain.LicenseNftMint)
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-license-invalid:%s", row.ID)
+		}
+		master, err := primitives.PubkeyFromBase58(chain.MasterNftMint)
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-master-invalid:%s", row.ID)
+		}
+		if chain.MasterNftMint != s.cfg.ReleaseMasterNftMint {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-store-master-mismatch:%s", row.ID)
+		}
+		reseller, err := primitives.PubkeyFromBase58(s.cfg.ResellerNFTMint)
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-store-reseller-invalid:%s", row.ID)
+		}
+		global, _, err := primitives.DeriveGlobalSidecar(master, chain.SidecarID, licenseRegistryProgramID())
+		if err != nil || chain.GlobalApprovalPDA != global.Base58() {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-global-pda-invalid:%s", row.ID)
+		}
+		local, _, err := primitives.DeriveLocalSidecar(license, chain.SidecarID, licenseRegistryProgramID())
+		if err != nil || chain.LocalApprovalPDA != local.Base58() {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-local-pda-invalid:%s", row.ID)
+		}
+		if chain.Kind == componentrelease.AuthoritySidecarIdentity {
+			identity, _, err := primitives.DeriveSidecarIdentity(license, chain.SidecarID, chain.KeyVersion, licenseRegistryProgramID())
+			if err != nil || chain.KeyVersion == 0 || chain.IdentityPDA != identity.Base58() {
+				return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-identity-pda-invalid:%s", row.ID)
+			}
+		} else if chain.KeyVersion != 0 || chain.IdentityPDA != "" {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-keyless-identity-invalid:%s", row.ID)
+		}
+		hash, err := hash32FromHex(row.SHA256)
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-hash-invalid:%s", row.ID)
+		}
+		view := componentReleaseChainView{sidecarID: chain.SidecarID, licenseMint: license, masterMint: master, resellerMint: reseller, pinMaster: true, keyless: chain.Kind == componentrelease.AuthoritySidecarCascade}
+		if err := checkSidecarParents(ctx, rr, view, hash); err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-parent-refused:%s: %w", row.ID, err)
+		}
+	}
+	return table, nil
 }
 
 type stagedSidecarClassRequest struct {
@@ -190,7 +260,12 @@ func (s *publishService) handlePrepareSidecarClasses(w http.ResponseWriter, r *h
 		http.Error(w, "check=store_operator: "+err.Error(), http.StatusForbidden)
 		return
 	}
-	table, err := s.classesFromStagedRequest(req, hashHex, s.currentTime())
+	var table sidecarClassTable
+	if req.Schema == parentSidecarPrepareSchema {
+		table, err = s.classesFromParentStagedRequest(r.Context(), req, hashHex, s.currentTime())
+	} else {
+		table, err = s.classesFromStagedRequest(req, hashHex, s.currentTime())
+	}
 	if err != nil {
 		http.Error(w, "check=sidecar_classes: "+err.Error(), http.StatusBadRequest)
 		return

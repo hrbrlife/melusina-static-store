@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/publishclient"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -25,12 +26,13 @@ const classPreparePath = "/publish/sidecar-classes"
 const classDomain = "melusina-sidecar-classes-v1\x00"
 
 type classPrepareRow struct {
-	ID           string `json:"id"`
-	Class        string `json:"class"`
-	KeyCustody   string `json:"keyCustody"`
-	ArtifactName string `json:"artifactName"`
-	SHA256       string `json:"sha256"`
-	SizeBytes    int64  `json:"sizeBytes"`
+	ID           string                           `json:"id"`
+	Class        string                           `json:"class"`
+	KeyCustody   string                           `json:"keyCustody"`
+	ArtifactName string                           `json:"artifactName"`
+	SHA256       string                           `json:"sha256"`
+	SizeBytes    int64                            `json:"sizeBytes"`
+	Chain        *componentrelease.ChainAuthority `json:"chain,omitempty"`
 }
 type classPrepareRequest struct {
 	Schema  string            `json:"schema"`
@@ -122,7 +124,7 @@ func runPrepareSidecarClasses(o options, requestBytes []byte, stdout io.Writer) 
 	dec := json.NewDecoder(bytes.NewReader(requestBytes))
 	dec.DisallowUnknownFields()
 	if dec.Decode(&request) != nil || dec.Decode(new(json.RawMessage)) != io.EOF ||
-		request.Schema != "melusina.sidecar-classes-prepare.v1" || request.StoreID != o.storeID ||
+		(request.Schema != "melusina.sidecar-classes-prepare.v1" && request.Schema != "melusina.sidecar-classes-parent-prepare.v1") || request.StoreID != o.storeID ||
 		len(request.Rows) < 1 || len(request.Rows) > 32 {
 		return errors.New("class-table request preflight refused")
 	}

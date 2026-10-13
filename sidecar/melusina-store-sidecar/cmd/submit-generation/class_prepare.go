@@ -12,14 +12,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/netip"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/publishclient"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -112,26 +110,8 @@ func verifyPreparedClassTable(raw []byte, request classPrepareRequest, hashHex s
 	return table, nil
 }
 
-func privateClassTransport(connectAddress string, timeout time.Duration) (*http.Client, error) {
-	transport := &http.Transport{}
-	if connectAddress != "" {
-		host, port, err := net.SplitHostPort(connectAddress)
-		if err != nil {
-			return nil, errors.New("connect-address must be a private IP:port")
-		}
-		ip, err := netip.ParseAddr(host)
-		if err != nil || !ip.IsPrivate() {
-			return nil, errors.New("connect-address must be a private IP:port")
-		}
-		n, err := strconv.Atoi(port)
-		if err != nil || n < 1 || n > 65535 {
-			return nil, errors.New("connect-address port invalid")
-		}
-		transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, network, connectAddress)
-		}
-	}
-	return &http.Client{Transport: transport, Timeout: timeout}, nil
+func privateClassTransport(storeURL, connectAddress, leafPath string, timeout time.Duration) (*http.Client, error) {
+	return publishclient.New(storeURL, connectAddress, leafPath, timeout)
 }
 
 func runPrepareSidecarClasses(o options, requestBytes []byte, stdout io.Writer) error {
@@ -184,7 +164,7 @@ func runPrepareSidecarClasses(o options, requestBytes []byte, stdout io.Writer) 
 	if err != nil {
 		return err
 	}
-	client, err := privateClassTransport(o.connectAddress, o.timeout)
+	client, err := privateClassTransport(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
 	if err != nil {
 		return err
 	}

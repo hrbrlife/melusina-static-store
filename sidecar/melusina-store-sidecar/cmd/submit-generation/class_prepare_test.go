@@ -4,6 +4,11 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/json"
+	"encoding/pem"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -57,12 +62,31 @@ func TestPreparedClassTableSignatureAndBindings(t *testing.T) {
 }
 
 func TestClassPreparePrivateBackendOnly(t *testing.T) {
-	for _, address := range []string{"159.195.5.142:8443", "non-ip-host:8443", "127.0.0.1:8443", "10.253.250.10:0"} {
-		if _, err := privateClassTransport(address, time.Minute); err == nil {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	defer server.Close()
+	leaf := filepath.Join(t.TempDir(), "store-leaf.pem")
+	if err := os.WriteFile(leaf, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE",
+		Bytes: server.TLS.Certificates[0].Certificate[0]}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, address := range []string{"159.195.5.142:18443", "non-ip-host:18443", "127.0.0.1:18443", "10.253.250.10:0", "10.253.250.10:8443"} {
+		if _, err := privateClassTransport(server.URL, address, leaf, time.Minute); err == nil {
 			t.Fatalf("CLASS_PREPARE_UNPINNED_BACKEND_ACCEPTED:%s", address)
 		}
 	}
-	if _, err := privateClassTransport("10.253.250.10:8443", time.Minute); err != nil {
+	if _, err := privateClassTransport(server.URL, "10.88.180.29:18443", "", time.Minute); err == nil {
+		t.Fatal("CLASS_PREPARE_PRIVATE_CONNECT_WITHOUT_LEAF_ACCEPTED")
+	}
+	if _, err := privateClassTransport(server.URL, "10.88.180.29:18443", leaf, time.Minute); err != nil {
 		t.Fatal(err)
 	}
+	client, err := privateClassTransport(server.URL, "", leaf, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := client.Get(server.URL)
+	if err != nil || response.StatusCode != http.StatusOK {
+		t.Fatalf("CLASS_PREPARE_PINNED_TLS_REFUSED: %v", err)
+	}
+	response.Body.Close()
 }

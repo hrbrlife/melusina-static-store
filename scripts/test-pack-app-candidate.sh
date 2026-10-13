@@ -26,6 +26,7 @@ else
 pack-local:
 	@printf 'candidate-bytes' > "$(SPK_OUT)"
 	@if [ -n "$${LATE_METADATA_ALIAS_PATH:-}" ]; then ln -s "$${LATE_METADATA_ALIAS_TARGET:?}" "$$LATE_METADATA_ALIAS_PATH"; fi
+	@if [ -n "$${LATE_METADATA_PLANT_PATH:-}" ]; then printf '{"appId":"testappid","version":"6.6.6"}\n' > "$$LATE_METADATA_PLANT_PATH"; fi
 	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); if [ "$${MUTATE_METADATA_SHA:-0}" = 1 ]; then printf '{"appId":"testappid","version":"1.2.3","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; else printf '{"appId":"testappid","version":"1.2.3","packageId":"%s"}\n' "$$pkg" > metadata.json; fi; fi
 	@if [ "$${MUTATE_METADATA_BAD:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); printf '{"appId":"testappid","version":"9.9.9","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; fi
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
@@ -110,7 +111,11 @@ AFTER_STAGE_APP="$POST_STAGE_APP" PATH="$POST_STAGE_BIN:$BIN:$PATH" MELUSINA_SPK
     --receipt-out "$WORK/post-stage-receipt.json" >"$WORK/post-stage.log" 2>&1
 post_stage_rc=$?
 set -e
-[[ $post_stage_rc -ne 0 && -f "$POST_STAGE_APP/post-stage-untracked.txt" && ! -e "$WORK/post-stage-receipt.json" ]]
+[[ -f "$POST_STAGE_APP/post-stage-untracked.txt" ]]
+if [[ $post_stage_rc -eq 0 || -e "$WORK/post-stage-receipt.json" ]]; then
+  echo 'POST_STAGE_SOURCE_MUTATION_ACCEPTED: receipt issued over a mutated checkout' >&2
+  exit 1
+fi
 grep -q 'candidate metadata stage mutated committed source' "$WORK/post-stage.log"
 echo 'PASS POST_STAGE_SOURCE_MUTATION_ACCEPTED refused before receipt'
 
@@ -287,6 +292,49 @@ if [[ $rc -eq 0 ]]; then
 fi
 grep -q 'candidate metadata output parent unsafe' "$WORK/late-alias.log"
 [[ ! -e "$APP/staged-late.json" && ! -e "$WORK/late-alias-receipt.json" ]]
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# Preflight and every later reader resolve --metadata-out as the kernel does:
+# `link/..` names the parent of the link's target. A lexically normalised stage
+# path can name a different directory, including an ignored path inside the
+# checkout that the final git status cannot see.
+mkdir -p "$WORK/dotdot-real/inner"
+ln -s "$WORK/dotdot-real/inner" "$WORK/dotdot-link"
+[[ ! -e "$APP/ignored-metadata.json" ]]
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+    --metadata-out "$WORK/dotdot-link/../app/ignored-metadata.json" \
+    --receipt-out "$WORK/dotdot-source-receipt.json" >"$WORK/dotdot-source.log" 2>&1
+rc=$?
+set -e
+if [[ -e "$APP/ignored-metadata.json" ]]; then
+  echo 'DOTDOT_METADATA_STAGE_IN_SOURCE_ACCEPTED: staged metadata into an ignored checkout path' >&2
+  exit 1
+fi
+if [[ $rc -eq 0 ]]; then
+  [[ -f "$WORK/dotdot-link/../app/ignored-metadata.json" && -f "$WORK/dotdot-source-receipt.json" ]]
+fi
+
+# DOTDOT_METADATA_STAGE_DIVERGED: a pack hook plants a document at the
+# requested output name after preflight. The stage must refuse (the name is no
+# longer new) rather than write a different lexical file and let the planted
+# document stand as the staged metadata.
+set +e
+LATE_METADATA_PLANT_PATH="$WORK/dotdot-real/dotdot-staged.json" \
+  PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+    --metadata-out "$WORK/dotdot-link/../dotdot-staged.json" \
+    --receipt-out "$WORK/dotdot-receipt.json" >"$WORK/dotdot.log" 2>&1
+rc=$?
+set -e
+if [[ $rc -eq 0 || -e "$WORK/dotdot-receipt.json" || -e "$WORK/dotdot-staged.json" ]]; then
+  echo 'DOTDOT_METADATA_STAGE_DIVERGED: staged a different file than the requested metadata output' >&2
+  cat "$WORK/dotdot-link/../dotdot-staged.json" >&2
+  [[ ! -e "$WORK/dotdot-receipt.json" ]] || cat "$WORK/dotdot-receipt.json" >&2
+  exit 1
+fi
+grep -q '"version":"6.6.6"' "$WORK/dotdot-real/dotdot-staged.json"
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
 # Some real app hooks synchronise both packageId and the full artifact digest.

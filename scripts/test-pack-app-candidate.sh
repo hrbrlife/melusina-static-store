@@ -217,6 +217,31 @@ assert metadata["sha256"] == d["artifact"]["sha256"], "STALE_SOURCE_METADATA_IDE
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
+# IN_SOURCE_METADATA_STAGE_ACCEPTED: staging must refuse before the build if
+# the requested output resolves inside the candidate checkout, including an
+# otherwise clean untracked path. The receipt may never say source.dirty=false
+# while this helper has left a new file behind in that source.
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$APP/staged-metadata.json" \
+  --receipt-out "$WORK/in-source-stage-receipt.json" >"$WORK/in-source-stage.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate metadata output must be outside the source checkout' "$WORK/in-source-stage.log"
+[[ ! -e "$APP/staged-metadata.json" && ! -e "$WORK/in-source-stage-receipt.json" ]]
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+ln -s "$APP" "$WORK/alias-to-source"
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/alias-to-source/staged-alias.json" \
+  --receipt-out "$WORK/in-source-alias-receipt.json" >"$WORK/in-source-alias.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate metadata output must be outside the source checkout' "$WORK/in-source-alias.log"
+[[ ! -e "$APP/staged-alias.json" && ! -e "$WORK/in-source-alias-receipt.json" ]]
+
 # Some real app hooks synchronise both packageId and the full artifact digest.
 # That exact SPK-derived pair is admissible; a changed product field remains a
 # hard failure.

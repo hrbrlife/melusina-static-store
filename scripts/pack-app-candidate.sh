@@ -30,6 +30,23 @@ command -v "$SPK_BIN" >/dev/null 2>&1 || { echo "spk verifier not found: $SPK_BI
 
 if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   source_root="$(git -C "$APP_DIR" rev-parse --show-toplevel)"
+  source_root="$(realpath -e "$source_root")"
+  if [[ -n "$METADATA_OUT" ]]; then
+    metadata_output_real="$(realpath -m "$METADATA_OUT")"
+    case "$metadata_output_real" in
+      "$source_root"|"$source_root"/*)
+        echo "candidate metadata output must be outside the source checkout" >&2
+        exit 2 ;;
+    esac
+    [[ ! -e "$METADATA_OUT" && ! -L "$METADATA_OUT" ]] || {
+      if [[ "${MEL_RELEASE_PACK_PROFILE:-standard}" == namedcoin-msb-devnet ]]; then
+        echo "NamedCoin candidate metadata output must be new" >&2
+      else
+        echo "candidate metadata output must be new" >&2
+      fi
+      exit 2
+    }
+  fi
   metadata_path="$(realpath -e "$METADATA")"
   case "$metadata_path" in
     "$source_root"/*) metadata_rel="${metadata_path#"$source_root"/}" ;;

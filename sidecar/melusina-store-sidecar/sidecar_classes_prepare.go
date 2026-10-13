@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +20,8 @@ import (
 )
 
 const sidecarClassPreparePath = "/publish/sidecar-classes"
+
+var stagedClassComponentID = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$`)
 
 type stagedSidecarClassRow struct {
 	ID           string `json:"id"`
@@ -57,7 +60,7 @@ func (s *publishService) classesFromStagedRequest(req stagedSidecarClassRequest,
 	stamp := now.UTC().Truncate(time.Second).Format(time.RFC3339)
 	previous := ""
 	for _, row := range req.Rows {
-		if err := primitives.ValidateSidecarID(row.ID); err != nil {
+		if !stagedClassComponentID.MatchString(row.ID) {
 			return sidecarClassTable{}, fmt.Errorf("sidecar-class-prepare-id-invalid:%s", row.ID)
 		}
 		if row.ID <= previous || row.SizeBytes <= 0 || row.SizeBytes > 1<<31 ||

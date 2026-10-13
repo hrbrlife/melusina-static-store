@@ -202,16 +202,18 @@ assert d["source"]["sourceDateEpochOrigin"] == "caller-override"
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
-# Supplying --metadata-out is optional staging capacity, not a promise that a
-# post-pack hook will rewrite metadata. When it remains unused, the receipt
-# must still read the committed metadata rather than a nonexistent path.
+# STALE_SOURCE_METADATA_IDENTITY_ACCEPTED: even when the pack hook does not
+# rewrite the committed metadata, a requested staged document must bind the
+# verified SPK. Otherwise the next governed cohort cannot publish the pair.
 PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
   "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/unused-metadata.json" --receipt-out "$WORK/unchanged-receipt.json"
-[[ ! -e "$WORK/unused-metadata.json" ]]
-python3 - "$WORK/unchanged-receipt.json" <<'PY'
+[[ -f "$WORK/unused-metadata.json" ]]
+python3 - "$WORK/unused-metadata.json" "$WORK/unchanged-receipt.json" <<'PY'
 import json, sys
-d = json.load(open(sys.argv[1]))
+metadata, d = (json.load(open(path)) for path in sys.argv[1:])
 assert d["app"]["version"] == "1.2.3"
+assert metadata["packageId"] == d["artifact"]["sha256"][:32], "STALE_SOURCE_METADATA_IDENTITY_ACCEPTED"
+assert metadata["sha256"] == d["artifact"]["sha256"], "STALE_SOURCE_METADATA_IDENTITY_ACCEPTED"
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 

@@ -309,8 +309,6 @@ PY
     echo "pack mutated metadata beyond the generated packageId; refusing to publish" >&2
     exit 2
   }
-  mkdir -p "$(dirname "$METADATA_OUT")"
-  cp "$METADATA" "$METADATA_OUT"
 fi
 
 # Restore before examining Git state so a deterministic packageId update never
@@ -336,11 +334,12 @@ spk_sha="$(sha256sum "$SPK_OUT" | awk '{print $1}')"
   exit 2
 }
 
-# NamedCoin's committed catalog metadata names an older package. Stage a
-# separate metadata document from the verified package bytes. Only these two
-# derived identity fields change; the signed SPK and committed source remain
-# the authority for every other field.
-if [[ "$PACK_PROFILE" == namedcoin-msb-devnet ]]; then
+# A pack hook need not rewrite committed metadata. In that case its package
+# identity can still name an earlier SPK (DueProcess is one real example).
+# When staging is requested, derive the two identity fields from the verified
+# SPK for every profile. The checked-out source remains clean and authoritative
+# for all other metadata fields.
+if [[ -n "$METADATA_OUT" ]]; then
   mkdir -p "$(dirname "$METADATA_OUT")"
   python3 - "$METADATA" "$METADATA_OUT" "$package_id" "$spk_sha" <<'PY'
 import json, os, sys

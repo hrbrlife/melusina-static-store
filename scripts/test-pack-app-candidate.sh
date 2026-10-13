@@ -86,6 +86,34 @@ assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
+# POST_STAGE_SOURCE_MUTATION_ACCEPTED: a helper can write into the checkout
+# after metadata staging has returned. The final receipt must not claim clean
+# source even though the initial build cleanliness check passed.
+POST_STAGE_APP="$WORK/post-stage-app"
+POST_STAGE_BIN="$WORK/post-stage-bin"
+git clone -q --branch main "$WORK/origin.git" "$POST_STAGE_APP"
+mkdir -p "$POST_STAGE_BIN"
+cat > "$POST_STAGE_BIN/python3" <<'PYTHON_WRAPPER'
+#!/usr/bin/env bash
+set -euo pipefail
+payload="$(cat)"
+printf '%s\n' "$payload" | /usr/bin/python3 "$@"
+if [[ "$payload" == *"candidate metadata output parent unsafe"* ]]; then
+  printf 'appeared after stage\n' > "${AFTER_STAGE_APP:?}/post-stage-untracked.txt"
+fi
+PYTHON_WRAPPER
+chmod +x "$POST_STAGE_BIN/python3"
+set +e
+AFTER_STAGE_APP="$POST_STAGE_APP" PATH="$POST_STAGE_BIN:$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$POST_STAGE_APP" \
+    --metadata-out "$WORK/post-stage-metadata.json" \
+    --receipt-out "$WORK/post-stage-receipt.json" >"$WORK/post-stage.log" 2>&1
+post_stage_rc=$?
+set -e
+[[ $post_stage_rc -ne 0 && -f "$POST_STAGE_APP/post-stage-untracked.txt" && ! -e "$WORK/post-stage-receipt.json" ]]
+grep -q 'candidate metadata stage mutated committed source' "$WORK/post-stage.log"
+echo 'PASS POST_STAGE_SOURCE_MUTATION_ACCEPTED refused before receipt'
+
 # A partial-clone filter entry may be exposed as a URL-shaped remote name.
 # It has no publication authority and must not break the origin proof.
 git -C "$APP" config remote.https://github.com/apache/fineract.git.promisor true

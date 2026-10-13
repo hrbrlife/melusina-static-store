@@ -410,6 +410,16 @@ PY
   exit 2
 }
 
+# Staging and metadata inspection run after the first cleanliness proof. A pack
+# hook or helper can still leave a file in the checkout at that boundary;
+# never issue a clean-source receipt without checking the final tree again.
+dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
+[[ -z "$dirty" ]] || {
+  echo "candidate metadata stage mutated committed source; refusing to publish" >&2
+  printf '%s\n' "$dirty" >&2
+  exit 2
+}
+
 if [[ -n "$RECEIPT_OUT" ]]; then
   mkdir -p "$(dirname "$RECEIPT_OUT")"
   python3 - "$RECEIPT_OUT" "$source_revision" "$pushed_ref" "$source_commit_epoch" "$source_epoch" \

@@ -33,7 +33,7 @@ func TestScanReportSubsecondSkewBounded(t *testing.T) {
 	legacy := makeReport(now.Add(1500 * time.Millisecond))
 	legacy.ScannedAt = ""
 	if err := legacy.Sign(private); err != nil {
-		t.Fatal(err)
+		t.Fatalf("SCAN_REPORT_SIGNED_LEGACY_SECOND_REFUSED: %v", err)
 	}
 	if err := verify(legacy); err != nil {
 		t.Fatalf("SCAN_REPORT_SIGNED_LEGACY_SECOND_REFUSED: %v", err)

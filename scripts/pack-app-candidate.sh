@@ -32,6 +32,12 @@ if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   source_root="$(git -C "$APP_DIR" rev-parse --show-toplevel)"
   source_root="$(realpath -e "$source_root")"
   if [[ -n "$METADATA_OUT" ]]; then
+    # A symlink followed by /.. resolves through the symlink in the kernel,
+    # while abspath collapses it lexically. Refuse that ambiguous spelling
+    # before a pack hook can create either output.
+    case "/$METADATA_OUT/" in
+      */../*) echo "candidate metadata output contains parent traversal" >&2; exit 2 ;;
+    esac
     metadata_output_real="$(realpath -m "$METADATA_OUT")"
     case "$metadata_output_real" in
       "$source_root"|"$source_root"/*)

@@ -13,10 +13,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerpublish"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/publishclient"
 )
 
 func TestInstallerCLIToProductionRouterAndRestartReadback(t *testing.T) {
@@ -95,9 +97,17 @@ func TestInstallerCLIToProductionRouterAndRestartReadback(t *testing.T) {
 	}
 	restarted := restartPublishServiceForTest(svc)
 	restarted.appNonces = reopened
-	after := httptest.NewServer(newPublicRouterWithService(restarted.cfg, op, chain, nil, catalogRuntime{}, restarted, false))
+	after := httptest.NewTLSServer(newPublicRouterWithService(restarted.cfg, op, chain, nil, catalogRuntime{}, restarted, false))
 	defer after.Close()
-	response, err := http.Get(after.URL + "/releases/" + class + "/" + name)
+	afterLeaf := filepath.Join(dir, "restarted-leaf.pem")
+	if err := os.WriteFile(afterLeaf, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: after.Certificate().Raw}), 0600); err != nil {
+		t.Fatal(err)
+	}
+	afterClient, err := publishclient.NewClient(after.URL, "", afterLeaf, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := afterClient.Get(after.URL + "/releases/" + class + "/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +115,7 @@ func TestInstallerCLIToProductionRouterAndRestartReadback(t *testing.T) {
 	if response.StatusCode != http.StatusOK || response.Header.Get("X-Store-Gate") != "verified" {
 		t.Fatalf("installer-restart-intended-readback: %d", response.StatusCode)
 	}
-	response, err = http.Get(after.URL + "/releases/data/" + name)
+	response, err = afterClient.Get(after.URL + "/releases/data/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}

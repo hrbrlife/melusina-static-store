@@ -27,6 +27,7 @@ pack-local:
 	@printf 'candidate-bytes' > "$(SPK_OUT)"
 	@if [ -n "$${LATE_METADATA_ALIAS_PATH:-}" ]; then ln -s "$${LATE_METADATA_ALIAS_TARGET:?}" "$$LATE_METADATA_ALIAS_PATH"; fi
 	@if [ -n "$${LATE_METADATA_PLANT_PATH:-}" ]; then printf '{"appId":"testappid","version":"6.6.6"}\n' > "$$LATE_METADATA_PLANT_PATH"; fi
+	@if [ -n "$${LATE_METADATA_REALDIR_PATH:-}" ]; then mv "$$LATE_METADATA_REALDIR_PATH" "$${LATE_METADATA_REALDIR_ASIDE:?}" && mkdir "$$LATE_METADATA_REALDIR_PATH"; fi
 	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); if [ "$${MUTATE_METADATA_SHA:-0}" = 1 ]; then printf '{"appId":"testappid","version":"1.2.3","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; else printf '{"appId":"testappid","version":"1.2.3","packageId":"%s"}\n' "$$pkg" > metadata.json; fi; fi
 	@if [ "$${MUTATE_METADATA_BAD:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); printf '{"appId":"testappid","version":"9.9.9","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; fi
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
@@ -338,6 +339,31 @@ if [[ $rc -eq 0 || -e "$WORK/dotdot-receipt.json" || -e "$WORK/dotdot-staged.jso
 fi
 grep -q 'candidate metadata output contains parent traversal' "$WORK/dotdot.log"
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# IGNORED_PARENT_SWAP_STAGE_IN_SOURCE_ACCEPTED: an ignored checkout entry is a
+# symlink to an outside directory at preflight, so the early realpath check
+# passes and git status stays clean. The pack hook replaces it with a real
+# ignored directory. Only the stage-time recheck of the opened parent keeps the
+# staged document out of the checkout; git status cannot see an ignored file.
+mkdir -p "$WORK/ignored-swap-outside"
+ln -s "$WORK/ignored-swap-outside" "$APP/ignored-metadata.json"
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+set +e
+LATE_METADATA_REALDIR_PATH="$APP/ignored-metadata.json" LATE_METADATA_REALDIR_ASIDE="$WORK/ignored-swap-link" \
+  PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+    --metadata-out "$APP/ignored-metadata.json/staged.json" \
+    --receipt-out "$WORK/ignored-swap-receipt.json" >"$WORK/ignored-swap.log" 2>&1
+rc=$?
+set -e
+[[ -d "$APP/ignored-metadata.json" && ! -L "$APP/ignored-metadata.json" ]]
+if [[ $rc -eq 0 || -e "$APP/ignored-metadata.json/staged.json" || -e "$WORK/ignored-swap-receipt.json" ]]; then
+  echo 'IGNORED_PARENT_SWAP_STAGE_IN_SOURCE_ACCEPTED: staged metadata into an ignored checkout directory' >&2
+  exit 1
+fi
+grep -q 'candidate metadata output must be outside the source checkout' "$WORK/ignored-swap.log"
+[[ ! -e "$WORK/ignored-swap-outside/staged.json" ]]
+mv "$APP/ignored-metadata.json" "$WORK/ignored-swap-realdir"
 
 # Some real app hooks synchronise both packageId and the full artifact digest.
 # That exact SPK-derived pair is admissible; a changed product field remains a

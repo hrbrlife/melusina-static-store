@@ -77,3 +77,8 @@ func NewClient(storeURL, connectAddress, leafPath string, timeout time.Duration)
 	return &http.Client{Transport: transport, Timeout: timeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("publisher_redirect_refused") }}, nil
 }
+
+// New keeps the package constructor available to existing Store callers.
+func New(storeURL, connectAddress, leafPath string, timeout time.Duration) (*http.Client, error) {
+	return NewClient(storeURL, connectAddress, leafPath, timeout)
+}

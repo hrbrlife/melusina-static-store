@@ -114,16 +114,17 @@ class PendingAndEstateReviewNegatives(unittest.TestCase):
         # estate verifier can refuse it, and a non-executable verifier must.
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            binary, pins, estate, verifier = root / "binary", root / "pins.json", root / "estate.json", root / "verifier"
+            binary, estate, verifier = root / "binary", root / "estate.json", root / "verifier"
             binary.write_bytes(b"fixture-binary")
-            pins.write_bytes(canonical(self.marker))
             estate.write_bytes(canonical({"estateId": self.marker["estateId"]}))
             estate.chmod(0o600)
             verifier.write_bytes(b"not an executable verifier")
             verifier.chmod(0o600)
             with self.assertRaises(Exception, msg="PENDING_UNVERIFIED_ESTATE_PROFILE_ACCEPTED") as caught:
-                custody_bundle.build(binary, pins, root / "out.tar", estate_path=estate,
-                                     estate_sha256=self.marker["estateProfileSha256"], verifier_path=verifier)
+                custody_bundle.build(binary, None, root / "out.tar", estate_path=estate,
+                                     estate_sha256=self.marker["estateProfileSha256"], verifier_path=verifier,
+                                     first_stage_install_id=self.marker["installId"],
+                                     first_stage_tenant_id=self.marker["tenantId"])
             self.assertEqual(getattr(caught.exception, "name", ""), "verifier-unusable",
                              "PENDING_UNVERIFIED_ESTATE_PROFILE_ACCEPTED")
             self.assertFalse((root / "out.tar").exists(), "PENDING_UNVERIFIED_ESTATE_PROFILE_ARCHIVE_WRITTEN")

@@ -2,11 +2,15 @@
 """Source controls for the Store custody bundle producer."""
 
 import base64
+import contextlib
 import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -62,6 +66,210 @@ def signed_roster_inputs(raw):
 
 
 class CustodyBundleControls(unittest.TestCase):
+    def test_rostered_build_requires_pins_and_rejects_a_pending_source(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary = root / "binary"
+            binary.write_bytes(b"fixture-binary")
+            with self.assertRaisesRegex(ValueError, "evidence-pack-custody-rostered-pins-required",
+                                        msg="ROSTERED_BUILD_WITHOUT_PINS_ACCEPTED"):
+                custody_bundle.build(binary, None, root / "no-pins.tar")
+            pending = root / "pending-pins"
+            pending.write_bytes(custody_bundle.first_stage_marker("install-a", "tenant-a",
+                                                                 {"estateId": "a" * 64}, "b" * 64))
+            with self.assertRaisesRegex(ValueError, "evidence-pack-custody-first-stage-explicit-input-required",
+                                        msg="PENDING_SOURCE_ACCEPTED_AS_ROSTERED"):
+                custody_bundle.build(binary, pending, root / "pending-as-rostered.tar")
+
+    def test_first_stage_cli_refuses_incomplete_or_cross_stage_inputs(self):
+        base = [str(SOURCE), "--stage", "first", "--output", "/tmp/unused.tar"]
+        for args, phrase, name in (
+                (base, "first stage requires --install-id and --tenant-id", "FIRST_STAGE_CLI_MISSING_SCOPE_ACCEPTED"),
+                ([str(SOURCE), "--stage", "rostered", "--output", "/tmp/unused.tar",
+                  "--install-id", "install-a"], "rostered successor takes scope", "ROSTERED_CLI_FIRST_SCOPE_ACCEPTED"),
+                (base + ["--install-id", "install-a", "--tenant-id", "tenant-a", "--verify-built"],
+                 "readback requires the signed estate profile", "FIRST_STAGE_CLI_UNSIGNED_READBACK_ACCEPTED"),
+                (base + ["--install-id", "install-a", "--tenant-id", "tenant-a"],
+                 "build requires --binary", "FIRST_STAGE_CLI_MISSING_BINARY_ACCEPTED")):
+            with self.subTest(name=name), mock.patch.object(sys, "argv", args), \
+                    contextlib.redirect_stderr(io.StringIO()) as errors:
+                with self.assertRaises(SystemExit, msg=name):
+                    custody_bundle.main()
+                self.assertIn(phrase, errors.getvalue(), name)
+
+    def test_first_stage_cli_builds_without_handwritten_pins(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary, target = root / "binary", root / "first.tar"
+            binary.write_bytes(b"fixture-binary")
+            arguments = [str(SOURCE), "--stage", "first", "--binary", str(binary),
+                         "--output", str(target), "--install-id", "install-a", "--tenant-id", "tenant-a",
+                         "--estate-profile", str(root / "estate"), "--estate-profile-sha256", "b" * 64,
+                         "--estate-verifier", str(root / "verifier")]
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": "a" * 64}), \
+                    mock.patch.object(sys, "argv", arguments), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(custody_bundle.main(), 0, "FIRST_STAGE_CLI_NATIVE_PRODUCER")
+            with tarfile.open(target, "r:") as archive:
+                self.assertEqual(json.load(archive.extractfile("conf/pins.json"))["installId"], "install-a",
+                                 "FIRST_STAGE_CLI_SELECTED_INSTALL")
+
+    def test_first_stage_accepts_a_real_owner_signed_estate_profile(self):
+        fixture_spec = importlib.util.spec_from_file_location(
+            "estate_catalog_fixture", SOURCE.with_name("test-project-estate-catalog.py"))
+        fixtures = importlib.util.module_from_spec(fixture_spec)
+        fixture_spec.loader.exec_module(fixtures)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile, digest = fixtures.new_estate_profile()
+            estate = fixtures.write_profile(root, profile)
+            verifier = root / "melusina-store-sidecar"
+            go = "/usr/local/go/bin/go" if Path("/usr/local/go/bin/go").exists() else "go"
+            subprocess.run([go, "build", "-trimpath", "-buildvcs=false", "-o", str(verifier), "."],
+                           cwd=fixtures.MODULE, check=True, capture_output=True, env=os.environ.copy())
+            binary, target = root / "custody", root / "first.tar"
+            binary.write_bytes(b"fixture-binary")
+            built = custody_bundle.build(binary, None, target, estate_path=estate,
+                                         estate_sha256=digest, verifier_path=verifier,
+                                         first_stage_install_id="install-a", first_stage_tenant_id="tenant-a")
+            self.assertEqual(custody_bundle.verify_built_stage(target, "first", "install-a", "tenant-a",
+                             estate, digest, verifier), built, "FIRST_STAGE_REAL_SIGNED_PROFILE_POSITIVE")
+
+    @staticmethod
+    def pending_release(root):
+        binary, target = root / "binary", root / "pending.tar"
+        binary.write_bytes(b"fixture-binary")
+        digest = "b" * 64
+        with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": "a" * 64}):
+            custody_bundle.build(binary, None, target, estate_path=root / "estate", estate_sha256=digest,
+                                 verifier_path=root / "verifier", first_stage_install_id="install-a",
+                                 first_stage_tenant_id="tenant-a")
+        return target, digest
+
+    @staticmethod
+    def rewrite_tar(source, target, changed):
+        with tarfile.open(source, "r:") as archive, tarfile.open(target, "w", format=tarfile.USTAR_FORMAT) as output:
+            for member in archive.getmembers():
+                data = archive.extractfile(member).read()
+                if member.name in changed:
+                    data = changed[member.name]
+                header = tarfile.TarInfo(member.name)
+                header.size, header.mode, header.uid, header.gid, header.mtime = len(data), member.mode, 0, 0, 0
+                output.addfile(header, io.BytesIO(data))
+            for name, data in changed.items():
+                if name not in archive.getnames():
+                    header = tarfile.TarInfo(name)
+                    header.size, header.mode, header.uid, header.gid, header.mtime = len(data), 0o644, 0, 0, 0
+                    output.addfile(header, io.BytesIO(data))
+
+    def test_pending_tar_carrying_an_app_key_is_refused_on_publish_readback(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, digest = self.pending_release(root)
+            changed = root / "with-app-key.tar"
+            self.rewrite_tar(source, changed, {"conf/app-private-key": b"not a real key"})
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": "a" * 64}):
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-stage-members-refused",
+                                            msg="FIRST_STAGE_TAR_WITH_KEYS_ACCEPTED"):
+                    custody_bundle.verify_built_stage(changed, "first", "install-a", "tenant-a",
+                                                      root / "estate", digest, root / "verifier")
+
+    def test_pending_tar_with_hidden_trailing_key_bytes_is_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, digest = self.pending_release(root)
+            changed = root / "with-trailing-key.tar"
+            changed.write_bytes(source.read_bytes() + b"hidden-app-key")
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": "a" * 64}):
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-stage-tar-not-canonical",
+                                            msg="FIRST_STAGE_TRAILING_KEY_BYTES_ACCEPTED"):
+                    custody_bundle.verify_built_stage(changed, "first", "install-a", "tenant-a",
+                                                      root / "estate", digest, root / "verifier")
+
+    def test_first_stage_readback_requires_all_three_members_and_valid_stage(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, digest = self.pending_release(root)
+            without_pins = root / "without-pins.tar"
+            with tarfile.open(source, "r:") as archive, \
+                    tarfile.open(without_pins, "w", format=tarfile.USTAR_FORMAT) as output:
+                for member in archive.getmembers():
+                    if member.name != "conf/pins.json":
+                        output.addfile(member, io.BytesIO(archive.extractfile(member).read()))
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": "a" * 64}):
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-stage-members-refused",
+                                            msg="FIRST_STAGE_MISSING_PINS_MEMBER_ACCEPTED"):
+                    custody_bundle.verify_built_stage(without_pins, "first", "install-a", "tenant-a",
+                                                      root / "estate", digest, root / "verifier")
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-stage-invalid",
+                                            msg="FIRST_STAGE_UNKNOWN_MODE_ACCEPTED"):
+                    custody_bundle.verify_built_stage(source, "unknown", "install-a", "tenant-a",
+                                                      root / "estate", digest, root / "verifier")
+
+    def test_pending_tar_without_inert_runtime_flag_is_refused_on_publish_readback(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, digest = self.pending_release(root)
+            with tarfile.open(source, "r:") as archive:
+                runtime = json.load(archive.extractfile("runtime.json"))
+            runtime["components"][0]["arguments"].remove("-roster-pending")
+            changed = root / "active-runtime.tar"
+            self.rewrite_tar(source, changed, {"runtime.json": json.dumps(runtime, separators=(",", ":")).encode("ascii")})
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": "a" * 64}):
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-stage-runtime-refused",
+                                            msg="FIRST_STAGE_ACTIVE_RUNTIME_ACCEPTED"):
+                    custody_bundle.verify_built_stage(changed, "first", "install-a", "tenant-a",
+                                                      root / "estate", digest, root / "verifier")
+
+    def test_first_stage_wrong_install_id_is_refused_by_tar_readback(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary, target = root / "binary", root / "pending.tar"
+            binary.write_bytes(b"fixture-binary")
+            estate_id, digest = "a" * 64, "b" * 64
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": estate_id}):
+                custody_bundle.build(binary, None, target, estate_path=root / "estate", estate_sha256=digest,
+                                     verifier_path=root / "verifier", first_stage_install_id="install-a",
+                                     first_stage_tenant_id="tenant-a")
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-first-stage-install-scope-refused",
+                                            msg="FIRST_STAGE_WRONG_INSTALL_ID_ACCEPTED"):
+                    custody_bundle.verify_built_stage(target, "first", "install-b", "tenant-a",
+                                                      root / "estate", digest, root / "verifier")
+
+    def test_first_stage_unsigned_profile_and_pins_input_are_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary, pins = root / "binary", root / "pins"
+            binary.write_bytes(b"fixture-binary")
+            pins.write_bytes(b'{"keys":{}}')
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": "a" * 64}):
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-first-stage-signed-profile-required",
+                                            msg="FIRST_STAGE_UNSIGNED_PROFILE_ACCEPTED"):
+                    custody_bundle.build(binary, None, root / "unsigned.tar",
+                                         estate_sha256="b" * 64,
+                                         first_stage_install_id="install-a", first_stage_tenant_id="tenant-a")
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": "a" * 64}):
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-first-stage-keys-refused",
+                                            msg="FIRST_STAGE_PENDING_KEYS_ACCEPTED"):
+                    custody_bundle.build(binary, pins, root / "keys.tar", estate_path=root / "estate",
+                                         estate_sha256="b" * 64, verifier_path=root / "verifier",
+                                         first_stage_install_id="install-a", first_stage_tenant_id="tenant-a")
+
+    def test_first_stage_marker_rejects_invalid_scope(self):
+        profile = {"estateId": "a" * 64}
+        with self.assertRaisesRegex(ValueError, "first-stage-install-id-invalid",
+                                    msg="FIRST_STAGE_INVALID_INSTALL_ID_ACCEPTED"):
+            custody_bundle.first_stage_marker("INSTALL-A", "tenant-a", profile, "b" * 64)
+        with self.assertRaisesRegex(ValueError, "first-stage-tenant-id-invalid",
+                                    msg="FIRST_STAGE_INVALID_TENANT_ID_ACCEPTED"):
+            custody_bundle.first_stage_marker("install-a", "Tenant-A", profile, "b" * 64)
+        with self.assertRaisesRegex(ValueError, "first-stage-estate-invalid",
+                                    msg="FIRST_STAGE_INVALID_ESTATE_ACCEPTED"):
+            custody_bundle.first_stage_marker("install-a", "tenant-a", {"estateId": "retired"}, "b" * 64)
+        with self.assertRaisesRegex(ValueError, "first-stage-profile-pin-invalid",
+                                    msg="FIRST_STAGE_INVALID_PROFILE_PIN_ACCEPTED"):
+            custody_bundle.first_stage_marker("install-a", "tenant-a", profile, "retired")
+
     def test_pending_release_is_tenant_and_estate_scoped_and_inert(self):
         marker = {"schema": custody_bundle.PENDING_SCHEMA, "installId": "install-a", "tenantId": "tenant-a",
                   "estateId": "a" * 64, "estateProfileSha256": "b" * 64}
@@ -70,26 +278,38 @@ class CustodyBundleControls(unittest.TestCase):
             root = Path(temp)
             binary, pins, target = root / "binary", root / "pins.json", root / "custody.tar"
             binary.write_bytes(b"fixture-binary")
-            pins.write_bytes(raw)
             with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": marker["estateId"]}):
-                custody_bundle.build(binary, pins, target, estate_path=root / "estate.json",
-                                     estate_sha256=marker["estateProfileSha256"], verifier_path=root / "verifier")
+                custody_bundle.build(binary, None, target, estate_path=root / "estate.json",
+                                     estate_sha256=marker["estateProfileSha256"], verifier_path=root / "verifier",
+                                     first_stage_install_id="install-a", first_stage_tenant_id="tenant-a")
             with tarfile.open(target, "r:") as archive:
                 runtime = json.load(archive.extractfile("runtime.json"))
+                self.assertEqual(archive.extractfile("conf/pins.json").read(), raw,
+                                 "FIRST_STAGE_NATIVE_MARKER_EXACT")
+                self.assertEqual(set(archive.getnames()), {"runtime.json", "bin/evidence-pack-custody", "conf/pins.json"},
+                                 "FIRST_STAGE_NO_APP_KEYS_OR_ATTESTATION")
             self.assertIn("-roster-pending", runtime["components"][0]["arguments"],
                           "PENDING_CUSTODY_RUNTIME_INERT_POSITIVE")
             self.assertEqual({slot["name"] for slot in runtime["publicEnvironment"]},
                              {"EVIDENCE_PACK_ROSTER_SHA256", "EVIDENCE_PACK_PENDING_TENANT_ID", "EVIDENCE_PACK_PENDING_ESTATE_ID",
                               "EVIDENCE_PACK_PENDING_PROFILE_SHA256"})
-            wrong_estate = dict(marker)
-            wrong_estate["estateId"] = "c" * 64
-            pins.write_bytes(json.dumps(wrong_estate, separators=(",", ":")).encode("ascii"))
-            with self.assertRaisesRegex(ValueError, "evidence-pack-custody-pending-estate-input-incomplete"):
-                custody_bundle.build(binary, pins, root / "unsigned-pending.tar")
+            with self.assertRaisesRegex(ValueError, "evidence-pack-custody-first-stage-signed-profile-required"):
+                custody_bundle.build(binary, None, root / "unsigned-pending.tar",
+                                     first_stage_install_id="install-a", first_stage_tenant_id="tenant-a")
             with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": marker["estateId"]}):
-                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-pending-estate-mismatch"):
-                    custody_bundle.build(binary, pins, root / "wrong-estate.tar", estate_path=root / "estate.json",
-                                         estate_sha256=marker["estateProfileSha256"], verifier_path=root / "verifier")
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-first-stage-install-scope-refused"):
+                    custody_bundle.verify_built_stage(target, "first", "install-b", "tenant-a", root / "estate.json",
+                                                      marker["estateProfileSha256"], root / "verifier")
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-first-stage-keys-refused"):
+                    custody_bundle.build(binary, pins, root / "keys-in-pending.tar", estate_path=root / "estate.json",
+                                         estate_sha256=marker["estateProfileSha256"], verifier_path=root / "verifier",
+                                         first_stage_install_id="install-a", first_stage_tenant_id="tenant-a")
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-stage-mode-refused"):
+                    custody_bundle.verify_built_stage(target, "rostered", "", "", root / "estate.json",
+                                                      marker["estateProfileSha256"], root / "verifier")
+                self.assertEqual(custody_bundle.verify_built_stage(target, "first", "install-a", "tenant-a",
+                                 root / "estate.json", marker["estateProfileSha256"], root / "verifier"),
+                                 hashlib.sha256(target.read_bytes()).hexdigest(), "FIRST_STAGE_READBACK_POSITIVE")
             for name, mutation in {
                 "wrong-tenant": {**marker, "tenantId": "Tenant-A"},
                 "wrong-estate": {**marker, "estateId": "not-an-estate"},
@@ -98,6 +318,66 @@ class CustodyBundleControls(unittest.TestCase):
                 with self.subTest(name=name):
                     with self.assertRaisesRegex(ValueError, "evidence-pack-custody"):
                         custody_bundle.checked_roster(json.dumps(mutation, separators=(",", ":")).encode("ascii"))
+
+    def test_rostered_successor_is_not_first_stage_and_pending_pins_are_not_rostered(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary, pins, target = root / "binary", root / "pins", root / "rostered.tar"
+            binary.write_bytes(b"fixture-binary")
+            pins.write_bytes(roster())
+            profile, digest, request_raw, proof_raw = signed_roster_inputs(pins.read_bytes())
+            request, proof = root / "request", root / "proof"
+            request.write_bytes(request_raw)
+            proof.write_bytes(proof_raw)
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value=profile):
+                custody_bundle.build(binary, pins, target, request, proof, root / "estate", digest, root / "verifier")
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-stage-mode-refused"):
+                    custody_bundle.verify_built_stage(target, "first", "install-a", "tenant-a",
+                                                      root / "estate", digest, root / "verifier")
+                self.assertEqual(custody_bundle.verify_built_stage(target, "rostered", "", "",
+                                 root / "estate", digest, root / "verifier", request),
+                                 hashlib.sha256(target.read_bytes()).hexdigest(), "ROSTERED_SUCCESSOR_READBACK_POSITIVE")
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-owner-proof-missing",
+                                            msg="ROSTERED_READBACK_WITHOUT_SIGNED_REQUEST_ACCEPTED"):
+                    custody_bundle.verify_built_stage(target, "rostered", "", "",
+                                                      root / "estate", digest, root / "verifier")
+                pending = root / "pending-pins"
+                pending.write_bytes(custody_bundle.first_stage_marker("install-a", "tenant-a", profile, digest))
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-first-stage-explicit-input-required"):
+                    custody_bundle.build(binary, pending, root / "pending-as-rostered.tar", request, proof,
+                                         root / "estate", digest, root / "verifier")
+
+    def test_rostered_tar_is_refused_as_first_stage(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary, pins, target = root / "binary", root / "pins", root / "rostered.tar"
+            binary.write_bytes(b"fixture-binary")
+            pins.write_bytes(roster())
+            profile, digest, request_raw, proof_raw = signed_roster_inputs(pins.read_bytes())
+            request, proof = root / "request", root / "proof"
+            request.write_bytes(request_raw)
+            proof.write_bytes(proof_raw)
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value=profile):
+                custody_bundle.build(binary, pins, target, request, proof, root / "estate", digest, root / "verifier")
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-stage-mode-refused",
+                                            msg="ROSTERED_TAR_ACCEPTED_AS_FIRST_STAGE"):
+                    custody_bundle.verify_built_stage(target, "first", "install-a", "tenant-a",
+                                                      root / "estate", digest, root / "verifier")
+
+    def test_pending_tar_is_refused_as_rostered_successor(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary, target = root / "binary", root / "pending.tar"
+            binary.write_bytes(b"fixture-binary")
+            digest = "b" * 64
+            with mock.patch.object(custody_bundle, "verified_estate_profile", return_value={"estateId": "a" * 64}):
+                custody_bundle.build(binary, None, target, estate_path=root / "estate", estate_sha256=digest,
+                                     verifier_path=root / "verifier", first_stage_install_id="install-a",
+                                     first_stage_tenant_id="tenant-a")
+                with self.assertRaisesRegex(ValueError, "evidence-pack-custody-stage-mode-refused",
+                                            msg="PENDING_TAR_ACCEPTED_AS_ROSTERED_SUCCESSOR"):
+                    custody_bundle.verify_built_stage(target, "rostered", "", "",
+                                                      root / "estate", digest, root / "verifier")
 
     def test_signed_plan_inputs_bind_exact_bundle_bytes(self):
         with tempfile.TemporaryDirectory() as temp:

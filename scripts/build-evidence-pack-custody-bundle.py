@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build a canonical tenant-host custody sidecar from Store's native binary.
+"""Build or read back an estate-bound Evidence Pack custody sidecar release.
 
-The public roster is the exact signed Station factory roster. The resulting
-tar is immutable Store release material, not a runnable installer script.
+The first stage creates its own keyless pending marker. The successor consumes
+the owner-attested public roster. Both tars are immutable Store release material.
 """
 
 from __future__ import annotations
@@ -215,28 +215,53 @@ def contract(binary: bytes, roster: bytes, pending: bool = False,
     return json.dumps(body, separators=(",", ":"), ensure_ascii=True).encode("ascii")
 
 
-def build(binary_path: Path, roster_path: Path, output_path: Path,
+def first_stage_marker(install_id: str, tenant_id: str, profile: dict, profile_sha256: str) -> bytes:
+    """Create the exact marker consumed by custody's roster-pending reader."""
+    for name, value in (("install-id", install_id), ("tenant-id", tenant_id)):
+        if not isinstance(value, str) or not 1 <= len(value) <= 128 or any(
+                char not in "abcdefghijklmnopqrstuvwxyz0123456789-" for char in value):
+            raise ValueError("evidence-pack-custody-first-stage-" + name + "-invalid")
+    estate_id = profile.get("estateId") if isinstance(profile, dict) else None
+    if not isinstance(estate_id, str) or len(estate_id) != 64 or any(
+            char not in "0123456789abcdef" for char in estate_id):
+        raise ValueError("evidence-pack-custody-first-stage-estate-invalid")
+    if not isinstance(profile_sha256, str) or len(profile_sha256) != 64 or any(
+            char not in "0123456789abcdef" for char in profile_sha256):
+        raise ValueError("evidence-pack-custody-first-stage-profile-pin-invalid")
+    marker = {"schema": PENDING_SCHEMA, "installId": install_id, "tenantId": tenant_id,
+              "estateId": estate_id, "estateProfileSha256": profile_sha256}
+    return json.dumps(marker, separators=(",", ":"), ensure_ascii=True).encode("ascii")
+
+
+def build(binary_path: Path, roster_path: Path | None, output_path: Path,
           request_path: Path | None = None, attestation_path: Path | None = None,
           estate_path: Path | None = None, estate_sha256: str = "",
-          verifier_path: Path | None = None) -> str:
+          verifier_path: Path | None = None, *, first_stage_install_id: str = "",
+          first_stage_tenant_id: str = "") -> str:
     binary = regular_file(binary_path, 256 << 20)
-    roster = regular_file(roster_path, 1 << 20)
-    pending = checked_roster(roster)
     attestation = None
-    if not pending:
+    pending = bool(first_stage_install_id or first_stage_tenant_id)
+    if pending:
+        if roster_path is not None or request_path is not None or attestation_path is not None:
+            raise ValueError("evidence-pack-custody-first-stage-keys-refused")
+        if estate_path is None or verifier_path is None or not estate_sha256:
+            raise ValueError("evidence-pack-custody-first-stage-signed-profile-required")
+        profile = verified_estate_profile(estate_path, estate_sha256, verifier_path)
+        roster = first_stage_marker(first_stage_install_id, first_stage_tenant_id,
+                                    profile, estate_sha256)
+        checked_roster(roster)
+    else:
+        if roster_path is None:
+            raise ValueError("evidence-pack-custody-rostered-pins-required")
+        roster = regular_file(roster_path, 1 << 20)
+        if checked_roster(roster):
+            raise ValueError("evidence-pack-custody-first-stage-explicit-input-required")
         if None in (request_path, attestation_path, estate_path, verifier_path) or not estate_sha256:
             raise ValueError("evidence-pack-custody-owner-proof-missing")
         profile = verified_estate_profile(estate_path, estate_sha256, verifier_path)
         attestation = regular_file(attestation_path, 1 << 20)
         checked_attestation(roster, regular_file(request_path, 1 << 20),
                             attestation, profile, estate_sha256)
-    else:
-        if estate_path is None or verifier_path is None or not estate_sha256:
-            raise ValueError("evidence-pack-custody-pending-estate-input-incomplete")
-        profile = verified_estate_profile(estate_path, estate_sha256, verifier_path)
-        marker = json.loads(roster)
-        if marker["estateId"] != profile["estateId"] or marker["estateProfileSha256"] != estate_sha256:
-            raise ValueError("evidence-pack-custody-pending-estate-mismatch")
     runtime = contract(binary, roster, pending, attestation)
     if output_path.exists():
         raise ValueError("evidence-pack-custody-output-exists")
@@ -260,10 +285,65 @@ def build(binary_path: Path, roster_path: Path, output_path: Path,
     return hashlib.sha256(output_path.read_bytes()).hexdigest()
 
 
+def verify_built_stage(path: Path, stage: str, install_id: str, tenant_id: str,
+                       estate_path: Path, estate_sha256: str, verifier_path: Path,
+                       request_path: Path | None = None) -> str:
+    """Read back the exact release bytes before the governed Store publish."""
+    profile = verified_estate_profile(estate_path, estate_sha256, verifier_path)
+    if stage not in ("first", "rostered"):
+        raise ValueError("evidence-pack-custody-stage-invalid")
+    raw_tar = regular_file(path, 260 << 20)
+    with tarfile.open(fileobj=io.BytesIO(raw_tar), mode="r:") as archive:
+        members = archive.getmembers()
+        names = {member.name for member in members}
+        required = {"runtime.json", "bin/evidence-pack-custody", "conf/pins.json"}
+        if not required <= names or len(names) != len(members) or any(not member.isfile() for member in members):
+            raise ValueError("evidence-pack-custody-stage-members-refused")
+        pins = archive.extractfile("conf/pins.json").read()
+        is_pending = checked_roster(pins)
+        if is_pending != (stage == "first"):
+            raise ValueError("evidence-pack-custody-stage-mode-refused")
+        expected = {"runtime.json", "bin/evidence-pack-custody", "conf/pins.json"}
+        if stage == "rostered":
+            expected.add("conf/roster-attestation.json")
+        if names != expected or len(members) != len(expected) or any(not member.isfile() for member in members):
+            raise ValueError("evidence-pack-custody-stage-members-refused")
+        expected_order = ["runtime.json", "bin/evidence-pack-custody", "conf/pins.json"]
+        if stage == "rostered":
+            expected_order.append("conf/roster-attestation.json")
+        rebuilt = io.BytesIO()
+        with tarfile.open(fileobj=rebuilt, mode="w", format=tarfile.USTAR_FORMAT) as canonical:
+            for member, name in zip(members, expected_order):
+                data = archive.extractfile(member).read()
+                header = tarfile.TarInfo(name)
+                header.size, header.mode = len(data), 0o755 if name.startswith("bin/") else 0o644
+                header.uid = header.gid = header.mtime = 0
+                canonical.addfile(header, io.BytesIO(data))
+        if [member.name for member in members] != expected_order or raw_tar != rebuilt.getvalue():
+            raise ValueError("evidence-pack-custody-stage-tar-not-canonical")
+        runtime_raw = archive.extractfile("runtime.json").read()
+        binary = archive.extractfile("bin/evidence-pack-custody").read()
+        if stage == "first" and pins != first_stage_marker(install_id, tenant_id, profile, estate_sha256):
+            raise ValueError("evidence-pack-custody-first-stage-install-scope-refused")
+        attestation = archive.extractfile("conf/roster-attestation.json").read() if not is_pending else None
+        if stage == "rostered":
+            if request_path is None:
+                raise ValueError("evidence-pack-custody-owner-proof-missing")
+            checked_attestation(pins, regular_file(request_path, 1 << 20),
+                                attestation, profile, estate_sha256)
+        if runtime_raw != contract(binary, pins, is_pending, attestation):
+            raise ValueError("evidence-pack-custody-stage-runtime-refused")
+    return hashlib.sha256(raw_tar).hexdigest()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--binary", type=Path, required=True)
-    parser.add_argument("--pins", type=Path, required=True)
+    parser.add_argument("--binary", type=Path)
+    parser.add_argument("--stage", choices=("first", "rostered"), required=True)
+    parser.add_argument("--verify-built", action="store_true")
+    parser.add_argument("--pins", type=Path)
+    parser.add_argument("--install-id", default="")
+    parser.add_argument("--tenant-id", default="")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--roster-request", type=Path)
     parser.add_argument("--roster-attestation", type=Path)
@@ -271,9 +351,24 @@ def main() -> int:
     parser.add_argument("--estate-profile-sha256", default="")
     parser.add_argument("--estate-verifier", type=Path)
     args = parser.parse_args()
+    if args.stage == "first" and (not args.install_id or not args.tenant_id):
+        parser.error("first stage requires --install-id and --tenant-id from the approved install spec")
+    if args.stage == "rostered" and (args.install_id or args.tenant_id):
+        parser.error("rostered successor takes scope from the signed roster request")
+    if args.verify_built:
+        if None in (args.estate_profile, args.estate_verifier) or not args.estate_profile_sha256:
+            parser.error("readback requires the signed estate profile and its verified digest")
+        print(verify_built_stage(args.output, args.stage, args.install_id, args.tenant_id,
+                                 args.estate_profile, args.estate_profile_sha256, args.estate_verifier,
+                                 args.roster_request))
+        return 0
+    if args.binary is None:
+        parser.error("build requires --binary")
     print(build(args.binary, args.pins, args.output, args.roster_request,
                 args.roster_attestation, args.estate_profile,
-                args.estate_profile_sha256, args.estate_verifier))
+                args.estate_profile_sha256, args.estate_verifier,
+                first_stage_install_id=args.install_id,
+                first_stage_tenant_id=args.tenant_id))
     return 0
 
 

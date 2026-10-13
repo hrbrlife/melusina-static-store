@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -48,9 +49,13 @@ func TestInstallerCLIToProductionRouterAndRestartReadback(t *testing.T) {
 	if _, err := installerpublish.Digest(class, name, hex.EncodeToString(digest[:]), svc.cfg.StoreID, svc.cfg.Domain, svc.cfg.LicenseNFTMint, svc.cfg.ProgramID); err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewServer(newPublicRouterWithService(svc.cfg, op, chain, nil, catalogRuntime{}, svc, false))
+	server := httptest.NewTLSServer(newPublicRouterWithService(svc.cfg, op, chain, nil, catalogRuntime{}, svc, false))
 	defer server.Close()
 	dir := t.TempDir()
+	leafPath := filepath.Join(dir, "store-leaf.pem")
+	if err := os.WriteFile(leafPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}), 0600); err != nil {
+		t.Fatal(err)
+	}
 	artifactPath := filepath.Join(dir, "artifact")
 	publisherPath := filepath.Join(dir, "publisher.json")
 	operatorPath := filepath.Join(dir, "operator.json")
@@ -76,7 +81,7 @@ func TestInstallerCLIToProductionRouterAndRestartReadback(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd := exec.Command("go", "run", "./cmd/submit-installer",
-		"--store", server.URL, "--class", class, "--name", name,
+		"--store", server.URL, "--store-tls-leaf", leafPath, "--class", class, "--name", name,
 		"--artifact", artifactPath, "--publisher-key", publisherPath, "--store-pubkey", operatorPath,
 		"--store-id", svc.cfg.StoreID, "--store-domain", svc.cfg.Domain,
 		"--license-mint", svc.cfg.LicenseNFTMint, "--program-id", svc.cfg.ProgramID)

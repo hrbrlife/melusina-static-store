@@ -241,7 +241,7 @@ func run(args []string, stdout io.Writer) error {
 		})
 	}
 
-	client, err := publishclient.New(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
+	client, err := publishclient.NewClient(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
 	if err != nil {
 		return err
 	}

@@ -26,6 +26,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/publishclient"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -81,6 +82,7 @@ type options struct {
 	classTablePrepare bool
 	classTableOut     string
 	connectAddress    string
+	tlsLeaf           string
 }
 
 func main() {
@@ -107,6 +109,7 @@ func parseFlags(args []string) (options, error) {
 	fs.BoolVar(&o.classTablePrepare, "class-table-prepare", false, "prepare the first sidecar cohort's Store-signed class table from staged sidecar bytes; does not promote a generation")
 	fs.StringVar(&o.classTableOut, "class-table-out", "", "new output path for the signed sidecar class table")
 	fs.StringVar(&o.connectAddress, "connect-address", "", "private Store backend host:port; HTTPS name and certificate remain bound to --store")
+	fs.StringVar(&o.tlsLeaf, "store-tls-leaf", "", "exact PEM Store serving leaf pinned for private publication")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -138,7 +141,7 @@ func parseFlags(args []string) (options, error) {
 	if o.classTablePrepare && (o.classTableOut == "" || o.carryForward || o.generationOut != "" || o.envelopeOut != "") {
 		return o, errors.New("class-table-prepare requires --class-table-out and excludes generation/carry-forward/envelope output")
 	}
-	if !o.classTablePrepare && (o.classTableOut != "" || o.connectAddress != "") {
+	if !o.classTablePrepare && o.classTableOut != "" {
 		return o, errors.New("class-table options require --class-table-prepare")
 	}
 	return o, nil
@@ -232,7 +235,10 @@ func run(args []string, stdout io.Writer) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), o.timeout)
 	defer cancel()
-	client := &http.Client{Timeout: o.timeout}
+	client, err := publishclient.New(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
+	if err != nil {
+		return err
+	}
 	result, err := postPromote(ctx, client, o.store, signed, requestBytes)
 	if err != nil {
 		return err

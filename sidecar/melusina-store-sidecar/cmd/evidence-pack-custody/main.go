@@ -61,6 +61,55 @@ func loadPins(path, expectedSHA256 string) (map[string]ed25519.PublicKey, error)
 	return pins, nil
 }
 
+const pendingRosterSchema = "melusina.evidence-pack-roster-pending.v1"
+
+// Pending is a separate, Store-signed release mode. It has no route to
+// packcustody.Open: every socket request is refused until a rostered successor.
+func loadPendingRoster(path, expectedSHA256 string) error {
+	if !filepath.IsAbs(path) || len(expectedSHA256) != 64 {
+		return errors.New("evidence-pack-custody-pending-unenrolled")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > 16<<10 {
+		return errors.New("evidence-pack-custody-pending-invalid")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return errors.New("evidence-pack-custody-pending-invalid")
+	}
+	sum := sha256.Sum256(raw)
+	if hex.EncodeToString(sum[:]) != expectedSHA256 {
+		return errors.New("evidence-pack-custody-pending-drift")
+	}
+	var marker struct {
+		Schema              string `json:"schema"`
+		InstallID           string `json:"installId"`
+		TenantID            string `json:"tenantId"`
+		EstateID            string `json:"estateId"`
+		EstateProfileSHA256 string `json:"estateProfileSha256"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&marker) != nil || decoder.Decode(new(any)) != io.EOF ||
+		marker.Schema != pendingRosterSchema || marker.InstallID == "" || len(marker.InstallID) > 128 ||
+		strings.Trim(marker.InstallID, "abcdefghijklmnopqrstuvwxyz0123456789-") != "" ||
+		marker.TenantID == "" || len(marker.TenantID) > 128 ||
+		strings.Trim(marker.TenantID, "abcdefghijklmnopqrstuvwxyz0123456789-") != "" ||
+		len(marker.EstateID) != 64 || strings.Trim(marker.EstateID, "0123456789abcdef") != "" ||
+		len(marker.EstateProfileSHA256) != 64 || strings.Trim(marker.EstateProfileSHA256, "0123456789abcdef") != "" {
+		return errors.New("evidence-pack-custody-pending-scope-invalid")
+	}
+	canonical, _ := json.Marshal(marker)
+	if !bytes.Equal(raw, canonical) {
+		return errors.New("evidence-pack-custody-pending-not-canonical")
+	}
+	return nil
+}
+
+func pendingCustodyHandler(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, "evidence-pack-custody-roster-pending", http.StatusLocked)
+}
+
 // The Shell grants the grain's mapped group access to this one socket. The
 // installer owns the numeric group in the service unit; requests cannot alter
 // it. Refuse an unset group instead of creating a root-only dead transport.
@@ -212,6 +261,7 @@ func main() {
 	socketGroup := flag.String("socket-group", "", "installed grain socket group name")
 	pinsPath := flag.String("pins", "", "installer-delivered public roster")
 	pinsSHA := flag.String("pins-sha256", "", "installer-pinned public roster SHA-256")
+	pending := flag.Bool("roster-pending", false, "Store-signed inert bootstrap release")
 	flag.Parse()
 	if *setupPublic {
 		if *socket != "" || *pinsPath != "" || *pinsSHA != "" || *pearl != "" || *socketGID >= 0 || *socketGroup != "" {
@@ -229,17 +279,32 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	pins, err := loadPins(*pinsPath, *pinsSHA)
-	if err != nil {
-		log.Fatal(err)
-	}
-	custody, err := packcustody.Open(*root, *pearl, pins)
-	if err != nil {
-		log.Fatal(err)
-	}
-	dossier, err := openDossier(*root, *pearl, pins)
-	if err != nil {
-		log.Fatal(err)
+	var routes http.Handler
+	if *pending {
+		if err := loadPendingRoster(*pinsPath, *pinsSHA); err != nil {
+			log.Fatal(err)
+		}
+		if err := writeDossierSetupPublic(*root, io.Discard); err != nil {
+			log.Fatal(err)
+		}
+		routes = http.HandlerFunc(pendingCustodyHandler)
+	} else {
+		pins, err := loadPins(*pinsPath, *pinsSHA)
+		if err != nil {
+			log.Fatal(err)
+		}
+		custody, err := packcustody.Open(*root, *pearl, pins)
+		if err != nil {
+			log.Fatal(err)
+		}
+		dossier, err := openDossier(*root, *pearl, pins)
+		if err != nil {
+			log.Fatal(err)
+		}
+		mux := http.NewServeMux()
+		mux.Handle("POST /v1/dossier", dossier)
+		mux.Handle("/", custody.Handler())
+		routes = mux
 	}
 	listener, err := net.Listen("unix", *socket)
 	if err != nil {
@@ -250,9 +315,6 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Printf("evidence-pack custody listener ready at %s", *socket)
-	routes := http.NewServeMux()
-	routes.Handle("POST /v1/dossier", dossier)
-	routes.Handle("/", custody.Handler())
 	if err := http.Serve(listener, routes); err != nil {
 		log.Fatal(err)
 	}

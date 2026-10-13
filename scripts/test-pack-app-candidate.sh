@@ -312,9 +312,11 @@ if [[ -e "$APP/ignored-metadata.json" ]]; then
   echo 'DOTDOT_METADATA_STAGE_IN_SOURCE_ACCEPTED: staged metadata into an ignored checkout path' >&2
   exit 1
 fi
-if [[ $rc -eq 0 ]]; then
-  [[ -f "$WORK/dotdot-link/../app/ignored-metadata.json" && -f "$WORK/dotdot-source-receipt.json" ]]
+if [[ $rc -eq 0 || -e "$WORK/dotdot-source-receipt.json" ]]; then
+  echo 'DOTDOT_METADATA_STAGE_IN_SOURCE_ACCEPTED: parent traversal was accepted' >&2
+  exit 1
 fi
+grep -q 'candidate metadata output contains parent traversal' "$WORK/dotdot-source.log"
 
 # DOTDOT_METADATA_STAGE_DIVERGED: a pack hook plants a document at the
 # requested output name after preflight. The stage must refuse (the name is no
@@ -334,7 +336,7 @@ if [[ $rc -eq 0 || -e "$WORK/dotdot-receipt.json" || -e "$WORK/dotdot-staged.jso
   [[ ! -e "$WORK/dotdot-receipt.json" ]] || cat "$WORK/dotdot-receipt.json" >&2
   exit 1
 fi
-grep -q '"version":"6.6.6"' "$WORK/dotdot-real/dotdot-staged.json"
+grep -q 'candidate metadata output contains parent traversal' "$WORK/dotdot.log"
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
 # Some real app hooks synchronise both packageId and the full artifact digest.

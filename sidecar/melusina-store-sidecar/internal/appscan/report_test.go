@@ -43,4 +43,9 @@ func TestScanReportSubsecondSkewBounded(t *testing.T) {
 	if err := changed.Sign(private); err == nil || !strings.Contains(err.Error(), "timestamp-invalid") {
 		t.Fatalf("SCAN_REPORT_SUBSECOND_UNIX_MISMATCH_ADMITTED: %v", err)
 	}
+	foreignZone := makeReport(now)
+	foreignZone.ScannedAt = now.In(time.FixedZone("plus-one", 3600)).Format(time.RFC3339Nano)
+	if err := foreignZone.Sign(private); err == nil || !strings.Contains(err.Error(), "timestamp-invalid") {
+		t.Fatalf("SCAN_REPORT_NON_UTC_TIMESTAMP_ADMITTED: %v", err)
+	}
 }

@@ -217,6 +217,22 @@ assert metadata["sha256"] == d["artifact"]["sha256"], "STALE_SOURCE_METADATA_IDE
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
+# A requested staged output inside the candidate checkout must not bypass the
+# source cleanliness proof and produce a receipt claiming a clean source.
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+    --metadata-out "$APP/staged-in-source.json" \
+    --receipt-out "$WORK/in-source-receipt.json" >"$WORK/in-source.log" 2>&1
+rc=$?
+set -e
+if [[ $rc -eq 0 ]]; then
+  echo 'IN_SOURCE_METADATA_STAGE_ACCEPTED: pack claimed clean source with an untracked staged document' >&2
+  exit 1
+fi
+[[ ! -e "$APP/staged-in-source.json" ]]
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
 # Some real app hooks synchronise both packageId and the full artifact digest.
 # That exact SPK-derived pair is admissible; a changed product field remains a
 # hard failure.

@@ -45,6 +45,7 @@ import (
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/appscan"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/publishclient"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/runtimecontract"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
@@ -210,6 +211,8 @@ func main() {
 
 type options struct {
 	store               string
+	connectAddress      string
+	tlsLeaf             string
 	spkPath             string
 	metadataPath        string
 	releasePath         string
@@ -244,6 +247,8 @@ func parseFlags(args []string) (options, error) {
 	fs := flag.NewFlagSet("submit", flag.ContinueOnError)
 	var o options
 	fs.StringVar(&o.store, "store", "", "store sidecar base URL, e.g. https://store.example.org (required)")
+	fs.StringVar(&o.connectAddress, "connect-address", "", "private Store ingress IP:18443; keep --store as the signed HTTPS audience")
+	fs.StringVar(&o.tlsLeaf, "store-tls-leaf", "", "exact PEM Store serving leaf pinned for private publication")
 	fs.StringVar(&o.spkPath, "spk", "", "path to the .spk package bytes (required)")
 	fs.StringVar(&o.metadataPath, "metadata", "", "path to the app metadata.json (required; bound into the on-chain appHash)")
 	fs.StringVar(&o.releasePath, "release", "", "path to the canonical RELEASE.json (required)")
@@ -285,6 +290,12 @@ func parseFlags(args []string) (options, error) {
 	var missing []string
 	verifyMode := o.verifyReceiptPath != ""
 	requestMode := o.requestOut != "" || o.controlDossier != ""
+	if o.connectAddress != "" && o.tlsLeaf == "" {
+		return o, errors.New("publisher_tls_pin_required")
+	}
+	if (verifyMode || requestMode || o.prepareOut != "") && (o.connectAddress != "" || o.tlsLeaf != "") {
+		return o, errors.New("private Store transport requires direct app publication")
+	}
 	if verifyMode {
 		if o.spkPath != "" || o.metadataPath != "" || o.releasePath != "" || o.runtimeContractPath != "" ||
 			o.publisherKey != "" || o.storePubkey != "" || o.stageOnly || o.useMultipart ||
@@ -900,7 +911,14 @@ func postDirectPublish(ctx context.Context, o options, endpoint string, sig enve
 		return nil, 0, errors.New("signed publisher envelope exceeds header limit")
 	}
 	req.Header.Set("X-Melusina-Publisher-Envelope", base64.RawURLEncoding.EncodeToString(headerEnvelope))
-	resp, err := (&http.Client{Timeout: o.timeout}).Do(req)
+	client := &http.Client{Timeout: o.timeout}
+	if o.connectAddress != "" || o.tlsLeaf != "" {
+		client, err = publishclient.NewClient(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, 0, err
 	}

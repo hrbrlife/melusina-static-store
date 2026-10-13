@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -58,12 +59,34 @@ func TestDirectAppSubmissionRequiresSignedScanAndReachesCandidateRead(t *testing
 	}
 }
 
+func TestDirectAppPrivateTransportRequiresPinnedDirectMode(t *testing.T) {
+	base := []string{"--store", "https://store.example.org", "--spk", "app.spk", "--metadata", "metadata.json",
+		"--release", "RELEASE.json", "--publisher-key", "publisher.json", "--store-pubkey", "store.json",
+		"--license-mint", "11111111111111111111111111111111", "--rpc-url", "https://rpc.example.org",
+		"--program-id", testProgramID, "--scan-report", "scan.json"}
+	address := []string{"--connect-address", "10.88.180.29:18443"}
+	if _, err := parseFlags(append(append([]string{}, base...), address...)); err == nil || !strings.Contains(err.Error(), "publisher_tls_pin_required") {
+		t.Fatalf("APP_PRIVATE_UNPINNED_CONNECT_ACCEPTED: %v", err)
+	}
+	private := append(append(append([]string{}, base...), address...), "--store-tls-leaf", "leaf.pem")
+	got, err := parseFlags(private)
+	if err != nil || got.connectAddress != "10.88.180.29:18443" || got.tlsLeaf != "leaf.pem" {
+		t.Fatalf("APP_PRIVATE_TRANSPORT_FLAGS_DROPPED: %+v %v", got, err)
+	}
+	for _, mode := range [][]string{{"--prepare-out", "prepared.json"}, {"--verify-receipt", "receipt.json"}} {
+		args := append(append([]string{}, private...), mode...)
+		if _, err := parseFlags(args); err == nil || !strings.Contains(err.Error(), "requires direct app publication") {
+			t.Fatalf("APP_PRIVATE_FILE_ONLY_MODE_ACCEPTED %v: %v", mode, err)
+		}
+	}
+}
+
 func TestDirectAppSubmitPostsExactSignedStageAndPromoteBodies(t *testing.T) {
 	spk, metadata, release, claims := testRelease(t, randPubkeyB58(t))
 	publisher := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	store := newTestIdentity(t, "store", randPubkeyB58(t), "store.example.org")
 	seen := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seen++
 		if r.Method != http.MethodPost || (r.URL.Path != appStageTarget && r.URL.Path != appPromoteTarget) {
 			t.Errorf("unexpected direct route %s %s", r.Method, r.URL.Path)
@@ -79,6 +102,10 @@ func TestDirectAppSubmitPostsExactSignedStageAndPromoteBodies(t *testing.T) {
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	defer server.Close()
+	leaf := filepath.Join(t.TempDir(), "store-leaf.pem")
+	if err := os.WriteFile(leaf, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}), 0600); err != nil {
+		t.Fatal(err)
+	}
 	for _, route := range []string{appStageTarget, appPromoteTarget} {
 		sig, err := buildEnvelope(publisher, store.Public(), route, spk, release, claims, testProgramID, 1, 5*time.Minute)
 		if err != nil {
@@ -92,9 +119,13 @@ func TestDirectAppSubmitPostsExactSignedStageAndPromoteBodies(t *testing.T) {
 		if err := scan.Sign(ed25519.NewKeyFromSeed(seed[:])); err != nil {
 			t.Fatal(err)
 		}
-		response, status, err := postDirectPublish(context.Background(), options{store: server.URL, timeout: time.Second, developer: "hrbrlife", repo: "app", slug: "direct"}, route, sig, release, spk, metadata, nil, scan)
+		response, status, err := postDirectPublish(context.Background(), options{store: server.URL, tlsLeaf: leaf, timeout: time.Second, developer: "hrbrlife", repo: "app", slug: "direct"}, route, sig, release, spk, metadata, nil, scan)
 		if err != nil || status != http.StatusOK || string(response) != `{"ok":true}` {
-			t.Fatalf("POST %s = %d %q %v", route, status, response, err)
+			t.Fatalf("APP_PRIVATE_PINNED_POST_FAILED: %s = %d %q %v", route, status, response, err)
+		}
+		_, _, err = postDirectPublish(context.Background(), options{store: server.URL, connectAddress: "159.195.5.142:18443", tlsLeaf: leaf, timeout: time.Second}, route, sig, release, spk, metadata, nil, scan)
+		if err == nil || err.Error() != "publisher_private_connect_refused" {
+			t.Fatalf("APP_PRIVATE_FOREIGN_CONNECT_ACCEPTED: %v", err)
 		}
 	}
 	if seen != 2 {

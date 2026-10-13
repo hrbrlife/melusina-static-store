@@ -111,7 +111,7 @@ func verifyPreparedClassTable(raw []byte, request classPrepareRequest, hashHex s
 }
 
 func privateClassTransport(storeURL, connectAddress, leafPath string, timeout time.Duration) (*http.Client, error) {
-	return publishclient.New(storeURL, connectAddress, leafPath, timeout)
+	return publishclient.NewClient(storeURL, connectAddress, leafPath, timeout)
 }
 
 func runPrepareSidecarClasses(o options, requestBytes []byte, stdout io.Writer) error {

@@ -29,7 +29,7 @@ func TestPublisherPinnedTLSAndReadback(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
-	client, err := New(server.URL, "", testLeaf(t, server), time.Minute)
+	client, err := NewClient(server.URL, "", testLeaf(t, server), time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestPublisherPinnedTLSAndReadback(t *testing.T) {
 	if response.StatusCode != 200 {
 		t.Fatalf("status=%d", response.StatusCode)
 	}
-	private, err := New(server.URL, "10.88.180.29:18443", testLeaf(t, server), time.Minute)
+	private, err := NewClient(server.URL, "10.88.180.29:18443", testLeaf(t, server), time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,25 +53,25 @@ func TestPublisherPinnedTLSAndReadback(t *testing.T) {
 func TestPublisherForeignTLSLeafRefused(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer server.Close()
-	if _, err := New("https://store.sbr-coop.org", "", testLeaf(t, server), time.Minute); err == nil || err.Error() != "publisher_tls_pin_invalid" {
+	if _, err := NewClient("https://store.rehearsal.invalid", "", testLeaf(t, server), time.Minute); err == nil || err.Error() != "publisher_tls_pin_invalid" {
 		t.Fatalf("PUBLISHER_FOREIGN_TLS_LEAF_ACCEPTED: %v", err)
 	}
 }
 
 func TestPublisherPrivateConnectRequiresPin(t *testing.T) {
 	for _, address := range []string{"159.195.5.142:18443", "0.0.0.0:18443", "127.0.0.1:18443", "10.88.180.29:443"} {
-		if _, err := New("https://store.sbr-coop.org", address, "", time.Minute); err == nil || err.Error() != "publisher_private_connect_refused" {
+		if _, err := NewClient("https://store.rehearsal.invalid", address, "", time.Minute); err == nil || err.Error() != "publisher_private_connect_refused" {
 			t.Fatalf("PUBLISHER_FOREIGN_CONNECT_ACCEPTED %q: %v", address, err)
 		}
 	}
-	if _, err := New("https://store.sbr-coop.org", "10.88.180.29:18443", "", time.Minute); err == nil || err.Error() != "publisher_tls_pin_required" {
+	if _, err := NewClient("https://store.rehearsal.invalid", "10.88.180.29:18443", "", time.Minute); err == nil || err.Error() != "publisher_tls_pin_required" {
 		t.Fatalf("PUBLISHER_UNPINNED_PRIVATE_CONNECT_ACCEPTED: %v", err)
 	}
 }
 
 func TestPublisherOriginAndRedirectRefused(t *testing.T) {
-	for _, origin := range []string{"http://store.sbr-coop.org", "https://store.sbr-coop.org/publish/installer", "https://user@store.sbr-coop.org"} {
-		if _, err := New(origin, "", "", time.Minute); err == nil || err.Error() != "publisher_store_origin_invalid" {
+	for _, origin := range []string{"http://store.rehearsal.invalid", "https://store.rehearsal.invalid/publish/installer", "https://user@store.rehearsal.invalid"} {
+		if _, err := NewClient(origin, "", "", time.Minute); err == nil || err.Error() != "publisher_store_origin_invalid" {
 			t.Fatalf("PUBLISHER_FOREIGN_ORIGIN_ACCEPTED %q: %v", origin, err)
 		}
 	}
@@ -79,7 +79,7 @@ func TestPublisherOriginAndRedirectRefused(t *testing.T) {
 		http.Redirect(w, r, "/other", http.StatusFound)
 	}))
 	defer server.Close()
-	client, err := New(server.URL, "", testLeaf(t, server), time.Minute)
+	client, err := NewClient(server.URL, "", testLeaf(t, server), time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

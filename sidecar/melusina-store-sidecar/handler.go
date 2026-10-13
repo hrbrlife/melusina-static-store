@@ -429,6 +429,9 @@ func newPublicRouterWithService(cfg Config, operator *identity.Private, cr chain
 	// store operator + each component on-chain + served bytes under the
 	// single-writer lock, then composes + CAS-promotes + operator-signs it.
 	mux.HandleFunc("/publish/generation", svc.handleGeneratePromote)
+	// Prepare the first cohort's operator-signed class table from already
+	// staged, byte-verified sidecars before their chain approvals exist.
+	mux.HandleFunc("/publish/sidecar-classes", svc.handlePrepareSidecarClasses)
 	// Temporary bootstrap for hosts that still consume the pre-generation shell
 	// manifest.  It derives that compatibility document from the already-signed,
 	// chain-verified current DesiredGeneration; it never accepts artifact facts.

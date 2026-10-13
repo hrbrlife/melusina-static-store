@@ -135,3 +135,26 @@ func TestPrepareFirstSidecarClassTableFromStagedBytes(t *testing.T) {
 		t.Fatal("STAGED_CLASS_TABLE_ARCHIVE_DRIFT_ACCEPTED")
 	}
 }
+
+func TestPrepareClassTableRefusesAlreadyClassifiedSignedGeneration(t *testing.T) {
+	svc := promoteTestService(t)
+	archive := []byte("already classified sidecar bytes")
+	hash := sha256.Sum256(archive)
+	component := sidecarComp("already-classified", hex.EncodeToString(hash[:]), "v1")
+	component.SizeBytes = int64(len(archive))
+	writeReleaseArtifact(t, svc.cfg.DistDir, "sidecar", component.ArtifactName, archive)
+	request := stagedSidecarClassRequest{Schema: "melusina.sidecar-classes-prepare.v1", StoreID: svc.cfg.StoreID,
+		Rows: []stagedSidecarClassRow{{ID: component.ComponentID, Class: componentrelease.AuthoritySidecarIdentity,
+			KeyCustody: "sidecar-held-identity", ArtifactName: component.ArtifactName,
+			SHA256: component.SHA256, SizeBytes: component.SizeBytes}}}
+	now := time.Unix(1791850000, 0)
+	if _, err := svc.classesFromStagedRequest(request, strings.Repeat("d", 64), now); err != nil {
+		t.Fatalf("FIRST_CLASSIFICATION_POSITIVE_REFUSED: %v", err)
+	}
+	if _, err := svc.promoteGeneration(promoteReq(0, component), now); err != nil {
+		t.Fatalf("SIGNED_CLASSIFICATION_SETUP_REFUSED: %v", err)
+	}
+	if _, err := svc.classesFromStagedRequest(request, strings.Repeat("e", 64), now.Add(time.Minute)); err == nil || !strings.Contains(err.Error(), "sidecar-class-prepare-already-classified") {
+		t.Fatalf("ALREADY_CLASSIFIED_SIDECAR_PREPARE_ACCEPTED: %v", err)
+	}
+}

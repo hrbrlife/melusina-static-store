@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -55,6 +56,18 @@ func (s *publishService) classesFromStagedRequest(req stagedSidecarClassRequest,
 	if err != nil {
 		return sidecarClassTable{}, err
 	}
+	// A prepared table can add first-cohort classifications only. Once a
+	// signed generation classifies an ID, its served class table is authoritative.
+	classified := make(map[string]bool)
+	if current, _, err := s.loadVerifiedDesiredGeneration(); err == nil {
+		for _, component := range current.Components {
+			if component.ComponentClass == componentrelease.ClassSidecar {
+				classified[component.ComponentID] = true
+			}
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return sidecarClassTable{}, fmt.Errorf("sidecar-class-prepare-current-generation: %w", err)
+	}
 	table := sidecarClassTable{Schema: "melusina.sidecar-classes.v1", StoreID: req.StoreID,
 		OperatorPubkey: primitives.EncodeBase58(pub), SignedAtUnix: now.Unix(), Rows: make([]sidecarClassRow, 0, len(req.Rows))}
 	stamp := now.UTC().Truncate(time.Second).Format(time.RFC3339)
@@ -62,6 +75,9 @@ func (s *publishService) classesFromStagedRequest(req stagedSidecarClassRequest,
 	for _, row := range req.Rows {
 		if !stagedClassComponentID.MatchString(row.ID) {
 			return sidecarClassTable{}, fmt.Errorf("sidecar-class-prepare-id-invalid:%s", row.ID)
+		}
+		if classified[row.ID] {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-class-prepare-already-classified:%s", row.ID)
 		}
 		if row.ID <= previous || row.SizeBytes <= 0 || row.SizeBytes > 1<<31 ||
 			len(row.SHA256) != 64 || strings.ToLower(row.SHA256) != row.SHA256 ||
@@ -137,6 +153,11 @@ func (s *publishService) handlePrepareSidecarClasses(w http.ResponseWriter, r *h
 	signerKey, ok := s.resolveAcceptedPublisherKey(body.Envelope.Payload.Source)
 	if !ok {
 		http.Error(w, "check=accept_publishers: unknown publisher", http.StatusForbidden)
+		return
+	}
+	bodyEnvelope, err := json.Marshal(body.Envelope)
+	if err != nil || matchPublisherHeader(r, bodyEnvelope) != nil {
+		http.Error(w, "check=envelope_header_body_mismatch", http.StatusUnauthorized)
 		return
 	}
 	if body.Envelope.Payload.Method != http.MethodPost || body.Envelope.Payload.Target != sidecarClassPreparePath {

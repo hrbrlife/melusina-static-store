@@ -86,11 +86,17 @@ func TestPrepareSidecarClassesRouteGates(t *testing.T) {
 	foreignBody, _ := sign(stranger, sidecarClassPreparePath)
 	refused(post(header, foreignBody), http.StatusForbidden, "check=accept_publishers", "SIDECAR_CLASS_PREPARE_UNKNOWN_BODY_PUBLISHER_ACCEPTED")
 
-	// Accepted header, body envelope signed by the accepted publisher for a
-	// different route over the same request bytes.
+	// Both envelopes can be valid and accepted independently, but the header
+	// must bind the exact body envelope used for this write.
+	_, header = sign(publisher, sidecarClassPreparePath)
+	changedBody, _ := sign(publisher, sidecarClassPreparePath)
+	refused(post(header, changedBody), http.StatusUnauthorized, "check=envelope_header_body_mismatch", "SIDECAR_CLASS_PREPARE_HEADER_BODY_SPLIT_ACCEPTED")
+
+	// A body envelope for a different route cannot be paired with a valid
+	// header for this route, even when both have the accepted publisher.
 	_, header = sign(publisher, sidecarClassPreparePath)
 	otherRoute, _ := sign(publisher, "/publish/generation")
-	refused(post(header, otherRoute), http.StatusUnauthorized, "check=envelope_purpose", "SIDECAR_CLASS_PREPARE_FOREIGN_ROUTE_BODY_ACCEPTED")
+	refused(post(header, otherRoute), http.StatusUnauthorized, "check=envelope_header_body_mismatch", "SIDECAR_CLASS_PREPARE_FOREIGN_ROUTE_BODY_ACCEPTED")
 
 	// The Store's operator key is not the active on-chain Store operator.
 	admitted := svc.cr

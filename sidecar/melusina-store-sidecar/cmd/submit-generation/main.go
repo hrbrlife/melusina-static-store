@@ -67,17 +67,20 @@ type generationPromoteResult struct {
 }
 
 type options struct {
-	store         string
-	storeID       string
-	programID     string
-	requestPath   string
-	publisherKey  string
-	storePubkey   string
-	verifiedSlot  uint64
-	timeout       time.Duration
-	generationOut string
-	envelopeOut   string
-	carryForward  bool
+	store             string
+	storeID           string
+	programID         string
+	requestPath       string
+	publisherKey      string
+	storePubkey       string
+	verifiedSlot      uint64
+	timeout           time.Duration
+	generationOut     string
+	envelopeOut       string
+	carryForward      bool
+	classTablePrepare bool
+	classTableOut     string
+	connectAddress    string
 }
 
 func main() {
@@ -101,6 +104,9 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.generationOut, "generation-out", "", "write verified raw served generation JSON atomically to this path")
 	fs.StringVar(&o.envelopeOut, "envelope-out", "", "write the signed POST body for /publish/generation atomically; do not contact the store")
 	fs.BoolVar(&o.carryForward, "carry-forward", false, "the request names no component: it carries the current components forward in the one generation that chains from a floor recorded by store-generation-floor (the store refuses it otherwise)")
+	fs.BoolVar(&o.classTablePrepare, "class-table-prepare", false, "prepare the first sidecar cohort's Store-signed class table from staged sidecar bytes; does not promote a generation")
+	fs.StringVar(&o.classTableOut, "class-table-out", "", "new output path for the signed sidecar class table")
+	fs.StringVar(&o.connectAddress, "connect-address", "", "private Store backend host:port; HTTPS name and certificate remain bound to --store")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -129,6 +135,12 @@ func parseFlags(args []string) (options, error) {
 	if o.timeout <= 0 {
 		return o, errors.New("--timeout must be positive")
 	}
+	if o.classTablePrepare && (o.classTableOut == "" || o.carryForward || o.generationOut != "" || o.envelopeOut != "") {
+		return o, errors.New("class-table-prepare requires --class-table-out and excludes generation/carry-forward/envelope output")
+	}
+	if !o.classTablePrepare && (o.classTableOut != "" || o.connectAddress != "") {
+		return o, errors.New("class-table options require --class-table-prepare")
+	}
 	return o, nil
 }
 
@@ -143,6 +155,9 @@ func run(args []string, stdout io.Writer) error {
 	}
 	if len(requestBytes) == 0 || len(requestBytes) > maxRequestBytes {
 		return fmt.Errorf("request must be between 1 and %d bytes", maxRequestBytes)
+	}
+	if o.classTablePrepare {
+		return runPrepareSidecarClasses(o, requestBytes, stdout)
 	}
 	if _, err := decodeRequest(requestBytes, o.carryForward); err != nil {
 		return fmt.Errorf("request preflight: %w", err)

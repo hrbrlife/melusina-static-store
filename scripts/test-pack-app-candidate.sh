@@ -25,6 +25,7 @@ pack:
 else
 pack-local:
 	@printf 'candidate-bytes' > "$(SPK_OUT)"
+	@if [ -n "$${LATE_METADATA_ALIAS_PATH:-}" ]; then ln -s "$${LATE_METADATA_ALIAS_TARGET:?}" "$$LATE_METADATA_ALIAS_PATH"; fi
 	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); if [ "$${MUTATE_METADATA_SHA:-0}" = 1 ]; then printf '{"appId":"testappid","version":"1.2.3","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; else printf '{"appId":"testappid","version":"1.2.3","packageId":"%s"}\n' "$$pkg" > metadata.json; fi; fi
 	@if [ "$${MUTATE_METADATA_BAD:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); printf '{"appId":"testappid","version":"9.9.9","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; fi
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
@@ -241,6 +242,23 @@ set -e
 [[ $rc -ne 0 ]]
 grep -q 'candidate metadata output must be outside the source checkout' "$WORK/in-source-alias.log"
 [[ ! -e "$APP/staged-alias.json" && ! -e "$WORK/in-source-alias-receipt.json" ]]
+
+# A pack hook can create the parent symlink after the early preflight. The
+# staged output must still be kept out of the checkout at write time.
+set +e
+LATE_METADATA_ALIAS_PATH="$WORK/late-alias-to-source" LATE_METADATA_ALIAS_TARGET="$APP" \
+  PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+    --metadata-out "$WORK/late-alias-to-source/staged-late.json" \
+    --receipt-out "$WORK/late-alias-receipt.json" >"$WORK/late-alias.log" 2>&1
+rc=$?
+set -e
+if [[ $rc -eq 0 ]]; then
+  echo 'LATE_METADATA_ALIAS_ACCEPTED: stage moved into source after preflight' >&2
+  exit 1
+fi
+[[ ! -e "$APP/staged-late.json" && ! -e "$WORK/late-alias-receipt.json" ]]
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
 # Some real app hooks synchronise both packageId and the full artifact digest.
 # That exact SPK-derived pair is admissible; a changed product field remains a

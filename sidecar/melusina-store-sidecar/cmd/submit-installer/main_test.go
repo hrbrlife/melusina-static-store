@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -50,7 +51,7 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 	digest := sha256.Sum256(artifact)
 	hashHex := hex.EncodeToString(digest[:])
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/publish/installer":
 			if err := r.ParseMultipartForm(1 << 20); err != nil {
@@ -126,6 +127,7 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 	var output strings.Builder
 	err := run([]string{
 		"--store", server.URL,
+		"--store-tls-leaf", testStoreLeaf(t, server),
 		"--class", "deployer",
 		"--name", "deployer-test.tar.xz",
 		"--artifact", artifactPath,
@@ -143,6 +145,16 @@ func TestRunPublishesAndVerifiesServedArtifact(t *testing.T) {
 	if !strings.Contains(output.String(), "PUBLISH INSTALLER OK") || !strings.Contains(output.String(), hashHex) {
 		t.Fatalf("unexpected output: %q", output.String())
 	}
+	t.Run("PRIVATE_PUBLISH_PIN_REQUIRED", func(t *testing.T) {
+		err := run([]string{"--store", server.URL, "--connect-address", "10.88.180.29:18443",
+			"--class", "deployer", "--name", "deployer-test.tar.xz", "--artifact", artifactPath,
+			"--publisher-key", publisherPath, "--store-pubkey", operatorPath, "--store-id", "test-store",
+			"--store-domain", "publisher.example", "--license-mint", operator.Public().Ref.LicenseMint,
+			"--verified-slot", "123", "--program-id", testProgramID}, &strings.Builder{})
+		if err == nil || err.Error() != "publisher_tls_pin_required" {
+			t.Fatalf("private publish accepted without leaf: %v", err)
+		}
+	})
 }
 
 func TestRunStagesSidecarUntilGenerationPromotion(t *testing.T) {
@@ -152,7 +164,7 @@ func TestRunStagesSidecarUntilGenerationPromotion(t *testing.T) {
 	digest := sha256.Sum256(artifact)
 	hashHex := hex.EncodeToString(digest[:])
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/publish/installer":
 			if err := r.ParseMultipartForm(1 << 20); err != nil {
@@ -193,6 +205,7 @@ func TestRunStagesSidecarUntilGenerationPromotion(t *testing.T) {
 	var output strings.Builder
 	err := run([]string{
 		"--store", server.URL,
+		"--store-tls-leaf", testStoreLeaf(t, server),
 		"--class", sidecarClass,
 		"--name", "mermail-sidecar.bin",
 		"--artifact", artifactPath,
@@ -215,6 +228,16 @@ func TestRunStagesSidecarUntilGenerationPromotion(t *testing.T) {
 }
 
 func ptrPublic(value identity.Public) *identity.Public { return &value }
+
+func testStoreLeaf(t *testing.T, server *httptest.Server) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "store-leaf.pem")
+	raw := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+	if err := os.WriteFile(path, raw, 0644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
 
 // testChainID is a chain id no estate uses: the command has no default chain,
 // so the envelope's chain can only be the publisher key's own.

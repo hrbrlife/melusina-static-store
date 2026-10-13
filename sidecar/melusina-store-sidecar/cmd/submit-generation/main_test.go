@@ -196,6 +196,14 @@ func TestEnvelopeOutIsExactRouteBoundWireBodyAndDoesNotContactStore(t *testing.T
 	if !strings.Contains(stdout.String(), "SIGNED_GENERATION_ENVELOPE_OK") {
 		t.Fatalf("unexpected offline result: %s", stdout.String())
 	}
+	t.Run("PROMOTE_PRIVATE_PIN_REQUIRED", func(t *testing.T) {
+		err := run([]string{"--store", "https://127.0.0.1:1", "--connect-address", "10.88.180.29:18443",
+			"--store-id", "rrs-store", "--request", requestPath, "--publisher-key", publisherPath,
+			"--store-pubkey", storePath, "--timeout", "1ms", "--program-id", testProgramID}, &bytes.Buffer{})
+		if err == nil || err.Error() != "publisher_tls_pin_required" {
+			t.Fatalf("promotion accepted unpinned private route: %v", err)
+		}
+	})
 }
 
 func TestFetchAndVerifyGenerationPinsSignerAndStoreID(t *testing.T) {

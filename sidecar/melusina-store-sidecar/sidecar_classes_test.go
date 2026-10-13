@@ -68,3 +68,36 @@ func TestSidecarClassesCurrentSignedGeneration(t *testing.T) {
 		t.Fatalf("mutated archive served a class table: %d %s", r.Code, r.Body.String())
 	}
 }
+
+func TestSidecarClassesProjectionExcludesNonSidecarComponents(t *testing.T) {
+	svc := promoteTestService(t)
+	c := sidecarComp("fineract", strings.Repeat("a", 64), "v2")
+	c.Chain.KeyVersion = 2
+	c.Chain.SidecarID = "fineract-v2"
+	doc := componentrelease.DesiredGeneration{
+		StoreID: svc.cfg.StoreID, OperatorPubkey: "synthetic-projection-key",
+		SignedAtUnix: time.Unix(1784281821, 0).Unix(), GenerationHash: strings.Repeat("b", 64),
+		Components: []componentrelease.ComponentRelease{c},
+	}
+	foreignClass := c
+	foreignClass.ComponentID = "non-sidecar-component"
+	foreignClass.ComponentClass = componentrelease.ClassShell
+	doc.Components = append(doc.Components, foreignClass)
+	table, err := svc.classesFromGeneration(doc)
+	if err != nil || len(table.Rows) != 1 || table.Rows[0].ID != "fineract" {
+		t.Fatalf("SIDECAR_CLASS_NON_SIDECAR_COMPONENT_ADMITTED: rows=%+v error=%v", table.Rows, err)
+	}
+	badAuthority := c
+	badAuthority.Chain.Kind = componentrelease.AuthorityInstallerRelease
+	doc.Components = []componentrelease.ComponentRelease{badAuthority}
+	if _, err := svc.classesFromGeneration(doc); err == nil {
+		t.Fatal("SIDECAR_CLASS_WRONG_AUTHORITY_ADMITTED")
+	}
+	invalidSignedRow := table
+	invalidSignedRow.Rows = append([]sidecarClassRow(nil), table.Rows...)
+	invalidSignedRow.Rows[0].Class = "unreviewed-authority"
+	invalidSignedRow.Rows[0].KeyCustody = "none"
+	if _, err := classSigningMessage(invalidSignedRow); err == nil {
+		t.Fatal("SIDECAR_CLASS_UNREVIEWED_SIGNED_ROW_ADMITTED")
+	}
+}

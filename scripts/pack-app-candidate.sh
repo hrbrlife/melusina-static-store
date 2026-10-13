@@ -357,18 +357,40 @@ spk_sha="$(sha256sum "$SPK_OUT" | awk '{print $1}')"
 # SPK for every profile. The checked-out source remains clean and authoritative
 # for all other metadata fields.
 if [[ -n "$METADATA_OUT" ]]; then
-  mkdir -p "$(dirname "$METADATA_OUT")"
-  python3 - "$METADATA" "$METADATA_OUT" "$package_id" "$spk_sha" <<'PY'
+  python3 - "$METADATA" "$METADATA_OUT" "$package_id" "$spk_sha" "$source_root" <<'PY'
 import json, os, sys
-source, output, package_id, digest = sys.argv[1:]
+source, output, package_id, digest, source_root = sys.argv[1:]
 with open(source, encoding='utf-8') as stream:
     metadata = json.load(stream)
 metadata['packageId'] = package_id
 metadata['sha256'] = digest
-fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-with os.fdopen(fd, 'w', encoding='utf-8') as stream:
-    json.dump(metadata, stream, indent=2, ensure_ascii=False)
-    stream.write('\n')
+destination = os.path.abspath(output)
+parts = [part for part in os.path.dirname(destination).split(os.sep) if part]
+directory = os.open(os.sep, os.O_RDONLY | os.O_DIRECTORY)
+try:
+    # Open every parent as a directory without following a symlink. A package
+    # hook may have changed the path since the earlier source-tree check.
+    try:
+        for part in parts:
+            next_directory = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                     dir_fd=directory)
+            os.close(directory)
+            directory = next_directory
+    except OSError as exc:
+        raise SystemExit('candidate metadata output parent unsafe') from exc
+    actual_parent = os.path.realpath(f'/proc/self/fd/{directory}')
+    if os.path.commonpath((actual_parent, source_root)) == source_root:
+        raise ValueError('candidate metadata output must be outside the source checkout')
+    fd = os.open(os.path.basename(destination),
+                 os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                 0o600, dir_fd=directory)
+    with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+        json.dump(metadata, stream, indent=2, ensure_ascii=False)
+        stream.write('\n')
+        stream.flush()
+        os.fsync(stream.fileno())
+finally:
+    os.close(directory)
 PY
 fi
 

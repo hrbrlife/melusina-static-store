@@ -257,6 +257,7 @@ if [[ $rc -eq 0 ]]; then
   echo 'LATE_METADATA_ALIAS_ACCEPTED: stage moved into source after preflight' >&2
   exit 1
 fi
+grep -q 'candidate metadata output parent unsafe' "$WORK/late-alias.log"
 [[ ! -e "$APP/staged-late.json" && ! -e "$WORK/late-alias-receipt.json" ]]
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 

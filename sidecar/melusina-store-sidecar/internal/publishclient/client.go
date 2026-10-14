@@ -1,6 +1,6 @@
 package publishclient
 
-// New returns the publisher's TLS client for a temporary private Store
+// NewClient returns the publisher's TLS client for a temporary private Store
 // ingress. The HTTPS URL retains the signed Store audience and SNI; only the
 // TCP destination changes. The exact observed Store leaf is the trust anchor.
 
@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-func New(storeURL, connectAddress, leafPath string, timeout time.Duration) (*http.Client, error) {
+func NewClient(storeURL, connectAddress, leafPath string, timeout time.Duration) (*http.Client, error) {
 	origin, err := url.Parse(storeURL)
 	if err != nil || origin.Scheme != "https" || origin.Hostname() == "" || origin.User != nil ||
 		origin.Path != "" && origin.Path != "/" || origin.RawQuery != "" || origin.Fragment != "" {
@@ -76,4 +76,9 @@ func New(storeURL, connectAddress, leafPath string, timeout time.Duration) (*htt
 	}
 	return &http.Client{Transport: transport, Timeout: timeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("publisher_redirect_refused") }}, nil
+}
+
+// New keeps the package constructor available to existing Store callers.
+func New(storeURL, connectAddress, leafPath string, timeout time.Duration) (*http.Client, error) {
+	return NewClient(storeURL, connectAddress, leafPath, timeout)
 }

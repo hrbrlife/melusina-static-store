@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -25,12 +26,142 @@ const sidecarClassPreparePath = "/publish/sidecar-classes"
 var stagedClassComponentID = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$`)
 
 type stagedSidecarClassRow struct {
-	ID           string `json:"id"`
-	Class        string `json:"class"`
-	KeyCustody   string `json:"keyCustody"`
-	ArtifactName string `json:"artifactName"`
-	SHA256       string `json:"sha256"`
-	SizeBytes    int64  `json:"sizeBytes"`
+	ID           string                           `json:"id"`
+	Class        string                           `json:"class"`
+	KeyCustody   string                           `json:"keyCustody"`
+	ArtifactName string                           `json:"artifactName"`
+	SHA256       string                           `json:"sha256"`
+	SizeBytes    int64                            `json:"sizeBytes"`
+	Chain        *componentrelease.ChainAuthority `json:"chain,omitempty"`
+}
+
+const parentSidecarPrepareSchema = "melusina.sidecar-classes-parent-prepare.v1"
+
+func (s *publishService) classesFromParentStagedRequest(ctx context.Context, req stagedSidecarClassRequest, requestHash string, now time.Time) (sidecarClassTable, error) {
+	if req.Schema != parentSidecarPrepareSchema || s.cr == nil {
+		return sidecarClassTable{}, errors.New("sidecar-parent-prepare-invalid")
+	}
+	base := req
+	base.Schema = "melusina.sidecar-classes-prepare.v1"
+	table, err := s.classesFromStagedRequest(base, requestHash, now)
+	if err != nil {
+		return sidecarClassTable{}, err
+	}
+	_, ok := s.cr.(rawAccountReader)
+	if !ok {
+		return sidecarClassTable{}, errors.New("sidecar-parent-prepare-chain-reader-required")
+	}
+	mr, ok := s.cr.(multiAccountReader)
+	if !ok {
+		return sidecarClassTable{}, errors.New("sidecar-parent-prepare-batch-reader-required")
+	}
+	type parentCheck struct {
+		id   string
+		view componentReleaseChainView
+		hash [32]byte
+	}
+	checks := make([]parentCheck, 0, len(req.Rows))
+	addresses := make([]string, 0, 2*len(req.Rows)+1)
+	seen := make(map[string]bool, 2*len(req.Rows)+1)
+	appendAddress := func(address string) {
+		if !seen[address] {
+			seen[address] = true
+			addresses = append(addresses, address)
+		}
+	}
+	for _, row := range req.Rows {
+		chain := row.Chain
+		wantSidecarID := row.ID
+		if row.ID == "fineract" {
+			wantSidecarID = "fineract-v2"
+		}
+		if chain == nil || chain.Kind != row.Class || chain.Program != licenseRegistryProgramID().Base58() || chain.SidecarID != wantSidecarID || chain.IdentityPDA != "" && chain.Kind == componentrelease.AuthoritySidecarCascade {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-chain-invalid:%s", row.ID)
+		}
+		license, err := primitives.PubkeyFromBase58(chain.LicenseNftMint)
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-license-invalid:%s", row.ID)
+		}
+		master, err := primitives.PubkeyFromBase58(chain.MasterNftMint)
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-master-invalid:%s", row.ID)
+		}
+		if chain.MasterNftMint != s.cfg.ReleaseMasterNftMint {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-store-master-mismatch:%s", row.ID)
+		}
+		reseller, err := primitives.PubkeyFromBase58(s.cfg.ResellerNFTMint)
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-store-reseller-invalid:%s", row.ID)
+		}
+		global, _, err := primitives.DeriveGlobalSidecar(master, chain.SidecarID, licenseRegistryProgramID())
+		if err != nil || chain.GlobalApprovalPDA != global.Base58() {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-global-pda-invalid:%s", row.ID)
+		}
+		local, _, err := primitives.DeriveLocalSidecar(license, chain.SidecarID, licenseRegistryProgramID())
+		if err != nil || chain.LocalApprovalPDA != local.Base58() {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-local-pda-invalid:%s", row.ID)
+		}
+		if chain.Kind == componentrelease.AuthoritySidecarIdentity {
+			identity, _, err := primitives.DeriveSidecarIdentity(license, chain.SidecarID, chain.KeyVersion, licenseRegistryProgramID())
+			if err != nil || chain.KeyVersion == 0 || chain.IdentityPDA != identity.Base58() {
+				return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-identity-pda-invalid:%s", row.ID)
+			}
+		} else if chain.KeyVersion != 0 || chain.IdentityPDA != "" {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-keyless-identity-invalid:%s", row.ID)
+		}
+		hash, err := hash32FromHex(row.SHA256)
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-hash-invalid:%s", row.ID)
+		}
+		view := componentReleaseChainView{sidecarID: chain.SidecarID, licenseMint: license, masterMint: master, resellerMint: reseller, pinMaster: true, keyless: chain.Kind == componentrelease.AuthoritySidecarCascade}
+		resellerApproval, _, err := primitives.DeriveResellerSidecar(reseller, chain.SidecarID, licenseRegistryProgramID())
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-reseller-pda-invalid:%s: %w", row.ID, err)
+		}
+		resellerEntry, _, err := primitives.FindProgramAddress([][]byte{[]byte("reseller"), reseller[:]}, licenseRegistryProgramID(), nil)
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-reseller-entry-pda-invalid:%s: %w", row.ID, err)
+		}
+		appendAddress(global.Base58())
+		appendAddress(resellerApproval.Base58())
+		appendAddress(resellerEntry.Base58())
+		checks = append(checks, parentCheck{id: row.ID, view: view, hash: hash})
+	}
+	values, err := mr.fetchMultipleAccounts(ctx, addresses)
+	if err != nil {
+		return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-parent-read: %w", err)
+	}
+	if len(values) != len(addresses) {
+		return sidecarClassTable{}, errors.New("sidecar-parent-prepare-parent-read-length-invalid")
+	}
+	snapshot := parentAccountSnapshot{accounts: make(map[string]accountValue, len(addresses))}
+	for i, address := range addresses {
+		snapshot.accounts[address] = values[i]
+	}
+	// Run the existing cascade decoder and authorization checks on the bounded
+	// chain snapshot. The raw reader assertion above keeps the same capability
+	// requirement as the original parent preparation path.
+	for _, check := range checks {
+		if err := checkSidecarParents(ctx, snapshot, check.view, check.hash); err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-parent-refused:%s: %w", check.id, err)
+		}
+	}
+	return table, nil
+}
+
+// parentAccountSnapshot refuses an unplanned address; an absent planned
+// account remains absent so the ordinary cascade check fails closed.
+type parentAccountSnapshot struct{ accounts map[string]accountValue }
+
+func (s parentAccountSnapshot) fetchRawAccount(_ context.Context, address string) ([]byte, string, error) {
+	value, planned := s.accounts[address]
+	if !planned {
+		return nil, "", fmt.Errorf("sidecar-parent-prepare-unplanned-account:%s", address)
+	}
+	if !value.present {
+		return nil, "", nil
+	}
+	return value.data, value.owner, nil
 }
 
 type stagedSidecarClassRequest struct {
@@ -190,7 +321,12 @@ func (s *publishService) handlePrepareSidecarClasses(w http.ResponseWriter, r *h
 		http.Error(w, "check=store_operator: "+err.Error(), http.StatusForbidden)
 		return
 	}
-	table, err := s.classesFromStagedRequest(req, hashHex, s.currentTime())
+	var table sidecarClassTable
+	if req.Schema == parentSidecarPrepareSchema {
+		table, err = s.classesFromParentStagedRequest(r.Context(), req, hashHex, s.currentTime())
+	} else {
+		table, err = s.classesFromStagedRequest(req, hashHex, s.currentTime())
+	}
 	if err != nil {
 		http.Error(w, "check=sidecar_classes: "+err.Error(), http.StatusBadRequest)
 		return

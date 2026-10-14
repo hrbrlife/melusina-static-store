@@ -408,6 +408,17 @@ func (s *publishService) verifyFiveFactCascade(ctx context.Context, c componentR
 // The order and the refusal names are those of the sidecar boot gate
 // (binhash checkApprovals).
 func checkSidecarCascade(ctx context.Context, rr rawAccountReader, c componentReleaseChainView, artifact [32]byte) error {
+	return checkSidecarCascadeAtStage(ctx, rr, c, artifact, true)
+}
+
+// A publisher can prove staged bytes have active Global/Reseller parents
+// before the tenant's founded adoption permits a Local write. This read-only
+// check cannot authorize promotion or serving: those call the full cascade.
+func checkSidecarParents(ctx context.Context, rr rawAccountReader, c componentReleaseChainView, artifact [32]byte) error {
+	return checkSidecarCascadeAtStage(ctx, rr, c, artifact, false)
+}
+
+func checkSidecarCascadeAtStage(ctx context.Context, rr rawAccountReader, c componentReleaseChainView, artifact [32]byte, requireLocal bool) error {
 	sidecarID := c.sidecarID
 	licenseMint := c.licenseMint
 	pinMaster := c.keyless || c.pinMaster
@@ -415,38 +426,50 @@ func checkSidecarCascade(ctx context.Context, rr rawAccountReader, c componentRe
 		return errors.New("cascade master mint pin is the zero key; the master mint comes from the signed component or the enrolled estate profile, never a default")
 	}
 
-	// 1. LicenseEntry Active — and extract reseller + master mints from it.
-	licPDA, _, err := primitives.DeriveLicense(licenseMint, licenseRegistryProgramID())
-	if err != nil {
-		return fmt.Errorf("derive LicenseEntry PDA: %w", err)
-	}
-	licData, licOwner, err := rr.fetchRawAccount(ctx, licPDA.Base58())
-	if err != nil {
-		return fmt.Errorf("fetch LicenseEntry: %w", err)
-	}
-	if licData == nil {
-		return errors.New("LicenseEntry absent")
-	}
-	if err := requireDiscAndOwner("LicenseEntry", licData, licOwner); err != nil {
-		return err
-	}
-	licence, err := decodeLicenseEntryHead(licData)
-	if err != nil {
-		return cascadeRefusal(errCascadeAccountMalformed, "LicenseEntry", "%v", err)
-	}
-	named, reseller, master, licStatus := licence.LicenseNFTMint, licence.ResellerNFTMint, licence.MasterNFTMint, licence.Status
-	if licStatus != 0 {
-		return cascadeNotActive("LicenseEntry", licenseStatusName(licStatus), sidecarID, licPDA.Base58())
-	}
-	if err := cascadeBind("LicenseEntry", "license_nft_mint", named, licenseMint, "the license NFT", sidecarID, licPDA.Base58()); err != nil {
-		return err
-	}
-	if pinMaster && master != c.masterMint {
-		if c.keyless {
-			return fmt.Errorf("%w:LicenseEntry.master_nft_mint: %w: LicenseEntry names %s, the component %s", errCascadeBindingMismatch, errKeylessSidecarMasterMismatch, master.Base58(), c.masterMint.Base58())
+	var reseller, master primitives.Pubkey
+	// A parent-only publisher read uses the enrolled Store's master/reseller
+	// anchors. The tenant LicenseEntry is founded later; the full gate still
+	// reads it before any promotion or serving.
+	if !requireLocal {
+		if c.masterMint == (primitives.Pubkey{}) || c.resellerMint == (primitives.Pubkey{}) {
+			return errors.New("sidecar parent anchors unavailable")
 		}
-		if err := cascadeBind("LicenseEntry", "master_nft_mint", master, c.masterMint, "the estate's master mint", sidecarID, licPDA.Base58()); err != nil {
+		master, reseller = c.masterMint, c.resellerMint
+	} else {
+		// 1. LicenseEntry Active — and extract reseller + master mints from it.
+		licPDA, _, err := primitives.DeriveLicense(licenseMint, licenseRegistryProgramID())
+		if err != nil {
+			return fmt.Errorf("derive LicenseEntry PDA: %w", err)
+		}
+		licData, licOwner, err := rr.fetchRawAccount(ctx, licPDA.Base58())
+		if err != nil {
+			return fmt.Errorf("fetch LicenseEntry: %w", err)
+		}
+		if licData == nil {
+			return errors.New("LicenseEntry absent")
+		}
+		if err := requireDiscAndOwner("LicenseEntry", licData, licOwner); err != nil {
 			return err
+		}
+		licence, err := decodeLicenseEntryHead(licData)
+		if err != nil {
+			return cascadeRefusal(errCascadeAccountMalformed, "LicenseEntry", "%v", err)
+		}
+		named, observedReseller, observedMaster, licStatus := licence.LicenseNFTMint, licence.ResellerNFTMint, licence.MasterNFTMint, licence.Status
+		reseller, master = observedReseller, observedMaster
+		if licStatus != 0 {
+			return cascadeNotActive("LicenseEntry", licenseStatusName(licStatus), sidecarID, licPDA.Base58())
+		}
+		if err := cascadeBind("LicenseEntry", "license_nft_mint", named, licenseMint, "the license NFT", sidecarID, licPDA.Base58()); err != nil {
+			return err
+		}
+		if pinMaster && master != c.masterMint {
+			if c.keyless {
+				return fmt.Errorf("%w:LicenseEntry.master_nft_mint: %w: LicenseEntry names %s, the component %s", errCascadeBindingMismatch, errKeylessSidecarMasterMismatch, master.Base58(), c.masterMint.Base58())
+			}
+			if err := cascadeBind("LicenseEntry", "master_nft_mint", master, c.masterMint, "the estate's master mint", sidecarID, licPDA.Base58()); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -507,56 +530,60 @@ func checkSidecarCascade(ctx context.Context, rr rawAccountReader, c componentRe
 		return fmt.Errorf("GlobalSidecarApproval binary_hash %x != served artifact %x", globalHash[:], artifact[:])
 	}
 
-	// 3. LocalSidecarApproval Active (+ optional hash == artifact).
-	localPDA, _, err := primitives.DeriveLocalSidecar(licenseMint, sidecarID, licenseRegistryProgramID())
-	if err != nil {
-		return fmt.Errorf("derive LocalSidecarApproval PDA: %w", err)
-	}
-	lData, lOwner, err := rr.fetchRawAccount(ctx, localPDA.Base58())
-	if err != nil {
-		return fmt.Errorf("fetch LocalSidecarApproval: %w", err)
-	}
-	if lData == nil {
-		return errors.New("LocalSidecarApproval absent")
-	}
-	if err := requireDiscAndOwner("LocalSidecarApproval", lData, lOwner); err != nil {
-		return err
-	}
-	lcl := &borshCursor{b: lData, off: 8}
-	localSidecarID := lcl.readString() // sidecar_id
-	var localLicense primitives.Pubkey
-	if lcl.need(32) {
-		copy(localLicense[:], lcl.b[lcl.off:lcl.off+32])
-		lcl.off += 32
-	}
-	hasHash, localHash := lcl.readOptionHash()
-	localScope := lcl.u8() // scope
-	lcl.skipPubkey()       // approved_by
-	lStatus := lcl.u8()
-	if lcl.err != nil {
-		return cascadeRefusal(errCascadeAccountMalformed, "LocalSidecarApproval", "parse LocalSidecarApproval: %v", lcl.err)
-	}
-	localStatus, err := decodeApprovalStatus("LocalSidecarApproval", lStatus)
-	if err != nil {
-		return err
-	}
-	if err := cascadeBindSidecar("LocalSidecarApproval", localSidecarID, sidecarID, localPDA.Base58()); err != nil {
-		return err
-	}
-	if err := cascadeBind("LocalSidecarApproval", "license_nft_mint", localLicense, licenseMint, "the license NFT", sidecarID, localPDA.Base58()); err != nil {
-		return err
-	}
-	if err := requireGlobalSANTierMatchesLocalScope(globalSANTier, localScope); err != nil {
-		return cascadeRefusal(errCascadeScopeMismatch, "LocalSidecarApproval.scope", "%v, sidecar_id=%s, pda=%s", err, sidecarID, localPDA.Base58())
-	}
-	if localStatus != verify.ApprovalStatusActive {
-		return cascadeNotActive("LocalSidecarApproval", localStatus.String(), sidecarID, localPDA.Base58())
-	}
-	if c.keyless && !hasHash {
-		return fmt.Errorf("%w (served artifact %x)", errKeylessSidecarLocalPinAbsent, artifact[:])
-	}
-	if hasHash && localHash != artifact {
-		return fmt.Errorf("LocalSidecarApproval optional hash %x != served artifact %x", localHash[:], artifact[:])
+	// 3. LocalSidecarApproval Active (+ optional hash == artifact). A parent
+	// preparation has no Local account yet; only the full serve/promote path
+	// enters this block.
+	if requireLocal {
+		localPDA, _, err := primitives.DeriveLocalSidecar(licenseMint, sidecarID, licenseRegistryProgramID())
+		if err != nil {
+			return fmt.Errorf("derive LocalSidecarApproval PDA: %w", err)
+		}
+		lData, lOwner, err := rr.fetchRawAccount(ctx, localPDA.Base58())
+		if err != nil {
+			return fmt.Errorf("fetch LocalSidecarApproval: %w", err)
+		}
+		if lData == nil {
+			return errors.New("LocalSidecarApproval absent")
+		}
+		if err := requireDiscAndOwner("LocalSidecarApproval", lData, lOwner); err != nil {
+			return err
+		}
+		lcl := &borshCursor{b: lData, off: 8}
+		localSidecarID := lcl.readString() // sidecar_id
+		var localLicense primitives.Pubkey
+		if lcl.need(32) {
+			copy(localLicense[:], lcl.b[lcl.off:lcl.off+32])
+			lcl.off += 32
+		}
+		hasHash, localHash := lcl.readOptionHash()
+		localScope := lcl.u8() // scope
+		lcl.skipPubkey()       // approved_by
+		lStatus := lcl.u8()
+		if lcl.err != nil {
+			return cascadeRefusal(errCascadeAccountMalformed, "LocalSidecarApproval", "parse LocalSidecarApproval: %v", lcl.err)
+		}
+		localStatus, err := decodeApprovalStatus("LocalSidecarApproval", lStatus)
+		if err != nil {
+			return err
+		}
+		if err := cascadeBindSidecar("LocalSidecarApproval", localSidecarID, sidecarID, localPDA.Base58()); err != nil {
+			return err
+		}
+		if err := cascadeBind("LocalSidecarApproval", "license_nft_mint", localLicense, licenseMint, "the license NFT", sidecarID, localPDA.Base58()); err != nil {
+			return err
+		}
+		if err := requireGlobalSANTierMatchesLocalScope(globalSANTier, localScope); err != nil {
+			return cascadeRefusal(errCascadeScopeMismatch, "LocalSidecarApproval.scope", "%v, sidecar_id=%s, pda=%s", err, sidecarID, localPDA.Base58())
+		}
+		if localStatus != verify.ApprovalStatusActive {
+			return cascadeNotActive("LocalSidecarApproval", localStatus.String(), sidecarID, localPDA.Base58())
+		}
+		if c.keyless && !hasHash {
+			return fmt.Errorf("%w (served artifact %x)", errKeylessSidecarLocalPinAbsent, artifact[:])
+		}
+		if hasHash && localHash != artifact {
+			return fmt.Errorf("LocalSidecarApproval optional hash %x != served artifact %x", localHash[:], artifact[:])
+		}
 	}
 
 	// 4. ResellerSidecarApproval Active.
@@ -691,8 +718,9 @@ func decodeLicenseEntryHead(data []byte) (licenseEntryHead, error) {
 
 // componentReleaseChainView is the minimal view of a sidecar the cascade needs.
 type componentReleaseChainView struct {
-	sidecarID   string
-	licenseMint primitives.Pubkey
+	sidecarID    string
+	licenseMint  primitives.Pubkey
+	resellerMint primitives.Pubkey
 	// keyless is set for a sidecar_cascade component. It changes two things,
 	// both stricter: the LocalSidecarApproval must pin the artifact (Some ==
 	// artifact; None is refused with errKeylessSidecarLocalPinAbsent), and the

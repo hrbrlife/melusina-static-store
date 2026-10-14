@@ -72,8 +72,10 @@ type mockChainReader struct {
 	// rawAccounts backs fetchRawAccount (the cascade raw-read capability) and
 	// FetchBlacklistStatusAccount: base58 address -> account data. Owner is programID
 	// unless rawAccountOwners names another for that address.
-	rawAccounts      map[string][]byte
-	rawAccountOwners map[string]string
+	rawAccounts       map[string][]byte
+	rawAccountOwners  map[string]string
+	batchAccountReads int
+	batchAccountSize  int
 
 	// hostApplyTransactions and hostApplyContextSlot back the deliberately
 	// narrow finalized Squads proof reader. They are separate from rawAccounts so

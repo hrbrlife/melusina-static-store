@@ -7,11 +7,44 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestPendingCustodyRefusesEveryWriteUntilSignedRoster(t *testing.T) {
+	raw := []byte(`{"schema":"melusina.evidence-pack-roster-pending.v1","installId":"install-a","tenantId":"tenant-a","estateId":"` + strings.Repeat("a", 64) + `","estateProfileSha256":"` + strings.Repeat("b", 64) + `"}`)
+	path := filepath.Join(t.TempDir(), "pins.json")
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(raw)
+	if err := loadPendingRoster(path, hex.EncodeToString(sum[:])); err != nil {
+		t.Fatalf("pending signed file positive: %v", err)
+	}
+	for _, route := range []string{"/v1/packs", "/v1/dossier", "/v1/packs/read"} {
+		response := httptest.NewRecorder()
+		pendingCustodyHandler(response, httptest.NewRequest(http.MethodPost, route, nil))
+		if response.Code != http.StatusLocked || !strings.Contains(response.Body.String(), "evidence-pack-custody-roster-pending") {
+			t.Fatalf("EVIDENCE_PACK_WRITE_BEFORE_ROSTER_REFUSED: %s %d %s", route, response.Code, response.Body.String())
+		}
+	}
+	for name, changed := range map[string][]byte{
+		"wrong-estate":         []byte(strings.Replace(string(raw), strings.Repeat("a", 64), strings.Repeat("c", 64), 1)),
+		"wrong-tenant":         []byte(strings.Replace(string(raw), "tenant-a", "tenant-b", 1)),
+		"unsigned-full-roster": []byte(`{"keys":{}}`),
+	} {
+		if err := os.WriteFile(path, changed, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := loadPendingRoster(path, hex.EncodeToString(sum[:])); err == nil {
+			t.Fatalf("EVIDENCE_PACK_PENDING_%s_REFUSED: changed signed marker admitted", name)
+		}
+	}
+}
 
 func TestLoadPinsRequiresExactInstallerDigest(t *testing.T) {
 	public, _, err := ed25519.GenerateKey(rand.Reader)

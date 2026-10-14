@@ -12,14 +12,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/netip"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hrbrlife/melusina-attest/envelope"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/publishclient"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -27,12 +26,13 @@ const classPreparePath = "/publish/sidecar-classes"
 const classDomain = "melusina-sidecar-classes-v1\x00"
 
 type classPrepareRow struct {
-	ID           string `json:"id"`
-	Class        string `json:"class"`
-	KeyCustody   string `json:"keyCustody"`
-	ArtifactName string `json:"artifactName"`
-	SHA256       string `json:"sha256"`
-	SizeBytes    int64  `json:"sizeBytes"`
+	ID           string                           `json:"id"`
+	Class        string                           `json:"class"`
+	KeyCustody   string                           `json:"keyCustody"`
+	ArtifactName string                           `json:"artifactName"`
+	SHA256       string                           `json:"sha256"`
+	SizeBytes    int64                            `json:"sizeBytes"`
+	Chain        *componentrelease.ChainAuthority `json:"chain,omitempty"`
 }
 type classPrepareRequest struct {
 	Schema  string            `json:"schema"`
@@ -112,26 +112,8 @@ func verifyPreparedClassTable(raw []byte, request classPrepareRequest, hashHex s
 	return table, nil
 }
 
-func privateClassTransport(connectAddress string, timeout time.Duration) (*http.Client, error) {
-	transport := &http.Transport{}
-	if connectAddress != "" {
-		host, port, err := net.SplitHostPort(connectAddress)
-		if err != nil {
-			return nil, errors.New("connect-address must be a private IP:port")
-		}
-		ip, err := netip.ParseAddr(host)
-		if err != nil || !ip.IsPrivate() {
-			return nil, errors.New("connect-address must be a private IP:port")
-		}
-		n, err := strconv.Atoi(port)
-		if err != nil || n < 1 || n > 65535 {
-			return nil, errors.New("connect-address port invalid")
-		}
-		transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, network, connectAddress)
-		}
-	}
-	return &http.Client{Transport: transport, Timeout: timeout}, nil
+func privateClassTransport(storeURL, connectAddress, leafPath string, timeout time.Duration) (*http.Client, error) {
+	return publishclient.NewClient(storeURL, connectAddress, leafPath, timeout)
 }
 
 func runPrepareSidecarClasses(o options, requestBytes []byte, stdout io.Writer) error {
@@ -142,7 +124,7 @@ func runPrepareSidecarClasses(o options, requestBytes []byte, stdout io.Writer) 
 	dec := json.NewDecoder(bytes.NewReader(requestBytes))
 	dec.DisallowUnknownFields()
 	if dec.Decode(&request) != nil || dec.Decode(new(json.RawMessage)) != io.EOF ||
-		request.Schema != "melusina.sidecar-classes-prepare.v1" || request.StoreID != o.storeID ||
+		(request.Schema != "melusina.sidecar-classes-prepare.v1" && request.Schema != "melusina.sidecar-classes-parent-prepare.v1") || request.StoreID != o.storeID ||
 		len(request.Rows) < 1 || len(request.Rows) > 32 {
 		return errors.New("class-table request preflight refused")
 	}
@@ -184,7 +166,7 @@ func runPrepareSidecarClasses(o options, requestBytes []byte, stdout io.Writer) 
 	if err != nil {
 		return err
 	}
-	client, err := privateClassTransport(o.connectAddress, o.timeout)
+	client, err := privateClassTransport(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
 	if err != nil {
 		return err
 	}

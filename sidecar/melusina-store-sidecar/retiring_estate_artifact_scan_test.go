@@ -22,7 +22,7 @@ import (
 const storeGenerationReleaseScript = "../../scripts/build-store-generation-release.sh"
 
 var (
-	releaseScriptGoBuild = regexp.MustCompile(`go build -mod=vendor -trimpath "\$\{BUILD_TAGS\[@\]\}" -ldflags "([^"]*)" \\\n\s+-o "\$stage/bin/([A-Za-z0-9._-]+)" (\S+)\n`)
+	releaseScriptGoBuild = regexp.MustCompile(`go build -mod=vendor -trimpath -buildvcs=false "\$\{BUILD_TAGS\[@\]\}" -ldflags "([^"]*)" \\\n\s+-o "\$stage/bin/([A-Za-z0-9._-]+)" (\S+)\n`)
 	releaseScriptExport  = regexp.MustCompile(`(?m)^\s*export ([^\n]+)$`)
 	releaseScriptUnset   = regexp.MustCompile(`(?m)^\s*unset ([^\n]+)$`)
 )
@@ -278,7 +278,7 @@ func TestBootstrapComponentBinariesCarryNoRetiringEstateValue(t *testing.T) {
 			var hits []string
 			for _, build := range builds {
 				output := filepath.Join(dir, build.binary)
-				args := []string{"-mod=vendor", "-trimpath"}
+				args := []string{"-mod=vendor", "-trimpath", "-buildvcs=false"}
 				if flavor.tags != "" {
 					args = append(args, "-tags", flavor.tags)
 				}

@@ -52,6 +52,7 @@ scoped_cohorts:
       - msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh # OpenSanctions
       # P0 provider admission pending; must not be omitted from the closure.
       - 3z8v9rsdkj4xn4exfvq9arqax90g6h9r1q2vp36d91ef7g07ce10 # CyberTeller Config
+      - 40daz8m3zf6w1w34xgd64u6e73e11fyh4u3hvmjc3kwus9xseaj0 # Melusina Dashboard KIT
 # Installation policy is governed by this default-Bazaar manifest, never by an
 # app's mutable metadata. The Store projects these five fields into its served
 # catalog and permits a direct install only for `self-service` workspaces.
@@ -902,7 +903,7 @@ groups:
         # The current remote dev-publish v0.2.10/version-12 source was selected
         # only after all advertised heads were classified, its merged security
         # controls were proved in a clean clone, and its package double-packed.
-        source_commit: c7a8ae553b45142d5e140dfaf0b5dadd2145f0ed
+        source_commit: 0fa911516c3be627f59154e949ab6659cd258573
         source_baseline_branch: main
         runtime_contract_path: RUNTIME-CONTRACT.json
         reconciliation_state: source-pinned

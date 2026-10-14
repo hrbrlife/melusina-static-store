@@ -213,6 +213,10 @@
       "reason": "Tracked external endpoint or dotted identifier in scripts/refresh-source-selection[.]py; reviewed as outside the estate origin."
     },
     {
+      "host": "args.out.open",
+      "reason": "Python argparse output file selector in the recall drill producer; no DNS lookup."
+    },
+    {
       "host": "arr.map",
       "reason": "Tracked dotted filename or identifier in src/main[.]jsx:2260; reviewed as source material, not an estate endpoint."
     },

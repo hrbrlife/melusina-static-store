@@ -1,17 +1,97 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sync/atomic"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/componentrelease"
 )
+
+// A product-issued pair for the cross-repo estate drill. The same promotion
+// method and public handler used by the Store produce both signed generations.
+func TestEstateDrillGenerationPromoteAndServe(t *testing.T) {
+	svc := promoteTestService(t)
+	svc.cfg.StoreID = "rehearsal-root-store"
+	svc.cfg.PublicBaseURL = "https://bazaar.rehearsal.invalid"
+	now := time.Now().UTC().Truncate(time.Second)
+	first, err := svc.promoteGeneration(promoteReq(0,
+		promotableShellComp(t, svc, "estate-drill-before", "build-1")), now.Add(-2*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := svc.promoteGeneration(promoteReq(1,
+		promotableShellComp(t, svc, "estate-drill-after", "build-2")), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorder := httptest.NewRecorder()
+	svc.handleDesiredGeneration(recorder, httptest.NewRequest(http.MethodGet, "/update/generation.json", nil))
+	if recorder.Code != http.StatusOK || !bytes.Equal(recorder.Body.Bytes(), second) {
+		t.Fatalf("product served generation differs from promoted bytes: HTTP %d", recorder.Code)
+	}
+	pub, err := operatorSignPublicKey(svc.operator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range [][]byte{first, second} {
+		var doc componentrelease.DesiredGeneration
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatal(err)
+		}
+		if err := componentrelease.Verify(pub, svc.cfg.StoreID, doc); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if dir := os.Getenv("ESTATE_DRILL_GENERATION_FIXTURE_DIR"); dir != "" {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		for name, raw := range map[string][]byte{
+			"before-generation.json": first, "after-generation.json": second,
+			"generation-operator-key.txt": []byte(svc.operator.Public().SignPubkeyB58),
+		} {
+			if err := os.WriteFile(filepath.Join(dir, name), raw, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if deployerRoot := os.Getenv("ESTATE_DRILL_DEPLOYER_ROOT"); deployerRoot != "" {
+			cmd := exec.Command("go", "test", "-run", "^TestEstateDrillProductGenerationFromStoreFixture$",
+				"-count=1", "./internal/storegeneration")
+			cmd.Dir = deployerRoot
+			cmd.Env = append(os.Environ(), "ESTATE_DRILL_GENERATION_FIXTURE_DIR="+dir)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("generation product profile: %v: %s", err, output)
+			}
+			var handlerCalls atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				handlerCalls.Add(1)
+				svc.handleDesiredGeneration(w, r)
+			}))
+			defer server.Close()
+			joined := exec.Command("python3", "-B", os.Getenv("ESTATE_DRILL_GENERATION_JOIN_SCRIPT"),
+				dir, server.URL)
+			if output, err := joined.CombinedOutput(); err != nil {
+				t.Fatalf("generation mapped readback: %v: %s", err, output)
+			} else if err := os.WriteFile(filepath.Join(dir, "joined-generation.log"), output, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if handlerCalls.Load() == 0 {
+				t.Fatal("drill-generation-product-handler-not-called")
+			}
+		}
+	}
+}
 
 func promoteTestService(t *testing.T) *publishService {
 	t.Helper()

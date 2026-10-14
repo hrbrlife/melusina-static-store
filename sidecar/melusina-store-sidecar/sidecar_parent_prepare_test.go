@@ -14,6 +14,7 @@ import (
 func parentPrepareFixture(t *testing.T) (keylessFixture, stagedSidecarClassRequest) {
 	t.Helper()
 	f := newKeylessFixture(t)
+	(*f.svc).cr = batchMockChainReader{f.m}
 	f.svc.operator = newTestIdentity(t, "parent-class-store", testLicenseMint, "store.example.org")
 	f.svc.cfg.StoreID = "parent-test-store"
 	f.svc.cfg.Domain = "store.example.org"

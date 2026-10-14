@@ -15,13 +15,13 @@ import (
 // reads. The mock's batch read calls its own fetchRawAccount, so only reads
 // that bypass the bounded snapshot are counted.
 type rawReadCountingReader struct {
-	*mockChainReader
+	batchMockChainReader
 	rawReads int
 }
 
 func (r *rawReadCountingReader) fetchRawAccount(ctx context.Context, address string) ([]byte, string, error) {
 	r.rawReads++
-	return r.mockChainReader.fetchRawAccount(ctx, address)
+	return r.batchMockChainReader.fetchRawAccount(ctx, address)
 }
 
 // Reviewer test (C2-REVIEW-D1, Store 771137bb): parent preparation must decide
@@ -47,7 +47,7 @@ func TestReviewerParentPrepareMakesNoPerAccountReadsAfterBatch(t *testing.T) {
 			KeyCustody: "none", ArtifactName: f.component.ArtifactName,
 			SHA256: f.component.SHA256, SizeBytes: f.component.SizeBytes, Chain: &chain})
 	}
-	counting := &rawReadCountingReader{mockChainReader: f.m}
+	counting := &rawReadCountingReader{batchMockChainReader: batchMockChainReader{f.m}}
 	(*f.svc).cr = counting
 	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
 		t.Fatalf("parent preparation refused active parents: %v", err)

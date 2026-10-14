@@ -30,7 +30,11 @@ func (m *mockChainReader) fetchRawAccount(_ context.Context, addr string) ([]byt
 	return data, owner, nil
 }
 
-func (m *mockChainReader) fetchMultipleAccounts(ctx context.Context, addresses []string) ([]accountValue, error) {
+// batchMockChainReader adds the batch capability only where a test opts in;
+// the plain mock deliberately has none, so other gates keep their raw-read path.
+type batchMockChainReader struct{ *mockChainReader }
+
+func (m batchMockChainReader) fetchMultipleAccounts(ctx context.Context, addresses []string) ([]accountValue, error) {
 	m.batchAccountReads++
 	m.batchAccountSize = len(addresses)
 	values := make([]accountValue, len(addresses))

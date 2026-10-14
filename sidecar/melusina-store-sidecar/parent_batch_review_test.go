@@ -48,7 +48,7 @@ func TestReviewerParentPrepareMakesNoPerAccountReadsAfterBatch(t *testing.T) {
 			SHA256: f.component.SHA256, SizeBytes: f.component.SizeBytes, Chain: &chain})
 	}
 	counting := &rawReadCountingReader{mockChainReader: f.m}
-	f.svc.cr = counting
+	(*f.svc).cr = counting
 	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
 		t.Fatalf("parent preparation refused active parents: %v", err)
 	}

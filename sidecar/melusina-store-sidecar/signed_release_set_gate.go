@@ -355,8 +355,12 @@ func signedSetOwnedByRuntime(info os.FileInfo) bool {
 }
 
 func requireSignedSetArtifact(selected servedReleaseSet, class, name, servedHash string, size int64) error {
-	role := map[string]string{"shell": "shell-bundle", "installer": "installer", "data": "update-controller"}[class]
-	if role == "" {
+	roles := map[string][]string{
+		"shell":     {"shell-bundle"},
+		"installer": {"installer"},
+		"data":      {"update-controller", "authz-runtime"},
+	}[class]
+	if len(roles) == 0 {
 		return errors.New("release-set-class-unrecognized")
 	}
 	// Generation one publishes its three F1 members under the Store's shell
@@ -378,7 +382,10 @@ func requireSignedSetArtifact(selected servedReleaseSet, class, name, servedHash
 	}
 	matched := false
 	for _, artifact := range selected.Artifacts {
-		eligible := artifact.Role == role
+		eligible := false
+		for _, role := range roles {
+			eligible = eligible || artifact.Role == role
+		}
 		if contentAddressed {
 			eligible = artifact.Role == "installer" || artifact.Role == "shell-bundle" || artifact.Role == "update-controller"
 		}

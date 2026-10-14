@@ -11,20 +11,19 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
-// rawReadCountingReader delegates to the mock but counts direct per-account
-// reads. The mock's batch read calls its own fetchRawAccount, so only reads
-// that bypass the bounded snapshot are counted.
-type rawReadCountingReader struct {
-	*batchMockChainReader
+// rawReadCountingParentReader counts direct per-account reads; the batch read
+// of countingParentReader calls the inner mock directly and is not counted.
+type rawReadCountingParentReader struct {
+	*countingParentReader
 	rawReads int
 }
 
-func (r *rawReadCountingReader) fetchRawAccount(ctx context.Context, address string) ([]byte, string, error) {
+func (r *rawReadCountingParentReader) fetchRawAccount(ctx context.Context, address string) ([]byte, string, error) {
 	r.rawReads++
-	return r.batchMockChainReader.fetchRawAccount(ctx, address)
+	return r.countingParentReader.mockChainReader.fetchRawAccount(ctx, address)
 }
 
-// Reviewer test (C2-REVIEW-D1, Store 771137bb): parent preparation must decide
+// Reviewer test (C2-REVIEW-D1, Store 1f0efdd6): parent preparation must decide
 // from the one bounded batch snapshot, with no per-account chain reads after it.
 func TestReviewerParentPrepareMakesNoPerAccountReadsAfterBatch(t *testing.T) {
 	f, request := parentPrepareFixture(t)
@@ -47,12 +46,12 @@ func TestReviewerParentPrepareMakesNoPerAccountReadsAfterBatch(t *testing.T) {
 			KeyCustody: "none", ArtifactName: f.component.ArtifactName,
 			SHA256: f.component.SHA256, SizeBytes: f.component.SizeBytes, Chain: &chain})
 	}
-	counting := &rawReadCountingReader{batchMockChainReader: &batchMockChainReader{mockChainReader: f.m}}
+	counting := &rawReadCountingParentReader{countingParentReader: &countingParentReader{mockChainReader: f.m}}
 	(*f.svc).cr = counting
 	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
 		t.Fatalf("parent preparation refused active parents: %v", err)
 	}
-	if counting.batchAccountReads != 1 || counting.rawReads != 0 {
-		t.Fatalf("REVIEWER_PARENT_PREPARE_PER_ACCOUNT_READS: batches=%d raw reads=%d", counting.batchAccountReads, counting.rawReads)
+	if counting.calls != 1 || counting.rawReads != 0 {
+		t.Fatalf("REVIEWER_PARENT_PREPARE_PER_ACCOUNT_READS: batches=%d raw reads=%d", counting.calls, counting.rawReads)
 	}
 }

@@ -56,9 +56,9 @@ func (s *publishService) classesFromParentStagedRequest(ctx context.Context, req
 		return sidecarClassTable{}, errors.New("sidecar-parent-prepare-batch-reader-required")
 	}
 	type parentCheck struct {
-		id   string
-		view componentReleaseChainView
-		hash [32]byte
+		componentID string
+		view        componentReleaseChainView
+		hash        [32]byte
 	}
 	checks := make([]parentCheck, 0, len(req.Rows))
 	addresses := make([]string, 0, 2*len(req.Rows)+1)
@@ -125,7 +125,7 @@ func (s *publishService) classesFromParentStagedRequest(ctx context.Context, req
 		appendAddress(global.Base58())
 		appendAddress(resellerApproval.Base58())
 		appendAddress(resellerEntry.Base58())
-		checks = append(checks, parentCheck{id: row.ID, view: view, hash: hash})
+		checks = append(checks, parentCheck{componentID: row.ID, view: view, hash: hash})
 	}
 	values, err := mr.fetchMultipleAccounts(ctx, addresses)
 	if err != nil {
@@ -143,7 +143,7 @@ func (s *publishService) classesFromParentStagedRequest(ctx context.Context, req
 	// requirement as the original parent preparation path.
 	for _, check := range checks {
 		if err := checkSidecarParents(ctx, snapshot, check.view, check.hash); err != nil {
-			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-parent-refused:%s: %w", check.id, err)
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-parent-refused:%s: %w", check.componentID, err)
 		}
 	}
 	return table, nil

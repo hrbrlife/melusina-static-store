@@ -115,10 +115,10 @@ groups:
       namedcoin:
         appId: 8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh
         source_path: namedcoin
-        # v0.1.40/appVersion-42 is the V1.18 birth-bound identity intake.
-        # Its positive authority fixture is rooted in the current protocol and
-        # preserves explicit historical-root refusal controls.
-        source_commit: 053e4be65e8f4926fa439e009fa0a5e6f4d2e81d
+        # v0.1.43/appVersion-45 is the reviewed D46 NamedCoin successor.
+        # Its positive authority fixture remains rooted in the current
+        # protocol with explicit historical-root refusal controls.
+        source_commit: 42adcbc26251a4058b1e98fd6b816b3eac65459a
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified
@@ -144,10 +144,10 @@ groups:
       namedcoin-admin:
         appId: zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0
         source_path: namedcoin-admin
-        # v0.1.47/build-50 is the newest clean, source-bound dev-publish
-        # candidate. It adds the governed enhanced-attestation cosign seam
-        # needed by the account-opening corridor without a host-side bypass.
-        source_commit: f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f
+        # v0.1.50/versionNumber-53 is the reviewed D46 Admin successor.
+        # It retains the governed enhanced-attestation cosign seam needed by
+        # the account-opening corridor without a host-side bypass.
+        source_commit: 62ccbbb67e7d3bfaa106db0b939ffe7a8c683c28
         reconciliation_state: source-pinned
         release_state: ready
         source_selection_state: direct-dev-verified

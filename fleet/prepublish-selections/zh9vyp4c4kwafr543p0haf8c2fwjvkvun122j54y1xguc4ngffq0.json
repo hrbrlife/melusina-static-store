@@ -2,132 +2,71 @@
     "schema": "melusina-source-selection-v1",
     "appId": "zh9vyp4c4kwafr543p0haf8c2fwjvkvun122j54y1xguc4ngffq0",
     "sourceRepository": "https://github.com/hrbrlife/melusina-namedcoin-admin-app",
-    "sourceCommit": "f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f",
+    "sourceCommit": "62ccbbb67e7d3bfaa106db0b939ffe7a8c683c28",
     "selectionMethod": "direct-dev",
-    "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "NamedCoin Configurator 0.1.47/build-50 is the selected dev-publish release cut. It delivers governed Enhanced and Full attestation cosigning through the signer plane, keeping the UI as the decision authority and eliminating the host-side issuance bypass.",
+    "mainBaselineRelation": "ancestor",
+    "decisionSummary": "NamedCoin Configurator 0.1.50/versionNumber 53 is the C2-reviewed D46 Admin successor, preserving governed Enhanced and Full cosigning through the signer plane.",
     "internalControls": {
         "status": "passed",
         "checks": [
-            "clean recursively initialized checkout at the selected origin/dev-publish commit",
-            "make test-release-source-guard, go test ./... -count=1, and go vet ./... passed on the selected source",
-            "release metadata, pkgdef, runtime contract, changelog, and release-source guard agree on 0.1.47/build-50",
-            "the governed cosign route requires a maker and a distinct checker, validates its ABI before dispatch, and refuses an unavailable checker key before RPC",
-            "catalog provider retains the shared 3-of-4 Squads authority and rejects app-specific authority overrides"
+            "clean detached checkout at the selected canonical dev-publish commit 62ccbbb6",
+            "release-source guard, full Go tests, vet and the reviewer launch-probe stale-version negative pass",
+            "two independent clean checkouts produced byte-identical 0.1.50/53 packages, metadata and runtime contract",
+            "shared 3-of-4 Squads Store publication authority is retained without an app-specific override"
         ]
     },
     "reviewedRefs": [
         {
-            "ref": "refs/heads/codex/wp2-issue-from-case-20260715",
-            "commit": "ac6f7277bcdf53b93cb51a86b929da4f65fe6a21",
-            "outcome": "retained"
+            "ref": "refs/heads/archive/msb-velocity-20261005/V-DOMAIN-SWEEP3/melusina-namedcoin-admin-app",
+            "commit": "194024b447fb402f02dd1d95bc656f72e35d54bf",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/msb-velocity-20261005/V-DOMAIN-SWEEP3/review-melusina-namedcoin-admin-app",
+            "commit": "8874726085ca515e56c0b295b0ce043937441733",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/msb-velocity-20261005/V-KIT4-J01/melusina-namedcoin-admin-app",
+            "commit": "43ac655990d5d48f0abe88127c55690d89ea5846",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/msb-velocity-20261005/V-KIT4-J01b/melusina-namedcoin-admin-app",
+            "commit": "8f394767d0d373fa8797a2ea3370bc00fc784094",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/msb-velocity-20261005/V-KIT4-J01b/review-melusina-namedcoin-admin-app",
+            "commit": "8f394767d0d373fa8797a2ea3370bc00fc784094",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/msb-velocity-20261005/V-KIT4-J01c/melusina-namedcoin-admin-app",
+            "commit": "2d1be5c6dacdcce57fb9096004af1cc30eaa9783",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/msb-velocity-20261005/V-KIT4-J01c/review-melusina-namedcoin-admin-app",
+            "commit": "6a9c0ad7f97ab1d702d4ee5415e6ad6537a7c2d3",
+            "outcome": "archive"
+        },
+        {
+            "ref": "refs/heads/archive/msb-velocity-20261005/V-KIT4-J2b/melusina-namedcoin-admin-app",
+            "commit": "66ce5b15a8fb8d976ef03211ba6d032bf0b887c2",
+            "outcome": "archive"
         },
         {
             "ref": "refs/heads/dev-publish",
-            "commit": "f67b759e7f08f8654ceb05eec8c2b9cd62db1b8f",
+            "commit": "62ccbbb67e7d3bfaa106db0b939ffe7a8c683c28",
             "outcome": "selected"
         },
         {
-            "ref": "refs/heads/feat/teama-identity-2026-06-26",
-            "commit": "2285e8f94293a8ac33416ad8f3915699be18468d",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/fix/golden-mvp-pbind-authority",
-            "commit": "8606e93c64b84d9fbb591b5cb76ba56aae575f23",
-            "outcome": "retained"
-        },
-        {
             "ref": "refs/heads/main",
-            "commit": "71ab6da82b5fbf977ce483365ff2700a95e38d28",
+            "commit": "2020e65515207676ae3d91c39e8f38a564d92d51",
             "outcome": "baseline"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/_detached/3b44ed63d1b4",
-            "commit": "3b44ed63d1b4080e22f34d3947a491a0055b4fcf",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/_detached/d2cac55ca512",
-            "commit": "d2cac55ca512a4d9d4c6f3a7f87633e7abf9ccfc",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/codex/product-path-readiness-20260713",
-            "commit": "032a11ab7504a100cc082cd69a6d1cc1d87d9f75",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/dev-demo/20260726-namedcoin",
-            "commit": "b5343989e5c1cddb14d82d2496a0009ce0911d6b",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/feat/mel-release-health-namedcoin-admin",
-            "commit": "3150f61a7da2a85578e8637381dc7bfc43d452ac",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/feat/namedcoin-audit",
-            "commit": "61ef4b626109fcf4b46598336c54a469cdb64e39",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/feat/nc-admin-strip-stream-2026-06-07",
-            "commit": "453280d1b6f82e183127ae32b8ffdb12e438b2a5",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/feat/nm5-rpc-powerbox",
-            "commit": "69948f5c507ea7c90de98d0ce1e98411559a9516",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/feat/r2-real-kyc-attestation-uspaype",
-            "commit": "7fe3c35b67b710f6a412c9f2d33f21c6f529d156",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/feat/teama-identity-2026-06-26",
-            "commit": "9e79ce7e735d0102f9d2f3b622bcac5429503e75",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/feat/teama-onboarding-bridge-2026-06-26",
-            "commit": "5f396e1ab6d7d29a88d7c165e3ae3f45d7faff93",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/feat/teama-onboarding-hardening-2026-06-26",
-            "commit": "82ccccd53cd45301eb0d0bbedbc5552eea361bc8",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/fix/namedcoin-4eyes-cosign-2026-06-16",
-            "commit": "24c8f8c4fe7e4924149cf01b8165f088dceb6120",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/fix/session-teardown-20260814",
-            "commit": "b093dd55ef539bb4e10684c142090ec3bc25e412",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/main",
-            "commit": "3d14870a80ec55e89fb672040e6a8bd98fb81810",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/publish",
-            "commit": "e5ecb68f80de86ca17bc4dec662c40f032fbdd8d",
-            "outcome": "retained"
-        },
-        {
-            "ref": "refs/heads/preserve-local-20260814/respondent-outcome-v112-20260809",
-            "commit": "2385e88aa176117d1214168096b7c42c4c3aac5c",
-            "outcome": "retained"
         }
     ],
     "baselineBranch": "main",
-    "baselineRelation": "historical-divergent"
+    "baselineRelation": "ancestor"
 }

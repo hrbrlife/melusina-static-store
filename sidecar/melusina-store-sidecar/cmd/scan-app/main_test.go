@@ -69,6 +69,10 @@ func TestClamAVProducerAndPinnedReportVerifier(t *testing.T) {
 	if err := json.Unmarshal(raw, &report); err != nil {
 		t.Fatal(err)
 	}
+	stamp, err := time.Parse(time.RFC3339Nano, report.ScannedAt)
+	if err != nil || len(report.ScannedAt) < len("2006-01-02T15:04:05.000000000Z") || stamp.Unix() != report.ScannedAtUnix {
+		t.Fatalf("SCAN_APP_SUBSECOND_SIGNED_TIMESTAMP_MISSING: %q (%v)", report.ScannedAt, err)
+	}
 	if err := appscan.Verify(report, hex.EncodeToString(public), "POST", report.Target, content[0], content[1], content[2], content[3], time.Now().UTC()); err != nil {
 		t.Fatalf("scan-report-pinned-positive: %v", err)
 	}

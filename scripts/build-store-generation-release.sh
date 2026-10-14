@@ -21,8 +21,17 @@ done
   echo "--version must be an explicit semver-like release version" >&2; exit 2; }
 # D1 owns Store 1.0.14 for the served first drop. This successor may only
 # advance its published version, including the bootstrap wrapper's build.
-if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
-   [[ "$(printf '%s\n' "$VERSION" 1.0.15 | sort -V | head -n 1)" != 1.0.15 ]]; then
+VERSION_FORWARD=0
+if [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+  version_major="${BASH_REMATCH[1]}"
+  version_minor="${BASH_REMATCH[2]}"
+  version_patch="${BASH_REMATCH[3]}"
+  if (( 10#$version_major > 1 ||
+        (10#$version_major == 1 && (10#$version_minor > 0 || 10#$version_patch >= 15)) )); then
+    VERSION_FORWARD=1
+  fi
+fi
+if [[ "$VERSION_FORWARD" != 1 ]]; then
   echo "STORE_W23_VERSION_NOT_FORWARD: require 1.0.15 or newer" >&2
   exit 2
 fi

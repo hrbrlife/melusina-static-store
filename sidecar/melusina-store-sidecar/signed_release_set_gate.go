@@ -358,7 +358,7 @@ func requireSignedSetArtifact(selected servedReleaseSet, class, name, servedHash
 	roles := map[string][]string{
 		"shell":     {"shell-bundle"},
 		"installer": {"installer"},
-		"data":      {"update-controller", "authz-runtime"},
+		"data":      {"update-controller", "authz-runtime", "offline-sign-runtime", "opensanctions-index", "msb-index"},
 	}[class]
 	if len(roles) == 0 {
 		return errors.New("release-set-class-unrecognized")

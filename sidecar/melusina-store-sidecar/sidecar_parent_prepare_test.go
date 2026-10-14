@@ -14,7 +14,7 @@ import (
 func parentPrepareFixture(t *testing.T) (keylessFixture, stagedSidecarClassRequest) {
 	t.Helper()
 	f := newKeylessFixture(t)
-	(*f.svc).cr = batchMockChainReader{f.m}
+	(*f.svc).cr = &batchMockChainReader{mockChainReader: f.m}
 	f.svc.operator = newTestIdentity(t, "parent-class-store", testLicenseMint, "store.example.org")
 	f.svc.cfg.StoreID = "parent-test-store"
 	f.svc.cfg.Domain = "store.example.org"
@@ -78,8 +78,8 @@ func TestParentPrepareBatchesParentsAndRefusesMissingAccount(t *testing.T) {
 	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
 		t.Fatalf("parent preparation refused active parents: %v", err)
 	}
-	if f.m.batchAccountReads != 1 {
-		t.Fatalf("parent preparation made %d batch reads; want exactly one", f.m.batchAccountReads)
+	if (*f.svc).cr.(*batchMockChainReader).batchAccountReads != 1 {
+		t.Fatalf("parent preparation made %d batch reads; want exactly one", (*f.svc).cr.(*batchMockChainReader).batchAccountReads)
 	}
 	delete(f.m.rawAccounts, f.globalPDA)
 	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err == nil || !strings.Contains(err.Error(), "GlobalSidecarApproval absent") {
@@ -111,8 +111,8 @@ func TestParentPrepareTwentyRowsUseOneBoundedChainRead(t *testing.T) {
 	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
 		t.Fatalf("20-row parent preparation refused active parents: %v", err)
 	}
-	if f.m.batchAccountReads != 1 || f.m.batchAccountSize != 41 {
-		t.Fatalf("20-row preparation made %d batch reads of %d addresses; want one read of 41 unique parents", f.m.batchAccountReads, f.m.batchAccountSize)
+	if (*f.svc).cr.(*batchMockChainReader).batchAccountReads != 1 || (*f.svc).cr.(*batchMockChainReader).batchAccountSize != 41 {
+		t.Fatalf("20-row preparation made %d batch reads of %d addresses; want one read of 41 unique parents", (*f.svc).cr.(*batchMockChainReader).batchAccountReads, (*f.svc).cr.(*batchMockChainReader).batchAccountSize)
 	}
 }
 

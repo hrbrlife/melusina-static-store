@@ -15,7 +15,7 @@ import (
 // reads. The mock's batch read calls its own fetchRawAccount, so only reads
 // that bypass the bounded snapshot are counted.
 type rawReadCountingReader struct {
-	batchMockChainReader
+	*batchMockChainReader
 	rawReads int
 }
 
@@ -47,12 +47,12 @@ func TestReviewerParentPrepareMakesNoPerAccountReadsAfterBatch(t *testing.T) {
 			KeyCustody: "none", ArtifactName: f.component.ArtifactName,
 			SHA256: f.component.SHA256, SizeBytes: f.component.SizeBytes, Chain: &chain})
 	}
-	counting := &rawReadCountingReader{batchMockChainReader: batchMockChainReader{f.m}}
+	counting := &rawReadCountingReader{batchMockChainReader: &batchMockChainReader{mockChainReader: f.m}}
 	(*f.svc).cr = counting
 	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
 		t.Fatalf("parent preparation refused active parents: %v", err)
 	}
-	if f.m.batchAccountReads != 1 || counting.rawReads != 0 {
-		t.Fatalf("REVIEWER_PARENT_PREPARE_PER_ACCOUNT_READS: batches=%d raw reads=%d", f.m.batchAccountReads, counting.rawReads)
+	if counting.batchAccountReads != 1 || counting.rawReads != 0 {
+		t.Fatalf("REVIEWER_PARENT_PREPARE_PER_ACCOUNT_READS: batches=%d raw reads=%d", counting.batchAccountReads, counting.rawReads)
 	}
 }

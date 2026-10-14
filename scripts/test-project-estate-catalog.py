@@ -41,17 +41,10 @@ CYBERTELLER_APP_ID = "vpj1c0z55jtgtrsv61pp237h2x7tx07htz96mu7ze92z57au9dh0"
 LOBBY_APP_ID = "021x360jnqz798taefscu7r69a0xvvqyhfwfjadq8g2f9wuqm5h0"
 POPAYE_APP_ID = "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
 OPENSANCTIONS_APP_ID = "msgn23jkp96yrup53t1yv71ens7kpda7yw10p8aepdzg7rhqssdh"
-# The checked-in MSB cohort carries retiring-estate values in exactly these
-# places, so the projector refuses it
-# (test_projection_refuses_the_ledger_cohort_by_field_and_place). None of them
-# is the projector's to rewrite: Popaye's approved public name is bound to its
-# signed metadata (require_catalog_metadata_identity), and a selection receipt
-# is a decision record. The other tests project fixture_ledger(), in which
-# each is replaced, as a renamed forward release and reissued receipts would
-# replace them.
-RETIRING_DISPLAY_NAME_APP = POPAYE_APP_ID
+# The checked-in MSB cohort is a real projector input. Its public display
+# labels and source-selection summaries must remain free of retired estate
+# hosts; mutations below prove the scanner still refuses those fields.
 RETIRING_PROSE_RECEIPTS = (POPAYE_APP_ID, OPENSANCTIONS_APP_ID)
-FIXTURE_DISPLAY_NAME = "Popaye"
 
 
 def load(name: str, path: Path):
@@ -122,29 +115,15 @@ def forbid_values() -> dict:
     return {item["field"]: item["value"] for item in provider.retiring_estate_values()}
 
 
-def fixture_ledger(root: Path, *, display_name: bool = True, receipts: bool = True) -> Path:
-    """Copy the checked-in ledger and its MSB cohort's receipts under root.
-
-    display_name replaces the one retiring display name (RETIRING_DISPLAY_NAME_APP);
-    receipts replaces every retiring value in RETIRING_PROSE_RECEIPTS. Nothing
-    else changes.
-    """
+def fixture_ledger(root: Path) -> Path:
+    """Copy the real ledger and its MSB cohort's receipts without substitutions."""
     directory = root / "ledger"
     (directory / "prepublish-selections").mkdir(parents=True)
-    values = forbid_values()
     text = LEDGER.read_text(encoding="utf-8")
-    name_line = f"        catalog_name: {values['retiring/tenant-host-0']}\n"
-    assert text.count(name_line) == 1, name_line
-    if display_name:
-        text = text.replace(name_line, f"        catalog_name: {FIXTURE_DISPLAY_NAME}\n")
     ledger = directory / "bazaar-catalog.yaml"
     ledger.write_text(text, encoding="utf-8")
-    longest_first = sorted(set(values.values()), key=len, reverse=True)
     for app_id in ledger_document()["scoped_cohorts"][MSB_COHORT]["app_ids"]:
         raw = (LEDGER.parent / "prepublish-selections" / f"{app_id}.json").read_text(encoding="utf-8")
-        if receipts and app_id in RETIRING_PROSE_RECEIPTS:
-            for value in longest_first:
-                raw = re.sub(re.escape(value), "the retiring tenant", raw, flags=re.IGNORECASE)
         (directory / "prepublish-selections" / f"{app_id}.json").write_text(raw, encoding="utf-8")
     return ledger
 
@@ -521,46 +500,49 @@ def test_projection_check_refuses_any_difference_from_the_ledger():
         raise AssertionError("projection check accepted the planted retiring values")
 
 
-def test_projection_refuses_the_ledger_cohort_by_field_and_place():
-    """Known-positive control on real data: the checked-in MSB cohort carries
-    retiring-estate values, and the projector refuses it by field and place,
-    first in the manifest and then in the receipts it would copy, rather than
-    reporting clean or rewriting either."""
+def test_real_ledger_projects_and_retired_host_mutations_refuse_by_name():
+    """The real MSB ledger projects; retired hosts in an app or receipt refuse."""
     profile, pin = new_estate_profile()
     ledger = ledger_document()
-    group, name, _ = apps_by_id(ledger)[RETIRING_DISPLAY_NAME_APP]
+    group, name, _ = apps_by_id(ledger)[POPAYE_APP_ID]
     cohort = ledger["scoped_cohorts"][MSB_COHORT]["app_ids"]
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         profile_path = write_profile(root, profile)
-        out = root / "seed"
-
+        # No fixture substitution: this exercises the checked-in membership
+        # ledger and its real selection receipts.
+        out = root / "real-seed"
         result = run_projector(profile_path, pin, out)
+        assert result.returncode == 0, result.stderr
+        assert json.loads(result.stdout)["status"] == "projected"
+
+        poisoned = fixture_ledger(root / "poisoned-app")
+        ledger_text_with(poisoned, "        catalog_name: Popaye\n",
+                         f"        catalog_name: {forbid_values()['retiring/tenant-host-0']}\n")
+        result = run_projector(profile_path, pin, root / "poisoned-app-out", "--ledger", str(poisoned))
         expect_refusal(result, "projection-estate-scan: estate-scan-retiring-value: ")
         assert f"retiring/tenant-host-0 at line " in result.stderr, result.stderr
         assert f"groups.{group}.apps.{name}.catalog_name" in result.stderr, result.stderr
-        assert not out.exists()
+        assert not (root / "poisoned-app-out").exists()
 
-        # With the display name replaced, the first receipt the projection
-        # would copy that carries a retiring value is refused by appId.
-        first = next(app_id for app_id in cohort if app_id in RETIRING_PROSE_RECEIPTS)
-        partial = fixture_ledger(root / "partial", receipts=False)
-        result = run_projector(profile_path, pin, out, "--ledger", str(partial))
-        expect_refusal(result, f"projection-estate-scan: {first} selection receipt: estate-scan-retiring-value: ")
-        assert "retiring/tenant-host-0 at line " in result.stderr and "decisionSummary" in result.stderr, result.stderr
-        assert not out.exists()
+        for app_id in RETIRING_PROSE_RECEIPTS:
+            poisoned = fixture_ledger(root / f"poisoned-receipt-{app_id}")
+            receipt = poisoned.parent / "prepublish-selections" / f"{app_id}.json"
+            body = json.loads(receipt.read_text(encoding="utf-8"))
+            body["decisionSummary"] += f" observed at {forbid_values()['retiring/tenant-host-0']}"
+            receipt.write_text(json.dumps(body, indent=4) + "\n", encoding="utf-8")
+            result = run_projector(profile_path, pin, root / f"poisoned-out-{app_id}",
+                                   "--ledger", str(poisoned))
+            expect_refusal(result, f"projection-estate-scan: {app_id} selection receipt: estate-scan-retiring-value: ")
+            assert "retiring/tenant-host-0 at line " in result.stderr and "decisionSummary" in result.stderr, result.stderr
+            assert not (root / f"poisoned-out-{app_id}").exists()
 
-    # Exactly these receipts of the cohort carry a retiring value.
-    refused = []
+    # The actual cohort's evidence is clean under the projector's complete
+    # retiring-value list, not just a hand-picked hostname.
     for app_id in cohort:
-        try:
-            provider.estate_scan_receipt(
-                (LEDGER.parent / "prepublish-selections" / f"{app_id}.json").read_text(encoding="utf-8"),
-            )
-        except provider.ProviderError as exc:
-            assert str(exc).startswith("estate-scan-retiring-value: "), (app_id, exc)
-            refused.append(app_id)
-    assert sorted(refused) == sorted(RETIRING_PROSE_RECEIPTS), refused
+        provider.estate_scan_receipt(
+            (LEDGER.parent / "prepublish-selections" / f"{app_id}.json").read_text(encoding="utf-8"),
+        )
 
 
 def test_projection_scans_the_given_ledger_and_its_parsed_values():
@@ -653,7 +635,7 @@ if __name__ == "__main__":
     test_projection_is_the_cohort_under_the_profile_estate()
     test_mel_release_reads_the_projection_under_the_profile()
     test_projection_refuses_by_name()
-    test_projection_refuses_the_ledger_cohort_by_field_and_place()
+    test_real_ledger_projects_and_retired_host_mutations_refuse_by_name()
     test_projection_scans_the_given_ledger_and_its_parsed_values()
     test_verified_profile_requires_the_reviewed_estate_id()
     print("project-estate-catalog tests passed")

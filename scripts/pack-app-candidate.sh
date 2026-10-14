@@ -30,6 +30,29 @@ command -v "$SPK_BIN" >/dev/null 2>&1 || { echo "spk verifier not found: $SPK_BI
 
 if git -C "$APP_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   source_root="$(git -C "$APP_DIR" rev-parse --show-toplevel)"
+  source_root="$(realpath -e "$source_root")"
+  if [[ -n "$METADATA_OUT" ]]; then
+    # A symlink followed by /.. resolves through the symlink in the kernel,
+    # while abspath collapses it lexically. Refuse that ambiguous spelling
+    # before a pack hook can create either output.
+    case "/$METADATA_OUT/" in
+      */../*) echo "candidate metadata output contains parent traversal" >&2; exit 2 ;;
+    esac
+    metadata_output_real="$(realpath -m "$METADATA_OUT")"
+    case "$metadata_output_real" in
+      "$source_root"|"$source_root"/*)
+        echo "candidate metadata output must be outside the source checkout" >&2
+        exit 2 ;;
+    esac
+    [[ ! -e "$METADATA_OUT" && ! -L "$METADATA_OUT" ]] || {
+      if [[ "${MEL_RELEASE_PACK_PROFILE:-standard}" == namedcoin-msb-devnet ]]; then
+        echo "NamedCoin candidate metadata output must be new" >&2
+      else
+        echo "candidate metadata output must be new" >&2
+      fi
+      exit 2
+    }
+  fi
   metadata_path="$(realpath -e "$METADATA")"
   case "$metadata_path" in
     "$source_root"/*) metadata_rel="${metadata_path#"$source_root"/}" ;;
@@ -309,8 +332,6 @@ PY
     echo "pack mutated metadata beyond the generated packageId; refusing to publish" >&2
     exit 2
   }
-  mkdir -p "$(dirname "$METADATA_OUT")"
-  cp "$METADATA" "$METADATA_OUT"
 fi
 
 # Restore before examining Git state so a deterministic packageId update never
@@ -336,23 +357,46 @@ spk_sha="$(sha256sum "$SPK_OUT" | awk '{print $1}')"
   exit 2
 }
 
-# NamedCoin's committed catalog metadata names an older package. Stage a
-# separate metadata document from the verified package bytes. Only these two
-# derived identity fields change; the signed SPK and committed source remain
-# the authority for every other field.
-if [[ "$PACK_PROFILE" == namedcoin-msb-devnet ]]; then
-  mkdir -p "$(dirname "$METADATA_OUT")"
-  python3 - "$METADATA" "$METADATA_OUT" "$package_id" "$spk_sha" <<'PY'
+# A pack hook need not rewrite committed metadata. In that case its package
+# identity can still name an earlier SPK (DueProcess is one real example).
+# When staging is requested, derive the two identity fields from the verified
+# SPK for every profile. The checked-out source remains clean and authoritative
+# for all other metadata fields.
+if [[ -n "$METADATA_OUT" ]]; then
+  python3 - "$METADATA" "$METADATA_OUT" "$package_id" "$spk_sha" "$source_root" <<'PY'
 import json, os, sys
-source, output, package_id, digest = sys.argv[1:]
+source, output, package_id, digest, source_root = sys.argv[1:]
 with open(source, encoding='utf-8') as stream:
     metadata = json.load(stream)
 metadata['packageId'] = package_id
 metadata['sha256'] = digest
-fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-with os.fdopen(fd, 'w', encoding='utf-8') as stream:
-    json.dump(metadata, stream, indent=2, ensure_ascii=False)
-    stream.write('\n')
+destination = os.path.abspath(output)
+parts = [part for part in os.path.dirname(destination).split(os.sep) if part]
+directory = os.open(os.sep, os.O_RDONLY | os.O_DIRECTORY)
+try:
+    # Open every parent as a directory without following a symlink. A package
+    # hook may have changed the path since the earlier source-tree check.
+    try:
+        for part in parts:
+            next_directory = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                     dir_fd=directory)
+            os.close(directory)
+            directory = next_directory
+    except OSError as exc:
+        raise SystemExit('candidate metadata output parent unsafe') from exc
+    actual_parent = os.path.realpath(f'/proc/self/fd/{directory}')
+    if os.path.commonpath((actual_parent, source_root)) == source_root:
+        raise ValueError('candidate metadata output must be outside the source checkout')
+    fd = os.open(os.path.basename(destination),
+                 os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                 0o600, dir_fd=directory)
+    with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+        json.dump(metadata, stream, indent=2, ensure_ascii=False)
+        stream.write('\n')
+        stream.flush()
+        os.fsync(stream.fileno())
+finally:
+    os.close(directory)
 PY
 fi
 
@@ -369,6 +413,16 @@ PY
 )
 [[ -z "${source_meta[0]:-}" || "${source_meta[0]}" == "$app_id" ]] || {
   echo "source metadata appId ${source_meta[0]} does not match package appId $app_id" >&2
+  exit 2
+}
+
+# Staging and metadata inspection run after the first cleanliness proof. A pack
+# hook or helper can still leave a file in the checkout at that boundary;
+# never issue a clean-source receipt without checking the final tree again.
+dirty="$(git -C "$APP_DIR" status --porcelain --untracked-files=normal)"
+[[ -z "$dirty" ]] || {
+  echo "candidate metadata stage mutated committed source; refusing to publish" >&2
+  printf '%s\n' "$dirty" >&2
   exit 2
 }
 

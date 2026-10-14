@@ -5,7 +5,7 @@
     "sourceCommit": "7ac65fd2905ad50a93211a12c3c3728d96883981",
     "selectionMethod": "direct-dev",
     "mainBaselineRelation": "historical-divergent",
-    "decisionSummary": "The Aug. 20 v0.3.191/appVersion-183 dev-publish tip is the newest valid forward paype.cc source. It retains the reviewed KYB disclosure, conditional-procedure, visible participant-declaration, authenticated release-identity, clean local package controls, and bounded lossless advice-PNG export path while advancing above the prior same-version byte divergence. It also aligns the public package and visible runtime name to paype.cc without changing the immutable app identity or technical popaye release selector. Main is an ancestor. The relevant divergent work is integrated in the selected tip; every other advertised ref remains a remote archived review input rather than release authority.",
+    "decisionSummary": "The Aug. 20 v0.3.191/appVersion-183 dev-publish tip was the reviewed forward source for the retired tenant host. It retains the reviewed KYB disclosure, conditional-procedure, visible participant-declaration, authenticated release-identity, clean local package controls, and bounded lossless advice-PNG export path while advancing above the prior same-version byte divergence. It also aligns the public package and visible runtime name to the retired tenant host without changing the immutable app identity or technical popaye release selector. The recorded baselineRelation is historical-divergent; the relevant work was integrated in the selected tip; every other advertised ref remains a remote archived review input rather than release authority.",
     "internalControls": {
         "status": "passed",
         "checks": [

@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -37,6 +38,7 @@ import (
 	"github.com/hrbrlife/melusina-attest/envelope"
 	"github.com/hrbrlife/melusina-attest/identity"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/installerpublish"
+	"github.com/hrbrlife/melusina-store-sidecar/internal/publishclient"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
@@ -69,19 +71,21 @@ type publisherKeyFile struct {
 }
 
 type options struct {
-	store        string
-	class        string
-	name         string
-	artifactPath string
-	publisherKey string
-	storePubkey  string
-	storeID      string
-	storeDomain  string
-	licenseMint  string
-	programID    string
-	verifiedSlot uint64
-	timeout      time.Duration
-	envelopeOut  string
+	store          string
+	class          string
+	name           string
+	artifactPath   string
+	publisherKey   string
+	storePubkey    string
+	storeID        string
+	storeDomain    string
+	licenseMint    string
+	programID      string
+	verifiedSlot   uint64
+	timeout        time.Duration
+	envelopeOut    string
+	connectAddress string
+	tlsLeaf        string
 }
 
 type publishResult struct {
@@ -114,6 +118,8 @@ func parseFlags(args []string) (options, error) {
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "publisher chain-evidence slot")
 	fs.DurationVar(&o.timeout, "timeout", 10*time.Minute, "upload + read-back timeout; the signed envelope lives --timeout plus two minutes (at least five minutes, at most one hour)")
 	fs.StringVar(&o.envelopeOut, "envelope-out", "", "write the signed /publish/installer envelope (the exact multipart envelope part) atomically to this path; do not contact the store. --store names the Store the envelope is for and is not contacted")
+	fs.StringVar(&o.connectAddress, "connect-address", "", "temporary private Store TLS ingress IP:18443; keeps --store as the signed HTTPS audience")
+	fs.StringVar(&o.tlsLeaf, "store-tls-leaf", "", "exact PEM serving leaf pinned for private publication")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -235,7 +241,10 @@ func run(args []string, stdout io.Writer) error {
 		})
 	}
 
-	client := &http.Client{Timeout: o.timeout}
+	client, err := publishclient.NewClient(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
+	if err != nil {
+		return err
+	}
 	result, err := publish(context.Background(), client, o, envelopeBytes, artifact)
 	if err != nil {
 		return err
@@ -322,6 +331,10 @@ func publish(ctx context.Context, client *http.Client, o options, envelopeBytes 
 		return result, err
 	}
 	req.Header.Set("Content-Type", mw.FormDataContentType())
+	if len(envelopeBytes) > 16<<10 {
+		return result, fmt.Errorf("check=envelope_header: signed envelope exceeds 16 KiB")
+	}
+	req.Header.Set("X-Melusina-Publisher-Envelope", base64.RawURLEncoding.EncodeToString(envelopeBytes))
 	resp, err := client.Do(req)
 	if err != nil {
 		return result, fmt.Errorf("publish POST: %w", err)

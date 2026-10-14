@@ -258,8 +258,13 @@ func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.
 		t.Fatalf("Store identity = domain %q id %q authority %q", cfg.Domain, cfg.StoreID, cfg.StoreAuthority)
 	}
 	security := input["securityProfile"].(storesecurity.Profile)
-	if cfg.StoreLinkControlMTLS.ListenAddr != security.ControlListenAddr || cfg.StoreLinkControlMTLS.StoreLinkClientCertSHA256 != security.StoreLinkClientCertSHA256 || !cfg.Policy.RequirePearlControlForAppPublish || cfg.ListingSignerSocket == "" {
+	if cfg.StoreLinkControlMTLS.ListenAddr != security.ControlListenAddr || cfg.StoreLinkControlMTLS.StoreLinkClientCertSHA256 != security.StoreLinkClientCertSHA256 || cfg.ListingSignerSocket == "" {
 		t.Fatalf("rendered-governed-store-link-control-missing: control=%+v policy=%+v signer=%q", cfg.StoreLinkControlMTLS, cfg.Policy, cfg.ListingSignerSocket)
+	}
+	// This binary's renderer declares the direct enrolled-publisher route as
+	// the Store's one app publication authority (owner decision N-1467).
+	if cfg.Policy.RequirePearlControlForAppPublish || len(cfg.Policy.AcceptPublishers) == 0 {
+		t.Fatalf("rendered-app-publication-authority-not-direct: policy=%+v", cfg.Policy)
 	}
 	if err := requireServingControlMTLS(cfg); err != nil {
 		t.Fatalf("rendered-governed-store-link-control-refused: %v", err)
@@ -396,6 +401,39 @@ func TestEstateStoreConfigRenderRefusesDuplicateInputKeysAndInsecureInputMode(t 
 	_, err = renderEstateStoreConfig(estateStoreConfigRenderOptions{profilePath: profilePath, inputPath: inputPath, outputPath: outputPath})
 	if err == nil || !strings.Contains(err.Error(), "must be owned mode 0600") {
 		t.Fatalf("insecure input mode error = %v", err)
+	}
+}
+
+func TestEstateStoreConfigRenderExactInterruptedRetryAndChangedOutputRefusal(t *testing.T) {
+	_, profilePath, inputPath, outputPath, input := newStoreConfigRenderFixture(t)
+	writeStoreConfigRenderInput(t, inputPath, input)
+	opts := estateStoreConfigRenderOptions{profilePath: profilePath, inputPath: inputPath, outputPath: outputPath}
+	first, err := renderEstateStoreConfig(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := renderEstateStoreConfig(opts)
+	if err != nil || second.ConfigSHA256 != first.ConfigSHA256 {
+		t.Fatalf("exact interrupted retry refused: second=%+v err=%v", second, err)
+	}
+	retained, err := os.ReadFile(outputPath)
+	if err != nil || !reflect.DeepEqual(retained, initial) {
+		t.Fatalf("exact interrupted retry changed output: %v", err)
+	}
+	changed := append(append([]byte(nil), initial...), ' ')
+	if err := os.WriteFile(outputPath, changed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := renderEstateStoreConfig(opts); !errors.Is(err, errStoreConfigRenderOutputExists) {
+		t.Fatalf("STORE_CONFIG_RENDER_CHANGED_OUTPUT_ACCEPTED: %v", err)
+	}
+	retained, err = os.ReadFile(outputPath)
+	if err != nil || !reflect.DeepEqual(retained, changed) {
+		t.Fatalf("changed output was overwritten: %v", err)
 	}
 }
 

@@ -355,13 +355,41 @@ func signedSetOwnedByRuntime(info os.FileInfo) bool {
 }
 
 func requireSignedSetArtifact(selected servedReleaseSet, class, name, servedHash string, size int64) error {
-	role := map[string]string{"shell": "shell-bundle", "installer": "installer", "data": "update-controller"}[class]
-	if role == "" {
+	roles := map[string][]string{
+		"shell":     {"shell-bundle"},
+		"installer": {"installer"},
+		"data":      {"update-controller", "authz-runtime", "offline-sign-runtime", "opensanctions-index", "msb-index"},
+	}[class]
+	if len(roles) == 0 {
 		return errors.New("release-set-class-unrecognized")
+	}
+	// Generation one publishes its three F1 members under the Store's shell
+	// release class with content-addressed names. The signed F1 instead names
+	// each original basename and role. Accept that one deterministic spelling
+	// only when the prefix is the bytes being served and the basename, role,
+	// hash and size all match the highest signed release set. The chain's
+	// InstallerReleaseEntry is checked separately for every request.
+	contentAddressed := false
+	artifactName := name
+	if class == "shell" && len(name) > 65 && name[64] == '-' {
+		prefix := name[:64]
+		if decoded, err := hex.DecodeString(prefix); err == nil && hex.EncodeToString(decoded) == prefix {
+			if prefix != servedHash {
+				return errors.New("release-set-artifact-prefix-mismatch")
+			}
+			contentAddressed, artifactName = true, name[65:]
+		}
 	}
 	matched := false
 	for _, artifact := range selected.Artifacts {
-		if artifact.Role != role || artifact.Name != name {
+		eligible := false
+		for _, role := range roles {
+			eligible = eligible || artifact.Role == role
+		}
+		if contentAddressed {
+			eligible = artifact.Role == "installer" || artifact.Role == "shell-bundle" || artifact.Role == "update-controller"
+		}
+		if !eligible || artifact.Name != artifactName {
 			continue
 		}
 		if matched {

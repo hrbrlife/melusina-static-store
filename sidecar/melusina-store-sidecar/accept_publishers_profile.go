@@ -47,3 +47,27 @@ func requireAcceptPublishersNamedByProfile(accepted []string, profile estateprof
 	}
 	return nil
 }
+
+// requireConfiguredProfileIsEnrolled binds the estate profile the serving
+// config carries, against which accept_publishers and the signed Store
+// security profile were checked, to the profile this Store is enrolled under.
+// A profile is self-certifying, so without this pin any validly signed
+// profile (another estate, or a superseded revision that still names a
+// removed publisher) would satisfy requireAcceptPublishersNamedByProfile and
+// let its keys sign direct app, installer and generation envelopes.
+func requireConfiguredProfileIsEnrolled(cfg Config, state *storeEnrollmentState) error {
+	if state == nil {
+		return fmt.Errorf("%s: no enrolled estate profile pins the configured publishers", checkAcceptPublishersProfile)
+	}
+	if cfg.EstateProfile == nil {
+		return fmt.Errorf("%s: the serving config carries no estate profile", checkAcceptPublishersProfile)
+	}
+	digest, err := estateprofile.VerifyProfile(*cfg.EstateProfile)
+	if err != nil {
+		return fmt.Errorf("%s: configured estate profile: %v", checkAcceptPublishersProfile, err)
+	}
+	if digest != state.ProfilePin.ProfileSHA256 {
+		return fmt.Errorf("%s: configured estate profile %s is not the enrolled profile pin %s", checkAcceptPublishersProfile, digest, state.ProfilePin.ProfileSHA256)
+	}
+	return nil
+}

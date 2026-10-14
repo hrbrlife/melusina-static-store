@@ -69,6 +69,7 @@ func canaryGate(t *testing.T) (*publishService, *identity.Private, *identity.Pri
 	seedSlot(t, cfg.CatalogRepoRoot, "hrbrlife", "test-repo", "test-app", f.metadata)
 	m := newMockChainReader()
 	f.pinAccept(m, operatorPub)
+	pinDirectAuthorClearForFixture(t, cfg, m, f)
 	svc := newTestService(t, cfg, m, op)
 	pub := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
 	svc.cfg.Policy.AcceptPublishers = []string{pub.Public().SignPubkeyB58}

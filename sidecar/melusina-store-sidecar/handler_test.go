@@ -221,32 +221,12 @@ func b64(b []byte) string {
 	return enc.EncodeToString(b)
 }
 
-// These adapters exercise the shared gate against historical request shapes.
-// The serving router has no direct app publish endpoints.
-func (s *publishService) handleStagePublish(w http.ResponseWriter, r *http.Request) {
-	s.handleAppStage(w, r, "/publish/stage", func(_ appPublishPreflight, claimed identity.Public) (string, error) {
-		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
-		if !ok {
-			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
-		}
-		return signerKey, nil
-	}, nil, nil)
-}
-
-func (s *publishService) handlePublish(w http.ResponseWriter, r *http.Request) {
-	s.handleAppPublish(w, r, "/publish", func(_ appPublishPreflight, claimed identity.Public) (string, error) {
-		signerKey, ok := s.resolveAcceptedPublisherKey(claimed)
-		if !ok {
-			return "", errors.New("check=accept_publishers: publisher identity not in store policy accept_publishers")
-		}
-		return signerKey, nil
-	}, nil, nil, nil)
-}
-
 func doPublish(t *testing.T, svc *publishService, body *bytes.Buffer) *httptest.ResponseRecorder {
 	t.Helper()
+	pinDirectAuthorClearForRequest(t, svc, body.Bytes())
 	r := httptest.NewRequest(http.MethodPost, "/publish", body)
 	r.Header.Set("Content-Type", "application/json")
+	setTestPublisherHeader(t, r, body.Bytes())
 	w := httptest.NewRecorder()
 	svc.handlePublish(w, r)
 	return w
@@ -256,6 +236,7 @@ func doStagePublish(t *testing.T, svc *publishService, body *bytes.Buffer) *http
 	t.Helper()
 	r := httptest.NewRequest(http.MethodPost, "/publish/stage", body)
 	r.Header.Set("Content-Type", "application/json")
+	setTestPublisherHeader(t, r, body.Bytes())
 	w := httptest.NewRecorder()
 	svc.handleStagePublish(w, r)
 	return w
@@ -289,9 +270,20 @@ func doPublishInstaller(t *testing.T, svc *publishService, body *bytes.Buffer) *
 	t.Helper()
 	r := httptest.NewRequest(http.MethodPost, "/publish/installer", body)
 	r.Header.Set("Content-Type", "application/json")
+	setTestPublisherHeader(t, r, body.Bytes())
 	w := httptest.NewRecorder()
 	svc.handlePublishInstaller(w, r)
 	return w
+}
+
+func setTestPublisherHeader(t *testing.T, r *http.Request, body []byte) {
+	t.Helper()
+	var wire struct {
+		Envelope json.RawMessage `json:"envelope"`
+	}
+	if json.Unmarshal(body, &wire) == nil && len(wire.Envelope) != 0 {
+		r.Header.Set(publisherEnvelopeHeader, base64.RawURLEncoding.EncodeToString(wire.Envelope))
+	}
 }
 
 func TestPublishBodyLimitsAreEndpointSpecific(t *testing.T) {

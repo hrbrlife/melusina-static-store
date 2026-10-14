@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -55,6 +56,7 @@ func postPreSignedInstaller(t *testing.T, storeURL string, envelopeRaw []byte, c
 		t.Fatal(err)
 	}
 	request.Header.Set("Content-Type", form.FormDataContentType())
+	request.Header.Set(publisherEnvelopeHeader, base64.RawURLEncoding.EncodeToString(envelopeRaw))
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		t.Fatal(err)

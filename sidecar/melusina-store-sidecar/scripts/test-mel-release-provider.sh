@@ -74,14 +74,18 @@ set -e
 [[ $rc -ne 0 ]]
 grep -Fq 'app-specific Squads authority' "$TMP/app-authority-override.log"
 
-# The old direct Store publication operations must refuse before writing
-# material or accepting an injected submit binary.
+# Both direct operations are available, but neither may reach a Store without
+# a private scanner key and a fresh signed scan report.
+export MEL_STAGE_ID="$STAGE" MEL_PROMOTE_RECEIPT_OUT="$TMP/promote.json"
+cat >"$TMP/state/apps/$APP/provider/release.json" <<JSON
+{"appHash":"$APPHASH","releaseHash":"$RELHASH"}
+JSON
 for op in stage promote; do
   if "$PROVIDER" "$op" >"$TMP/direct-${op}.log" 2>&1; then
-    echo "direct-app-publish-retired: $op unexpectedly succeeded" >&2
+    echo "direct-app-publish-without-scanner: $op unexpectedly succeeded" >&2
     exit 1
   fi
-  grep -Fq 'direct-app-publish-retired' "$TMP/direct-${op}.log"
+  grep -Fq 'missing required environment MEL_RELEASE_SCANNER_SIGNING_KEY' "$TMP/direct-${op}.log"
 done
 [[ ! -e "$TMP/stage.json" && ! -e "$TMP/promote.json" ]]
 

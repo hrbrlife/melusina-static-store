@@ -85,7 +85,7 @@ if [[ -n "$CURRENT_BRANCH" ]]; then
     echo "source HEAD is not reachable from its refreshed upstream ref: $HEAD" >&2; exit 2; }
 else
   SOURCE_REF="${MELUSINA_STORE_GENERATION_SOURCE_REF:-}"
-  [[ "$SOURCE_REF" =~ ^refs/velocity/[a-zA-Z0-9._-]+/static-store$ ]] || {
+  [[ "$SOURCE_REF" =~ ^refs/velocity/[a-zA-Z0-9._-]+/(static-store|claude-store)$ ]] || {
     echo "source hidden work ref is required for detached HEAD" >&2; exit 2; }
   git -C "$ROOT" remote get-url origin >/dev/null 2>&1 || {
     echo "source hidden work ref remote origin is unavailable" >&2; exit 2; }

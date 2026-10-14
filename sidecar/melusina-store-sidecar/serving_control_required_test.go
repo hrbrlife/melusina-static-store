@@ -41,13 +41,29 @@ func TestServingStoreRequiresControlMTLS(t *testing.T) {
 	if err := requireServingControlMTLS(cfg); err != nil {
 		t.Fatalf("serving-store-control-mtls-positive: %v", err)
 	}
+	// False declares the direct enrolled-publisher route as the one app
+	// authority. It needs at least one profile-named publisher; an empty
+	// list would declare an authority nobody can exercise.
 	cfg.Policy.RequirePearlControlForAppPublish = false
-	if err := requireServingControlMTLS(cfg); err == nil || !strings.Contains(err.Error(), "require_pearl_control_for_app_publish") {
-		t.Fatalf("serving-store-single-app-rail-required: %v", err)
+	if err := requireServingControlMTLS(cfg); err == nil || !strings.Contains(err.Error(), "accept_publishers must name the enrolled publishers") {
+		t.Fatalf("serving-store-direct-authority-needs-publishers: %v", err)
+	}
+	cfg.Policy.AcceptPublishers = []string{storeConfigRenderTestPublisher(t, profile)}
+	if err := requireServingControlMTLS(cfg); err != nil {
+		t.Fatalf("serving-store-direct-authority-positive: %v", err)
 	}
 	cfg.Policy.RequirePearlControlForAppPublish = true
 	cfg.StoreLinkControlMTLS.StoreLinkClientCertSHA256 = strings.Repeat("0", 64)
 	if err := requireServingControlMTLS(cfg); err == nil || !strings.Contains(err.Error(), "signed Store security fields") {
 		t.Fatalf("serving-store-link-client-pin-bound: %v", err)
 	}
+}
+
+func storeConfigRenderTestPublisher(t *testing.T, profile estateprofile.EstateProfileV1) string {
+	t.Helper()
+	keys, err := storeConfigRenderPublisherKeys(profile.ReleaseTrust.PublisherKeys)
+	if err != nil || len(keys) == 0 {
+		t.Fatalf("fixture profile names no publisher key: %v", err)
+	}
+	return keys[0]
 }

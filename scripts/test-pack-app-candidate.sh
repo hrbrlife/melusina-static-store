@@ -25,6 +25,9 @@ pack:
 else
 pack-local:
 	@printf 'candidate-bytes' > "$(SPK_OUT)"
+	@if [ -n "$${LATE_METADATA_ALIAS_PATH:-}" ]; then ln -s "$${LATE_METADATA_ALIAS_TARGET:?}" "$$LATE_METADATA_ALIAS_PATH"; fi
+	@if [ -n "$${LATE_METADATA_PLANT_PATH:-}" ]; then printf '{"appId":"testappid","version":"6.6.6"}\n' > "$$LATE_METADATA_PLANT_PATH"; fi
+	@if [ -n "$${LATE_METADATA_REALDIR_PATH:-}" ]; then mv "$$LATE_METADATA_REALDIR_PATH" "$${LATE_METADATA_REALDIR_ASIDE:?}" && mkdir "$$LATE_METADATA_REALDIR_PATH"; fi
 	@if [ "$${MUTATE_METADATA:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); if [ "$${MUTATE_METADATA_SHA:-0}" = 1 ]; then printf '{"appId":"testappid","version":"1.2.3","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; else printf '{"appId":"testappid","version":"1.2.3","packageId":"%s"}\n' "$$pkg" > metadata.json; fi; fi
 	@if [ "$${MUTATE_METADATA_BAD:-0}" = 1 ]; then sha=$$(sha256sum app.spk | awk '{print $$1}'); pkg=$$(printf '%s' "$$sha" | cut -c1-32); printf '{"appId":"testappid","version":"9.9.9","packageId":"%s","sha256":"%s"}\n' "$$pkg" "$$sha" > metadata.json; fi
 	@if [ "$${MUTATE_SOURCE:-0}" = 1 ]; then printf 'mutated\n' >> tracked.txt; fi
@@ -84,6 +87,38 @@ assert d["app"]["appId"] == "testappid"
 assert d["artifact"]["sha256"].startswith(d["app"]["packageId"])
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# POST_STAGE_SOURCE_MUTATION_ACCEPTED: a helper can write into the checkout
+# after metadata staging has returned. The final receipt must not claim clean
+# source even though the initial build cleanliness check passed.
+POST_STAGE_APP="$WORK/post-stage-app"
+POST_STAGE_BIN="$WORK/post-stage-bin"
+git clone -q --branch main "$WORK/origin.git" "$POST_STAGE_APP"
+mkdir -p "$POST_STAGE_BIN"
+cat > "$POST_STAGE_BIN/python3" <<'PYTHON_WRAPPER'
+#!/usr/bin/env bash
+set -euo pipefail
+payload="$(cat)"
+printf '%s\n' "$payload" | /usr/bin/python3 "$@"
+if [[ "$payload" == *"candidate metadata output parent unsafe"* ]]; then
+  printf 'appeared after stage\n' > "${AFTER_STAGE_APP:?}/post-stage-untracked.txt"
+fi
+PYTHON_WRAPPER
+chmod +x "$POST_STAGE_BIN/python3"
+set +e
+AFTER_STAGE_APP="$POST_STAGE_APP" PATH="$POST_STAGE_BIN:$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$POST_STAGE_APP" \
+    --metadata-out "$WORK/post-stage-metadata.json" \
+    --receipt-out "$WORK/post-stage-receipt.json" >"$WORK/post-stage.log" 2>&1
+post_stage_rc=$?
+set -e
+[[ -f "$POST_STAGE_APP/post-stage-untracked.txt" ]]
+if [[ $post_stage_rc -eq 0 || -e "$WORK/post-stage-receipt.json" ]]; then
+  echo 'POST_STAGE_SOURCE_MUTATION_ACCEPTED: receipt issued over a mutated checkout' >&2
+  exit 1
+fi
+grep -q 'candidate metadata stage mutated committed source' "$WORK/post-stage.log"
+echo 'PASS POST_STAGE_SOURCE_MUTATION_ACCEPTED refused before receipt'
 
 # A partial-clone filter entry may be exposed as a URL-shaped remote name.
 # It has no publication authority and must not break the origin proof.
@@ -202,18 +237,133 @@ assert d["source"]["sourceDateEpochOrigin"] == "caller-override"
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
 
-# Supplying --metadata-out is optional staging capacity, not a promise that a
-# post-pack hook will rewrite metadata. When it remains unused, the receipt
-# must still read the committed metadata rather than a nonexistent path.
+# STALE_SOURCE_METADATA_IDENTITY_ACCEPTED: even when the pack hook does not
+# rewrite the committed metadata, a requested staged document must bind the
+# verified SPK. Otherwise the next governed cohort cannot publish the pair.
 PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
   "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/unused-metadata.json" --receipt-out "$WORK/unchanged-receipt.json"
-[[ ! -e "$WORK/unused-metadata.json" ]]
-python3 - "$WORK/unchanged-receipt.json" <<'PY'
+[[ -f "$WORK/unused-metadata.json" ]]
+python3 - "$WORK/unused-metadata.json" "$WORK/unchanged-receipt.json" <<'PY'
 import json, sys
-d = json.load(open(sys.argv[1]))
+metadata, d = (json.load(open(path)) for path in sys.argv[1:])
 assert d["app"]["version"] == "1.2.3"
+assert metadata["packageId"] == d["artifact"]["sha256"][:32], "STALE_SOURCE_METADATA_IDENTITY_ACCEPTED"
+assert metadata["sha256"] == d["artifact"]["sha256"], "STALE_SOURCE_METADATA_IDENTITY_ACCEPTED"
 PY
 [[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# IN_SOURCE_METADATA_STAGE_ACCEPTED: staging must refuse before the build if
+# the requested output resolves inside the candidate checkout, including an
+# otherwise clean untracked path. The receipt may never say source.dirty=false
+# while this helper has left a new file behind in that source.
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$APP/staged-metadata.json" \
+  --receipt-out "$WORK/in-source-stage-receipt.json" >"$WORK/in-source-stage.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate metadata output must be outside the source checkout' "$WORK/in-source-stage.log"
+[[ ! -e "$APP/staged-metadata.json" && ! -e "$WORK/in-source-stage-receipt.json" ]]
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+ln -s "$APP" "$WORK/alias-to-source"
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" --metadata-out "$WORK/alias-to-source/staged-alias.json" \
+  --receipt-out "$WORK/in-source-alias-receipt.json" >"$WORK/in-source-alias.log" 2>&1
+rc=$?
+set -e
+[[ $rc -ne 0 ]]
+grep -q 'candidate metadata output must be outside the source checkout' "$WORK/in-source-alias.log"
+[[ ! -e "$APP/staged-alias.json" && ! -e "$WORK/in-source-alias-receipt.json" ]]
+
+# A pack hook can create the parent symlink after the early preflight. The
+# staged output must still be kept out of the checkout at write time.
+set +e
+LATE_METADATA_ALIAS_PATH="$WORK/late-alias-to-source" LATE_METADATA_ALIAS_TARGET="$APP" \
+  PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+    --metadata-out "$WORK/late-alias-to-source/staged-late.json" \
+    --receipt-out "$WORK/late-alias-receipt.json" >"$WORK/late-alias.log" 2>&1
+rc=$?
+set -e
+if [[ $rc -eq 0 ]]; then
+  echo 'LATE_METADATA_ALIAS_ACCEPTED: stage moved into source after preflight' >&2
+  exit 1
+fi
+grep -q 'candidate metadata output parent unsafe' "$WORK/late-alias.log"
+[[ ! -e "$APP/staged-late.json" && ! -e "$WORK/late-alias-receipt.json" ]]
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# Preflight and every later reader resolve --metadata-out as the kernel does:
+# `link/..` names the parent of the link's target. A lexically normalised stage
+# path can name a different directory, including an ignored path inside the
+# checkout that the final git status cannot see.
+mkdir -p "$WORK/dotdot-real/inner"
+ln -s "$WORK/dotdot-real/inner" "$WORK/dotdot-link"
+[[ ! -e "$APP/ignored-metadata.json" ]]
+set +e
+PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+    --metadata-out "$WORK/dotdot-link/../app/ignored-metadata.json" \
+    --receipt-out "$WORK/dotdot-source-receipt.json" >"$WORK/dotdot-source.log" 2>&1
+rc=$?
+set -e
+if [[ -e "$APP/ignored-metadata.json" ]]; then
+  echo 'DOTDOT_METADATA_STAGE_IN_SOURCE_ACCEPTED: staged metadata into an ignored checkout path' >&2
+  exit 1
+fi
+if [[ $rc -eq 0 || -e "$WORK/dotdot-source-receipt.json" ]]; then
+  echo 'DOTDOT_METADATA_STAGE_IN_SOURCE_ACCEPTED: parent traversal was accepted' >&2
+  exit 1
+fi
+grep -q 'candidate metadata output contains parent traversal' "$WORK/dotdot-source.log"
+
+# DOTDOT_METADATA_STAGE_DIVERGED: a pack hook plants a document at the
+# requested output name after preflight. The stage must refuse (the name is no
+# longer new) rather than write a different lexical file and let the planted
+# document stand as the staged metadata.
+set +e
+LATE_METADATA_PLANT_PATH="$WORK/dotdot-real/dotdot-staged.json" \
+  PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+    --metadata-out "$WORK/dotdot-link/../dotdot-staged.json" \
+    --receipt-out "$WORK/dotdot-receipt.json" >"$WORK/dotdot.log" 2>&1
+rc=$?
+set -e
+if [[ $rc -eq 0 || -e "$WORK/dotdot-receipt.json" || -e "$WORK/dotdot-staged.json" ]]; then
+  echo 'DOTDOT_METADATA_STAGE_DIVERGED: staged a different file than the requested metadata output' >&2
+  cat "$WORK/dotdot-link/../dotdot-staged.json" >&2
+  [[ ! -e "$WORK/dotdot-receipt.json" ]] || cat "$WORK/dotdot-receipt.json" >&2
+  exit 1
+fi
+grep -q 'candidate metadata output contains parent traversal' "$WORK/dotdot.log"
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+
+# IGNORED_PARENT_SWAP_STAGE_IN_SOURCE_ACCEPTED: an ignored checkout entry is a
+# symlink to an outside directory at preflight, so the early realpath check
+# passes and git status stays clean. The pack hook replaces it with a real
+# ignored directory. Only the stage-time recheck of the opened parent keeps the
+# staged document out of the checkout; git status cannot see an ignored file.
+mkdir -p "$WORK/ignored-swap-outside"
+ln -s "$WORK/ignored-swap-outside" "$APP/ignored-metadata.json"
+[[ -z "$(git -C "$APP" status --porcelain --untracked-files=normal)" ]]
+set +e
+LATE_METADATA_REALDIR_PATH="$APP/ignored-metadata.json" LATE_METADATA_REALDIR_ASIDE="$WORK/ignored-swap-link" \
+  PATH="$BIN:$PATH" MELUSINA_SPK_BIN=spk \
+  "$ROOT/scripts/pack-app-candidate.sh" "$APP" \
+    --metadata-out "$APP/ignored-metadata.json/staged.json" \
+    --receipt-out "$WORK/ignored-swap-receipt.json" >"$WORK/ignored-swap.log" 2>&1
+rc=$?
+set -e
+[[ -d "$APP/ignored-metadata.json" && ! -L "$APP/ignored-metadata.json" ]]
+if [[ $rc -eq 0 || -e "$APP/ignored-metadata.json/staged.json" || -e "$WORK/ignored-swap-receipt.json" ]]; then
+  echo 'IGNORED_PARENT_SWAP_STAGE_IN_SOURCE_ACCEPTED: staged metadata into an ignored checkout directory' >&2
+  exit 1
+fi
+grep -q 'candidate metadata output must be outside the source checkout' "$WORK/ignored-swap.log"
+[[ ! -e "$WORK/ignored-swap-outside/staged.json" ]]
+mv "$APP/ignored-metadata.json" "$WORK/ignored-swap-realdir"
 
 # Some real app hooks synchronise both packageId and the full artifact digest.
 # That exact SPK-derived pair is admissible; a changed product field remains a

@@ -3,12 +3,15 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,11 +47,89 @@ func TestControlRequestCannotMixLegacyPreparedHandoff(t *testing.T) {
 	}
 }
 
-func TestDirectAppSubmissionProducerRetired(t *testing.T) {
+func TestDirectAppSubmissionRequiresSignedScanAndReachesCandidateRead(t *testing.T) {
 	args := []string{"--store", "https://store.example.org", "--spk", "missing.spk", "--metadata", "missing-metadata.json", "--release", "missing-release.json", "--publisher-key", "missing-publisher.json", "--store-pubkey", "missing-store.json", "--license-mint", "11111111111111111111111111111111", "--rpc-url", "https://rpc.example.org", "--program-id", testProgramID}
 	var stdout, stderr bytes.Buffer
-	if err := run(args, &stdout, &stderr); err == nil || !strings.Contains(err.Error(), "direct-app-publish-retired") {
-		t.Fatalf("direct-app-publication-producer-retired: %v", err)
+	if err := run(args, &stdout, &stderr); err == nil || !strings.Contains(err.Error(), "check=scan_report") {
+		t.Fatalf("missing direct scan report was accepted: %v", err)
+	}
+	args = append(args, "--scan-report", "missing-scan.json")
+	if err := run(args, &stdout, &stderr); err == nil || !strings.Contains(err.Error(), "read spk") {
+		t.Fatalf("direct app submission did not reach candidate read: %v", err)
+	}
+}
+
+func TestDirectAppPrivateTransportRequiresPinnedDirectMode(t *testing.T) {
+	base := []string{"--store", "https://store.example.org", "--spk", "app.spk", "--metadata", "metadata.json",
+		"--release", "RELEASE.json", "--publisher-key", "publisher.json", "--store-pubkey", "store.json",
+		"--license-mint", "11111111111111111111111111111111", "--rpc-url", "https://rpc.example.org",
+		"--program-id", testProgramID, "--scan-report", "scan.json"}
+	address := []string{"--connect-address", "10.88.180.29:18443"}
+	if _, err := parseFlags(append(append([]string{}, base...), address...)); err == nil || !strings.Contains(err.Error(), "publisher_tls_pin_required") {
+		t.Fatalf("APP_PRIVATE_UNPINNED_CONNECT_ACCEPTED: %v", err)
+	}
+	private := append(append(append([]string{}, base...), address...), "--store-tls-leaf", "leaf.pem")
+	got, err := parseFlags(private)
+	if err != nil || got.connectAddress != "10.88.180.29:18443" || got.tlsLeaf != "leaf.pem" {
+		t.Fatalf("APP_PRIVATE_TRANSPORT_FLAGS_DROPPED: %+v %v", got, err)
+	}
+	for _, mode := range [][]string{{"--prepare-out", "prepared.json"}, {"--verify-receipt", "receipt.json"}} {
+		args := append(append([]string{}, private...), mode...)
+		if _, err := parseFlags(args); err == nil || !strings.Contains(err.Error(), "requires direct app publication") {
+			t.Fatalf("APP_PRIVATE_FILE_ONLY_MODE_ACCEPTED %v: %v", mode, err)
+		}
+	}
+}
+
+func TestDirectAppSubmitPostsExactSignedStageAndPromoteBodies(t *testing.T) {
+	spk, metadata, release, claims := testRelease(t, randPubkeyB58(t))
+	publisher := newTestIdentity(t, "publisher", randPubkeyB58(t), "publisher.example.org")
+	store := newTestIdentity(t, "store", randPubkeyB58(t), "store.example.org")
+	seen := 0
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen++
+		if r.Method != http.MethodPost || (r.URL.Path != appStageTarget && r.URL.Path != appPromoteTarget) {
+			t.Errorf("unexpected direct route %s %s", r.Method, r.URL.Path)
+		}
+		var body publishRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Error(err)
+		}
+		if body.Envelope.Payload.Target != r.URL.Path || body.ReleaseB64 != stdB64(release) || body.SPKB64 != stdB64(spk) || body.MetadataB64 != stdB64(metadata) || body.ScanReport.Target != r.URL.Path || body.Developer != "hrbrlife" || body.Repo != "app" || body.Slug != "direct" {
+			t.Errorf("direct POST lost signed purpose or candidate bytes: %+v", body)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+	leaf := filepath.Join(t.TempDir(), "store-leaf.pem")
+	if err := os.WriteFile(leaf, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, route := range []string{appStageTarget, appPromoteTarget} {
+		sig, err := buildEnvelope(publisher, store.Public(), route, spk, release, claims, testProgramID, 1, 5*time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+		scan := appscan.Report{Schema: appscan.Schema, Method: http.MethodPost, Target: route,
+			SPKSHA256: appscan.Hash(spk), MetadataSHA256: appscan.Hash(metadata),
+			ReleaseSHA256: appscan.Hash(release), RuntimeContractSHA256: appscan.Hash(nil),
+			ScannedAtUnix: time.Now().Unix(), ScannerVersion: "test", DatabaseVersion: "test", Clean: true}
+		seed := sha256.Sum256([]byte("direct-submit-scanner"))
+		if err := scan.Sign(ed25519.NewKeyFromSeed(seed[:])); err != nil {
+			t.Fatal(err)
+		}
+		response, status, err := postDirectPublish(context.Background(), options{store: server.URL, tlsLeaf: leaf, timeout: time.Second, developer: "hrbrlife", repo: "app", slug: "direct"}, route, sig, release, spk, metadata, nil, scan)
+		if err != nil || status != http.StatusOK || string(response) != `{"ok":true}` {
+			t.Fatalf("APP_PRIVATE_PINNED_POST_FAILED: %s = %d %q %v", route, status, response, err)
+		}
+		_, _, err = postDirectPublish(context.Background(), options{store: server.URL, connectAddress: "159.195.5.142:18443", tlsLeaf: leaf, timeout: time.Second}, route, sig, release, spk, metadata, nil, scan)
+		if err == nil || err.Error() != "publisher_private_connect_refused" {
+			t.Fatalf("APP_PRIVATE_FOREIGN_CONNECT_ACCEPTED: %v", err)
+		}
+	}
+	if seen != 2 {
+		t.Fatalf("direct POST count = %d, want 2", seen)
 	}
 }
 
@@ -1081,6 +1162,7 @@ func TestParseFlagsRequiresCompleteSlotHint(t *testing.T) {
 		"--publisher-key", "publisher.json", "--store-pubkey", "store.json",
 		"--license-mint", "mint", "--rpc-url", "https://rpc.example",
 		"--program-id", testProgramID,
+		"--scan-report", "scan-report.json",
 	}
 	if _, err := parseFlags(append(required, "--developer", "hrbrlife")); err == nil || !strings.Contains(err.Error(), "must be supplied together") {
 		t.Fatalf("partial slot hint error = %v", err)

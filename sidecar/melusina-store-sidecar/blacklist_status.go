@@ -72,6 +72,37 @@ func verifyAppClear(ctx context.Context, cr chainReader, appIDText string, relea
 	return verifyBlacklistClear(ctx, cr, verify.BlacklistTypeApp, key, "app")
 }
 
+// verifyAppAuthorClear derives the Author from the canonical Active global
+// approval under the estate master mint. A publisher cannot choose an Author
+// target in RELEASE.json or metadata. The direct owner/publisher route uses
+// this before promotion can select any public content.
+func verifyAppAuthorClear(ctx context.Context, cr chainReader, cfg Config, appIDText string) error {
+	appKey, err := primitives.DecodeSandstormAppID(appIDText)
+	if err != nil {
+		return fmt.Errorf("check=blacklist[author]: app-id-invalid: %w", err)
+	}
+	master, err := primitives.PubkeyFromBase58(cfg.ReleaseMasterNftMint)
+	if err != nil {
+		return fmt.Errorf("check=blacklist[author]: master-mint-invalid: %w", err)
+	}
+	address, bump, err := pda.GlobalApp(master, appKey, licenseRegistryProgramID())
+	if err != nil {
+		return fmt.Errorf("check=blacklist[author]: derive global approval: %w", err)
+	}
+	account, err := cr.FetchBlacklistStatusAccount(ctx, address.Base58())
+	if err != nil {
+		return fmt.Errorf("check=blacklist[author]: fetch global approval: %w", err)
+	}
+	approval, err := verify.RequireCanonicalGlobalAppApproval(account, licenseRegistryProgramID().Base58(), [32]byte(master), appKey, uint8(bump))
+	if err != nil {
+		return fmt.Errorf("check=blacklist[author]: global approval: %w", err)
+	}
+	if err := verify.RequireActiveGlobalAppApproval(approval); err != nil {
+		return fmt.Errorf("check=blacklist[author]: global approval: %w", err)
+	}
+	return verifyBlacklistClear(ctx, cr, verify.BlacklistTypeAuthor, approval.Author, "author")
+}
+
 // verifyBlacklistClear is the one clearance check. label names it in the
 // error ("app" / "license"). Every outcome but the canonical Clear record of
 // exactly this kind and target refuses, each by name:

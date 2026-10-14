@@ -19,6 +19,13 @@ done
 
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]] || {
   echo "--version must be an explicit semver-like release version" >&2; exit 2; }
+# D1 owns Store 1.0.14 for the served first drop. This successor may only
+# advance its published version, including the bootstrap wrapper's build.
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+   [[ "$(printf '%s\n' "$VERSION" 1.0.15 | sort -V | head -n 1)" != 1.0.15 ]]; then
+  echo "STORE_W23_VERSION_NOT_FORWARD: require 1.0.15 or newer" >&2
+  exit 2
+fi
 [[ -n "$OUT_DIR" ]] || { echo "--out-dir is required" >&2; exit 2; }
 # The local go decides the release bytes (GOTOOLCHAIN=local below), so it is a
 # named input: scripts/release-inputs.json pins its version, and any other go

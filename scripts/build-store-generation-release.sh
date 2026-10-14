@@ -153,31 +153,31 @@ build_once() {
     export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0 GO111MODULE=on
     export GOFIPS140=off GO_EXTLINK_ENABLED=0 GOCACHEPROG= GOFLAGS= GOENV=off
     export GOWORK=off GOTOOLCHAIN=local SOURCE_DATE_EPOCH="$SOURCE_EPOCH" TMPDIR="$BUILD_TMPDIR"
-    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid= -X main.Version=$VERSION" \
+    go build -mod=vendor -trimpath -buildvcs=false "${BUILD_TAGS[@]}" -ldflags "-buildid= -X main.Version=$VERSION" \
       -o "$stage/bin/melusina-store-sidecar" .
     # The first-install deployer must derive the SidecarIdentity register
     # material from this exact archive ELF, TLS certificate and shard set.
     # Package the canonical preparer rather than asking deployment code to
     # reconstruct its JSON or build Go on the target.
-    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath -buildvcs=false "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/boot-identity-prep" ./cmd/boot-identity-prep
     # The controller is intentionally a separate root-owned process, but it is
     # built from the exact source revision as the Store it will govern.  The
     # first installation remains an explicitly authorized InstallerRelease
     # bootstrap; later Store generations never smuggle in a controller change.
-    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath -buildvcs=false "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/melusina-update-controller" ./cmd/melusina-update-controller
     # The controller install is a separately authorized custody ceremony that
     # must independently verify the artifact's active InstallerReleaseEntry.
     # Ship the verifier IN the bundle so that ceremony uses a tool built from
     # the same source revision as the controller it authorizes, instead of one
     # assembled ad hoc on whatever workstation happens to run the install.
-    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath -buildvcs=false "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/verify-installer-release" ./cmd/verify-installer-release
     # The signed Store generation carries the separate, private evidence-pack
     # custody producer. Installer placement and the grain socket group remain
     # signed setup inputs; no tenant roster or signing key enters this archive.
-    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath -buildvcs=false "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/evidence-pack-custody" ./cmd/evidence-pack-custody
   )
   install -m 0644 "$work/deploy/store-generation/melusina-store-sidecar.service" \

@@ -81,6 +81,8 @@ class CustodyBundleControls(unittest.TestCase):
             self.assertEqual({slot["name"] for slot in runtime["publicEnvironment"]},
                              {"EVIDENCE_PACK_ROSTER_SHA256", "EVIDENCE_PACK_PENDING_TENANT_ID", "EVIDENCE_PACK_PENDING_ESTATE_ID",
                               "EVIDENCE_PACK_PENDING_PROFILE_SHA256"})
+            names = [slot["name"] for slot in runtime["publicEnvironment"]]
+            self.assertEqual(names, sorted(names), "PENDING_CUSTODY_NONCANONICAL_ENVIRONMENT_ACCEPTED")
             wrong_estate = dict(marker)
             wrong_estate["estateId"] = "c" * 64
             pins.write_bytes(json.dumps(wrong_estate, separators=(",", ":")).encode("ascii"))

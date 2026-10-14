@@ -205,11 +205,15 @@ def contract(binary: bytes, roster: bytes, pending: bool = False,
                   ([{"path": "conf/roster-attestation.json",
                      "sha256": hashlib.sha256(attestation).hexdigest(), "sizeBytes": len(attestation)}]
                    if attestation is not None else [])),
-        "publicEnvironment": ([{"name": "EVIDENCE_PACK_PENDING_TENANT_ID", "required": True},
-                               {"name": "EVIDENCE_PACK_PENDING_ESTATE_ID", "required": True},
-                               {"name": "EVIDENCE_PACK_PENDING_PROFILE_SHA256", "required": True}]
-                              if pending else []) +
-                             [{"name": "EVIDENCE_PACK_ROSTER_SHA256", "required": True}],
+        # The guest's sidecarbundle.Inspect requires the exact canonical
+        # contract encoding, including environment slots ordered by name.
+        "publicEnvironment": sorted(
+            ([{"name": "EVIDENCE_PACK_PENDING_TENANT_ID", "required": True},
+              {"name": "EVIDENCE_PACK_PENDING_ESTATE_ID", "required": True},
+              {"name": "EVIDENCE_PACK_PENDING_PROFILE_SHA256", "required": True}]
+             if pending else []) +
+            [{"name": "EVIDENCE_PACK_ROSTER_SHA256", "required": True}],
+            key=lambda slot: slot["name"]),
         "probes": [{"id": "custody-active", "kind": "process", "expected": "active", "timeoutSeconds": 60}],
     }
     return json.dumps(body, separators=(",", ":"), ensure_ascii=True).encode("ascii")

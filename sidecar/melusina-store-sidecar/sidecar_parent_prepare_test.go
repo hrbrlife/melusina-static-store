@@ -36,7 +36,6 @@ func (r *countingParentReader) fetchMultipleAccounts(ctx context.Context, addres
 func parentPrepareFixture(t *testing.T) (keylessFixture, stagedSidecarClassRequest) {
 	t.Helper()
 	f := newKeylessFixture(t)
-	(*f.svc).cr = &batchMockChainReader{mockChainReader: f.m}
 	f.svc.operator = newTestIdentity(t, "parent-class-store", testLicenseMint, "store.example.org")
 	f.svc.cfg.StoreID = "parent-test-store"
 	f.svc.cfg.Domain = "store.example.org"

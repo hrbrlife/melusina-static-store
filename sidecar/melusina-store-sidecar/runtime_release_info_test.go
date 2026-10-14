@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -194,5 +195,24 @@ func TestW23StoreGenerationGoBuildsDisableVCSStamp(t *testing.T) {
 	}
 	if !strings.Contains(string(bootstrap), "build-store-generation-release.sh") || strings.Contains(string(bootstrap), "go build ") {
 		t.Fatal("STORE_BOOTSTRAP_BUILDER_BYPASS: bootstrap must call the checked generation builder")
+	}
+}
+
+func TestW23StoreVersionForwardOfServedFirstDrop(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", ".."))
+	builder := filepath.Join(root, "scripts", "build-store-generation-release.sh")
+	for _, version := range []string{"1.0.13", "1.0.14"} {
+		output, err := exec.Command("bash", builder, "--version", version).CombinedOutput()
+		if err == nil || !strings.Contains(string(output), "STORE_W23_VERSION_NOT_FORWARD") {
+			t.Fatalf("STORE_W23_VERSION_NOT_FORWARD: %s was not refused before build inputs: %s (%v)", version, output, err)
+		}
+	}
+	output, err := exec.Command("bash", builder, "--version", "1.0.15").CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "--out-dir is required") {
+		t.Fatalf("STORE_W23_VERSION_FORWARD_REFUSED: 1.0.15 did not pass the version gate: %s (%v)", output, err)
 	}
 }

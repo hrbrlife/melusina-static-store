@@ -11,6 +11,28 @@ import (
 	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
+type countingParentReader struct {
+	*mockChainReader
+	calls int
+	size  int
+}
+
+func (r *countingParentReader) fetchMultipleAccounts(ctx context.Context, addresses []string) ([]accountValue, error) {
+	r.calls++
+	r.size = len(addresses)
+	values := make([]accountValue, len(addresses))
+	for i, address := range addresses {
+		data, owner, err := r.mockChainReader.fetchRawAccount(ctx, address)
+		if err != nil {
+			return nil, err
+		}
+		if data != nil {
+			values[i] = accountValue{data: data, owner: owner, present: true}
+		}
+	}
+	return values, nil
+}
+
 func parentPrepareFixture(t *testing.T) (keylessFixture, stagedSidecarClassRequest) {
 	t.Helper()
 	f := newKeylessFixture(t)
@@ -19,6 +41,7 @@ func parentPrepareFixture(t *testing.T) (keylessFixture, stagedSidecarClassReque
 	f.svc.cfg.Domain = "store.example.org"
 	f.svc.cfg.ReleaseMasterNftMint = seedCascadeMaster().Base58()
 	f.svc.cfg.ResellerNFTMint = testStoreOwnReseller().Base58()
+	(*f.svc).cr = &countingParentReader{mockChainReader: f.m}
 	chain := f.component.Chain
 	request := stagedSidecarClassRequest{Schema: parentSidecarPrepareSchema, StoreID: f.svc.cfg.StoreID,
 		Rows: []stagedSidecarClassRow{{ID: f.component.ComponentID, Class: componentrelease.AuthoritySidecarCascade,
@@ -74,11 +97,13 @@ func TestParentPreparedSidecarBeforeLocalButFullServeAndPromoteRefuse(t *testing
 
 func TestParentPrepareBatchesParentsAndRefusesMissingAccount(t *testing.T) {
 	f, request := parentPrepareFixture(t)
+	reader := &countingParentReader{mockChainReader: f.m}
+	(*f.svc).cr = reader
 	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
 		t.Fatalf("parent preparation refused active parents: %v", err)
 	}
-	if f.m.batchAccountReads != 1 {
-		t.Fatalf("parent preparation made %d batch reads; want exactly one", f.m.batchAccountReads)
+	if reader.calls != 1 {
+		t.Fatalf("parent preparation made %d batch reads; want exactly one", reader.calls)
 	}
 	delete(f.m.rawAccounts, f.globalPDA)
 	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err == nil || !strings.Contains(err.Error(), "GlobalSidecarApproval absent") {
@@ -88,6 +113,8 @@ func TestParentPrepareBatchesParentsAndRefusesMissingAccount(t *testing.T) {
 
 func TestParentPrepareTwentyRowsUseOneBoundedChainRead(t *testing.T) {
 	f, request := parentPrepareFixture(t)
+	reader := &countingParentReader{mockChainReader: f.m}
+	(*f.svc).cr = reader
 	request.Rows = nil
 	for i := 0; i < 20; i++ {
 		id := fmt.Sprintf("sidecar-%02d", i)
@@ -110,8 +137,8 @@ func TestParentPrepareTwentyRowsUseOneBoundedChainRead(t *testing.T) {
 	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
 		t.Fatalf("20-row parent preparation refused active parents: %v", err)
 	}
-	if f.m.batchAccountReads != 1 || f.m.batchAccountSize != 41 {
-		t.Fatalf("20-row preparation made %d batch reads of %d addresses; want one read of 41 unique parents", f.m.batchAccountReads, f.m.batchAccountSize)
+	if reader.calls != 1 || reader.size != 41 {
+		t.Fatalf("20-row preparation made %d batch reads of %d addresses; want one read of 41 unique parents", reader.calls, reader.size)
 	}
 }
 

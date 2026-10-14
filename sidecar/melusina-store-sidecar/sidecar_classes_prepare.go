@@ -47,9 +47,27 @@ func (s *publishService) classesFromParentStagedRequest(ctx context.Context, req
 	if err != nil {
 		return sidecarClassTable{}, err
 	}
-	rr, ok := s.cr.(rawAccountReader)
+	_, ok := s.cr.(rawAccountReader)
 	if !ok {
 		return sidecarClassTable{}, errors.New("sidecar-parent-prepare-chain-reader-required")
+	}
+	mr, ok := s.cr.(multiAccountReader)
+	if !ok {
+		return sidecarClassTable{}, errors.New("sidecar-parent-prepare-batch-reader-required")
+	}
+	type parentCheck struct {
+		id   string
+		view componentReleaseChainView
+		hash [32]byte
+	}
+	checks := make([]parentCheck, 0, len(req.Rows))
+	addresses := make([]string, 0, 2*len(req.Rows)+1)
+	seen := make(map[string]bool, 2*len(req.Rows)+1)
+	appendAddress := func(address string) {
+		if !seen[address] {
+			seen[address] = true
+			addresses = append(addresses, address)
+		}
 	}
 	for _, row := range req.Rows {
 		chain := row.Chain
@@ -96,11 +114,54 @@ func (s *publishService) classesFromParentStagedRequest(ctx context.Context, req
 			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-hash-invalid:%s", row.ID)
 		}
 		view := componentReleaseChainView{sidecarID: chain.SidecarID, licenseMint: license, masterMint: master, resellerMint: reseller, pinMaster: true, keyless: chain.Kind == componentrelease.AuthoritySidecarCascade}
-		if err := checkSidecarParents(ctx, rr, view, hash); err != nil {
-			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-parent-refused:%s: %w", row.ID, err)
+		resellerApproval, _, err := primitives.DeriveResellerSidecar(reseller, chain.SidecarID, licenseRegistryProgramID())
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-reseller-pda-invalid:%s: %w", row.ID, err)
+		}
+		resellerEntry, _, err := primitives.FindProgramAddress([][]byte{[]byte("reseller"), reseller[:]}, licenseRegistryProgramID(), nil)
+		if err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-reseller-entry-pda-invalid:%s: %w", row.ID, err)
+		}
+		appendAddress(global.Base58())
+		appendAddress(resellerApproval.Base58())
+		appendAddress(resellerEntry.Base58())
+		checks = append(checks, parentCheck{id: row.ID, view: view, hash: hash})
+	}
+	values, err := mr.fetchMultipleAccounts(ctx, addresses)
+	if err != nil {
+		return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-parent-read: %w", err)
+	}
+	if len(values) != len(addresses) {
+		return sidecarClassTable{}, errors.New("sidecar-parent-prepare-parent-read-length-invalid")
+	}
+	snapshot := parentAccountSnapshot{accounts: make(map[string]accountValue, len(addresses))}
+	for i, address := range addresses {
+		snapshot.accounts[address] = values[i]
+	}
+	// Run the existing cascade decoder and authorization checks on the bounded
+	// chain snapshot. The raw reader assertion above keeps the same capability
+	// requirement as the original parent preparation path.
+	for _, check := range checks {
+		if err := checkSidecarParents(ctx, snapshot, check.view, check.hash); err != nil {
+			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-parent-refused:%s: %w", check.id, err)
 		}
 	}
 	return table, nil
+}
+
+// parentAccountSnapshot refuses an unplanned address; an absent planned
+// account remains absent so the ordinary cascade check fails closed.
+type parentAccountSnapshot struct{ accounts map[string]accountValue }
+
+func (s parentAccountSnapshot) fetchRawAccount(_ context.Context, address string) ([]byte, string, error) {
+	value, planned := s.accounts[address]
+	if !planned {
+		return nil, "", fmt.Errorf("sidecar-parent-prepare-unplanned-account:%s", address)
+	}
+	if !value.present {
+		return nil, "", nil
+	}
+	return value.data, value.owner, nil
 }
 
 type stagedSidecarClassRequest struct {

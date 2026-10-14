@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -68,6 +69,49 @@ func TestParentPreparedSidecarBeforeLocalButFullServeAndPromoteRefuse(t *testing
 	}
 	if err := f.svc.verifyComponentReleaseOnChain(context.Background(), f.component); err == nil || !strings.Contains(err.Error(), "LocalSidecarApproval absent") {
 		t.Fatalf("full generation promotion accepted without Local approval: %v", err)
+	}
+}
+
+func TestParentPrepareBatchesParentsAndRefusesMissingAccount(t *testing.T) {
+	f, request := parentPrepareFixture(t)
+	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
+		t.Fatalf("parent preparation refused active parents: %v", err)
+	}
+	if f.m.batchAccountReads != 1 {
+		t.Fatalf("parent preparation made %d batch reads; want exactly one", f.m.batchAccountReads)
+	}
+	delete(f.m.rawAccounts, f.globalPDA)
+	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err == nil || !strings.Contains(err.Error(), "GlobalSidecarApproval absent") {
+		t.Fatalf("batched absent GlobalSidecarApproval was accepted or misclassified: %v", err)
+	}
+}
+
+func TestParentPrepareTwentyRowsUseOneBoundedChainRead(t *testing.T) {
+	f, request := parentPrepareFixture(t)
+	request.Rows = nil
+	for i := 0; i < 20; i++ {
+		id := fmt.Sprintf("sidecar-%02d", i)
+		seedValidCascade(t, f.m, f.license, id, f.artifact)
+		chain := f.component.Chain
+		chain.SidecarID = id
+		global, _, err := primitives.DeriveGlobalSidecar(seedCascadeMaster(), id, programID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		local, _, err := primitives.DeriveLocalSidecar(f.license, id, programID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		chain.GlobalApprovalPDA, chain.LocalApprovalPDA = global.Base58(), local.Base58()
+		request.Rows = append(request.Rows, stagedSidecarClassRow{ID: id, Class: componentrelease.AuthoritySidecarCascade,
+			KeyCustody: "none", ArtifactName: f.component.ArtifactName,
+			SHA256: f.component.SHA256, SizeBytes: f.component.SizeBytes, Chain: &chain})
+	}
+	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
+		t.Fatalf("20-row parent preparation refused active parents: %v", err)
+	}
+	if f.m.batchAccountReads != 1 || f.m.batchAccountSize != 41 {
+		t.Fatalf("20-row preparation made %d batch reads of %d addresses; want one read of 41 unique parents", f.m.batchAccountReads, f.m.batchAccountSize)
 	}
 }
 

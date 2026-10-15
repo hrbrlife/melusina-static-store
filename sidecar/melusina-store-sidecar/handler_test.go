@@ -1683,18 +1683,58 @@ func TestHandlePublishInstaller_AuthorAndVersionMatrix(t *testing.T) {
 			wantBody: "check=installer_version",
 		},
 		{
-			name: "current_active_not_superseded",
+			name: "forward_active_prior_1_0_30_to_1_0_31",
 			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
 				pinRootStoreOperator(t, cfg, m, op)
-				pinInstallerEntry(t, cfg, m, artifact, "2.0.0", verify.AttestationStatusActive)
+				pinInstallerEntry(t, cfg, m, artifact, "1.0.31", verify.AttestationStatusActive)
 				old := []byte("old installer artifact")
 				writeCurrentInstaller(t, cfg, "shell", "sandstorm-42.tar.xz", old)
-				pinInstallerEntry(t, cfg, m, old, "1.0.0", verify.AttestationStatusActive)
+				pinInstallerEntry(t, cfg, m, old, "1.0.30", verify.AttestationStatusActive)
+				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+				return signInstallerPublish(t, pub, op.Public(), artifact)
+			},
+			wantCode: http.StatusOK,
+		},
+		{
+			name: "forward_recalled_candidate_1_0_31_refused",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "1.0.31", verify.AttestationStatusRevoked)
+				old := []byte("old installer artifact")
+				writeCurrentInstaller(t, cfg, "shell", "sandstorm-42.tar.xz", old)
+				pinInstallerEntry(t, cfg, m, old, "1.0.30", verify.AttestationStatusActive)
+				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+				return signInstallerPublish(t, pub, op.Public(), artifact)
+			},
+			wantCode: http.StatusForbidden,
+			wantBody: "check=installer_release",
+		},
+		{
+			name: "recalled_prior_version_regression_refused",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "1.0.29", verify.AttestationStatusActive)
+				old := []byte("old installer artifact")
+				writeCurrentInstaller(t, cfg, "shell", "sandstorm-42.tar.xz", old)
+				pinInstallerEntry(t, cfg, m, old, "1.0.30", verify.AttestationStatusRevoked)
 				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
 				return signInstallerPublish(t, pub, op.Public(), artifact)
 			},
 			wantCode: http.StatusConflict,
-			wantBody: "check=installer_supersede",
+			wantBody: "check=installer_version",
+		},
+		{
+			name: "recalled_prior_forward_1_0_31_accepted",
+			setup: func(t *testing.T, cfg Config, m *mockChainReader, op *identity.Private, artifact []byte) envelope.Signed {
+				pinRootStoreOperator(t, cfg, m, op)
+				pinInstallerEntry(t, cfg, m, artifact, "1.0.31", verify.AttestationStatusActive)
+				old := []byte("old installer artifact")
+				writeCurrentInstaller(t, cfg, "shell", "sandstorm-42.tar.xz", old)
+				pinInstallerEntry(t, cfg, m, old, "1.0.30", verify.AttestationStatusRevoked)
+				pub := newTestIdentity(t, "installer-publisher", randPubkeyB58(t), "publisher.example.org")
+				return signInstallerPublish(t, pub, op.Public(), artifact)
+			},
+			wantCode: http.StatusOK,
 		},
 		{
 			name: "version_bumped_signed_witnessed",

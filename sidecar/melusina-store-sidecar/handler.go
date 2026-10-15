@@ -1184,7 +1184,7 @@ func appClaimErrorStatus(err error) int {
 }
 
 func publishErrorStatus(err error) int {
-	if errors.Is(err, errVersionConflict) || errors.Is(err, errSupersedeRequired) || errors.Is(err, errReleaseTimestampNotMonotonic) {
+	if errors.Is(err, errVersionConflict) || errors.Is(err, errReleaseTimestampNotMonotonic) {
 		return http.StatusConflict
 	}
 	return http.StatusForbidden

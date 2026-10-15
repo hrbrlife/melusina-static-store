@@ -16,8 +16,7 @@ import (
 )
 
 var (
-	errVersionConflict   = errors.New("version is not strictly greater than current active release")
-	errSupersedeRequired = errors.New("prior active release must be superseded before publish")
+	errVersionConflict = errors.New("version is not strictly greater than current active release")
 )
 
 // releaseEntryMeta is one decoded ReleaseEntry account (every field,
@@ -153,9 +152,9 @@ func (s *publishService) verifyInstallerPublishForward(ctx context.Context, clas
 	if err != nil {
 		return fmt.Errorf("check=installer_current: %w", err)
 	}
-	if oldMeta.Status != verify.AttestationStatusActive {
-		return nil
-	}
+	// The served predecessor remains the version floor even after its chain
+	// status changes. Recall withdraws those bytes; it does not authorize a
+	// rollback to an older version.
 	greater, err := semverGreater(newMeta.Version, oldMeta.Version)
 	if err != nil {
 		return fmt.Errorf("check=installer_version: %w", err)
@@ -164,10 +163,9 @@ func (s *publishService) verifyInstallerPublishForward(ctx context.Context, clas
 		return fmt.Errorf("check=installer_version: %w: submitted on-chain version %q is not greater than active %q (%s)",
 			errVersionConflict, newMeta.Version, oldMeta.Version, oldMeta.PDA)
 	}
-	if oldHash != newHash {
-		return fmt.Errorf("check=installer_supersede: %w: active installer release %s remains %s",
-			errSupersedeRequired, oldMeta.PDA, oldMeta.Status)
-	}
+	// The old Active entry remains valid for consumers pinned to its bytes.
+	// Publishing a strictly later Active version does not recall it; recall is
+	// the chain's explicit Superseded or Revoked transition.
 	return nil
 }
 

@@ -13,6 +13,7 @@ import (
 
 const Schema = "melusina.app-scan-report.v1"
 const MaxAge = 10 * time.Minute
+const MaxFutureSkew = 2 * time.Second
 
 type Report struct {
 	Schema                string `json:"schema"`
@@ -23,6 +24,7 @@ type Report struct {
 	ReleaseSHA256         string `json:"releaseSha256"`
 	RuntimeContractSHA256 string `json:"runtimeContractSha256"`
 	ScannedAtUnix         int64  `json:"scannedAtUnix"`
+	ScannedAt             string `json:"scannedAt,omitempty"`
 	ScannerVersion        string `json:"scannerVersion"`
 	DatabaseVersion       string `json:"databaseVersion"`
 	Clean                 bool   `json:"clean"`
@@ -41,8 +43,22 @@ func (r Report) payload() ([]byte, error) {
 			return nil, errors.New("scan-report-invalid-content-digest")
 		}
 	}
+	if _, err := r.scanTime(); err != nil {
+		return nil, err
+	}
 	r.Signature = ""
 	return json.Marshal(r)
+}
+
+func (r Report) scanTime() (time.Time, error) {
+	if r.ScannedAt == "" {
+		return time.Unix(r.ScannedAtUnix, 0), nil // already-signed v1 reports
+	}
+	stamp, err := time.Parse(time.RFC3339Nano, r.ScannedAt)
+	if err != nil || stamp.Location() != time.UTC || stamp.Unix() != r.ScannedAtUnix {
+		return time.Time{}, errors.New("scan-report-timestamp-invalid")
+	}
+	return stamp, nil
 }
 
 func (r Report) Digest() (string, error) {
@@ -76,7 +92,11 @@ func Verify(r Report, publicKeyHex, method, target string, spk, metadata, releas
 	if r.SPKSHA256 != Hash(spk) || r.MetadataSHA256 != Hash(metadata) || r.ReleaseSHA256 != Hash(release) || r.RuntimeContractSHA256 != Hash(runtimeContract) {
 		return errors.New("scan-report-wrong-artifact")
 	}
-	if r.ScannedAtUnix > now.Unix() || now.Sub(time.Unix(r.ScannedAtUnix, 0)) > MaxAge {
+	stamp, err := r.scanTime()
+	if err != nil {
+		return err
+	}
+	if stamp.After(now.Add(MaxFutureSkew)) || now.Sub(stamp) > MaxAge {
 		return errors.New("scan-report-expired")
 	}
 	key, err := hex.DecodeString(publicKeyHex)

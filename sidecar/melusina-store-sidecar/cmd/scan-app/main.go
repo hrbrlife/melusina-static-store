@@ -109,7 +109,8 @@ func scan(args []string) error {
 	if err != nil {
 		return err
 	}
-	r := appscan.Report{Schema: appscan.Schema, Method: "POST", Target: *target, SPKSHA256: appscan.Hash(content[0]), MetadataSHA256: appscan.Hash(content[1]), ReleaseSHA256: appscan.Hash(content[2]), RuntimeContractSHA256: appscan.Hash(content[3]), ScannedAtUnix: time.Now().UTC().Unix(), ScannerVersion: version, DatabaseVersion: dbVersion, Clean: true}
+	scannedAt := time.Now().UTC()
+	r := appscan.Report{Schema: appscan.Schema, Method: "POST", Target: *target, SPKSHA256: appscan.Hash(content[0]), MetadataSHA256: appscan.Hash(content[1]), ReleaseSHA256: appscan.Hash(content[2]), RuntimeContractSHA256: appscan.Hash(content[3]), ScannedAtUnix: scannedAt.Unix(), ScannedAt: scannedAt.Format("2006-01-02T15:04:05.000000000Z07:00"), ScannerVersion: version, DatabaseVersion: dbVersion, Clean: true}
 	if err := r.Sign(ed25519.NewKeyFromSeed(seed)); err != nil {
 		return err
 	}

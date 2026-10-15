@@ -19,6 +19,22 @@ done
 
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]] || {
   echo "--version must be an explicit semver-like release version" >&2; exit 2; }
+# D1 owns Store 1.0.14 for the served first drop. This successor may only
+# advance its published version, including the bootstrap wrapper's build.
+VERSION_FORWARD=0
+if [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+  version_major="${BASH_REMATCH[1]}"
+  version_minor="${BASH_REMATCH[2]}"
+  version_patch="${BASH_REMATCH[3]}"
+  if (( 10#$version_major > 1 ||
+        (10#$version_major == 1 && (10#$version_minor > 0 || 10#$version_patch >= 15)) )); then
+    VERSION_FORWARD=1
+  fi
+fi
+if [[ "$VERSION_FORWARD" != 1 ]]; then
+  echo "STORE_W23_VERSION_NOT_FORWARD: require 1.0.15 or newer" >&2
+  exit 2
+fi
 [[ -n "$OUT_DIR" ]] || { echo "--out-dir is required" >&2; exit 2; }
 # The local go decides the release bytes (GOTOOLCHAIN=local below), so it is a
 # named input: scripts/release-inputs.json pins its version, and any other go
@@ -153,31 +169,31 @@ build_once() {
     export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0 GO111MODULE=on
     export GOFIPS140=off GO_EXTLINK_ENABLED=0 GOCACHEPROG= GOFLAGS= GOENV=off
     export GOWORK=off GOTOOLCHAIN=local SOURCE_DATE_EPOCH="$SOURCE_EPOCH" TMPDIR="$BUILD_TMPDIR"
-    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid= -X main.Version=$VERSION" \
+    go build -mod=vendor -trimpath -buildvcs=false "${BUILD_TAGS[@]}" -ldflags "-buildid= -X main.Version=$VERSION" \
       -o "$stage/bin/melusina-store-sidecar" .
     # The first-install deployer must derive the SidecarIdentity register
     # material from this exact archive ELF, TLS certificate and shard set.
     # Package the canonical preparer rather than asking deployment code to
     # reconstruct its JSON or build Go on the target.
-    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath -buildvcs=false "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/boot-identity-prep" ./cmd/boot-identity-prep
     # The controller is intentionally a separate root-owned process, but it is
     # built from the exact source revision as the Store it will govern.  The
     # first installation remains an explicitly authorized InstallerRelease
     # bootstrap; later Store generations never smuggle in a controller change.
-    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath -buildvcs=false "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/melusina-update-controller" ./cmd/melusina-update-controller
     # The controller install is a separately authorized custody ceremony that
     # must independently verify the artifact's active InstallerReleaseEntry.
     # Ship the verifier IN the bundle so that ceremony uses a tool built from
     # the same source revision as the controller it authorizes, instead of one
     # assembled ad hoc on whatever workstation happens to run the install.
-    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath -buildvcs=false "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/verify-installer-release" ./cmd/verify-installer-release
     # The signed Store generation carries the separate, private evidence-pack
     # custody producer. Installer placement and the grain socket group remain
     # signed setup inputs; no tenant roster or signing key enters this archive.
-    go build -mod=vendor -trimpath "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
+    go build -mod=vendor -trimpath -buildvcs=false "${BUILD_TAGS[@]}" -ldflags "-buildid=" \
       -o "$stage/bin/evidence-pack-custody" ./cmd/evidence-pack-custody
   )
   install -m 0644 "$work/deploy/store-generation/melusina-store-sidecar.service" \

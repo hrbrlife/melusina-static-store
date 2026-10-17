@@ -81,7 +81,15 @@ type storeConfigRenderInput struct {
 	RPCAttempts     int
 	ChainID         string
 	OperatorDomain  string
+	KeyVersion      uint32
 	SecurityProfile storesecurity.Profile
+}
+
+func storeConfigRenderKeyVersion(input storeConfigRenderInput) uint32 {
+	if input.KeyVersion == 0 {
+		return 1
+	}
+	return input.KeyVersion
 }
 
 type estateStoreConfigRenderOptions struct {
@@ -299,7 +307,7 @@ func loadStoreConfigRenderInput(path string) (storeConfigRenderInput, error) {
 	}
 	known := map[string]struct{}{
 		"schema": {}, "kind": {}, "profileSha256": {}, "licenseNftMint": {}, "rpcUrl": {},
-		"rpcFallbackUrls": {}, "rpcAttempts": {}, "chainId": {}, "operatorDomain": {}, "securityProfile": {},
+		"rpcFallbackUrls": {}, "rpcAttempts": {}, "chainId": {}, "operatorDomain": {}, "keyVersion": {}, "securityProfile": {},
 	}
 	for field := range fields {
 		if _, ok := known[field]; !ok {
@@ -339,6 +347,12 @@ func loadStoreConfigRenderInput(path string) (storeConfigRenderInput, error) {
 	}
 	if input.OperatorDomain, err = storeConfigRenderCanonicalDomain(fields, "operatorDomain"); err != nil {
 		return input, err
+	}
+	input.KeyVersion = 1 // historical signed render inputs omitted this field
+	if rawVersion, ok := fields["keyVersion"]; ok {
+		if err := json.Unmarshal(rawVersion, &input.KeyVersion); err != nil || input.KeyVersion == 0 {
+			return input, errors.New("store-config-render-input-invalid:keyVersion")
+		}
 	}
 	securityRaw, ok := fields["securityProfile"]
 	if !ok {
@@ -528,8 +542,8 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 			ShardsDir:          storeConfigRenderShardDir,
 			SidecarID:          rootstore.SidecarID,
 			ChainID:            input.ChainID,
-			KeyVersion:         1,
-			OperatorKeyVersion: 1,
+			KeyVersion:         storeConfigRenderKeyVersion(input),
+			OperatorKeyVersion: storeConfigRenderKeyVersion(input),
 			OperatorDomain:     input.OperatorDomain,
 			// The chain-bound identity leaf is deliberately a separate file
 			// from the public, self-renewing leaf above: the ACME responder

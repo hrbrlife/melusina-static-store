@@ -112,7 +112,7 @@ func sealFoundationEscrow(value foundationEscrowOptions) (map[string]any, error)
 	}
 	ref := source.OperatorRef
 	if ref.Validate() != nil || ref.Kind != identity.KindSidecar || ref.SidecarID != "store" ||
-		ref.KeyVersion != 1 || ref.ChainID != "solana:"+profile.Network.Label ||
+		ref.KeyVersion == 0 || ref.ChainID != "solana:"+profile.Network.Label ||
 		ref.Domain != profile.Store.RootDomain {
 		return nil, errors.New("foundation-escrow-identity-ref-profile-mismatch")
 	}

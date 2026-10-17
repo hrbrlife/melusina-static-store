@@ -865,8 +865,10 @@ func (g *serveGate) gateInstallerRelease(ctx context.Context, class, name string
 			return h, fmt.Errorf("3.1::title-claim: %w", err)
 		}
 	}
-	if g.releaseVerdictFresh(h) {
-		return h, nil
+	if g.cfg.recoveryBridge == nil || !g.cfg.recoveryBridge.member(installerHash) {
+		if g.releaseVerdictFresh(h) {
+			return h, nil
+		}
 	}
 	if err := VerifyInstallerReleaseHash(ctx, g.cr, g.cfg, installerHash); err != nil {
 		return h, err

@@ -118,7 +118,8 @@ func fixture(t *testing.T) (Signed, []byte, []byte, Observation) {
 		RegistryProgram: registry, CoreMultisig: coreMultisig, CoreVault: coreVault,
 		OldProfileRawSHA256: rawHash(oldRaw), OldProfileDigest: oldDigest,
 		SuccessorProfileRawSHA256: rawHash(newRaw), SuccessorProfileDigest: newDigest,
-		LiveTrustRawSHA256: testHash("live-trust"), FoundationSequence: 106, DeployableSequence: 107,
+		LiveTrustRawSHA256: testHash("live-trust"), FoundationSequence: 106, F1Sequence: 107,
+		FoundationSetSHA256: testHash("signed-f0"), F1SetSHA256: testHash("signed-f1"),
 		InstallerSHA256: memberHash(members, "installer"), ShellSHA256: memberHash(members, "shell-bundle"),
 		StoreArchiveSHA256: testHash("store-archive"), StoreBinarySHA256: testHash("store-binary"),
 		DeployerCommit: testHash("deployer")[:40], StoreCommit: testHash("store")[:40],
@@ -129,7 +130,8 @@ func fixture(t *testing.T) (Signed, []byte, []byte, Observation) {
 		AdmissionInstallerSHA256: s.InstallerSHA256, AdmissionShellSHA256: s.ShellSHA256,
 		AdmissionStoreArchiveSHA256: s.StoreArchiveSHA256, AdmissionStoreBinarySHA256: s.StoreBinarySHA256,
 		AdmissionDeployerCommit: s.DeployerCommit, AdmissionStoreCommit: s.StoreCommit,
-		FoundationSequence: 106, DeployableSequence: 107, TrustRawSHA256: s.LiveTrustRawSHA256,
+		FoundationSequence: 106, F1Sequence: 107, FoundationSetSHA256: s.FoundationSetSHA256,
+		F1SetSHA256: s.F1SetSHA256, TrustRawSHA256: s.LiveTrustRawSHA256,
 		TrustProfileDigest: oldDigest, TrustPublisherKeys: old.ReleaseTrust.PublisherKeys,
 		TrustThreshold: old.ReleaseTrust.Threshold, Members: members, CoreThreshold: 3}
 	intent, err := IntentDigest(s)
@@ -194,9 +196,19 @@ func TestRecoveryBridgeChangedAdmissionOrF1(t *testing.T) {
 		t.Fatalf("admission: %v", err)
 	}
 	observed.AdmissionSHA256 = b.Statement.AdmissionSHA256
-	observed.DeployableSequence++
+	observed.F1Sequence++
 	if _, err := Verify(b, old, next, observed); !errors.Is(err, ErrAdmission) {
 		t.Fatalf("F1: %v", err)
+	}
+	observed.F1Sequence = b.Statement.F1Sequence
+	observed.FoundationSetSHA256 = testHash("substituted-signed-f0")
+	if _, err := Verify(b, old, next, observed); !errors.Is(err, ErrAdmission) {
+		t.Fatalf("signed F0 digest: %v", err)
+	}
+	observed.FoundationSetSHA256 = b.Statement.FoundationSetSHA256
+	observed.F1SetSHA256 = testHash("substituted-signed-f1")
+	if _, err := Verify(b, old, next, observed); !errors.Is(err, ErrAdmission) {
+		t.Fatalf("signed F1 digest: %v", err)
 	}
 }
 
@@ -283,6 +295,8 @@ func TestRecoveryBridgeIntentPrecedesEntryRegistrationButCompletionBindsReadback
 		t.Fatal(err)
 	}
 	beforeRegistration := b.Statement
+	beforeRegistration.FoundationSetSHA256 = ""
+	beforeRegistration.F1SetSHA256 = ""
 	beforeRegistration.Members = append([]Member(nil), beforeRegistration.Members...)
 	for index := range beforeRegistration.Members {
 		beforeRegistration.Members[index].EntryRawSHA256 = ""
@@ -295,7 +309,7 @@ func TestRecoveryBridgeIntentPrecedesEntryRegistrationButCompletionBindsReadback
 	if got, err := VerifyIntent(beforeRegistration, old, next, observed); err != nil || got != intent {
 		t.Fatalf("signed-profile intent refused before entry registration: %s %v", got, err)
 	}
-	if _, err := Digest(beforeRegistration); !errors.Is(err, ErrMember) {
+	if _, err := Digest(beforeRegistration); !errors.Is(err, ErrMalformed) {
 		t.Fatalf("incomplete bridge was signable: %v", err)
 	}
 	intentRaw, _ := json.Marshal(beforeRegistration)

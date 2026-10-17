@@ -240,6 +240,10 @@ type Config struct {
 	// (bindInstallerReleaseTrust); every InstallerReleaseEntry gate admits
 	// through it, and a Store with no enrolled profile has none and refuses.
 	installerReleaseTrust *installerrelease.Trust
+	// recoveryBridge is set only from root-owned signed fifth-boot documents.
+	// It delegates exactly the three F1 old-profile hashes after fresh chain
+	// verification; ordinary releases retain installerReleaseTrust.
+	recoveryBridge *recoveryBridgeRuntime
 	// releaseSetDir is the fixed, root-owned directory of publisher-signed
 	// release sets accepted by the Store-host executor. It is never read from
 	// config JSON; an enrolled runtime sets it while binding the signed estate.

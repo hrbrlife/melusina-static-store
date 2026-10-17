@@ -63,7 +63,9 @@ type Statement struct {
 	SuccessorProfileDigest    string   `json:"successorProfileDigest"`
 	LiveTrustRawSHA256        string   `json:"liveTrustRawSha256"`
 	FoundationSequence        uint64   `json:"foundationSequence"`
-	DeployableSequence        uint64   `json:"deployableSequence"`
+	F1Sequence                uint64   `json:"f1Sequence"`
+	FoundationSetSHA256       string   `json:"foundationSetSha256"`
+	F1SetSHA256               string   `json:"f1SetSha256"`
 	InstallerSHA256           string   `json:"installerSha256"`
 	ShellSHA256               string   `json:"shellSha256"`
 	StoreArchiveSHA256        string   `json:"storeArchiveSha256"`
@@ -101,7 +103,9 @@ type Observation struct {
 	AdmissionDeployerCommit         string
 	AdmissionStoreCommit            string
 	FoundationSequence              uint64
-	DeployableSequence              uint64
+	F1Sequence                      uint64
+	FoundationSetSHA256             string
+	F1SetSHA256                     string
 	TrustRawSHA256                  string
 	TrustProfileDigest              string
 	TrustPublisherKeys              []string
@@ -139,7 +143,12 @@ func validateStatement(s Statement, completed bool) error {
 		!validAddress(s.MasterMint) || !validAddress(s.RegistryProgram) ||
 		!validAddress(s.CoreMultisig) || !validAddress(s.CoreVault) || !validAddress(s.NewOperator) ||
 		s.EstateID == "" || s.Genesis == "" || !validCommit(s.DeployerCommit) || !validCommit(s.StoreCommit) ||
-		s.FoundationSequence < 106 || s.DeployableSequence <= s.FoundationSequence {
+		s.FoundationSequence < 106 || s.F1Sequence <= s.FoundationSequence {
+		return ErrMalformed
+	}
+	if completed && (!validHash(s.FoundationSetSHA256) || !validHash(s.F1SetSHA256)) ||
+		!completed && (s.FoundationSetSHA256 != "" && !validHash(s.FoundationSetSHA256) ||
+			s.F1SetSHA256 != "" && !validHash(s.F1SetSHA256)) {
 		return ErrMalformed
 	}
 	if len(s.Members) != 3 {
@@ -212,6 +221,8 @@ func IntentDigest(s Statement) (string, error) {
 		return "", err
 	}
 	projection := s
+	projection.FoundationSetSHA256 = ""
+	projection.F1SetSHA256 = ""
 	projection.Members = append([]Member(nil), s.Members...)
 	for index := range projection.Members {
 		projection.Members[index].EntryRawSHA256 = ""
@@ -276,6 +287,9 @@ func DecodeIntent(raw []byte) (Statement, error) {
 			return Statement{}, ErrScope
 		}
 	}
+	if value.FoundationSetSHA256 != "" || value.F1SetSHA256 != "" {
+		return Statement{}, ErrScope
+	}
 	if _, err := IntentDigest(value); err != nil {
 		return Statement{}, err
 	}
@@ -306,7 +320,7 @@ func VerifyIntent(s Statement, oldRaw, successorRaw []byte, observed Observation
 		(observed.AdmissionDeployerCommit != "" && s.DeployerCommit != observed.AdmissionDeployerCommit) ||
 		(observed.AdmissionStoreCommit != "" && s.StoreCommit != observed.AdmissionStoreCommit) ||
 		s.FoundationSequence != observed.FoundationSequence ||
-		(observed.DeployableSequence != 0 && s.DeployableSequence != observed.DeployableSequence) {
+		(observed.F1Sequence != 0 && s.F1Sequence != observed.F1Sequence) {
 		return "", ErrAdmission
 	}
 	if observed.TrustRawSHA256 != "" && s.LiveTrustRawSHA256 != observed.TrustRawSHA256 {
@@ -423,7 +437,8 @@ func Verify(b Signed, oldRaw, successorRaw []byte, observed Observation) (string
 		s.ShellSHA256 != observed.AdmissionShellSHA256 ||
 		s.StoreArchiveSHA256 != observed.AdmissionStoreArchiveSHA256 ||
 		s.StoreBinarySHA256 != observed.AdmissionStoreBinarySHA256 ||
-		s.FoundationSequence != observed.FoundationSequence || s.DeployableSequence != observed.DeployableSequence {
+		s.FoundationSequence != observed.FoundationSequence || s.F1Sequence != observed.F1Sequence ||
+		s.FoundationSetSHA256 != observed.FoundationSetSHA256 || s.F1SetSHA256 != observed.F1SetSHA256 {
 		return "", ErrAdmission
 	}
 	oldHash := sha256.Sum256(oldRaw)

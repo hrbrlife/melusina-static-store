@@ -566,6 +566,12 @@ var errReleaseMasterMintRequired = errors.New("release_master_nft_mint is requir
 // shell bundles/sidecar binaries/venv bundles use InstallerReleaseEntry over
 // the exact file sha256.
 func VerifyInstallerReleaseHash(ctx context.Context, cr chainReader, cfg Config, installerHash [32]byte) error {
+	if cfg.recoveryBridge != nil && cfg.recoveryBridge.member(installerHash) {
+		if err := cfg.recoveryBridge.verify(ctx, cfg); err != nil {
+			return fmt.Errorf("check=recovery_installer_release: %w", err)
+		}
+		return nil
+	}
 	meta, err := fetchInstallerReleaseMetaForHash(ctx, cr, cfg, installerHash)
 	if err != nil {
 		return err

@@ -279,6 +279,12 @@ func main() {
 	if err := bindInstallerReleaseTrust(&cfg, enrolledState); err != nil {
 		log.Fatalf("estate enrollment: %v", err)
 	}
+	recoveryCtx, recoveryCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	err = bindRecoveryProfileBridge(recoveryCtx, &cfg, enrolledState)
+	recoveryCancel()
+	if err != nil {
+		log.Fatalf("recovery profile bridge: %v", err)
+	}
 	if err := bindAppReleaseTrust(&cfg, enrolledState); err != nil {
 		log.Fatalf("estate enrollment: %v", err)
 	}

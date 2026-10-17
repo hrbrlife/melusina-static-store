@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -58,5 +59,27 @@ func TestRecoveryBridgeRootFilesRefuseSymlinkAndLooseMode(t *testing.T) {
 	}
 	if _, err := readRecoveryRootFile(dir, "good.json", 1024); err == nil || !strings.Contains(err.Error(), "recovery-profile-bridge-state-refused") {
 		t.Fatal("world-readable bridge file admitted")
+	}
+}
+
+func TestRecoveryBridgeServeRefusesAlteredPersistedStateBeforeRPC(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range []struct{ name, raw string }{
+		{recoveryBridgeLeaf, "altered"},
+		{recoveryOldProfileLeaf, "old"},
+		{recoverySuccessorProfileLeaf, "successor"},
+	} {
+		if err := os.WriteFile(filepath.Join(dir, item.name), []byte(item.raw), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runtime := recoveryBridgeRuntime{bridgeRaw: []byte("original"), oldRaw: []byte("old"),
+		successorRaw: []byte("successor")}
+	if err := runtime.verify(context.Background(), Config{releaseSetDir: dir}); err == nil ||
+		!strings.Contains(err.Error(), "recovery-profile-bridge-state-refused") {
+		t.Fatalf("RECOVERY_PROFILE_BRIDGE_SERVE_STATE_MUTANT_ACCEPTED: %v", err)
 	}
 }

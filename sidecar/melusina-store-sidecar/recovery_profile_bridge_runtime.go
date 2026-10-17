@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -24,10 +25,21 @@ const (
 )
 
 type recoveryBridgeRuntime struct {
-	signed       recoveryprofilebridge.Signed
-	oldRaw       []byte
-	successorRaw []byte
-	observed     recoveryprofilebridge.Observation
+	signed             recoveryprofilebridge.Signed
+	oldRaw             []byte
+	successorRaw       []byte
+	observed           recoveryprofilebridge.Observation
+	bridgeRaw          []byte
+	publisherKeys      []string
+	publisherThreshold uint32
+}
+
+func requireRecoveryRootDir(dir string) error {
+	info, err := os.Lstat(dir)
+	if err != nil || !info.IsDir() || info.Mode().Perm()&0o077 != 0 || !signedSetOwnedByRuntime(info) {
+		return errors.New("recovery-profile-bridge-directory-refused")
+	}
+	return nil
 }
 
 func readRecoveryRootFile(dir, leaf string, limit int64) ([]byte, error) {
@@ -98,14 +110,22 @@ func bindRecoveryProfileBridge(ctx context.Context, cfg *Config, state *storeEnr
 	if cfg.releaseSetDir == "" || state == nil {
 		return nil
 	}
-	dir, err := os.Lstat(cfg.releaseSetDir)
-	if err != nil || !dir.IsDir() || dir.Mode().Perm()&0o077 != 0 || !signedSetOwnedByRuntime(dir) {
-		return errors.New("recovery-profile-bridge-directory-refused")
-	}
-	if _, err := os.Lstat(filepath.Join(cfg.releaseSetDir, recoveryBridgeLeaf)); errors.Is(err, os.ErrNotExist) {
-		return nil
-	} else if err != nil {
+	if err := requireRecoveryRootDir(cfg.releaseSetDir); err != nil {
 		return err
+	}
+	present := 0
+	for _, leaf := range []string{recoveryBridgeLeaf, recoveryOldProfileLeaf, recoverySuccessorProfileLeaf} {
+		if _, err := os.Lstat(filepath.Join(cfg.releaseSetDir, leaf)); err == nil {
+			present++
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	if present == 0 {
+		return nil
+	}
+	if present != 3 {
+		return errors.New("recovery-profile-bridge-state-refused")
 	}
 	bridgeRaw, err := readRecoveryRootFile(cfg.releaseSetDir, recoveryBridgeLeaf, 64<<10)
 	if err != nil {
@@ -187,7 +207,10 @@ func bindRecoveryProfileBridge(ctx context.Context, cfg *Config, state *storeEnr
 	if _, err := recoveryprofilebridge.VerifyFinalizedReadback(b, oldRaw, successorRaw, observed, readback); err != nil {
 		return fmt.Errorf("recovery profile bridge startup: %w", err)
 	}
-	cfg.recoveryBridge = &recoveryBridgeRuntime{signed: b, oldRaw: oldRaw, successorRaw: successorRaw, observed: observed}
+	cfg.recoveryBridge = &recoveryBridgeRuntime{signed: b, oldRaw: oldRaw, successorRaw: successorRaw,
+		observed: observed, bridgeRaw: bridgeRaw,
+		publisherKeys:      append([]string(nil), state.Profile.ReleaseTrust.PublisherKeys...),
+		publisherThreshold: state.Profile.ReleaseTrust.Threshold}
 	return nil
 }
 
@@ -202,6 +225,33 @@ func (r *recoveryBridgeRuntime) member(hash [32]byte) bool {
 }
 
 func (r *recoveryBridgeRuntime) verify(ctx context.Context, cfg Config) error {
+	if err := requireRecoveryRootDir(cfg.releaseSetDir); err != nil {
+		return err
+	}
+	for _, item := range []struct {
+		leaf     string
+		expected []byte
+		limit    int64
+	}{
+		{recoveryBridgeLeaf, r.bridgeRaw, 64 << 10},
+		{recoveryOldProfileLeaf, r.oldRaw, 512 << 10},
+		{recoverySuccessorProfileLeaf, r.successorRaw, 512 << 10},
+	} {
+		raw, err := readRecoveryRootFile(cfg.releaseSetDir, item.leaf, item.limit)
+		if err != nil || !bytes.Equal(raw, item.expected) {
+			return errors.New("recovery-profile-bridge-state-refused")
+		}
+	}
+	for _, digest := range []string{r.signed.Statement.FoundationSetSHA256, r.signed.Statement.F1SetSHA256} {
+		raw, err := readRecoveryRootFile(cfg.releaseSetDir, "release-set-"+digest+".json", 8<<20)
+		if err != nil {
+			return errors.New("recovery-profile-bridge-set-refused")
+		}
+		_, got, err := verifySignedReleaseSet(raw, r.publisherKeys, r.publisherThreshold)
+		if err != nil || got != digest {
+			return errors.New("recovery-profile-bridge-set-refused")
+		}
+	}
 	readback, err := recoveryprofilebridge.FetchFinalizedReadback(ctx, cfg.RPCURL, r.signed, nil)
 	if err != nil {
 		return err

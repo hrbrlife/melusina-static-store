@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/hrbrlife/melusina-attest/pda"
@@ -571,6 +572,13 @@ func VerifyInstallerReleaseHash(ctx context.Context, cr chainReader, cfg Config,
 		return err
 	}
 	if err := cfg.installerReleaseTrust.Admit(meta.Entry, installerHash); err != nil {
+		if cfg.EstateEnrollmentStatePath != "" {
+			if recoveryErr := verifyRecoveryInstallerReleaseHash(ctx, cr, cfg, meta, installerHash); recoveryErr == nil {
+				return nil
+			} else if _, stateErr := os.Lstat(recoveryBridgePath(cfg)); stateErr == nil {
+				return fmt.Errorf("check=installer_release: %s: %w", meta.PDA, recoveryErr)
+			}
+		}
 		return fmt.Errorf("check=installer_release: %s: %w", meta.PDA, err)
 	}
 	return nil

@@ -865,7 +865,10 @@ func (g *serveGate) gateInstallerRelease(ctx context.Context, class, name string
 			return h, fmt.Errorf("3.1::title-claim: %w", err)
 		}
 	}
-	if g.releaseVerdictFresh(h) {
+	// A recovery bridge is a one-estate exception. Re-read its exact F1,
+	// old-trust account and Active entry on every served request.
+	_, recoveryStateErr := os.Lstat(recoveryBridgePath(g.cfg))
+	if g.releaseVerdictFresh(h) && recoveryStateErr != nil {
 		return h, nil
 	}
 	if err := VerifyInstallerReleaseHash(ctx, g.cr, g.cfg, installerHash); err != nil {

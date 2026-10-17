@@ -66,6 +66,10 @@ func main() {
 		runEstateEnrollSubcommand(os.Args[2:])
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "estate-enroll-recovery-installer-bridge" {
+		runEstateEnrollRecoveryInstallerBridge(os.Args[2:])
+		return
+	}
 	// A fresh root Store emits its exact public enrollment candidate before its
 	// owners sign it elsewhere. This command performs no chain write, state
 	// write, or listener start; it is deliberately separate from estate-enroll.
@@ -278,6 +282,17 @@ func main() {
 	}
 	if err := bindInstallerReleaseTrust(&cfg, enrolledState); err != nil {
 		log.Fatalf("estate enrollment: %v", err)
+	}
+	if enrolledState != nil {
+		if _, err := os.Lstat(recoveryBridgePath(cfg)); err == nil {
+			if _, bridge, _, err := readRecoveryBridgeState(cfg, enrolledState); err != nil {
+				log.Fatalf("estate enrollment: %v", err)
+			} else if measured, measureErr := recoveryExecutableSHA(); measureErr != nil || measured != bridge.StoreBinarySHA256 {
+				log.Fatalf("estate enrollment: %v:store-binary", errRecoveryBridge)
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			log.Fatalf("estate enrollment recovery bridge: %v", err)
+		}
 	}
 	if err := bindAppReleaseTrust(&cfg, enrolledState); err != nil {
 		log.Fatalf("estate enrollment: %v", err)

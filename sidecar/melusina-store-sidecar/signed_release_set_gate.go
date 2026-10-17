@@ -63,7 +63,16 @@ type servedReleaseSet struct {
 		IncusFingerprint  *string   `json:"incusFingerprint,omitempty"`
 		BuildInputSHA256  *string   `json:"buildInputSha256,omitempty"`
 	} `json:"artifacts"`
-	Completeness   string `json:"completeness"`
+	Completeness string `json:"completeness"`
+	Continuity   *struct {
+		Kind                   string `json:"kind"`
+		AdmissionSHA256        string `json:"admissionSha256"`
+		ReportSHA256           string `json:"reportSha256"`
+		BinarySHA256           string `json:"binarySha256"`
+		Operator               string `json:"operator"`
+		OwnerChoiceSHA256      string `json:"ownerChoiceSha256"`
+		RotationApprovalSHA256 string `json:"rotationApprovalSha256"`
+	} `json:"continuity,omitempty"`
 	DeclaredAbsent []struct {
 		Role   string `json:"role"`
 		Name   string `json:"name"`
@@ -189,6 +198,16 @@ func signedSetDigest(set servedReleaseSet) (string, error) {
 			}
 		}
 	}
+	if c := set.Continuity; c != nil {
+		str("MELUSINA_STORE_CONTINUITY_V1\n")
+		str(c.Kind)
+		str(c.AdmissionSHA256)
+		str(c.ReportSHA256)
+		str(c.BinarySHA256)
+		str(c.Operator)
+		str(c.OwnerChoiceSHA256)
+		str(c.RotationApprovalSHA256)
+	}
 	sum := sha256.Sum256(preimage)
 	return hex.EncodeToString(sum[:]), nil
 }
@@ -233,6 +252,13 @@ func verifySignedReleaseSet(raw []byte, trusted []string, threshold uint32) (ser
 			}
 		}
 	}
+	var topLevel map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &topLevel); err != nil {
+		return set, "", errors.New("release-set-json-invalid")
+	}
+	if bytes.Equal(bytes.TrimSpace(topLevel["continuity"]), []byte("null")) {
+		return set, "", errors.New("release-set-json-invalid: null continuity")
+	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&set); err != nil {
@@ -246,6 +272,15 @@ func verifySignedReleaseSet(raw []byte, trusted []string, threshold uint32) (ser
 		(set.Stage != "foundation" && set.Stage != "deployable") || set.PublisherKeyset.Threshold == 0 ||
 		uint32(set.PublisherKeyset.Threshold) != threshold || len(set.PublisherKeyset.Keys) != len(trusted) {
 		return set, "", errors.New("release-set-authority-mismatch")
+	}
+	if c := set.Continuity; c != nil {
+		validDigest := func(v string) bool { return len(v) == 64 && strings.Trim(v, "0123456789abcdef") == "" }
+		if !validDigest(c.ReportSHA256) || !validDigest(c.BinarySHA256) || c.Operator == "" ||
+			(c.Kind == "lost-predecessor" && (!validDigest(c.AdmissionSHA256) || c.OwnerChoiceSHA256 != "" || c.RotationApprovalSHA256 != "" || set.Sequence <= 105)) ||
+			(c.Kind == "store-successor" && (c.AdmissionSHA256 != "" || !validDigest(c.OwnerChoiceSHA256) || !validDigest(c.RotationApprovalSHA256))) ||
+			(c.Kind != "lost-predecessor" && c.Kind != "store-successor") {
+			return set, "", errors.New("release-set-continuity-invalid")
+		}
 	}
 	keys := map[string][]byte{}
 	enrolled := map[string]bool{}

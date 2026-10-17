@@ -96,8 +96,22 @@ func fixture(t *testing.T) (Signed, []byte, []byte, Observation) {
 	}
 	members := []Member{}
 	for _, role := range []string{"installer", "shell-bundle", "update-controller"} {
+		artifactHash := testHash(role + "-bytes")
+		master, err := primitives.PubkeyFromBase58(old.Anchors.MasterMint)
+		if err != nil {
+			t.Fatal(err)
+		}
+		program, err := primitives.PubkeyFromBase58(registry)
+		if err != nil {
+			t.Fatal(err)
+		}
+		artifactBytes, _ := hex.DecodeString(artifactHash)
+		entryPDA, _, err := primitives.DeriveInstallerRelease(master, *(*[32]byte)(artifactBytes), program)
+		if err != nil {
+			t.Fatal(err)
+		}
 		members = append(members, Member{Role: role, ArtifactSHA256: testHash(role + "-bytes"), ArtifactSize: 100,
-			EntryPDA: testAddress(role + "-pda"), EntryRawSHA256: testHash(role + "-entry"), EntryProfileDigest: oldDigest, EntryStatus: "Active"})
+			EntryPDA: entryPDA.Base58(), EntryRawSHA256: testHash(role + "-entry"), EntryProfileDigest: oldDigest, EntryStatus: "Active"})
 	}
 	s := Statement{Schema: Schema, AdmissionSHA256: testHash("admission"), AdmissionNonce: testHash("nonce"),
 		EstateID: old.EstateID, Genesis: old.Network.GenesisHash, MasterMint: old.Anchors.MasterMint,
@@ -231,6 +245,11 @@ func TestRecoveryBridgeOnlyThreeF1Hashes(t *testing.T) {
 	b.Statement.Members = append(b.Statement.Members, Member{Role: "fourth"})
 	if _, err := Digest(b.Statement); !errors.Is(err, ErrMember) {
 		t.Fatalf("fourth: %v", err)
+	}
+	b, _, _, _ = fixture(t)
+	b.Statement.Members[0].EntryPDA = testAddress("wrong-entry-pda")
+	if _, err := IntentDigest(b.Statement); !errors.Is(err, ErrMember) {
+		t.Fatalf("unrelated entry PDA: %v", err)
 	}
 }
 

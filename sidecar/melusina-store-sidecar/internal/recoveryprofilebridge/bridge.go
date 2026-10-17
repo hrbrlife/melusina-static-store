@@ -157,6 +157,16 @@ func validateStatement(s Statement, completed bool) error {
 			return ErrMember
 		}
 		seen[m.Role] = true
+		master, masterErr := primitives.PubkeyFromBase58(s.MasterMint)
+		program, programErr := primitives.PubkeyFromBase58(s.RegistryProgram)
+		artifact, artifactErr := hex.DecodeString(m.ArtifactSHA256)
+		if masterErr != nil || programErr != nil || artifactErr != nil || len(artifact) != 32 {
+			return ErrMember
+		}
+		pda, _, pdaErr := primitives.DeriveInstallerRelease(master, *(*[32]byte)(artifact), program)
+		if pdaErr != nil || m.EntryPDA != pda.Base58() {
+			return ErrMember
+		}
 	}
 	if s.InstallerSHA256 != memberHash(s.Members, "installer") ||
 		s.ShellSHA256 != memberHash(s.Members, "shell-bundle") {

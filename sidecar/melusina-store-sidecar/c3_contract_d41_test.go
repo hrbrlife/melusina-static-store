@@ -283,7 +283,7 @@ func TestC3D41MutatedIdentityLeafRefusedAtBoot(t *testing.T) {
 func c3D41PinSharedHelpers(t *testing.T) {
 	t.Helper()
 	for path, want := range map[string]string{
-		"boot_identity_test.go":           "277cf814b5859f84267a843f94a7cd656cd1ad097e06c2b438cf42a73b4e390b",
+		"boot_identity_test.go":           "0e9d2b260b7e2f0b799b067b5886261aaf9ab96bb65cdc84b9e57e211103b147",
 		"estate_profile_check_test.go":    "705f0e900e7c288359b83588378850759cb91e16a6f7c5470b5796e06dba39e5",
 		"root_store_boot_cascade_test.go": "50c7928e636742d6cdab275b92b317a5ff45ceca308f6e7c5a330bb5a9682b18",
 		"served_tls_test.go":              "8af0d48f0c117b558db337f02ade282a98a1e3b5784b16626620766173c1ec49",

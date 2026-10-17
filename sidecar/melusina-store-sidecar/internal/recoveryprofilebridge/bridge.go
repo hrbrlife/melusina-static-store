@@ -89,6 +89,7 @@ type Signed struct {
 type Observation struct {
 	AdmissionSHA256                 string
 	AdmissionNonce                  string
+	FoundationBridgeIntentSHA256    string
 	AdmissionOldProfileRawSHA256    string
 	AdmissionOldProfileDigest       string
 	AdmissionNewOperator            string
@@ -126,7 +127,7 @@ func validCommit(s string) bool {
 	return err == nil && hex.EncodeToString(raw) == s
 }
 
-func validateStatement(s Statement) error {
+func validateStatement(s Statement, completed bool) error {
 	if s.Schema != Schema || !validHash(s.AdmissionSHA256) || !validHash(s.AdmissionNonce) ||
 		!validHash(s.OldProfileRawSHA256) || !validHash(s.OldProfileDigest) ||
 		!validHash(s.SuccessorProfileRawSHA256) || !validHash(s.SuccessorProfileDigest) ||
@@ -148,9 +149,11 @@ func validateStatement(s Statement) error {
 	for _, m := range s.Members {
 		idx := sort.SearchStrings(roles, m.Role)
 		if idx == len(roles) || roles[idx] != m.Role || seen[m.Role] ||
-			!validHash(m.ArtifactSHA256) || !validHash(m.EntryRawSHA256) ||
-			!validHash(m.EntryProfileDigest) || m.EntryStatus != "Active" ||
+			!validHash(m.ArtifactSHA256) ||
 			!validAddress(m.EntryPDA) || m.ArtifactSize == 0 {
+			return ErrMember
+		}
+		if completed && (!validHash(m.EntryRawSHA256) || !validHash(m.EntryProfileDigest) || m.EntryStatus != "Active") {
 			return ErrMember
 		}
 		seen[m.Role] = true
@@ -174,7 +177,7 @@ func memberHash(members []Member, role string) string {
 // Digest is the common owner and council message: ASCII lowercase SHA-256 of
 // a domain-separated, ordered JSON statement. Signatures are excluded.
 func Digest(s Statement) (string, error) {
-	if err := validateStatement(s); err != nil {
+	if err := validateStatement(s, true); err != nil {
 		return "", err
 	}
 	raw, err := json.Marshal(s)
@@ -183,6 +186,32 @@ func Digest(s Statement) (string, error) {
 	}
 	h := sha256.New()
 	h.Write([]byte(domain))
+	h.Write(raw)
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// IntentDigest is what the publisher-signed F0 references. It omits only the
+// entry readbacks that cannot exist until after F0/F1 and registration. The
+// later owner/council signatures cover the completed Digest, including those
+// raw account hashes. This breaks the signing cycle without leaving an
+// unsigned choice of artifact, entry PDA, profile or operator.
+func IntentDigest(s Statement) (string, error) {
+	if err := validateStatement(s, false); err != nil {
+		return "", err
+	}
+	projection := s
+	projection.Members = append([]Member(nil), s.Members...)
+	for index := range projection.Members {
+		projection.Members[index].EntryRawSHA256 = ""
+		projection.Members[index].EntryProfileDigest = ""
+		projection.Members[index].EntryStatus = ""
+	}
+	raw, err := json.Marshal(projection)
+	if err != nil {
+		return "", err
+	}
+	h := sha256.New()
+	h.Write([]byte("MELUSINA_RECOVERY_INSTALLER_PROFILE_BRIDGE_INTENT_V1\n"))
 	h.Write(raw)
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
@@ -219,6 +248,13 @@ func Verify(b Signed, oldRaw, successorRaw []byte, observed Observation) (string
 		return "", err
 	}
 	s := b.Statement
+	intent, err := IntentDigest(s)
+	if err != nil {
+		return "", err
+	}
+	if intent != observed.FoundationBridgeIntentSHA256 {
+		return "", ErrAdmission
+	}
 	if s.AdmissionSHA256 != observed.AdmissionSHA256 || s.AdmissionNonce != observed.AdmissionNonce ||
 		s.OldProfileRawSHA256 != observed.AdmissionOldProfileRawSHA256 ||
 		s.OldProfileDigest != observed.AdmissionOldProfileDigest ||

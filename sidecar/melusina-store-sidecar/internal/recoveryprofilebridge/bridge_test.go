@@ -117,6 +117,11 @@ func fixture(t *testing.T) (Signed, []byte, []byte, Observation) {
 		FoundationSequence: 106, DeployableSequence: 107, TrustRawSHA256: s.LiveTrustRawSHA256,
 		TrustProfileDigest: oldDigest, TrustPublisherKeys: old.ReleaseTrust.PublisherKeys,
 		TrustThreshold: old.ReleaseTrust.Threshold, Members: members, CoreThreshold: 3}
+	intent, err := IntentDigest(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	observation.FoundationBridgeIntentSHA256 = intent
 	b := Signed{Statement: s}
 	for _, label := range []string{"council-1", "council-2", "council-3", "council-4"} {
 		observation.CoreMembers = append(observation.CoreMembers, primitives.Pubkey(*(*[32]byte)(testKey(label).Public().(ed25519.PublicKey))).Base58())
@@ -226,5 +231,35 @@ func TestRecoveryBridgeOnlyThreeF1Hashes(t *testing.T) {
 	b.Statement.Members = append(b.Statement.Members, Member{Role: "fourth"})
 	if _, err := Digest(b.Statement); !errors.Is(err, ErrMember) {
 		t.Fatalf("fourth: %v", err)
+	}
+}
+
+func TestRecoveryBridgeIntentPrecedesEntryRegistrationButCompletionBindsReadbacks(t *testing.T) {
+	b, old, next, observed := fixture(t)
+	intent, err := IntentDigest(b.Statement)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeRegistration := b.Statement
+	beforeRegistration.Members = append([]Member(nil), beforeRegistration.Members...)
+	for index := range beforeRegistration.Members {
+		beforeRegistration.Members[index].EntryRawSHA256 = ""
+		beforeRegistration.Members[index].EntryProfileDigest = ""
+		beforeRegistration.Members[index].EntryStatus = ""
+	}
+	if got, err := IntentDigest(beforeRegistration); err != nil || got != intent {
+		t.Fatalf("intent changed after registration: %s %v", got, err)
+	}
+	if _, err := Digest(beforeRegistration); !errors.Is(err, ErrMember) {
+		t.Fatalf("incomplete bridge was signable: %v", err)
+	}
+	b.Statement.Members = append([]Member(nil), b.Statement.Members...)
+	b.Statement.Members[0].EntryRawSHA256 = testHash("substituted-entry")
+	if _, err := Verify(b, old, next, observed); !errors.Is(err, ErrChainDrift) {
+		t.Fatalf("substituted entry: %v", err)
+	}
+	observed.FoundationBridgeIntentSHA256 = testHash("different-intent")
+	if _, err := Verify(b, old, next, observed); !errors.Is(err, ErrAdmission) {
+		t.Fatalf("different F0 intent: %v", err)
 	}
 }

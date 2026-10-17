@@ -128,6 +128,7 @@ func fixture(t *testing.T) (Signed, []byte, []byte, Observation) {
 		AdmissionNewOperator: s.NewOperator, AdmissionRotationApprovalSHA256: s.RotationApprovalSHA256,
 		AdmissionInstallerSHA256: s.InstallerSHA256, AdmissionShellSHA256: s.ShellSHA256,
 		AdmissionStoreArchiveSHA256: s.StoreArchiveSHA256, AdmissionStoreBinarySHA256: s.StoreBinarySHA256,
+		AdmissionDeployerCommit: s.DeployerCommit, AdmissionStoreCommit: s.StoreCommit,
 		FoundationSequence: 106, DeployableSequence: 107, TrustRawSHA256: s.LiveTrustRawSHA256,
 		TrustProfileDigest: oldDigest, TrustPublisherKeys: old.ReleaseTrust.PublisherKeys,
 		TrustThreshold: old.ReleaseTrust.Threshold, Members: members, CoreThreshold: 3}
@@ -269,8 +270,19 @@ func TestRecoveryBridgeIntentPrecedesEntryRegistrationButCompletionBindsReadback
 	if got, err := IntentDigest(beforeRegistration); err != nil || got != intent {
 		t.Fatalf("intent changed after registration: %s %v", got, err)
 	}
+	if got, err := VerifyIntent(beforeRegistration, old, next, observed); err != nil || got != intent {
+		t.Fatalf("signed-profile intent refused before entry registration: %s %v", got, err)
+	}
 	if _, err := Digest(beforeRegistration); !errors.Is(err, ErrMember) {
 		t.Fatalf("incomplete bridge was signable: %v", err)
+	}
+	intentRaw, _ := json.Marshal(beforeRegistration)
+	if _, err := DecodeIntent(intentRaw); err != nil {
+		t.Fatalf("canonical unsigned intent: %v", err)
+	}
+	completedRaw, _ := json.Marshal(b.Statement)
+	if _, err := DecodeIntent(completedRaw); !errors.Is(err, ErrScope) {
+		t.Fatalf("completed bridge was accepted as an intent: %v", err)
 	}
 	b.Statement.Members = append([]Member(nil), b.Statement.Members...)
 	b.Statement.Members[0].EntryRawSHA256 = testHash("substituted-entry")

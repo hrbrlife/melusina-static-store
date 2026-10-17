@@ -98,6 +98,8 @@ type Observation struct {
 	AdmissionShellSHA256            string
 	AdmissionStoreArchiveSHA256     string
 	AdmissionStoreBinarySHA256      string
+	AdmissionDeployerCommit         string
+	AdmissionStoreCommit            string
 	FoundationSequence              uint64
 	DeployableSequence              uint64
 	TrustRawSHA256                  string
@@ -249,12 +251,146 @@ func Decode(raw []byte) (Signed, error) {
 	return value, nil
 }
 
+// DecodeIntent reads the unsigned bridge projection before the F0 publishers
+// sign its digest. Entry raw hashes/status/profile fields must be empty at
+// this phase; the completed signed bridge is decoded with Decode instead.
+func DecodeIntent(raw []byte) (Statement, error) {
+	var value Statement
+	if len(raw) == 0 || len(raw) > 64<<10 {
+		return value, ErrMalformed
+	}
+	d := json.NewDecoder(bytes.NewReader(raw))
+	d.DisallowUnknownFields()
+	if err := d.Decode(&value); err != nil {
+		return Statement{}, fmt.Errorf("%w: %v", ErrMalformed, err)
+	}
+	if err := d.Decode(new(any)); err != io.EOF {
+		return Statement{}, ErrMalformed
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil || !bytes.Equal(bytes.TrimSpace(raw), canonical) {
+		return Statement{}, ErrMalformed
+	}
+	for _, member := range value.Members {
+		if member.EntryRawSHA256 != "" || member.EntryProfileDigest != "" || member.EntryStatus != "" {
+			return Statement{}, ErrScope
+		}
+	}
+	if _, err := IntentDigest(value); err != nil {
+		return Statement{}, err
+	}
+	return value, nil
+}
+
+// VerifyIntent is the pre-registration gate. The admission and intended F1
+// members are caller-verified inputs; this gate proves that the F0 reference
+// can only describe the same signed estate profile lineage and artifacts.
+// It neither substitutes for the five bridge signatures nor admits an entry.
+func VerifyIntent(s Statement, oldRaw, successorRaw []byte, observed Observation) (string, error) {
+	intent, err := IntentDigest(s)
+	if err != nil {
+		return "", err
+	}
+	if observed.FoundationBridgeIntentSHA256 != "" && intent != observed.FoundationBridgeIntentSHA256 {
+		return "", ErrAdmission
+	}
+	if s.AdmissionSHA256 != observed.AdmissionSHA256 || s.AdmissionNonce != observed.AdmissionNonce ||
+		s.OldProfileRawSHA256 != observed.AdmissionOldProfileRawSHA256 ||
+		s.OldProfileDigest != observed.AdmissionOldProfileDigest ||
+		s.NewOperator != observed.AdmissionNewOperator ||
+		s.RotationApprovalSHA256 != observed.AdmissionRotationApprovalSHA256 ||
+		s.InstallerSHA256 != observed.AdmissionInstallerSHA256 ||
+		s.ShellSHA256 != observed.AdmissionShellSHA256 ||
+		s.StoreArchiveSHA256 != observed.AdmissionStoreArchiveSHA256 ||
+		s.StoreBinarySHA256 != observed.AdmissionStoreBinarySHA256 ||
+		(observed.AdmissionDeployerCommit != "" && s.DeployerCommit != observed.AdmissionDeployerCommit) ||
+		(observed.AdmissionStoreCommit != "" && s.StoreCommit != observed.AdmissionStoreCommit) ||
+		s.FoundationSequence != observed.FoundationSequence ||
+		(observed.DeployableSequence != 0 && s.DeployableSequence != observed.DeployableSequence) {
+		return "", ErrAdmission
+	}
+	if observed.TrustRawSHA256 != "" && s.LiveTrustRawSHA256 != observed.TrustRawSHA256 {
+		return "", ErrChainDrift
+	}
+	oldHash, newHash := sha256.Sum256(oldRaw), sha256.Sum256(successorRaw)
+	if s.OldProfileRawSHA256 != hex.EncodeToString(oldHash[:]) ||
+		s.SuccessorProfileRawSHA256 != hex.EncodeToString(newHash[:]) {
+		return "", ErrProfile
+	}
+	old, err := estateprofile.DecodeProfile(oldRaw)
+	if err != nil {
+		return "", fmt.Errorf("%w: old decode: %v", ErrProfile, err)
+	}
+	newProfile, err := estateprofile.DecodeProfile(successorRaw)
+	if err != nil {
+		return "", fmt.Errorf("%w: successor decode: %v", ErrProfile, err)
+	}
+	oldDigest, err := estateprofile.VerifyProfile(old)
+	if err != nil {
+		return "", fmt.Errorf("%w: old signature: %v", ErrProfile, err)
+	}
+	newDigest, err := estateprofile.VerifyProfile(newProfile)
+	if err != nil {
+		return "", fmt.Errorf("%w: successor signature: %v", ErrProfile, err)
+	}
+	if oldDigest != s.OldProfileDigest || newDigest != s.SuccessorProfileDigest ||
+		old.EstateID != s.EstateID || newProfile.EstateID != s.EstateID ||
+		old.Network.GenesisHash != s.Genesis || newProfile.Network.GenesisHash != s.Genesis ||
+		old.Anchors.MasterMint != s.MasterMint || newProfile.Anchors.MasterMint != s.MasterMint ||
+		old.Revision != 1 || newProfile.Revision != 2 || newProfile.Prev.Revision != 1 ||
+		newProfile.Prev.SHA256 != oldDigest || old.Store.OperatorKey == newProfile.Store.OperatorKey ||
+		newProfile.Store.OperatorKey != s.NewOperator ||
+		!reflect.DeepEqual(old.OwnerPolicy, newProfile.OwnerPolicy) ||
+		!reflect.DeepEqual(old.GenesisOwnerPolicy, newProfile.GenesisOwnerPolicy) ||
+		!reflect.DeepEqual(old.ReleaseTrust, newProfile.ReleaseTrust) ||
+		!reflect.DeepEqual(old.Anchors, newProfile.Anchors) ||
+		!reflect.DeepEqual(old.Programs, newProfile.Programs) ||
+		!reflect.DeepEqual(old.Roles, newProfile.Roles) {
+		return "", ErrProfile
+	}
+	oldStore, newStore := old.Store, newProfile.Store
+	oldStore.OperatorKey, newStore.OperatorKey = "", ""
+	if !reflect.DeepEqual(oldStore, newStore) {
+		return "", ErrProfile
+	}
+	program, coreMultisig, coreVault := "", "", ""
+	for _, p := range old.Programs {
+		if p.Role == estateprofile.ProgramRoleLicenseRegistry {
+			program = p.ProgramID
+		}
+	}
+	for _, r := range old.Roles {
+		if r.Role == estateprofile.AuthorityRoleCore {
+			coreMultisig, coreVault = r.Multisig, r.Vault
+		}
+	}
+	if program != s.RegistryProgram || coreMultisig != s.CoreMultisig || coreVault != s.CoreVault {
+		return "", ErrProfile
+	}
+	if len(observed.Members) != 0 {
+		if len(observed.Members) != len(s.Members) {
+			return "", ErrMember
+		}
+		for index, member := range s.Members {
+			got := observed.Members[index]
+			if member.Role != got.Role || member.ArtifactSHA256 != got.ArtifactSHA256 ||
+				member.ArtifactSize != got.ArtifactSize || member.EntryPDA != got.EntryPDA {
+				return "", ErrMember
+			}
+		}
+	}
+	return intent, nil
+}
+
 // Verify accepts only a signed revision-one to revision-two transition of the
 // same estate and the exact observed three Active entry records. Observation
 // must come from a fresh slot-pinned read, never from the signed document.
 func Verify(b Signed, oldRaw, successorRaw []byte, observed Observation) (string, error) {
 	digest, err := Digest(b.Statement)
 	if err != nil {
+		return "", err
+	}
+	if _, err := VerifyIntent(b.Statement, oldRaw, successorRaw, observed); err != nil {
 		return "", err
 	}
 	s := b.Statement

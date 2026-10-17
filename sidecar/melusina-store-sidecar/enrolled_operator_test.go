@@ -83,6 +83,7 @@ func enrollmentGatedEntryPoints(indexSHA256, cohortDir string) []enrollmentGated
 		{name: "catalog-rehydrate", args: []string{"-cohort-dir", cohortDir, "-expected-app-count", "1", "-expected-rollout-count", "1", "-dry-run"}, after: "catalog-rehydrate writer exclusion: open existing writer.lock"},
 		{name: "store-state-export", args: []string{"-generation", "1", "-out", filepath.Join(filepath.Dir(cohortDir), "store-state.tar")}, after: "store-state-export: " + refusalStoreStateWriterExclusion + ":open existing writer.lock"},
 		{name: "store-identity-escrow-seal", args: []string{"-recipients", filepath.Join(filepath.Dir(cohortDir), "absent-recipients.json"), "-out-dir", filepath.Join(filepath.Dir(cohortDir), "escrow")}, after: "store-identity-escrow-seal: read recipients"},
+		{name: "estate-enroll-recovery-installer-bridge", args: []string{"-bridge", "/abs/bridge.json", "-admission", "/abs/admission.json", "-old-profile", "/abs/old.json", "-successor-profile", "/abs/successor.json", "-f0", "/abs/f0.json", "-f1", "/abs/f1.json"}, after: "recovery-installer-profile-bridge: enrolled gate complete"},
 		{name: "store-generation-floor", args: []string{"-floor", "9", "-expected-current-generation", "5", "-reason", "enrollment gate probe", "-evidence-sha256", indexSHA256, "-dry-run"}, after: "store-generation-floor writer exclusion: open existing writer.lock"},
 	}
 }

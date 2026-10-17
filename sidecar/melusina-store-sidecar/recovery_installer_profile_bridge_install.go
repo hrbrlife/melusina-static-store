@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -28,8 +29,26 @@ func runEstateEnrollRecoveryInstallerBridge(args []string) {
 	if fs.NArg() != 0 || *bridge == "" || *admission == "" || *oldProfile == "" || *successorProfile == "" || *f0 == "" || *f1 == "" {
 		log.Fatal("recovery-installer-profile-bridge-refused:arguments")
 	}
+	cfg, err := LoadConfig(*config)
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	if err := setProgramIDFromConfig(cfg.ProgramID); err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	var cr chainReader
+	if cfg.RPCURL != "" {
+		cr = newConfiguredStoreRPCReader(cfg)
+	}
+	bootCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	_, _, err = deriveEnrolledBootIdentity(bootCtx, cfg, *config, cr)
+	cancel()
+	if err != nil {
+		log.Fatalf("recovery-installer-profile-bridge: %v", err)
+	}
+	log.Print("recovery-installer-profile-bridge: enrolled gate complete")
 	if err := installRecoveryInstallerBridge(*config, *bridge, *admission, *oldProfile, *successorProfile, *f0, *f1, time.Now().UTC()); err != nil {
-		log.Fatal(err)
+		log.Fatalf("recovery-installer-profile-bridge: %v", err)
 	}
 	fmt.Println("recovery-installer-profile-bridge-enrolled")
 }

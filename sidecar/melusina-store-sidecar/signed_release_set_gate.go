@@ -67,6 +67,7 @@ type servedReleaseSet struct {
 	Continuity   *struct {
 		Kind                   string `json:"kind"`
 		AdmissionSHA256        string `json:"admissionSha256"`
+		ProfileBridgeSHA256    string `json:"profileBridgeSha256,omitempty"`
 		ReportSHA256           string `json:"reportSha256"`
 		BinarySHA256           string `json:"binarySha256"`
 		Operator               string `json:"operator"`
@@ -207,6 +208,10 @@ func signedSetDigest(set servedReleaseSet) (string, error) {
 		str(c.Operator)
 		str(c.OwnerChoiceSHA256)
 		str(c.RotationApprovalSHA256)
+		if c.ProfileBridgeSHA256 != "" {
+			str("MELUSINA_RECOVERY_INSTALLER_PROFILE_BRIDGE_REFERENCE_V1\n")
+			str(c.ProfileBridgeSHA256)
+		}
 	}
 	sum := sha256.Sum256(preimage)
 	return hex.EncodeToString(sum[:]), nil
@@ -276,8 +281,8 @@ func verifySignedReleaseSet(raw []byte, trusted []string, threshold uint32) (ser
 	if c := set.Continuity; c != nil {
 		validDigest := func(v string) bool { return len(v) == 64 && strings.Trim(v, "0123456789abcdef") == "" }
 		if !validDigest(c.ReportSHA256) || !validDigest(c.BinarySHA256) || c.Operator == "" ||
-			(c.Kind == "lost-predecessor" && (!validDigest(c.AdmissionSHA256) || c.OwnerChoiceSHA256 != "" || c.RotationApprovalSHA256 != "" || set.Sequence <= 105)) ||
-			(c.Kind == "store-successor" && (c.AdmissionSHA256 != "" || !validDigest(c.OwnerChoiceSHA256) || !validDigest(c.RotationApprovalSHA256))) ||
+			(c.Kind == "lost-predecessor" && (!validDigest(c.AdmissionSHA256) || (c.ProfileBridgeSHA256 != "" && !validDigest(c.ProfileBridgeSHA256)) || c.OwnerChoiceSHA256 != "" || c.RotationApprovalSHA256 != "" || set.Sequence <= 105)) ||
+			(c.Kind == "store-successor" && (c.AdmissionSHA256 != "" || c.ProfileBridgeSHA256 != "" || !validDigest(c.OwnerChoiceSHA256) || !validDigest(c.RotationApprovalSHA256))) ||
 			(c.Kind != "lost-predecessor" && c.Kind != "store-successor") {
 			return set, "", errors.New("release-set-continuity-invalid")
 		}

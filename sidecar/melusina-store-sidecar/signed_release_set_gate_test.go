@@ -47,6 +47,30 @@ func TestF1GenerationContentAddressedMembersStayUnderSignedSet(t *testing.T) {
 	}
 }
 
+func TestRecoveryBridgeReferenceChangesStoreSignedSetDigest(t *testing.T) {
+	var set servedReleaseSet
+	if err := json.Unmarshal([]byte(`{"schema":"melusina.bootstrap-release-set.v2","stage":"foundation","sequence":106,"createdAt":"2026-10-17T20:00:00Z","continuity":{"kind":"lost-predecessor","admissionSha256":"`+strings.Repeat("a", 64)+`","reportSha256":"`+strings.Repeat("b", 64)+`","binarySha256":"`+strings.Repeat("c", 64)+`","operator":"operator","ownerChoiceSha256":"","rotationApprovalSha256":""}}`), &set); err != nil {
+		t.Fatal(err)
+	}
+	without, err := signedSetDigest(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set.Continuity.ProfileBridgeSHA256 = strings.Repeat("d", 64)
+	with, err := signedSetDigest(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if without == with {
+		t.Fatal("Store digest did not bind the recovery bridge")
+	}
+	set.Continuity.ProfileBridgeSHA256 = strings.Repeat("e", 64)
+	mutated, err := signedSetDigest(set)
+	if err != nil || mutated == with {
+		t.Fatalf("changed bridge digest reused publisher message: %s %v", mutated, err)
+	}
+}
+
 func TestH09_3_1PublisherSignedSetBindsInstallerReleaseBytes(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "testdata", "contracts", "C3-release-and-store-host", "C3-release-and-store-host.json"))
 	if err != nil {

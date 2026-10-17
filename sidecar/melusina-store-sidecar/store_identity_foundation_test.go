@@ -17,6 +17,10 @@ import (
 )
 
 func foundationProducerFixture(t *testing.T) (foundationEscrowOptions, foundationRestoreRequestOptions, ed25519.PublicKey) {
+	return foundationProducerFixtureVersion(t, 1)
+}
+
+func foundationProducerFixtureVersion(t *testing.T, keyVersion uint32) (foundationEscrowOptions, foundationRestoreRequestOptions, ed25519.PublicKey) {
 	t.Helper()
 	base := t.TempDir()
 	shardsDir := filepath.Join(base, "shards")
@@ -32,8 +36,8 @@ func foundationProducerFixture(t *testing.T) (foundationEscrowOptions, foundatio
 		t.Fatal(err)
 	}
 	cfg := Config{LicenseNFTMint: profile.Anchors.MasterMint, Domain: profile.Store.RootDomain,
-		BootIdentity: BootIdentityConfig{ShardsDir: shardsDir, SidecarID: "store", ChainID: "solana:" + profile.Network.Label, KeyVersion: 1}}
-	ref, err := storeOperatorRef(cfg, "store", 1)
+		BootIdentity: BootIdentityConfig{ShardsDir: shardsDir, SidecarID: "store", ChainID: "solana:" + profile.Network.Label, KeyVersion: keyVersion}}
+	ref, err := storeOperatorRef(cfg, "store", keyVersion)
 	if err != nil {
 		t.Fatal(err)
 	}

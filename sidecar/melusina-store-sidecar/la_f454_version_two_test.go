@@ -48,3 +48,13 @@ func TestLAF454VersionTwoRenderInputAndZeroMutation(t *testing.T) {
 		t.Fatalf("LA_F454_ZERO_VERSION_ACCEPTED: %v", err)
 	}
 }
+
+func TestLAF454VersionTwoFoundationEscrowAndRestore(t *testing.T) {
+	escrow, request, _ := foundationProducerFixtureVersion(t, 2)
+	if _, err := sealFoundationEscrow(escrow); err != nil {
+		t.Fatalf("LA_F454_V2_ESCROW_REFUSED: %v", err)
+	}
+	if _, err := signFoundationRestoreRequest(request); err != nil {
+		t.Fatalf("LA_F454_V2_RESTORE_REFUSED: %v", err)
+	}
+}

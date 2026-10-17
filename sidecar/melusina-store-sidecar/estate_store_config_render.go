@@ -81,6 +81,7 @@ type storeConfigRenderInput struct {
 	RPCAttempts     int
 	ChainID         string
 	OperatorDomain  string
+	KeyVersion      uint32
 	SecurityProfile storesecurity.Profile
 }
 
@@ -240,7 +241,7 @@ func renderEstateStoreConfig(opts estateStoreConfigRenderOptions) (storeConfigRe
 			"externalPrograms.squads-v4.programId", "roles.store-release", "releaseTrust.publisherKeys",
 		},
 		OperatorInputFields: []string{
-			"licenseNftMint", "rpcUrl", "rpcFallbackUrls", "rpcAttempts", "chainId", "operatorDomain",
+			"licenseNftMint", "rpcUrl", "rpcFallbackUrls", "rpcAttempts", "chainId", "operatorDomain", "keyVersion",
 		},
 		DoesNotEstablish: []string{
 			"an enrolled Store or persistent enrollment state",
@@ -299,7 +300,7 @@ func loadStoreConfigRenderInput(path string) (storeConfigRenderInput, error) {
 	}
 	known := map[string]struct{}{
 		"schema": {}, "kind": {}, "profileSha256": {}, "licenseNftMint": {}, "rpcUrl": {},
-		"rpcFallbackUrls": {}, "rpcAttempts": {}, "chainId": {}, "operatorDomain": {}, "securityProfile": {},
+		"rpcFallbackUrls": {}, "rpcAttempts": {}, "chainId": {}, "operatorDomain": {}, "keyVersion": {}, "securityProfile": {},
 	}
 	for field := range fields {
 		if _, ok := known[field]; !ok {
@@ -339,6 +340,13 @@ func loadStoreConfigRenderInput(path string) (storeConfigRenderInput, error) {
 	}
 	if input.OperatorDomain, err = storeConfigRenderCanonicalDomain(fields, "operatorDomain"); err != nil {
 		return input, err
+	}
+	if raw, ok := fields["keyVersion"]; ok {
+		if err := json.Unmarshal(raw, &input.KeyVersion); err != nil || input.KeyVersion == 0 {
+			return input, errors.New("store-config-render-identity-version-invalid")
+		}
+	} else {
+		input.KeyVersion = 1
 	}
 	securityRaw, ok := fields["securityProfile"]
 	if !ok {
@@ -528,8 +536,8 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 			ShardsDir:          storeConfigRenderShardDir,
 			SidecarID:          rootstore.SidecarID,
 			ChainID:            input.ChainID,
-			KeyVersion:         1,
-			OperatorKeyVersion: 1,
+			KeyVersion:         input.KeyVersion,
+			OperatorKeyVersion: input.KeyVersion,
 			OperatorDomain:     input.OperatorDomain,
 			// The chain-bound identity leaf is deliberately a separate file
 			// from the public, self-renewing leaf above: the ACME responder

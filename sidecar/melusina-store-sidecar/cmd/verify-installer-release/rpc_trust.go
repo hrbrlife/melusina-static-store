@@ -81,6 +81,7 @@ type signedStoreHostFacts struct {
 	LicenseRegistryProgramID string                      `json:"licenseRegistryProgramId"`
 	ChainID                  string                      `json:"chainId"`
 	OperatorDomain           string                      `json:"operatorDomain"`
+	IdentityKeyVersion       uint32                      `json:"identityKeyVersion,omitempty"`
 	RPCURL                   string                      `json:"rpcUrl,omitempty"`
 	RPCFallbackURLs          []string                    `json:"rpcFallbackUrls,omitempty"`
 	RPCAttempts              int                         `json:"rpcAttempts,omitempty"`

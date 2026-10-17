@@ -108,7 +108,7 @@ func signFoundationRestoreRequest(value foundationRestoreRequestOptions) (map[st
 			registry = program.ProgramID
 		}
 	}
-	if ref.Kind != "sidecar" || ref.SidecarID != "store" || ref.KeyVersion != 1 ||
+	if ref.Kind != "sidecar" || ref.SidecarID != "store" || ref.KeyVersion == 0 ||
 		ref.ChainID != "solana:"+profile.Network.Label || ref.Domain != profile.Store.RootDomain ||
 		registry == "" || ref.ProgramID != registry {
 		return nil, errors.New("foundation-restore-request-ref-profile-mismatch")

@@ -294,6 +294,62 @@ func TestDeriveVerifiedBootIdentity_EndToEnd(t *testing.T) {
 	}
 }
 
+func TestReplacementStoreBootVerifiesVersionTwoIdentity(t *testing.T) {
+	dir := t.TempDir()
+	writeTestShards(t, dir)
+	identityCert, identityFingerprint := writeTestTLSCert(t, dir)
+	servingDir := t.TempDir()
+	servingCert, _ := writeTestTLSCert(t, servingDir)
+	cfg := Config{
+		LicenseNFTMint: randPubkeyB58(t), ReleaseMasterNftMint: randPubkeyB58(t),
+		Domain: "store.example.org", TLS: TLSConfig{CertPath: servingCert, KeyPath: servingCert},
+		BootIdentity: BootIdentityConfig{ShardsDir: dir, SidecarID: "store", ChainID: "solana:devnet",
+			KeyVersion: 2, OperatorKeyVersion: 2, TLSCertPath: identityCert},
+	}
+	licenseMint, err := primitives.PubkeyFromBase58(cfg.LicenseNFTMint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pdaTwo, _, err := pda.SidecarIdentity(licenseMint, "store", 2, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pdaOne, _, err := pda.SidecarIdentity(licenseMint, "store", 1, programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shards, err := loadSidecarShards(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operator, err := derive.DeriveSidecar(sidecarIdentityRef(cfg, "store", 2, pdaTwo.Base58()), shards)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signPub, _ := signPubkey32(operator.Public())
+	boxPub, _ := boxPubkey32(operator.Public())
+	binHash, err := sha256OfFile(shardExeProc)
+	if err != nil {
+		t.Skipf("cannot hash self exe: %v", err)
+	}
+	entry := verify.SidecarIdentity{BinaryHash: binHash, DomainHash: primitives.StoreDomainHash(cfg.Domain),
+		TLSCertFingerprint: identityFingerprint, SigningPubkey: signPub, EncryptionPubkey: boxPub,
+		Status: verify.AttestationStatusActive}
+	m := newMockChainReader()
+	m.sidecarIdentity[pdaTwo.Base58()] = mockSidecarIdentity{sid: entry}
+	newRootStoreBootCascade("store", licenseMint, mustPubkey(randPubkeyB58(t)), mustPubkey(cfg.ReleaseMasterNftMint), binHash).seed(t, m)
+	verified, err := deriveVerifiedBootIdentity(context.Background(), cfg, m)
+	if err != nil || verified == nil || verified.bindingKeyVersion != 2 || verified.operatorKeyVersion != 2 ||
+		verified.sidecarIdentityPDA != pdaTwo.Base58() || verified.facts.tlsFingerprint != identityFingerprint {
+		t.Fatalf("version-two boot refused or drifted: %#v %v", verified, err)
+	}
+	delete(m.sidecarIdentity, pdaTwo.Base58())
+	m.sidecarIdentity[pdaOne.Base58()] = mockSidecarIdentity{sid: entry}
+	if _, err := deriveVerifiedBootIdentity(context.Background(), cfg, m); err == nil || !strings.Contains(err.Error(), "check=sidecar_identity") {
+		t.Fatalf("version-one identity substituted for version two: %v", err)
+	}
+}
+
 func TestDeriveVerifiedBootIdentity_RotatesBindingWithoutRotatingOperator(t *testing.T) {
 	dir := t.TempDir()
 	writeTestShards(t, dir)

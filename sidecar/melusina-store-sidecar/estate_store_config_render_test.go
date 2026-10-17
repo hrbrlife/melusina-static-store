@@ -317,6 +317,26 @@ func TestEstateStoreConfigRenderWritesValidatedProfileBoundCandidate(t *testing.
 	}
 }
 
+func TestReplacementStoreConfigUsesSignedRenderVersion(t *testing.T) {
+	_, profilePath, inputPath, outputPath, input := newStoreConfigRenderFixture(t)
+	input["keyVersion"] = uint32(2)
+	writeStoreConfigRenderInput(t, inputPath, input)
+	if _, err := renderEstateStoreConfig(estateStoreConfigRenderOptions{profilePath, inputPath, outputPath}); err != nil {
+		t.Fatalf("replacement Store render refused: %v", err)
+	}
+	var config Config
+	raw, err := os.ReadFile(outputPath)
+	if err != nil || json.Unmarshal(raw, &config) != nil || config.BootIdentity.KeyVersion != 2 || config.BootIdentity.OperatorKeyVersion != 2 {
+		t.Fatalf("store-render-version-two-missing: %v", err)
+	}
+	_, _, zeroPath, zeroOutput, zeroInput := newStoreConfigRenderFixture(t)
+	zeroInput["keyVersion"] = uint32(0)
+	writeStoreConfigRenderInput(t, zeroPath, zeroInput)
+	if _, err := renderEstateStoreConfig(estateStoreConfigRenderOptions{profilePath, zeroPath, zeroOutput}); err == nil || !strings.Contains(err.Error(), "store-config-render-identity-version-invalid") {
+		t.Fatalf("store-render-zero-version-accepted: %v", err)
+	}
+}
+
 func TestEstateStoreConfigRenderRefusesUnboundOrInvalidInputsBeforeOutput(t *testing.T) {
 	_, profilePath, inputPath, outputPath, input := newStoreConfigRenderFixture(t)
 	cases := []struct {

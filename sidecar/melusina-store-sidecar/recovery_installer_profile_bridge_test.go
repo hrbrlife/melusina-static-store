@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"os"
 	"strings"
@@ -10,6 +11,21 @@ import (
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 )
+
+// Embed the compiled source inputs so Go's source overlay is visible to the
+// revert mutants, unlike an os.ReadFile of the unmodified worktree.
+//
+//go:embed generation_promote_handler.go
+var recoveryPromotionSource string
+
+//go:embed serve_gate.go
+var recoveryServeSource string
+
+//go:embed verify.go
+var recoveryVerifierSource string
+
+//go:embed recovery_installer_profile_bridge.go
+var recoveryBridgeSource string
 
 type recoveryRawTrustReader struct {
 	data  []byte
@@ -169,6 +185,31 @@ func TestRecoveryInstallerBridgeAllowsOnlyThreeExactHashes(t *testing.T) {
 	}
 	if _, _, okay := recoveryBridgeHash(bridge, strings.Repeat("f", 64)); okay {
 		t.Fatal("recovery-installer-profile-bridge-refused: fourth hash admitted")
+	}
+}
+
+func TestRecoveryBridgeReplayOrOrdinaryPath(t *testing.T) {
+	if err := verifyRecoveryInstallerReleaseHash(context.Background(), nil, Config{}, installerReleaseMeta{}, [32]byte{}); err == nil || !strings.Contains(err.Error(), "ordinary-path") {
+		t.Fatalf("recovery-profile-bridge-scope-refused: ordinary Store path admitted or wrong refusal: %v", err)
+	}
+}
+
+// The targeted trust and entry tests exercise the checks below. This test
+// additionally pins their production call sites so a bypass cannot leave
+// isolated helper tests green while promotion or serving stops rechecking.
+func TestRecoveryBridgeStorePromotionAndServeRecheck(t *testing.T) {
+	for _, item := range []struct {
+		file, source, call string
+	}{
+		{"generation_promote_handler.go", recoveryPromotionSource, "VerifyInstallerReleaseHash(ctx, s.cr, s.cfg, hash)"},
+		{"serve_gate.go", recoveryServeSource, "VerifyInstallerReleaseHash(ctx, g.cr, g.cfg, installerHash)"},
+		{"verify.go", recoveryVerifierSource, "verifyRecoveryInstallerReleaseHash(ctx, cr, cfg, meta, installerHash)"},
+		{"recovery_installer_profile_bridge.go", recoveryBridgeSource, "verifyRecoveryTrustRaw(ctx, rawReader, bridge)"},
+		{"recovery_installer_profile_bridge.go", recoveryBridgeSource, "oldTrust.Admit(meta.Entry, hash)"},
+	} {
+		if !strings.Contains(item.source, item.call) {
+			t.Fatalf("recovery-profile-bridge-store-chain-refused: %s lost %s", item.file, item.call)
+		}
 	}
 }
 

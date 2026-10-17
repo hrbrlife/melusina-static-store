@@ -83,3 +83,18 @@ func TestRecoveryBridgeServeRefusesAlteredPersistedStateBeforeRPC(t *testing.T) 
 		t.Fatalf("RECOVERY_PROFILE_BRIDGE_SERVE_STATE_MUTANT_ACCEPTED: %v", err)
 	}
 }
+
+func TestRecoveryBridgeStartupRefusesPartialCompanionState(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, recoveryOldProfileLeaf), []byte("old"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{releaseSetDir: dir}
+	if err := bindRecoveryProfileBridge(context.Background(), &cfg, &storeEnrollmentState{}); err == nil ||
+		!strings.Contains(err.Error(), "recovery-profile-bridge-state-refused") {
+		t.Fatalf("RECOVERY_PROFILE_BRIDGE_PARTIAL_RESTART_STATE_ACCEPTED: %v", err)
+	}
+}

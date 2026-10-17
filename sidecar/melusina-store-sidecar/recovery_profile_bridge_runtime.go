@@ -110,9 +110,6 @@ func bindRecoveryProfileBridge(ctx context.Context, cfg *Config, state *storeEnr
 	if cfg.releaseSetDir == "" || state == nil {
 		return nil
 	}
-	if err := requireRecoveryRootDir(cfg.releaseSetDir); err != nil {
-		return err
-	}
 	present := 0
 	for _, leaf := range []string{recoveryBridgeLeaf, recoveryOldProfileLeaf, recoverySuccessorProfileLeaf} {
 		if _, err := os.Lstat(filepath.Join(cfg.releaseSetDir, leaf)); err == nil {
@@ -123,6 +120,9 @@ func bindRecoveryProfileBridge(ctx context.Context, cfg *Config, state *storeEnr
 	}
 	if present == 0 {
 		return nil
+	}
+	if err := requireRecoveryRootDir(cfg.releaseSetDir); err != nil {
+		return err
 	}
 	if present != 3 {
 		return errors.New("recovery-profile-bridge-state-refused")

@@ -98,3 +98,24 @@ func TestRecoveryBridgeStartupRefusesPartialCompanionState(t *testing.T) {
 		t.Fatalf("RECOVERY_PROFILE_BRIDGE_PARTIAL_RESTART_STATE_ACCEPTED: %v", err)
 	}
 }
+
+func TestRecoveryBridgeOrdinaryStoreIgnoresAbsentBridgeInReadableSetDir(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{releaseSetDir: dir}
+	if err := bindRecoveryProfileBridge(context.Background(), &cfg, &storeEnrollmentState{}); err != nil {
+		t.Fatalf("RECOVERY_PROFILE_BRIDGE_ORDINARY_STORE_REFUSED: %v", err)
+	}
+	if cfg.recoveryBridge != nil {
+		t.Fatal("RECOVERY_PROFILE_BRIDGE_ORDINARY_STORE_ENABLED")
+	}
+	if err := os.WriteFile(filepath.Join(dir, recoveryBridgeLeaf), []byte("partial"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := bindRecoveryProfileBridge(context.Background(), &cfg, &storeEnrollmentState{}); err == nil ||
+		!strings.Contains(err.Error(), "recovery-profile-bridge-directory-refused") {
+		t.Fatalf("RECOVERY_PROFILE_BRIDGE_INSECURE_PARTIAL_STATE_ACCEPTED: %v", err)
+	}
+}

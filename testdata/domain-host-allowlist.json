@@ -1041,6 +1041,10 @@
       "reason": "Tracked dotted filename or identifier in e2e/tests/all_apps[.]spec[.]ts:190; reviewed as source material, not an estate endpoint."
     },
     {
+      "host": "entry.data",
+      "reason": "Go selector in the recovery profile bridge implementation or named test; reviewed as an identifier, not an estate endpoint."
+    },
+    {
       "host": "entry.header.name",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/internal/storerecovery/statetar_test[.]go; it is not an estate endpoint."
     },
@@ -2037,6 +2041,10 @@
       "reason": "Tracked dotted filename or identifier in deploy/store-generation/melusina-store-listing-signer[.]service:43; reviewed as source material, not an estate endpoint."
     },
     {
+      "host": "mutated.data",
+      "reason": "Go selector in the recovery profile bridge implementation or named test; reviewed as an identifier, not an estate endpoint."
+    },
+    {
       "host": "mutation.name",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/blacklist_status_test[.]go; it is not an estate endpoint."
     },
@@ -2101,6 +2109,10 @@
       "reason": "Tracked dotted filename or identifier in deploy/store-generation/melusina-store-listing-signer[.]service:4; reviewed as source material, not an estate endpoint."
     },
     {
+      "host": "newprofile.store",
+      "reason": "Go selector in the recovery profile bridge implementation or named test; reviewed as an identifier, not an estate endpoint."
+    },
+    {
       "host": "newsnapshot.id",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
     },
@@ -2159,6 +2171,10 @@
     {
       "host": "old.open",
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/app_catalog_generation_test[.]go; it is not an estate endpoint."
+    },
+    {
+      "host": "old.store",
+      "reason": "Go selector in the recovery profile bridge implementation or named test; reviewed as an identifier, not an estate endpoint."
     },
     {
       "host": "once.do",
@@ -2705,6 +2721,10 @@
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/host_apply_squads_verify[.]go; reviewed as outside the estate origin."
     },
     {
+      "host": "raw.trust",
+      "reason": "Go selector in the recovery profile bridge implementation or named test; reviewed as an identifier, not an estate endpoint."
+    },
+    {
       "host": "rawinstructions.map",
       "reason": "Tracked dotted filename or identifier in sidecar/melusina-store-sidecar/scripts/mel-release-squads-recovery[.]mjs:185; reviewed as source material, not an estate endpoint."
     },
@@ -2727,6 +2747,14 @@
     {
       "host": "react.dev",
       "reason": "Tracked external endpoint or dotted identifier in sidecar/melusina-store-sidecar/ui/assets/index-CDgObJ0o[.]js; reviewed as outside the estate origin."
+    },
+    {
+      "host": "readback.trust",
+      "reason": "Go selector in the recovery profile bridge implementation or named test; reviewed as an identifier, not an estate endpoint."
+    },
+    {
+      "host": "readback.trust.data",
+      "reason": "Go selector in the recovery profile bridge implementation or named test; reviewed as an identifier, not an estate endpoint."
     },
     {
       "host": "readiness-snapshot.sh",
@@ -2949,12 +2977,12 @@
       "reason": "Tracked test, fixture, or documentation text in sidecar/melusina-store-sidecar/generation_floor_test[.]go; it is not an estate endpoint."
     },
     {
-      "host": "row.map",
-      "reason": "Tracked dotted filename or identifier in src/main[.]jsx:1116; reviewed as source material, not an estate endpoint."
-    },
-    {
       "host": "row.id",
       "reason": "Go field selector row.ID in sidecar/melusina-store-sidecar/sidecar_classes.go reads a signed class row identifier; it is not a network host."
+    },
+    {
+      "host": "row.map",
+      "reason": "Tracked dotted filename or identifier in src/main[.]jsx:1116; reviewed as source material, not an estate endpoint."
     },
     {
       "host": "row.name",

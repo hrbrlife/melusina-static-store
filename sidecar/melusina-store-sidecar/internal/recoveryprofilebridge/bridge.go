@@ -353,6 +353,19 @@ func VerifyIntent(s Statement, oldRaw, successorRaw []byte, observed Observation
 	if !reflect.DeepEqual(oldStore, newStore) {
 		return "", ErrProfile
 	}
+	// The operator, revision, issuance time, previous link and signatures are
+	// the complete change vocabulary. Every other signed field must survive
+	// bit for bit; a new external program, recall or policy cannot ride this
+	// narrow one-use bridge.
+	oldComparable, newComparable := old, newProfile
+	oldComparable.Revision, newComparable.Revision = 0, 0
+	oldComparable.IssuedAt, newComparable.IssuedAt = "", ""
+	oldComparable.Prev, newComparable.Prev = estateprofile.PrevV1{}, estateprofile.PrevV1{}
+	oldComparable.Signatures, newComparable.Signatures = nil, nil
+	oldComparable.Store.OperatorKey, newComparable.Store.OperatorKey = "", ""
+	if !reflect.DeepEqual(oldComparable, newComparable) {
+		return "", ErrProfile
+	}
 	program, coreMultisig, coreVault := "", "", ""
 	for _, p := range old.Programs {
 		if p.Role == estateprofile.ProgramRoleLicenseRegistry {

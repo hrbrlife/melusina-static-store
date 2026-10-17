@@ -227,6 +227,28 @@ func TestRecoveryBridgeProfileLineageAndOperator(t *testing.T) {
 	}
 }
 
+func TestRecoveryBridgeRefusesOtherOwnerSignedProfileChanges(t *testing.T) {
+	b, old, next, observed := fixture(t)
+	var p estateprofile.EstateProfileV1
+	if err := json.Unmarshal(next, &p); err != nil {
+		t.Fatal(err)
+	}
+	if len(p.ExternalPrograms) == 0 {
+		t.Fatal("fixture has no external program")
+	}
+	p.ExternalPrograms[0].ExecutableSHA256 = testHash("foreign-external-program")
+	p = signProfile(t, p)
+	changed, _ := json.Marshal(p)
+	newDigest, _ := estateprofile.VerifyProfile(p)
+	b.Statement.SuccessorProfileRawSHA256 = rawHash(changed)
+	b.Statement.SuccessorProfileDigest = newDigest
+	signBridge(t, &b, p.OwnerPolicy.PolicyID)
+	observed.FoundationBridgeIntentSHA256, _ = IntentDigest(b.Statement)
+	if _, err := Verify(b, old, changed, observed); !errors.Is(err, ErrProfile) {
+		t.Fatalf("separately owner-signed external program change rode narrow bridge: %v", err)
+	}
+}
+
 func TestRecoveryBridgeTrustAndEntryReadbackDrift(t *testing.T) {
 	b, old, next, observed := fixture(t)
 	observed.TrustRawSHA256 = testHash("drifted-trust")

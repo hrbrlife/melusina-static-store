@@ -110,6 +110,47 @@ func TestRecoveryInstallerBridgeCrossRepositoryAuthorityAndRefusals(t *testing.T
 	}
 }
 
+func TestRecoveryAdmissionCanonicalTypedPreimageFieldOrder(t *testing.T) {
+	state, _ := recoveryBridgePublicVector(t)
+	var claim recoveryAdmissionClaim
+	if err := json.Unmarshal(state.AdmissionRaw, &claim); err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := recoveryAdmissionPreimage(claim.Statement)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(claim.Statement, &fields); err != nil {
+		t.Fatal(err)
+	}
+	// A map marshal sorts the outer fields, leaving the signed typed preimage
+	// and the council signatures unchanged. The former raw-order verifier
+	// refused this valid transport by name.
+	claim.Statement, err = json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reordered, err := json.Marshal(claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var bridge recoveryInstallerBridge
+	if err := json.Unmarshal(state.BridgeRaw, &bridge); err != nil {
+		t.Fatal(err)
+	}
+	_, digest, err := verifyRecoveryAdmission(reordered, bridge.IssuedAt)
+	if err != nil || digest != recoveryDigest(recoveryAdmissionDomain, canonical) {
+		t.Fatalf("recovery-admission-canonical-preimage-refused: %v", err)
+	}
+	fields["foreignField"] = json.RawMessage(`true`)
+	claim.Statement, _ = json.Marshal(fields)
+	foreign, _ := json.Marshal(claim)
+	if _, _, err := verifyRecoveryAdmission(foreign, bridge.IssuedAt); err == nil || !strings.Contains(err.Error(), "admission-json") {
+		t.Fatalf("recovery-admission-foreign-field-accepted: %v", err)
+	}
+}
+
 func TestRecoveryInstallerBridgeAllowsOnlyThreeExactHashes(t *testing.T) {
 	state, _ := recoveryBridgePublicVector(t)
 	var bridge recoveryInstallerBridge

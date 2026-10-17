@@ -200,6 +200,59 @@ func recoveryMember(members []string, member string) bool {
 	return i < len(members) && members[i] == member
 }
 
+// The admission signers use the deployer's typed LostPredecessorStatement
+// preimage. JSON object order on the wire is immaterial: a producer may add
+// profileBridgeSha256 after the other fields while the typed preimage places
+// it beside the old profile. Rebuild that field order before checking either
+// quorum. The signed F0 separately fixes the complete transported raw bytes.
+func recoveryAdmissionPreimage(raw []byte) ([]byte, error) {
+	order := []string{
+		"schema", "genesis", "estateId", "masterMint", "licenseMint", "registryProgram",
+		"squadsProgram", "coreMultisig", "coreVault", "coreMembers", "coreThreshold",
+		"noConfigAuthority", "oldEstateProfileRawSha256", "oldEstateProfileDigest",
+		"continuityProfileRawSha256", "profileBridgeSha256", "releaseTrustSha256",
+		"livePublisherKeyset", "signedFoundationHighWater", "signedDeployableHighWater",
+		"highWaterLedgerSha256", "foundationSequence", "setProjectionSha256", "snapshot",
+		"reportSha256", "ownerChoiceSha256", "rotationApprovalSha256", "newOperator",
+		"storeVersion", "storePda", "storeBinarySha256", "storeArchiveSha256",
+		"chainLeafSha256", "installerSha256", "shellSha256", "deployerCommit",
+		"contractsCommit", "storeCommit", "issuedAt", "expiresAt", "nonce",
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil || fields == nil {
+		return nil, fmt.Errorf("%w:admission-json", errRecoveryBridge)
+	}
+	var preimage bytes.Buffer
+	preimage.WriteByte('{')
+	count := 0
+	for _, name := range order {
+		value, exists := fields[name]
+		if !exists && name == "profileBridgeSha256" {
+			continue // the V1 field is optional for admissions without a bridge
+		}
+		if !exists || len(value) == 0 {
+			return nil, fmt.Errorf("%w:admission-json", errRecoveryBridge)
+		}
+		if count != 0 {
+			preimage.WriteByte(',')
+		}
+		key, _ := json.Marshal(name)
+		canonicalValue, err := json.Marshal(value)
+		if err != nil {
+			return nil, fmt.Errorf("%w:admission-json", errRecoveryBridge)
+		}
+		preimage.Write(key)
+		preimage.WriteByte(':')
+		preimage.Write(canonicalValue)
+		count++
+	}
+	if count != len(fields) {
+		return nil, fmt.Errorf("%w:admission-json", errRecoveryBridge)
+	}
+	preimage.WriteByte('}')
+	return preimage.Bytes(), nil
+}
+
 func verifyRecoveryAdmission(raw []byte, now time.Time) (recoveryAdmissionStatement, string, error) {
 	var admission recoveryAdmissionClaim
 	var statement recoveryAdmissionStatement
@@ -208,13 +261,16 @@ func verifyRecoveryAdmission(raw []byte, now time.Time) (recoveryAdmissionStatem
 		json.Unmarshal(admission.Statement, &statement) != nil {
 		return statement, "", fmt.Errorf("%w:admission-json", errRecoveryBridge)
 	}
-	var compact bytes.Buffer
-	if json.Compact(&compact, admission.Statement) != nil || statement.Schema != "melusina.lost-predecessor-forward-admission.v1" ||
+	preimage, preimageErr := recoveryAdmissionPreimage(admission.Statement)
+	if preimageErr != nil {
+		return statement, "", preimageErr
+	}
+	if statement.Schema != "melusina.lost-predecessor-forward-admission.v1" ||
 		statement.CoreThreshold != 3 || now.Before(statement.IssuedAt) || now.After(statement.ExpiresAt) ||
 		statement.ExpiresAt.Sub(statement.IssuedAt) > 24*time.Hour {
 		return statement, "", fmt.Errorf("%w:admission-window", errRecoveryBridge)
 	}
-	digest := recoveryDigest(recoveryAdmissionDomain, compact.Bytes())
+	digest := recoveryDigest(recoveryAdmissionDomain, preimage)
 	if err := verifyRecoveryCouncil(admission.CouncilSignatures, statement.CoreMembers, digest); err != nil {
 		return statement, "", err
 	}

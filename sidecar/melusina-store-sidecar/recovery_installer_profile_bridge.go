@@ -200,57 +200,135 @@ func recoveryMember(members []string, member string) bool {
 	return i < len(members) && members[i] == member
 }
 
-// The admission signers use the deployer's typed LostPredecessorStatement
-// preimage. JSON object order on the wire is immaterial: a producer may add
-// profileBridgeSha256 after the other fields while the typed preimage places
-// it beside the old profile. Rebuild that field order before checking either
-// quorum. The signed F0 separately fixes the complete transported raw bytes.
+// These types mirror releaseset.LostPredecessorStatement. Both quorums sign
+// its typed JSON, including every nested object's field order. The F0 binds
+// the transported raw admission separately.
+type recoveryPreimageField struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+type recoveryPreimageAccount struct {
+	Role          string                  `json:"role"`
+	Address       string                  `json:"address"`
+	Owner         string                  `json:"owner"`
+	Size          uint64                  `json:"size"`
+	Discriminator string                  `json:"discriminator"`
+	SHA256        string                  `json:"sha256"`
+	Fields        []recoveryPreimageField `json:"fields"`
+}
+type recoveryPreimageEntry struct {
+	Address       string `json:"address"`
+	Owner         string `json:"owner"`
+	Size          uint64 `json:"size"`
+	SHA256        string `json:"sha256"`
+	InstallerHash string `json:"installerHash"`
+	Version       string `json:"version"`
+	Status        string `json:"status"`
+}
+type recoveryPreimageCandidate struct {
+	Artifact      string `json:"artifact"`
+	InstallerHash string `json:"installerHash"`
+	Version       string `json:"version"`
+	PDA           string `json:"pda"`
+	Vacant        bool   `json:"vacant"`
+}
+type recoveryPreimageProposal struct {
+	PDA                       string   `json:"pda"`
+	Owner                     string   `json:"owner"`
+	Size                      uint64   `json:"size"`
+	Status                    string   `json:"status"`
+	Approvals                 []string `json:"approvals"`
+	RawSHA256                 string   `json:"rawSha256"`
+	VaultTransactionPDA       string   `json:"vaultTransactionPda"`
+	VaultTransactionOwner     string   `json:"vaultTransactionOwner"`
+	VaultTransactionSize      uint64   `json:"vaultTransactionSize"`
+	VaultTransactionRawSHA256 string   `json:"vaultTransactionRawSha256"`
+	VaultMessageSHA256        string   `json:"vaultMessageSha256"`
+}
+type recoveryPreimageSnapshot struct {
+	Genesis              string                      `json:"genesis"`
+	Slot                 uint64                      `json:"slot"`
+	InstallerScanProgram string                      `json:"installerScanProgram"`
+	InstallerScanCount   uint64                      `json:"installerScanCount"`
+	InstallerReleases    []recoveryPreimageEntry     `json:"installerReleases"`
+	HighestActiveVersion string                      `json:"highestActiveVersion"`
+	Candidates           []recoveryPreimageCandidate `json:"candidates"`
+	CoreMultisigAccount  recoveryPreimageAccount     `json:"coreMultisigAccount"`
+	Accounts             []recoveryPreimageAccount   `json:"accounts"`
+	OldKeyListingCount   uint64                      `json:"oldKeyListingCount"`
+	OldKeyListings       []recoveryPreimageAccount   `json:"oldKeyListings"`
+	Proposal181          recoveryPreimageProposal    `json:"proposal181"`
+	VersionTwoPDA        string                      `json:"versionTwoPda"`
+	VersionTwoVacant     bool                        `json:"versionTwoVacant"`
+}
+type recoveryPreimagePublisherKey struct {
+	KeyID            string `json:"keyId"`
+	Ed25519PublicKey string `json:"ed25519PublicKey"`
+}
+type recoveryPreimagePublisherKeyset struct {
+	Threshold uint8                          `json:"threshold"`
+	Keys      []recoveryPreimagePublisherKey `json:"keys"`
+}
+type recoveryPreimageStatement struct {
+	Schema                     string                          `json:"schema"`
+	Genesis                    string                          `json:"genesis"`
+	EstateID                   string                          `json:"estateId"`
+	MasterMint                 string                          `json:"masterMint"`
+	LicenseMint                string                          `json:"licenseMint"`
+	RegistryProgram            string                          `json:"registryProgram"`
+	SquadsProgram              string                          `json:"squadsProgram"`
+	CoreMultisig               string                          `json:"coreMultisig"`
+	CoreVault                  string                          `json:"coreVault"`
+	CoreMembers                []string                        `json:"coreMembers"`
+	CoreThreshold              uint8                           `json:"coreThreshold"`
+	NoConfigAuthority          bool                            `json:"noConfigAuthority"`
+	OldEstateProfileRawSHA256  string                          `json:"oldEstateProfileRawSha256"`
+	OldEstateProfileDigest     string                          `json:"oldEstateProfileDigest"`
+	ContinuityProfileRawSHA256 string                          `json:"continuityProfileRawSha256"`
+	ProfileBridgeSHA256        string                          `json:"profileBridgeSha256,omitempty"`
+	ReleaseTrustSHA256         string                          `json:"releaseTrustSha256"`
+	LivePublisherKeyset        recoveryPreimagePublisherKeyset `json:"livePublisherKeyset"`
+	SignedFoundationHighWater  uint64                          `json:"signedFoundationHighWater"`
+	SignedDeployableHighWater  uint64                          `json:"signedDeployableHighWater"`
+	HighWaterLedgerSHA256      string                          `json:"highWaterLedgerSha256"`
+	FoundationSequence         uint64                          `json:"foundationSequence"`
+	SetProjectionSHA256        string                          `json:"setProjectionSha256"`
+	Snapshot                   recoveryPreimageSnapshot        `json:"snapshot"`
+	ReportSHA256               string                          `json:"reportSha256"`
+	OwnerChoiceSHA256          string                          `json:"ownerChoiceSha256"`
+	RotationApprovalSHA256     string                          `json:"rotationApprovalSha256"`
+	NewOperator                string                          `json:"newOperator"`
+	StoreVersion               uint32                          `json:"storeVersion"`
+	StorePDA                   string                          `json:"storePda"`
+	StoreBinarySHA256          string                          `json:"storeBinarySha256"`
+	StoreArchiveSHA256         string                          `json:"storeArchiveSha256"`
+	ChainLeafSHA256            string                          `json:"chainLeafSha256"`
+	InstallerSHA256            string                          `json:"installerSha256"`
+	ShellSHA256                string                          `json:"shellSha256"`
+	DeployerCommit             string                          `json:"deployerCommit"`
+	ContractsCommit            string                          `json:"contractsCommit"`
+	StoreCommit                string                          `json:"storeCommit"`
+	IssuedAt                   time.Time                       `json:"issuedAt"`
+	ExpiresAt                  time.Time                       `json:"expiresAt"`
+	Nonce                      string                          `json:"nonce"`
+}
+
 func recoveryAdmissionPreimage(raw []byte) ([]byte, error) {
-	order := []string{
-		"schema", "genesis", "estateId", "masterMint", "licenseMint", "registryProgram",
-		"squadsProgram", "coreMultisig", "coreVault", "coreMembers", "coreThreshold",
-		"noConfigAuthority", "oldEstateProfileRawSha256", "oldEstateProfileDigest",
-		"continuityProfileRawSha256", "profileBridgeSha256", "releaseTrustSha256",
-		"livePublisherKeyset", "signedFoundationHighWater", "signedDeployableHighWater",
-		"highWaterLedgerSha256", "foundationSequence", "setProjectionSha256", "snapshot",
-		"reportSha256", "ownerChoiceSha256", "rotationApprovalSha256", "newOperator",
-		"storeVersion", "storePda", "storeBinarySha256", "storeArchiveSha256",
-		"chainLeafSha256", "installerSha256", "shellSha256", "deployerCommit",
-		"contractsCommit", "storeCommit", "issuedAt", "expiresAt", "nonce",
+	var statement recoveryPreimageStatement
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&statement); err != nil {
+		return nil, fmt.Errorf("%w:admission-json: %v", errRecoveryBridge, err)
 	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &fields); err != nil || fields == nil {
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
 		return nil, fmt.Errorf("%w:admission-json", errRecoveryBridge)
 	}
-	var preimage bytes.Buffer
-	preimage.WriteByte('{')
-	count := 0
-	for _, name := range order {
-		value, exists := fields[name]
-		if !exists && name == "profileBridgeSha256" {
-			continue // the V1 field is optional for admissions without a bridge
-		}
-		if !exists || len(value) == 0 {
-			return nil, fmt.Errorf("%w:admission-json", errRecoveryBridge)
-		}
-		if count != 0 {
-			preimage.WriteByte(',')
-		}
-		key, _ := json.Marshal(name)
-		canonicalValue, err := json.Marshal(value)
-		if err != nil {
-			return nil, fmt.Errorf("%w:admission-json", errRecoveryBridge)
-		}
-		preimage.Write(key)
-		preimage.WriteByte(':')
-		preimage.Write(canonicalValue)
-		count++
+	preimage, err := json.Marshal(statement)
+	if err != nil {
+		return nil, fmt.Errorf("%w:admission-json: %v", errRecoveryBridge, err)
 	}
-	if count != len(fields) {
-		return nil, fmt.Errorf("%w:admission-json", errRecoveryBridge)
-	}
-	preimage.WriteByte('}')
-	return preimage.Bytes(), nil
+	return preimage, nil
 }
 
 func verifyRecoveryAdmission(raw []byte, now time.Time) (recoveryAdmissionStatement, string, error) {

@@ -167,6 +167,62 @@ func TestRecoveryAdmissionCanonicalTypedPreimageFieldOrder(t *testing.T) {
 	}
 }
 
+func TestRecoveryAdmissionCanonicalNestedTypedPreimageFieldOrder(t *testing.T) {
+	state, _ := recoveryBridgePublicVector(t)
+	var claim recoveryAdmissionClaim
+	if err := json.Unmarshal(state.AdmissionRaw, &claim); err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := recoveryAdmissionPreimage(claim.Statement)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(claim.Statement, &fields); err != nil {
+		t.Fatal(err)
+	}
+	// Reorder two nested signed objects while preserving their typed values.
+	// The deployer and contracts signers produce the same canonical preimage.
+	for _, name := range []string{"snapshot", "livePublisherKeyset"} {
+		var nested map[string]json.RawMessage
+		if err := json.Unmarshal(fields[name], &nested); err != nil {
+			t.Fatal(err)
+		}
+		fields[name], err = json.Marshal(nested)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	claim.Statement, err = json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reordered, err := json.Marshal(claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var bridge recoveryInstallerBridge
+	if err := json.Unmarshal(state.BridgeRaw, &bridge); err != nil {
+		t.Fatal(err)
+	}
+	_, digest, err := verifyRecoveryAdmission(reordered, bridge.IssuedAt)
+	if err != nil || digest != recoveryDigest(recoveryAdmissionDomain, canonical) {
+		t.Fatalf("recovery-admission-nested-typed-preimage-refused: %v", err)
+	}
+	// A nested foreign field is not part of the signable typed statement.
+	var snapshot map[string]json.RawMessage
+	if err := json.Unmarshal(fields["snapshot"], &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	snapshot["foreignField"] = json.RawMessage(`true`)
+	fields["snapshot"], _ = json.Marshal(snapshot)
+	claim.Statement, _ = json.Marshal(fields)
+	foreign, _ := json.Marshal(claim)
+	if _, _, err := verifyRecoveryAdmission(foreign, bridge.IssuedAt); err == nil || !strings.Contains(err.Error(), "admission-json") {
+		t.Fatalf("recovery-admission-nested-foreign-field-accepted: %v", err)
+	}
+}
+
 func TestRecoveryInstallerBridgeAllowsOnlyThreeExactHashes(t *testing.T) {
 	state, _ := recoveryBridgePublicVector(t)
 	var bridge recoveryInstallerBridge

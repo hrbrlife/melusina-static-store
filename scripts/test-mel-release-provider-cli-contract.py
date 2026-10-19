@@ -1946,6 +1946,63 @@ def test_cohort_refuses_pkgdef_claim_outside_its_selected_source_path():
     }], result
 
 
+def test_la_new_estate_fineract_nested_package_only_and_outer_not_published():
+    """A pinned Fineract Git root contains a legacy Popaye wrapper, not a cut."""
+    fineract_id = "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h"
+    popaye_id = "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
+    with tempfile.TemporaryDirectory() as tmp:
+        sources = Path(tmp) / "sources"
+        outer = sources / "fineract-setup" / "fineract-sidecar"
+        inner = outer / "fineract-sidecar"
+        popaye = sources / "popaye"
+        inner.mkdir(parents=True)
+        popaye.mkdir(parents=True)
+        for path, app_id in ((outer, popaye_id), (inner, fineract_id), (popaye, popaye_id)):
+            (path / "metadata.json").write_text(json.dumps({"appId": app_id}) + "\n")
+            (path / "sandstorm-pkgdef.capnp").write_text(
+                f'const pkgdef :Spk.PackageDefinition = (id = "{app_id}");\n')
+        subprocess.run(["git", "-C", str(outer), "init", "-q"], check=True)
+        subprocess.run(["git", "-C", str(outer), "add", "."], check=True)
+        subprocess.run(["git", "-C", str(outer), "-c", "user.name=LA Test",
+                        "-c", "user.email=la@example.invalid", "commit", "-qm", "fixture"], check=True)
+        selected = {fineract_id: inner, popaye_id: popaye}
+        specs = [{"appId": fineract_id, "source_path": "fineract-setup/fineract-sidecar/fineract-sidecar"},
+                 {"appId": popaye_id, "source_path": "popaye"}]
+        old = with_env({"MEL_RELEASE_SOURCE_ROOT": str(sources)})
+        try:
+            excluded = []
+            try:
+                findings, count = provider.catalog_pkgdef_source_findings(specs, selected, excluded)
+            except TypeError:
+                assert False, "LA_NEW_ESTATE_FINERACT_NESTED_ONLY"
+            assert findings == [], "LA_NEW_ESTATE_FINERACT_NESTED_ONLY"
+            assert count == 3, "LA_NEW_ESTATE_OUTER_PKGDEF_UNSCANNED"
+            assert excluded == [{
+                "appId": popaye_id,
+                "path": "fineract-setup/fineract-sidecar/sandstorm-pkgdef.capnp",
+                "selectedPackage": "fineract-setup/fineract-sidecar/fineract-sidecar",
+                "published": False,
+            }], "LA_NEW_ESTATE_OUTER_POPAYE_NOT_PUBLISHED"
+
+            # A second ordinary Popaye claim is still a hard refusal.
+            shadow = sources / "shadow" / "sandstorm-pkgdef.capnp"
+            shadow.parent.mkdir()
+            shadow.write_text(f'const pkgdef :Spk.PackageDefinition = (id = "{popaye_id}");\n')
+            findings, _ = provider.catalog_pkgdef_source_findings(specs, selected)
+            assert any(item["code"] == "DUPLICATE_APP_ID_SOURCE" and
+                       item["path"] == "shadow/sandstorm-pkgdef.capnp" for item in findings), \
+                "LA_NEW_ESTATE_FOREIGN_POPAYE_CLAIM_ACCEPTED"
+
+            # An altered outer metadata identity loses the narrow exception.
+            (outer / "metadata.json").write_text(json.dumps({"appId": fineract_id}) + "\n")
+            findings, _ = provider.catalog_pkgdef_source_findings(specs, selected)
+            assert any(item["code"] == "DUPLICATE_APP_ID_SOURCE" and
+                       item["path"] == "fineract-setup/fineract-sidecar/sandstorm-pkgdef.capnp"
+                       for item in findings), "LA_NEW_ESTATE_CHANGED_OUTER_ID_ACCEPTED"
+        finally:
+            restore_env(old)
+
+
 def test_pkgdef_guard_ignores_comments_nested_ids_and_safe_in_source_aliases():
     first_app_id = "a" * 52
     second_app_id = "b" * 52

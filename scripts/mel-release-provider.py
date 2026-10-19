@@ -93,6 +93,8 @@ MODULE = ROOT / "sidecar" / "melusina-store-sidecar"
 # a CommonJS module that resolves outside the pinned inputs is refused.
 NODE_CONFINEMENT = MODULE / "scripts" / "node-module-confinement.cjs"
 NAMEDCOIN_APP_ID = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
+FINERACT_SETUP_APP_ID = "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h"
+POPAYE_APP_ID = "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
 NAMEDCOIN_MSB_DEVNET_PROFILE = "namedcoin-msb-devnet"
 CLAUDE_MELUSINA_APP_ID = "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"
 CLAUDE_MELUSINA_PACKAGED_RUNTIME_PROFILE = "claude-melusina-packaged-runtime"
@@ -1858,8 +1860,52 @@ def pkgdef_display_path(path: Path, root: Path) -> str:
         return "<outside-source-root>"
 
 
+def nonselected_fineract_wrapper_claim(
+    claim: PkgdefClaim, selected_paths: dict[str, Path]
+) -> bool:
+    """Prove Fineract's tracked outer Popaye pkgdef cannot be built as a release.
+
+    The Fineract checkout has a legacy Popaye wrapper at its Git root and the
+    frozen Fineract package one level below. Only the nested package is the
+    selected build source. This exception is limited to that exact ordinary
+    tracked wrapper, with both metadata identities and the inner pkgdef
+    independently checked. Every other duplicate appId remains a refusal.
+    """
+    if claim.app_id != POPAYE_APP_ID or claim.canonical_path != claim.path:
+        return False
+    fineract = selected_paths.get(FINERACT_SETUP_APP_ID)
+    popaye = selected_paths.get(POPAYE_APP_ID)
+    if fineract is None or popaye is None or fineract.name != "fineract-sidecar":
+        return False
+    outer = fineract.parent
+    if (claim.path != outer / "sandstorm-pkgdef.capnp" or
+            path_is_below(popaye, outer) or path_is_below(outer, popaye) or
+            any(path_is_below(claim.path, selected) for selected in selected_paths.values())):
+        return False
+    try:
+        # source_path() has already proven this Git root is clean, pinned to
+        # the catalog commit and advertised by the reviewed remote branch.
+        if Path(run(["git", "-C", str(fineract), "rev-parse", "--show-toplevel"]).strip()) != outer:
+            return False
+        tracked = run(["git", "-C", str(outer), "ls-files", "--stage", "--",
+                       "sandstorm-pkgdef.capnp", "fineract-sidecar/sandstorm-pkgdef.capnp"])
+        paths = {line.split("\t", 1)[1]: line.split(" ", 1)[0]
+                 for line in tracked.splitlines() if "\t" in line}
+        if paths != {"sandstorm-pkgdef.capnp": "100644",
+                     "fineract-sidecar/sandstorm-pkgdef.capnp": "100644"}:
+            return False
+        outer_id = json.loads((outer / "metadata.json").read_text(encoding="utf-8"))["appId"]
+        inner_id = json.loads((fineract / "metadata.json").read_text(encoding="utf-8"))["appId"]
+        selected_id, selected_error = pkgdef_app_id(fineract / "sandstorm-pkgdef.capnp")
+    except (OSError, ValueError, KeyError, ProviderError):
+        return False
+    return (outer_id == POPAYE_APP_ID and inner_id == FINERACT_SETUP_APP_ID and
+            selected_error is None and selected_id == FINERACT_SETUP_APP_ID)
+
+
 def catalog_pkgdef_source_findings(
-    specs: list[dict[str, str]], selected_paths: dict[str, Path]
+    specs: list[dict[str, str]], selected_paths: dict[str, Path],
+    nonselected_packages: list[dict[str, str]] | None = None,
 ) -> tuple[list[dict[str, str]], int]:
     """Refuse any catalog appId claimed from outside its selected source path.
 
@@ -1962,6 +2008,15 @@ def catalog_pkgdef_source_findings(
                 "path": spec["source_path"],
             })
         for claim in outside:
+            if nonselected_fineract_wrapper_claim(claim, selected_paths):
+                if nonselected_packages is not None:
+                    nonselected_packages.append({
+                        "appId": app_id,
+                        "path": pkgdef_display_path(claim.path, root),
+                        "selectedPackage": pkgdef_display_path(selected_paths[FINERACT_SETUP_APP_ID], root),
+                        "published": False,
+                    })
+                continue
             findings.append({
                 "appId": app_id,
                 "code": "DUPLICATE_APP_ID_SOURCE",
@@ -2118,13 +2173,17 @@ def audit_source_cohort(receipt_out: Path, scoped_cohort: str | None = None) -> 
     # guard's output identifies the actual cross-source package claim rather
     # than masking an unrelated checkout failure.
     if not failures and len(verified_sources) == len(specs):
-        pkgdef_findings, pkgdef_count = catalog_pkgdef_source_findings(specs, verified_source_paths)
+        nonselected_packages: list[dict[str, str]] = []
+        pkgdef_findings, pkgdef_count = catalog_pkgdef_source_findings(
+            specs, verified_source_paths, nonselected_packages)
         pkgdef_source_ownership = {
             "status": "passed" if not pkgdef_findings else "failed",
             "checkedAppCount": len(specs),
             "pkgdefFileCount": pkgdef_count,
             "findings": pkgdef_findings,
         }
+        if nonselected_packages:
+            pkgdef_source_ownership["nonSelectedPackages"] = nonselected_packages
         specs_by_id = {spec["appId"]: spec for spec in specs}
         for finding in pkgdef_findings:
             app_id = finding["appId"]

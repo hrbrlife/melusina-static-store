@@ -47,6 +47,18 @@ with tempfile.TemporaryDirectory(prefix="la-store-rest-ledger-") as temp:
               apps[row[5]]["live_version"] == row[3] and
               apps[row[5]]["release_state"] == "ready" for row in rows),
           "LA_STORE_REST_FROZEN_SOURCE_PINS")
+    fineract_id = "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h"
+    check(apps[fineract_id]["source_path"] == "fineract-setup/fineract-sidecar/fineract-sidecar" and
+          apps[fineract_id]["runtime_contract_path"] == "RUNTIME-CONTRACT.json",
+          "LA_NEW_ESTATE_FINERACT_SOURCE_ROOT_POSITIVE")
+    changed_fineract = dict(apps[fineract_id], source_path="caller-selected/foreign-app")
+    try:
+        module.correct_fineract_source_root(fineract_id, changed_fineract)
+    except ValueError as exc:
+        check(str(exc) == "LA_STORE_REST_FINERACT_SOURCE_ROOT_CHANGED",
+              "LA_NEW_ESTATE_FINERACT_SOURCE_ROOT_NEGATIVE")
+    else:
+        raise AssertionError("LA_NEW_ESTATE_FINERACT_SOURCE_ROOT_NEGATIVE")
     changed = root / "FROZEN.md"
     changed.write_bytes(FROZEN.read_bytes() + b"\n")
     try:

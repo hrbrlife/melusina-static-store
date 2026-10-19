@@ -21,10 +21,23 @@ HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 APP_ID = re.compile(r"^[0-9a-z]{52}$")
 HEAD_REF = re.compile(r"^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$")
+FINERACT_APP_ID = "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h"
 
 
 def refuse(name):
     raise ValueError("LA_STORE_REST_" + name)
+
+
+def correct_fineract_source_root(app_id, app):
+    """The reviewed CCA repository nests the app below its sidecar root."""
+    if app_id != FINERACT_APP_ID:
+        return app
+    if app.get("source_path") != "fineract-setup/fineract-sidecar" or \
+            app.get("runtime_contract_path") != "RUNTIME-CONTRACT.json":
+        refuse("FINERACT_SOURCE_ROOT_CHANGED")
+    app = dict(app)
+    app["source_path"] = "fineract-setup/fineract-sidecar/fineract-sidecar"
+    return app
 
 
 def reviewed_heads(repository, override):
@@ -117,7 +130,7 @@ def produce(source_ledger: Path, frozen: Path, verdict: Path, out_dir: Path, ref
         name, previous = by_id[app_id]
         if name in apps:
             refuse("FROZEN_APP_NAME_COLLISION")
-        app = dict(previous)
+        app = correct_fineract_source_root(app_id, dict(previous))
         app.update(source_commit=commit, source_baseline_branch="main", live_version=row[3], release_state="ready",
                    source_selection_state="direct-dev-verified",
                    source_selection_receipt=f"prepublish-selections/{app_id}.json")

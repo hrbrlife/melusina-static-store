@@ -10,6 +10,8 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -18,13 +20,65 @@ FROZEN_RE = re.compile(r"^USE apps frozen ([0-9a-f]{64}) roster ([0-9a-f]{64}) "
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 APP_ID = re.compile(r"^[0-9a-z]{52}$")
+HEAD_REF = re.compile(r"^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$")
 
 
 def refuse(name):
     raise ValueError("LA_STORE_REST_" + name)
 
 
-def produce(source_ledger: Path, frozen: Path, verdict: Path, out_dir: Path):
+def reviewed_heads(repository, override):
+    if override is not None:
+        return override
+    result = subprocess.run(
+        ["git", "ls-remote", "--heads", repository],
+        capture_output=True, text=True, timeout=30, check=False)
+    if result.returncode != 0:
+        refuse("SOURCE_REF_READ_FAILED")
+    heads = {}
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if len(parts) != 2 or not parts[1].startswith("refs/heads/") or parts[1] in heads or not HEX40.fullmatch(parts[0]):
+            refuse("SOURCE_REF_READ_INVALID")
+        heads[parts[1]] = parts[0]
+    return heads
+
+
+def baseline_relation(repository, main, selected, override):
+    if override is not None:
+        relation = override
+    else:
+        with tempfile.TemporaryDirectory(prefix="la-store-rest-source-") as temp:
+            repo = Path(temp) / "source.git"
+            commands = [
+                ["git", "init", "-q", "--bare", str(repo)],
+                ["git", "-C", str(repo), "fetch", "-q", "--filter=blob:none", "--no-tags", repository,
+                 "refs/heads/main:refs/heads/main", "refs/heads/dev-publish:refs/heads/dev-publish"],
+            ]
+            for command in commands:
+                result = subprocess.run(command, capture_output=True, text=True, timeout=120, check=False)
+                if result.returncode != 0:
+                    refuse("SOURCE_BASELINE_HISTORY_UNAVAILABLE")
+            def git_value(*args):
+                result = subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
+                                        text=True, timeout=30, check=False)
+                if result.returncode != 0:
+                    refuse("SOURCE_BASELINE_HISTORY_UNAVAILABLE")
+                return result.stdout.strip()
+            if git_value("rev-parse", "refs/heads/main") != main or \
+                    git_value("rev-parse", "refs/heads/dev-publish") != selected:
+                refuse("SOURCE_REF_CHANGED_DURING_REVIEW")
+            common = git_value("merge-base", main, selected)
+            relation = "same" if main == selected else "ancestor" if common == main else \
+                "behind" if common == selected else "historical-divergent"
+    if relation == "behind":
+        refuse("SOURCE_SELECTED_BEHIND_MAIN")
+    if relation not in ("same", "ancestor", "historical-divergent"):
+        refuse("SOURCE_BASELINE_RELATION_INVALID")
+    return relation
+
+
+def produce(source_ledger: Path, frozen: Path, verdict: Path, out_dir: Path, refs=None, relations=None):
     frozen_raw = frozen.read_bytes()
     verdict_first = verdict.read_text().splitlines()[0]
     match = FROZEN_RE.match(verdict_first)
@@ -70,22 +124,36 @@ def produce(source_ledger: Path, frozen: Path, verdict: Path, out_dir: Path):
         apps[name] = app
         old_path = source_ledger.parent / "prepublish-selections" / f"{app_id}.json"
         old = json.loads(old_path.read_text())
-        main = next((ref["commit"] for ref in old.get("reviewedRefs", [])
-                     if ref["ref"] == "refs/heads/main"), None)
+        if old.get("appId") != app_id or old.get("sourceRepository") != app["source_repository"]:
+            refuse("SOURCE_SELECTION_HISTORY_MISMATCH")
+        if refs is not None and app_id not in refs:
+            refuse("SOURCE_REF_OVERRIDE_MISSING")
+        heads = reviewed_heads(app["source_repository"], None if refs is None else refs[app_id])
+        if not heads or any(not HEAD_REF.fullmatch(ref) or ".." in ref or ref.endswith("/") or
+                            not HEX40.fullmatch(head) for ref, head in heads.items()):
+            refuse("SOURCE_REF_READ_INVALID")
+        main, selected = heads.get("refs/heads/main"), heads.get("refs/heads/dev-publish")
         if not main or not HEX40.fullmatch(main) or app.get("source_baseline_branch") != "main":
             refuse("SOURCE_BASELINE_UNAVAILABLE")
+        if selected != commit:
+            refuse("SOURCE_SELECTED_HEAD_CHANGED")
+        if relations is not None and app_id not in relations:
+            refuse("SOURCE_RELATION_OVERRIDE_MISSING")
+        relation = baseline_relation(app["source_repository"], main, selected,
+                                     None if relations is None else relations[app_id])
         receipts[app_id] = {
             "schema": "melusina-source-selection-v1", "appId": app_id,
             "sourceRepository": app["source_repository"], "sourceCommit": commit,
-            "selectionMethod": "direct-dev", "baselineBranch": "main",
+            "selectionMethod": "direct-dev", "baselineBranch": "main", "baselineRelation": relation,
             "decisionSummary": "Selected exact APP-CUTS frozen first-drop package source under VERDICT-APPS USE.",
             "internalControls": {"status": "passed", "checks": [
                 f"APP-CUTS FROZEN {match.group(1)} pins {row[2]} {row[3]} appVersion {row[4]} SPK {row[7]} source {commit}",
                 f"FRESH-REVIEW VERDICT-APPS USE pins this frozen inventory and reviewed source head"
             ]},
             "reviewedRefs": [
-                {"ref": "refs/heads/main", "commit": main, "outcome": "baseline"},
-                {"ref": "refs/heads/dev-publish", "commit": commit, "outcome": "selected"},
+                {"ref": ref, "commit": head, "outcome": "baseline" if ref == "refs/heads/main" else
+                 "selected" if ref == "refs/heads/dev-publish" else "retained"}
+                for ref, head in sorted(heads.items())
             ],
         }
     ledger = {key: original[key] for key in (
@@ -120,6 +188,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         result = produce(args.source_ledger, args.frozen, args.verdict, args.out_dir)
-    except (ValueError, OSError, KeyError, yaml.YAMLError) as exc:
+    except (ValueError, OSError, KeyError, yaml.YAMLError, subprocess.TimeoutExpired) as exc:
         parser.exit(1, str(exc) + "\n")
     print(f"LA_STORE_REST_FROZEN_LEDGER_READY apps={len(result)} path={args.out_dir}")

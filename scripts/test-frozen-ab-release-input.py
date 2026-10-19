@@ -149,6 +149,16 @@ def main() -> int:
     if provider.source_version_matches_spk(cca_source, cca["app_id"], cca_meta, cca_manifest):
         raise AssertionError("APP_CUTS_CCA_116_STALE_METADATA_MUTANT_ADMITTED")
     print("APP_CUTS_CCA_116_STALE_METADATA_MUTANT PASS", flush=True)
+    cca_meta["versionNumber"] = 97
+    pkgdef = cca_source / "sandstorm-pkgdef.capnp"
+    real_read_text = Path.read_text
+    def mutant_pkgdef(path: Path, *arguments, **keywords):
+        content = real_read_text(path, *arguments, **keywords)
+        return content.replace("appVersion = 116", "appVersion = 115") if path == pkgdef else content
+    with mock.patch.object(Path, "read_text", mutant_pkgdef):
+        if provider.source_version_matches_spk(cca_source, cca["app_id"], cca_meta, cca_manifest):
+            raise AssertionError("APP_CUTS_CCA_116_PKGDEF_MUTANT_ADMITTED")
+    print("APP_CUTS_CCA_116_PKGDEF_MUTANT PASS", flush=True)
 
     # TEST ONLY: exercise the production require_frozen=True path without
     # writing an active APP-CUTS/FROZEN.md or asserting that ruling L closed.
@@ -231,7 +241,8 @@ def main() -> int:
 
     receipt = {"schema": "app-cuts-frozen-ab-producer-audit-v1", "appCount": len(results),
                "apps": results, "namedNegatives": ["current-source-version", "unfrozen",
-                    "package-bytes", "remote-ref", "cca-metadata-number", "reviewed-freeze-digest"],
+                    "package-bytes", "remote-ref", "cca-metadata-number", "cca-pkgdef-version",
+                    "reviewed-freeze-digest"],
                "testOnlyProductionSelection": "PASS"}
     (root / "checks/frozen-producer-audit.json").write_text(
         json.dumps(receipt, indent=2, sort_keys=True) + "\n")

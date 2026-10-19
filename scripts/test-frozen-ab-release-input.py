@@ -50,7 +50,7 @@ def main() -> int:
     parser.add_argument("--spk-bin-dir", type=Path, required=True)
     args = parser.parse_args()
     root = args.app_cuts_root.resolve(strict=True)
-    catalog_path = root / "checks/popaye-forward-catalog/bazaar-catalog.yaml"
+    catalog_path = root / "checks/metadata-aligned-catalog/bazaar-catalog.yaml"
     catalog = yaml.safe_load(catalog_path.read_text())
     os.environ.update({
         "MEL_RELEASE_CONFIG": str(catalog_path),
@@ -80,7 +80,7 @@ def main() -> int:
         spec = provider.app_spec(pin["app_id"])
         actual_source, spk, receipt = provider.frozen_ab_package_input(
             pin["app_id"], source, spec, pin["marketing_version"], require_frozen=False)
-        if actual_source != build_source or receipt["spkSha256"] != pin["sha256"]:
+        if actual_source != source or receipt["spkSha256"] != pin["sha256"]:
             raise AssertionError(f"APP_CUTS_FROZEN_AB_PRODUCER_INPUT_DRIFT:{app}")
         results[app] = {"version": pin["marketing_version"], "sha256": pin["sha256"],
                         "buildCommit": pin["build_commit"], "status": "PASS"}
@@ -89,8 +89,8 @@ def main() -> int:
         raise AssertionError("APP_CUTS_FROZEN_AB_PRODUCER_COHORT_INCOMPLETE")
     print("APP_CUTS_FROZEN_AB_PRODUCER_14_OF_14 PASS", flush=True)
 
-    # The two production mismatches that motivated the producer: Popaye's
-    # source is newer than its SPK; CCA's tracked metadata integer is stale.
+    # The selected metadata-only source must stage the reviewed package;
+    # the old Popaye source with version .225 still refuses the .224 SPK.
     for app in ("popaye", "ccash-configurator"):
         pin, source, build_source, spk, spec = selected[app]
         stage = root / "checks" / f"TEST-ONLY-frozen-stage-{app}"
@@ -105,11 +105,15 @@ def main() -> int:
 
     popaye, source, build_source, spk, spec = selected["popaye"]
     os.environ["MEL_RELEASE_FROZEN_BUILD_SOURCE"] = str(build_source)
+    positive_stage = root / "checks/TEST-ONLY-current-source-positive"
+    positive_stage.mkdir(exist_ok=True)
+    provider.stage_private_candidate_catalog(source, spk, positive_stage, popaye["app_id"])
     expect_refusal(
         lambda: provider.stage_private_candidate_catalog(
-            source, spk, root / "checks/TEST-ONLY-current-source-negative", popaye["app_id"]),
+            root / "src/popaye-merge", spk,
+            root / "checks/TEST-ONLY-unmodified-source-negative", popaye["app_id"]),
         "source metadata version does not match the verified SPK manifest")
-    print("APP_CUTS_FROZEN_AB_PRODUCER_CURRENT_SOURCE_NEGATIVE PASS", flush=True)
+    print("APP_CUTS_FROZEN_AB_PRODUCER_METADATA_ALIGNED_POSITIVE_OLD_SOURCE_NEGATIVE PASS", flush=True)
 
     expect_refusal(
         lambda: provider.frozen_ab_package_input(popaye["app_id"], source, spec,
@@ -207,7 +211,7 @@ def main() -> int:
     class CaptureSelectedSource(Exception):
         pass
     def capture_catalog(selected_source, *unused):
-        if selected_source != build_source:
+        if selected_source != source:
             raise AssertionError("APP_CUTS_FROZEN_AB_PRODUCER_BUILD_SELECTED_WRONG_SOURCE")
         raise CaptureSelectedSource
     test_state = fixture / f"TEST-ONLY-build-state-{os.getpid()}"
@@ -229,7 +233,7 @@ def main() -> int:
     selection_receipt = json.loads((test_state / "candidate/source-build.json").read_text())
     if selection_receipt["buildCommit"] != popaye["build_commit"]:
         raise AssertionError("APP_CUTS_FROZEN_AB_PRODUCER_BUILD_RECEIPT_DRIFT")
-    print("APP_CUTS_FROZEN_AB_PRODUCER_BUILD_BRANCH_SELECTED_CUT PASS", flush=True)
+    print("APP_CUTS_FROZEN_AB_PRODUCER_BUILD_BRANCH_SELECTED_METADATA_SOURCE PASS", flush=True)
 
     wrong_review_sha = "0" * 64
     os.environ["MEL_RELEASE_FROZEN_SHA256"] = wrong_review_sha
@@ -240,7 +244,7 @@ def main() -> int:
     print("APP_CUTS_FROZEN_AB_PRODUCER_REVIEW_DIGEST_NEGATIVE PASS", flush=True)
 
     receipt = {"schema": "app-cuts-frozen-ab-producer-audit-v1", "appCount": len(results),
-               "apps": results, "namedNegatives": ["current-source-version", "unfrozen",
+               "apps": results, "namedNegatives": ["old-source-version", "unfrozen",
                     "package-bytes", "remote-ref", "cca-metadata-number", "cca-pkgdef-version",
                     "reviewed-freeze-digest"],
                "testOnlyProductionSelection": "PASS"}

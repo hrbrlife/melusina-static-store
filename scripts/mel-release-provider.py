@@ -2894,7 +2894,32 @@ def frozen_ab_package_input(
         descendant = subprocess.run(["git", "-C", str(build_source), "merge-base", "--is-ancestor",
                                      pin["dev_publish_head"], pin["build_commit"]]).returncode == 0
         if not (ancestor or descendant):
-            raise ProviderError("frozen A/B build commit is not in the selected dev-publish lineage")
+            # Coordinator 07:23 aligns the selected tip with the already
+            # reviewed SPK by a metadata-only child of the original selected
+            # source. The package build is then on the sibling version-bump
+            # line. Accept that exact shape only, never arbitrary divergence.
+            selected = pin["dev_publish_head"]
+            parents = run(["git", "-C", str(source), "rev-list", "--parents", "-n1", selected]).split()
+            if len(parents) != 2:
+                raise ProviderError("frozen A/B selected metadata commit is not a single-parent child")
+            original = parents[1]
+            original_in_build = subprocess.run(
+                ["git", "-C", str(build_source), "merge-base", "--is-ancestor",
+                 original, pin["build_commit"]]).returncode == 0
+            git_root = Path(run(["git", "-C", str(source), "rev-parse", "--show-toplevel"]).strip())
+            metadata_file = source_metadata_path(app_id, source)
+            relative_metadata = metadata_file.relative_to(git_root).as_posix()
+            changed = run(["git", "-C", str(source), "diff-tree", "--no-commit-id",
+                           "--name-only", "-r", selected]).splitlines()
+            parent_metadata = json.loads(run(["git", "-C", str(source), "show",
+                                               f"{original}:{relative_metadata}"]))
+            current_metadata = read_json(metadata_file)
+            for key in ("version", "marketingVersion", "versionNumber"):
+                parent_metadata.pop(key, None)
+                current_metadata.pop(key, None)
+            if (not original_in_build or changed != [relative_metadata] or
+                    parent_metadata != current_metadata):
+                raise ProviderError("frozen A/B build commit is not in the selected dev-publish lineage")
     source_meta = read_json(source_metadata_path(app_id, build_source))
     require_catalog_metadata_identity(spec, source_meta)
     manifest = verified_spk_manifest(a)
@@ -2912,7 +2937,9 @@ def frozen_ab_package_input(
         "rosterSha256": hex_sha(roster_path) if require_frozen else "",
         "receiptSha256": hex_sha(receipt),
     }
-    return build_source, a, receipt_doc
+    # The selected metadata-only source is authoritative for the served
+    # metadata and runtime contract; build_source proves only the fixed SPK.
+    return source, a, receipt_doc
 
 
 def write_unsigned_provisional_release(path: Path) -> None:

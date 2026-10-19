@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import csv
 import hashlib
 import importlib.util
 import json
@@ -95,6 +96,7 @@ NODE_CONFINEMENT = MODULE / "scripts" / "node-module-confinement.cjs"
 NAMEDCOIN_APP_ID = "8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh"
 FINERACT_SETUP_APP_ID = "7htu16dens78fcfkc7u498sx33n0gsm25r0q8r5tqx0k7c5yft9h"
 POPAYE_APP_ID = "uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"
+CCASH_CONFIGURATOR_APP_ID = "6gdgveudrer5a61hp8qkmxcn89wyce5uq1mg92ud40ugr2uj7mz0"
 NAMEDCOIN_MSB_DEVNET_PROFILE = "namedcoin-msb-devnet"
 CLAUDE_MELUSINA_APP_ID = "svky21qh5k95fg96zzkpvfcjxncq6z1mkmgguchcdpq8as0km90h"
 CLAUDE_MELUSINA_PACKAGED_RUNTIME_PROFILE = "claude-melusina-packaged-runtime"
@@ -2680,6 +2682,37 @@ def write_staged_metadata(source_metadata: Path, destination: Path, staged_metad
     os.replace(tmp, destination)
 
 
+def source_version_matches_spk(
+    source: Path, app_id: str, metadata: dict[str, Any], manifest: dict[str, str]
+) -> bool:
+    """Bind public version fields to the package, including CCA's frozen cut.
+
+    CCA 0.0.108 recorded appVersion 116 in its tracked pkgdef and verified
+    SPK, but its tracked metadata retained the pre-cut integer 97. The staged
+    metadata is always rewritten from the verified SPK. This one named cut is
+    accepted only when the tracked pkgdef independently confirms both appId
+    and appVersion; every other stale source metadata value remains refused.
+    """
+    source_version = str(metadata.get("marketingVersion") or metadata.get("version") or "")
+    source_number = str(metadata.get("versionNumber", ""))
+    if source_version != manifest["version"]:
+        return False
+    if source_number == manifest["versionNumber"]:
+        return True
+    if not (app_id == CCASH_CONFIGURATOR_APP_ID and
+            source_version == "0.0.108" and source_number == "97" and
+            manifest["versionNumber"] == "116"):
+        return False
+    pkgdef = source_file(source, "pkgdef", "sandstorm-pkgdef.capnp")
+    run(["git", "-C", str(source), "ls-files", "--error-unmatch",
+         str(pkgdef.relative_to(source))])
+    raw = pkgdef.read_text(encoding="utf-8")
+    app_id_match = re.search(r'^\s*id\s*=\s*"([^"]+)"', raw, flags=re.MULTILINE)
+    version_match = re.search(r'\bappVersion\s*=\s*(\d+)', raw)
+    return bool(app_id_match and app_id_match.group(1) == app_id and
+                version_match and version_match.group(1) == manifest["versionNumber"])
+
+
 def stage_private_candidate_catalog(source: Path, built_spk: Path, catalog: Path, app_id: str) -> dict[str, str]:
     """Materialize a private {SPK, metadata} tuple without any fake release.
 
@@ -2699,9 +2732,7 @@ def stage_private_candidate_catalog(source: Path, built_spk: Path, catalog: Path
     metadata = read_json(source_metadata)
     if metadata.get("appId") != app_id:
         raise ProviderError("source metadata appId does not match the Bazaar catalog appId")
-    source_version = str(metadata.get("marketingVersion") or metadata.get("version") or "")
-    source_version_number = str(metadata.get("versionNumber", ""))
-    if source_version != manifest["version"] or source_version_number != manifest["versionNumber"]:
+    if not source_version_matches_spk(source, app_id, metadata, manifest):
         raise ProviderError("source metadata version does not match the verified SPK manifest")
 
     # The tracked source document is authoritative for product fields. Only
@@ -2721,6 +2752,167 @@ def stage_private_candidate_catalog(source: Path, built_spk: Path, catalog: Path
     for stale in (catalog / "RELEASE.json", catalog / "RUNTIME-CONTRACT.json"):
         stale.unlink(missing_ok=True)
     return {**manifest, "sha256": artifact_sha}
+
+
+def frozen_ab_package_input(
+    app_id: str, source: Path, spec: dict[str, str], requested_version: str,
+    *, require_frozen: bool = True,
+) -> tuple[Path, Path, dict[str, Any]]:
+    """Admit one reviewed A/B package while retaining the current source tip.
+
+    App cuts may have a version commit on a reviewed velocity ref while
+    ``dev-publish`` remains the selected source head. Popaye's ordinary merge
+    puts its older package commit behind that head. Both shapes are accepted
+    only with exact remote ref, Git ancestry, clean recursive source, frozen
+    14-pin table/roster and byte-equal SPKs. The normal source-pack path stays
+    unchanged when MEL_RELEASE_FROZEN_PINS is absent.
+    """
+    pin_path = clean_abs(env("MEL_RELEASE_FROZEN_PINS", required=True), "MEL_RELEASE_FROZEN_PINS")
+    root = pin_path.parent
+    if (pin_path.name != "PACKAGE-PINS.tsv" or pin_path.is_symlink() or
+            not pin_path.is_file() or root.is_symlink() or root.resolve() != root):
+        raise ProviderError("frozen A/B pins must be a canonical PACKAGE-PINS.tsv regular file")
+    with pin_path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        required = {"app", "marketing_version", "app_version", "app_id", "package_id",
+                    "sha256", "size_bytes", "dev_publish_head", "build_commit",
+                    "out_path", "status"}
+        if not reader.fieldnames or set(reader.fieldnames) != required:
+            raise ProviderError("frozen A/B pins have the wrong columns")
+        pins = list(reader)
+    if len(pins) != 14 or len({p["app_id"] for p in pins}) != 14 or len({p["app"] for p in pins}) != 14:
+        raise ProviderError("frozen A/B pins must name exactly 14 distinct apps")
+    pin = next((p for p in pins if p["app_id"] == app_id), None)
+    if pin is None or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", pin["app"]):
+        raise ProviderError("frozen A/B pins do not select the catalog app")
+    if (pin["marketing_version"] != requested_version or
+            pin["dev_publish_head"] != spec["source_commit"]):
+        raise ProviderError("frozen A/B version or dev-publish head differs from the release catalog")
+    if not re.fullmatch(r"[0-9a-f]{64}", pin["sha256"]) or pin["package_id"] != pin["sha256"][:32]:
+        raise ProviderError("frozen A/B SHA-256 and packageId disagree")
+    if not re.fullmatch(r"[0-9a-f]{40}", pin["build_commit"]):
+        raise ProviderError("frozen A/B build commit is invalid")
+    try:
+        size = int(pin["size_bytes"])
+    except ValueError as exc:
+        raise ProviderError("frozen A/B size is invalid") from exc
+    if size <= 0 or not pin["app_version"].isdigit():
+        raise ProviderError("frozen A/B size or appVersion is invalid")
+
+    folder = root / "out" / f"{pin['app']}-{requested_version}"
+    a, b = folder / "A.spk", folder / "B.spk"
+    if (folder.is_symlink() or folder.resolve() != folder or
+            pin["out_path"] != str(a) or any(p.is_symlink() or not p.is_file() for p in (a, b))):
+        raise ProviderError("frozen A/B artifact paths are not the canonical cut")
+    for artifact in (a, b):
+        if artifact.stat().st_size != size or hex_sha(artifact) != pin["sha256"]:
+            raise ProviderError("frozen A/B package bytes differ from the pinned SHA-256")
+    sums = folder / "SHA256SUMS"
+    receipt = folder / "BUILD-RECEIPT.md"
+    if (sums.is_symlink() or not sums.is_file() or receipt.is_symlink() or
+            not receipt.is_file() or pin["sha256"] not in receipt.read_text()):
+        raise ProviderError("frozen A/B checksum list or build receipt is missing")
+    checksums = {}
+    for line in sums.read_text().splitlines():
+        fields = line.split("  ", 1)
+        if len(fields) != 2 or not re.fullmatch(r"[0-9a-f]{64}", fields[0]):
+            raise ProviderError("frozen A/B checksum list is malformed")
+        filename = fields[1]
+        if filename in checksums or Path(filename).name != filename:
+            raise ProviderError("frozen A/B checksum list has an unsafe or duplicate path")
+        artifact = folder / filename
+        if artifact.is_symlink() or not artifact.is_file() or hex_sha(artifact) != fields[0]:
+            raise ProviderError("frozen A/B checksum list does not bind an artifact")
+        checksums[filename] = fields[0]
+    if checksums.get("A.spk") != pin["sha256"] or checksums.get("B.spk") != pin["sha256"]:
+        raise ProviderError("frozen A/B checksum list omits the selected packages")
+
+    frozen_path = root / "FROZEN.md"
+    roster_path = root / "checks/FROZEN-ROSTER-CANDIDATE.tsv"
+    if require_frozen:
+        if any(p["status"] != "FROZEN" for p in pins):
+            raise ProviderError("frozen A/B pins include a non-FROZEN app")
+        if (frozen_path.is_symlink() or not frozen_path.is_file() or
+                roster_path.is_symlink() or not roster_path.is_file()):
+            raise ProviderError("frozen A/B table or unsigned roster is missing")
+        frozen_text = frozen_path.read_text()
+        if "STATUS: FROZEN" not in frozen_text.splitlines()[:8]:
+            raise ProviderError("frozen A/B table lacks STATUS: FROZEN")
+        reviewed_sha = env("MEL_RELEASE_FROZEN_SHA256", required=True)
+        if not re.fullmatch(r"[0-9a-f]{64}", reviewed_sha) or hex_sha(frozen_path) != reviewed_sha:
+            raise ProviderError("frozen A/B table differs from the reviewed FROZEN SHA-256")
+        table = {}
+        for line in frozen_text.splitlines():
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if len(cells) >= 11 and cells[2] in {p["app"] for p in pins}:
+                if cells[2] in table:
+                    raise ProviderError("frozen A/B table duplicates an app")
+                table[cells[2]] = cells
+        if len(table) != 14:
+            raise ProviderError("frozen A/B table does not contain 14 app rows")
+        for row in pins:
+            cells = table[row["app"]]
+            if ([cells[3], cells[4], cells[5], cells[6], cells[7], cells[8], cells[9], cells[10]] !=
+                    [row["marketing_version"], row["app_version"], row["app_id"],
+                     row["package_id"], row["sha256"], row["size_bytes"],
+                     row["dev_publish_head"], row["build_commit"]]):
+                raise ProviderError("frozen A/B table differs from PACKAGE-PINS.tsv")
+        roster_sha = hex_sha(roster_path)
+        if roster_sha not in frozen_text:
+            raise ProviderError("frozen A/B table does not bind unsigned roster bytes")
+        with roster_path.open(newline="", encoding="utf-8") as handle:
+            roster = list(csv.DictReader(handle, delimiter="\t"))
+        if len(roster) != 14 or {row.get("app") for row in roster} != {p["app"] for p in pins}:
+            raise ProviderError("frozen A/B roster does not name exactly the 14 pins")
+        for row in roster:
+            matching = next(p for p in pins if p["app"] == row["app"])
+            for field in ("marketing_version", "app_version", "app_id", "package_id",
+                          "sha256", "dev_publish_head", "build_commit"):
+                if row.get(field) != matching[field]:
+                    raise ProviderError("frozen A/B roster differs from PACKAGE-PINS.tsv")
+
+    build_source = clean_abs(env("MEL_RELEASE_FROZEN_BUILD_SOURCE", required=True),
+                             "MEL_RELEASE_FROZEN_BUILD_SOURCE")
+    if build_source.is_symlink() or not build_source.is_dir() or build_source.resolve() != build_source:
+        raise ProviderError("frozen A/B build source must be a canonical checkout")
+    if run(["git", "-C", str(build_source), "rev-parse", "HEAD"]).strip().lower() != pin["build_commit"]:
+        raise ProviderError("frozen A/B build source is not at the pinned commit")
+    require_clean_recursive_source_checkout(app_id, build_source)
+    repository = canonical_source_repository(
+        run(["git", "-C", str(build_source), "remote", "get-url", "origin"]).strip())
+    if repository != spec["source_repository"]:
+        raise ProviderError("frozen A/B build source has the wrong origin")
+    if pin["build_commit"] != pin["dev_publish_head"]:
+        review_ref = f"refs/velocity/APP-CUTS/{pin['app']}-{requested_version}"
+        advertised = run(["git", "-C", str(build_source), "ls-remote", "origin", review_ref]).splitlines()
+        if len(advertised) != 1 or advertised[0].split() != [pin["build_commit"], review_ref]:
+            raise ProviderError("frozen A/B build commit is not the exact reviewed remote ref")
+        run(["git", "-C", str(build_source), "fetch", "--no-tags", "origin",
+             f"+refs/heads/{spec['source_branch']}:refs/remotes/origin/{spec['source_branch']}"])
+        ancestor = subprocess.run(["git", "-C", str(build_source), "merge-base", "--is-ancestor",
+                                   pin["build_commit"], pin["dev_publish_head"]]).returncode == 0
+        descendant = subprocess.run(["git", "-C", str(build_source), "merge-base", "--is-ancestor",
+                                     pin["dev_publish_head"], pin["build_commit"]]).returncode == 0
+        if not (ancestor or descendant):
+            raise ProviderError("frozen A/B build commit is not in the selected dev-publish lineage")
+    source_meta = read_json(source_metadata_path(app_id, build_source))
+    require_catalog_metadata_identity(spec, source_meta)
+    manifest = verified_spk_manifest(a)
+    if (manifest["appId"] != app_id or manifest["packageId"] != pin["package_id"] or
+            manifest["version"] != requested_version or
+            manifest["versionNumber"] != pin["app_version"] or
+            not source_version_matches_spk(build_source, app_id, source_meta, manifest)):
+        raise ProviderError("frozen A/B source metadata and verified SPK identity differ")
+    receipt_doc = {
+        "schema": "melusina-frozen-ab-source-build-v1", "appId": app_id,
+        "devPublishHead": pin["dev_publish_head"], "buildCommit": pin["build_commit"],
+        "version": requested_version, "appVersion": int(pin["app_version"]),
+        "spkSha256": pin["sha256"], "spkSize": size,
+        "pinsSha256": hex_sha(pin_path), "frozenSha256": hex_sha(frozen_path) if require_frozen else "",
+        "rosterSha256": hex_sha(roster_path) if require_frozen else "",
+        "receiptSha256": hex_sha(receipt),
+    }
+    return build_source, a, receipt_doc
 
 
 def write_unsigned_provisional_release(path: Path) -> None:
@@ -2792,21 +2984,32 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         shutil.rmtree(work)
     work.mkdir(mode=0o700, parents=True)
 
-    # The package Makefile writes its ignored app.spk in the committed source
-    # tree. pack-app-candidate enforces source cleanliness before and after it.
-    built_metadata = work / "metadata.json"
-    pack_env = {"MEL_RELEASE_GREENFIELD_PACK": "1", **pack_profile_env(app_id)}
-    run(
-        [str(ROOT / "scripts" / "pack-app-candidate.sh"), str(source), "--metadata", str(source_metadata), "--receipt-out", str(work / "source-build.json"), "--metadata-out", str(built_metadata)],
-        extra_env=pack_env,
-    )
-    built_spk = source / "app.spk"
-    if not built_spk.is_file():
-        raise ProviderError(f"candidate pack did not create {built_spk}")
+    package_source = source
+    frozen_build = None
+    if env("MEL_RELEASE_FROZEN_PINS"):
+        # The selected dev-publish tip remains current and independently
+        # audited above. The reviewed version commit and A/B SPKs are separate
+        # immutable release inputs; never rebuild a lower version from the
+        # tip or silently replace a frozen package with a new SPK.
+        package_source, built_spk, frozen_build = frozen_ab_package_input(
+            app_id, source, spec, version)
+        write_json(work / "source-build.json", frozen_build)
+    else:
+        # The package Makefile writes its ignored app.spk in the committed
+        # source tree. pack-app-candidate checks cleanliness before and after.
+        built_metadata = work / "metadata.json"
+        pack_env = {"MEL_RELEASE_GREENFIELD_PACK": "1", **pack_profile_env(app_id)}
+        run(
+            [str(ROOT / "scripts" / "pack-app-candidate.sh"), str(source), "--metadata", str(source_metadata), "--receipt-out", str(work / "source-build.json"), "--metadata-out", str(built_metadata)],
+            extra_env=pack_env,
+        )
+        built_spk = source / "app.spk"
+        if not built_spk.is_file():
+            raise ProviderError(f"candidate pack did not create {built_spk}")
 
     catalog = work / "catalog"
-    catalog_bootstrap = prepare_candidate_catalog(source, app_id, catalog)
-    manifest = stage_private_candidate_catalog(source, built_spk, catalog, app_id)
+    catalog_bootstrap = prepare_candidate_catalog(package_source, app_id, catalog)
+    manifest = stage_private_candidate_catalog(package_source, built_spk, catalog, app_id)
     if manifest["version"] != version:
         raise ProviderError("requested release version does not match the verified SPK manifest")
     spk = catalog / "app.spk"
@@ -2839,7 +3042,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     # Never let an inherited catalog field silently replace that authority.
     master = env("MEL_RELEASE_MASTER_NFT_MINT", required=True)
     runtime_contract = work / "RUNTIME-CONTRACT.json"
-    materialize_runtime_contract(source, runtime_contract, app_id, version, artifact_sha, apphash)
+    materialize_runtime_contract(package_source, runtime_contract, app_id, version, artifact_sha, apphash)
     shutil.copyfile(runtime_contract, ceremony / "RUNTIME-CONTRACT.json")
 
     pearl_dir = work / "pearl-artifact"
@@ -2850,7 +3053,8 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
     context = {
         "schema": "melusina-mel-release-provider-context-v1",
         "appId": app_id,
-        "sourceDir": str(source),
+        "sourceDir": str(package_source),
+        "selectedSourceDir": str(source),
         "catalogDir": str(catalog),
         "ceremonyDir": str(ceremony),
         "pearlArtifactDir": str(pearl_dir),
@@ -2861,6 +3065,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "statePath": str(work / "ceremony-state.json"),
         "sourceReceipt": str(work / "source-build.json"),
         "sourceSelection": source_selection,
+        "frozenBuild": frozen_build,
         "catalogSlot": slot,
         "catalogBootstrap": catalog_bootstrap,
     }
@@ -2887,6 +3092,7 @@ def build(app_id: str, version: str, receipt_out: Path) -> None:
         "metadataPath": str(metadata),
         "runtimeContract": {"sha256": hex_sha(runtime_contract), "size": runtime_contract.stat().st_size, "path": str(runtime_contract)},
         "sourceSelection": source_selection,
+        "frozenBuild": frozen_build,
     })
 
 

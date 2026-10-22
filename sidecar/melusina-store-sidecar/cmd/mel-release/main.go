@@ -174,6 +174,25 @@ func run(args []string) error {
 		fmt.Printf("PUBLISH_OK candidate=%s\n", path)
 		return nil
 
+	case "adopt-seed":
+		fs := flag.NewFlagSet("adopt-seed", flag.ContinueOnError)
+		app := fs.String("app", "", "app selector from the reviewed Store catalog")
+		version := fs.String("version", "", "frozen seed release version")
+		build := fs.String("build-receipt", "", "absolute path to product preflight build receipt")
+		stage := fs.String("stage-receipt", "", "absolute path to signed Store stage receipt")
+		authorization := fs.String("authorization", "", "absolute path to owner-signed seed authorization")
+		rows := fs.String("rows", "", "absolute path to publisher-signed seed execution rows")
+		review := fs.String("review", "", "absolute path to reviewed firstdrop cohort release intent")
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		path, err := runSeedAdopt(cfg, catalog, *app, *version, *build, *stage, *authorization, *rows, *review)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("ADOPT_SEED_OK candidate=%s\n", path)
+		return nil
+
 	case "approve":
 		fs := flag.NewFlagSet("approve", flag.ContinueOnError)
 		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
@@ -320,5 +339,5 @@ func typedDocumentFlags(args []string) ([]string, []string, error) {
 }
 
 func usageErr() error {
-	return fmt.Errorf("usage: mel-release preflight|publish --app <appId|slug|name> --version <v> | approve|repair-catalog|abandon-init|reject-proposed --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
+	return fmt.Errorf("usage: mel-release preflight|publish --app <appId|slug|name> --version <v> | adopt-seed --app <appId> --version <v> --build-receipt <path> --stage-receipt <path> --authorization <path> --rows <path> --review <path> | approve|repair-catalog|abandon-init|reject-proposed --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
 }

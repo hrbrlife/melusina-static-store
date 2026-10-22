@@ -100,10 +100,13 @@ type walReceipt struct {
 	ActiveAfter  []releaseRef `json:"activeAfter,omitempty"`
 	LedgerID     string       `json:"ledgerId"`
 
-	BuildReceipt    artifactRef            `json:"buildReceipt,omitempty"`
-	StageReceiptRef artifactRef            `json:"stageReceipt,omitempty"`
-	ReleaseJSON     artifactRef            `json:"releaseJson,omitempty"`
-	ProposalReceipt artifactRef            `json:"proposalReceipt,omitempty"`
+	BuildReceipt    artifactRef `json:"buildReceipt,omitempty"`
+	StageReceiptRef artifactRef `json:"stageReceipt,omitempty"`
+	ReleaseJSON     artifactRef `json:"releaseJson,omitempty"`
+	ProposalReceipt artifactRef `json:"proposalReceipt,omitempty"`
+	// SeedAdoption proves an already governed seed ReleaseEntry through the
+	// distinct candidate branch. It never masquerades as a Squads proposal.
+	SeedAdoption    *seedAdoptionProof     `json:"seedAdoption,omitempty"`
 	RegisterReceipt artifactRef            `json:"registerReceipt,omitempty"`
 	PromoteReceipt  artifactRef            `json:"promoteReceipt,omitempty"`
 	RevokeReceipts  map[string]artifactRef `json:"revokeReceipts,omitempty"`

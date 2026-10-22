@@ -1,0 +1,63 @@
+{
+  "schema": "SeedCatalogueAuthorizationV1",
+  "kind": "seed-catalogue",
+  "estateId": "6e180f30dfa28d45965df5c964c04cc8c9b1193a1573feec893bdd9af45d2395",
+  "genesisHash": "DszkBgTZVoPkk9tDyXH85k4xs7HSjzxaCoLnPnuZNu6L",
+  "coreMultisig": "BaTPhfQKzdJATTDrHeVJ3mM4hFyhqtxhuQT7aFEGbhje",
+  "masterNftMint": "B7Bby1ZRUzWydLkch6cVA1sqHLGUTjKr9oEQ3GZBbYMe",
+  "expiresAt": "2026-09-21T02:00:00Z",
+  "ownerPolicy": {
+    "policyId": "policy.rehearsal.owners.v1",
+    "threshold": 2,
+    "signers": [
+      {
+        "keyId": "owner-a",
+        "ed25519PublicKey": "fd842d9ee0cb56f1311cf3eaea9961f071002e2f08923d53df2741b5fa4bd3a6"
+      },
+      {
+        "keyId": "owner-b",
+        "ed25519PublicKey": "699c98712041b760332899be18012165d86cf0e09fb9a57844127ce6ec62077d"
+      },
+      {
+        "keyId": "owner-c",
+        "ed25519PublicKey": "5e8ab1eadbded94a0b804619e574d5d1bc5f091f72b35a9208f57fbb779932e9"
+      }
+    ]
+  },
+  "entries": [
+    {
+      "appId": "chainwatch-ui",
+      "version": "1.0.0",
+      "sourceCommit": "7931e9a18f04d869219bb1964ba8c2b357255827",
+      "releaseHash": "50d489ef2b2febef605dafa496e33956165744b21d4a97c8bb93f68eba888aff",
+      "authorKey": "CsAP5japyXh5jPT9WP4vUEtDQc13wKLfgJw5SP57P6LU",
+      "publisher": "75a721bb4f9e204f52642b87f9cf029f7a154c588421dfa88e3c32629d263363"
+    },
+    {
+      "appId": "melusina-portal",
+      "version": "1.0.0",
+      "sourceCommit": "6b609b601ac5b9c36ca239d4ac8d4a7904aa6201",
+      "releaseHash": "85aabb17e6a79594fa788c8efa1c0369b43771c2c72f1f132c039ffb46188ec6",
+      "authorKey": "8HxCmVRkiHXLq59JYSgz8ZeQgB6vGR9H1CVaLzHxAwNh",
+      "publisher": "daeb87cfeec7aa067094e14a3d2c9fb063bad7b895357f6c02cd15fbbd9fc511"
+    },
+    {
+      "appId": "estate-ledger",
+      "version": "1.0.0",
+      "sourceCommit": "6d00eba75577c84cabc998531135c0f86ece22e6",
+      "releaseHash": "bbeb47b12ec3278442cf565903136317f307c80aa78d04ec6c9484da3b3d6cf5",
+      "authorKey": "AYfiMUJMHzBWZtRui7Ac6TxUDNLc2gFcvyDFRUPw9mTR",
+      "publisher": "ce44aea08ca879c0874cd1753b06120abc7d48a1d20a760096e9a585e12f591d"
+    }
+  ],
+  "signatures": [
+    {
+      "keyId": "owner-a",
+      "signature": "vO5ZtlFADgDkkO8V8dyfSC3RVjzZ42zIOmqZrvR-1bY2ytsfRY7240T35wfhQsbrIzjJBpdlQ4YzRQwUVldKAQ"
+    },
+    {
+      "keyId": "owner-b",
+      "signature": "h-6bEoKRDYCPUPzV2CM_opcpkis3OwR9FQrGnf9YzVifFcra2U0l-MBoyQNUdvrr4Z801StqRUNmH9YOZOIMDg"
+    }
+  ]
+}

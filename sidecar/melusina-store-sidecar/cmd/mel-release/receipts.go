@@ -400,6 +400,7 @@ type candidateReceipt struct {
 	ReleaseNonce   string             `json:"releaseNonce"`
 	StageReceipt   artifactRef        `json:"stageReceipt"`
 	SquadsProposal squadsProposalRef  `json:"squadsProposal"`
+	SeedAdoption   *seedAdoptionProof `json:"seedAdoption,omitempty"`
 	StalePDAs      []string           `json:"stalePdas"`
 	StoreID        string             `json:"storeId"`
 	BundleOrigin   string             `json:"bundleOrigin"`

@@ -322,12 +322,28 @@ func registerByReadback(c Config, prov SignerProvider, rec *walReceipt) error {
 		return fmt.Errorf("record ReleaseEntry readback: %w", err)
 	}
 	finalReleasePath := c.receiptPath(rec.AppID, "final-release.json")
-	if err := prov.FinalizeRelease(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.ReleaseNonce, finalReleasePath); err != nil {
-		return err
+	if rec.SeedAdoption == nil {
+		if err := prov.FinalizeRelease(rec.AppID, rec.NewAppHash, rec.ReleaseHash, rec.Version, rec.ReleaseNonce, finalReleasePath); err != nil {
+			return err
+		}
+	} else if err := verifySeedAdoptionProof(c, App{AppID: rec.AppID}, rec); err != nil {
+		return fmt.Errorf("seed-adoption final release proof: %w", err)
 	}
 	finalRef, err := readAttestedFinalRelease(finalReleasePath, c, rec, entry)
 	if err != nil {
 		return err
+	}
+	if rec.SeedAdoption != nil {
+		adopter, ok := prov.(interface {
+			AdoptSeedFinalRelease(string, string, string, string, string, string) error
+		})
+		if !ok {
+			return errors.New("seed-final-release-adoption-producer-missing")
+		}
+		if err := adopter.AdoptSeedFinalRelease(rec.AppID, rec.NewAppHash, rec.ReleaseHash,
+			rec.Version, rec.ReleaseNonce, finalReleasePath); err != nil {
+			return err
+		}
 	}
 	rec.RegisterReceipt = ref
 	rec.ReleaseJSON = finalRef

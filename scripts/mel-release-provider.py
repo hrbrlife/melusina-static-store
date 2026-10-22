@@ -4019,10 +4019,61 @@ def direct_app_publish(app_id: str, operation: str, receipt_out: Path) -> None:
         raise ProviderError("direct-app-publish-verified-receipt-missing")
 
 
+def adopt_seed_final_release(app_id: str, final_path: Path) -> None:
+    """Install only the Contracts-finalized seed claim into private ceremony state.
+
+    Go approve has already verified this file against the Active chain account
+    and two trusted publisher signatures. This step gives the existing scanned
+    promote provider the same exact bytes, without a forged proposal receipt.
+    """
+    context = require_context(app_id)
+    release_path = clean_abs(str(context["releasePath"]), "provider releasePath")
+    runtime = clean_abs(str(context["runtimeContractPath"]), "provider runtimeContractPath")
+    if (final_path.is_symlink() or not final_path.is_file() or
+            release_path.is_symlink() or not release_path.is_file() or
+            runtime.is_symlink() or not runtime.is_file()):
+        raise ProviderError("seed-final-release-input-missing-or-symlink")
+    final_raw = final_path.read_bytes()
+    final = read_json(final_path)
+    expected = {"appHash": env("MEL_NEW_APP_HASH", required=True),
+                "releaseHash": env("MEL_RELEASE_HASH", required=True),
+                "version": env("MEL_NEW_VERSION", required=True),
+                "releaseNonce": env("MEL_RELEASE_NONCE", required=True),
+                "runtimeContractSha256": hex_sha(runtime)}
+    current = read_json(release_path)
+    if any(final.get(key) != value or current.get(key) != value
+           for key, value in expected.items()):
+        raise ProviderError("seed-final-release-context-or-claim-mismatch")
+    if (not final.get("releaseEntryPda") or not final.get("authorSig") or
+            not isinstance(final.get("additionalPublisherSignatures"), list) or
+            len(final["additionalPublisherSignatures"]) != 1):
+        raise ProviderError("seed-final-release-publisher-threshold-missing")
+    if current.get("releaseEntryPda") not in (None, "", final["releaseEntryPda"]):
+        raise ProviderError("seed-final-release-predecessor-foreign")
+    if release_path.read_bytes() == final_raw:
+        return
+    tmp = release_path.with_name(release_path.name + ".seed-final.tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as output:
+            output.write(final_raw)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(tmp, release_path)
+        dir_fd = os.open(release_path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    except Exception:
+        # Preserve any incomplete temp for forensic disposition; never erase.
+        raise
+
+
 PROVIDER_OPERATIONS = (
     "estate-scan", "audit-cohort", "audit-msb-cohort", "build", "active-releases", "release-status",
     "release-entry-account", "served-app-hash", "propose-register", "finalize-release",
-    "reject-register", "revoke", "stage", "promote",
+    "reject-register", "revoke", "stage", "promote", "adopt-seed-final-release",
 )
 
 
@@ -4037,7 +4088,7 @@ def main() -> None:
     # again: no operation runs under a manifest of the retiring estate.
     catalog_config()
     app_id = env("MEL_APP_ID")
-    if op in {"build", "stage", "promote", "propose-register", "finalize-release"}:
+    if op in {"build", "stage", "promote", "propose-register", "finalize-release", "adopt-seed-final-release"}:
         app_id = env("MEL_APP_ID", required=True)
         require_release_ready(app_id)
     if op == "estate-scan":
@@ -4067,6 +4118,8 @@ def main() -> None:
         direct_app_publish(app_id, "stage", clean_abs(env("MEL_STAGE_RECEIPT_OUT", required=True), "MEL_STAGE_RECEIPT_OUT"))
     elif op == "promote":
         direct_app_publish(app_id, "promote", clean_abs(env("MEL_PROMOTE_RECEIPT_OUT", required=True), "MEL_PROMOTE_RECEIPT_OUT"))
+    elif op == "adopt-seed-final-release":
+        adopt_seed_final_release(app_id, clean_abs(env("MEL_SEED_FINAL_RELEASE_PATH", required=True), "MEL_SEED_FINAL_RELEASE_PATH"))
     elif op == "active-releases":
         active_releases(app_id)
     elif op == "release-status":

@@ -341,26 +341,32 @@ func buildCandidate(c Config, app App, rec walReceipt) candidateReceipt {
 		PreviousSHA256:  rec.PreviousSHA256,
 		PreviousVersion: rec.PreviousVersion,
 	}
+	proposal := squadsProposalRef{
+		Multisig:       c.SquadsMultisig,
+		Vault:          c.SquadsVault,
+		TransactionPDA: rec.TransactionPDA,
+		Instruction:    "register_release_entry",
+	}
+	if rec.SeedAdoption != nil {
+		proposal = squadsProposalRef{Multisig: c.SquadsMultisig, Vault: c.SquadsVault,
+			Instruction: "adopt_governed_seed_release_entry"}
+	}
 	return candidateReceipt{
-		Schema:       candidateSchema,
-		AppID:        rec.AppID,
-		PublishSlug:  app.PublishSlug,
-		CatalogName:  app.CatalogName,
-		Version:      rec.Version,
-		Component:    comp,
-		Artifact:     artifactRef{Path: rec.PackageID, SHA256: rec.ArtifactSHA, Size: rec.ArtifactSize},
-		ReleaseNonce: rec.ReleaseNonce,
-		StageReceipt: rec.StageReceiptRef,
-		SquadsProposal: squadsProposalRef{
-			Multisig:       c.SquadsMultisig,
-			Vault:          c.SquadsVault,
-			TransactionPDA: rec.TransactionPDA,
-			Instruction:    "register_release_entry",
-		},
-		StalePDAs:    rec.StalePDAs,
-		StoreID:      c.StoreID,
-		BundleOrigin: c.BundleOrigin,
-		Channel:      c.Channel,
+		Schema:         candidateSchema,
+		AppID:          rec.AppID,
+		PublishSlug:    app.PublishSlug,
+		CatalogName:    app.CatalogName,
+		Version:        rec.Version,
+		Component:      comp,
+		Artifact:       artifactRef{Path: rec.PackageID, SHA256: rec.ArtifactSHA, Size: rec.ArtifactSize},
+		ReleaseNonce:   rec.ReleaseNonce,
+		StageReceipt:   rec.StageReceiptRef,
+		SquadsProposal: proposal,
+		SeedAdoption:   rec.SeedAdoption,
+		StalePDAs:      rec.StalePDAs,
+		StoreID:        c.StoreID,
+		BundleOrigin:   c.BundleOrigin,
+		Channel:        c.Channel,
 	}
 }
 

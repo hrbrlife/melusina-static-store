@@ -161,6 +161,21 @@ func revalidateCandidate(c Config, app App, rec *walReceipt) (candidateReceipt, 
 	if _, _, err := readStageReceipt(rec.StageReceiptRef.Path, rec.AppID, rec.NewAppHash, rec.ReleaseHash); err != nil {
 		return candidateReceipt{}, err
 	}
+	if rec.SeedAdoption != nil {
+		if cand.SeedAdoption == nil || *cand.SeedAdoption != *rec.SeedAdoption ||
+			cand.SquadsProposal.Instruction != "adopt_governed_seed_release_entry" ||
+			cand.SquadsProposal.TransactionPDA != "" || rec.TransactionPDA != "" ||
+			rec.ProposalReceipt.Path != "" {
+			return candidateReceipt{}, fmt.Errorf("seed-adoption candidate contains a proposal or differs from its WAL proof")
+		}
+		if err := verifySeedAdoptionProof(c, app, rec); err != nil {
+			return candidateReceipt{}, fmt.Errorf("seed-adoption proof: %w", err)
+		}
+		return cand, nil
+	}
+	if cand.SeedAdoption != nil {
+		return candidateReceipt{}, fmt.Errorf("ordinary proposal candidate contains a seed-adoption proof")
+	}
 	// Pending register proposal still matches the candidate.
 	if err := verifyArtifactRef(rec.ProposalReceipt); err != nil {
 		return candidateReceipt{}, fmt.Errorf("register proposal receipt: %w", err)

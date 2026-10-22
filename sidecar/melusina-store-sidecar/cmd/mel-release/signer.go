@@ -412,6 +412,18 @@ func (e *execProvider) FinalizeRelease(appID, appHash, releaseHash, version, non
 	return err
 }
 
+// AdoptSeedFinalRelease copies only the already verified Contracts finalizer
+// output into the source-aware provider's private ceremony. It proposes and
+// signs nothing; the shared approve path has admitted the Active chain row.
+func (e *execProvider) AdoptSeedFinalRelease(appID, appHash, releaseHash, version, nonce, finalReleasePath string) error {
+	_, err := e.run("adopt-seed-final-release", map[string]string{
+		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash,
+		"MEL_NEW_VERSION": version, "MEL_RELEASE_NONCE": nonce,
+		"MEL_SEED_FINAL_RELEASE_PATH": finalReleasePath,
+	})
+	return err
+}
+
 func (e *execProvider) RejectRegister(appID, appHash, releaseHash, version, nonce, transactionPda, rejectOut string) error {
 	_, err := e.run("reject-register", map[string]string{
 		"MEL_APP_ID": appID, "MEL_NEW_APP_HASH": appHash, "MEL_RELEASE_HASH": releaseHash,

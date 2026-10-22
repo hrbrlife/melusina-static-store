@@ -3502,6 +3502,44 @@ def test_pre_pilot_direct_publish_refuses_missing_scanner_before_submit():
                 raise AssertionError("missing scanner identity was accepted")
 
 
+def test_governed_seed_final_release_adopts_exact_contracts_claim():
+    """A seeded promote uses the verified finalizer claim, not a forged proposal."""
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        runtime = root / "RUNTIME-CONTRACT.json"
+        runtime.write_text('{"schema":"melusina-app-runtime-contract-v1"}')
+        provisional = root / "RELEASE.json"
+        final_path = root / "final-release.json"
+        app_hash, version, nonce = "a" * 64, "0.0.108", "0" * 32
+        release_hash = provider.hashlib.sha256((app_hash + version + nonce).encode()).hexdigest()
+        binding = {"appHash": app_hash, "releaseHash": release_hash,
+                   "version": version, "releaseNonce": nonce,
+                   "runtimeContractSha256": provider.hex_sha(runtime)}
+        provider.write_json(provisional, {**binding, "$schema": "melusina-release-v1"})
+        final = {**binding, "$schema": "melusina-release-v1", "releaseEntryPda": "PDA",
+                 "authorSig": "author-signature", "additionalPublisherSignatures": [
+                     {"publisherEd25519PublicKey": "publisher-2", "signature": "signed"}]}
+        provider.write_json(final_path, final)
+        context = {"appId": CYBERTELLER_CONFIG_APP_ID, "releasePath": str(provisional),
+                   "runtimeContractPath": str(runtime)}
+        values = {"MEL_NEW_APP_HASH": app_hash, "MEL_RELEASE_HASH": release_hash,
+                  "MEL_NEW_VERSION": version, "MEL_RELEASE_NONCE": nonce}
+        with patch.object(provider, "require_context", return_value=context), \
+             patch.object(provider, "env", side_effect=lambda name, required=False, default="": values.get(name, default)):
+            provider.adopt_seed_final_release(CYBERTELLER_CONFIG_APP_ID, final_path)
+            assert provisional.read_bytes() == final_path.read_bytes()
+            provider.adopt_seed_final_release(CYBERTELLER_CONFIG_APP_ID, final_path)
+            assert provisional.read_bytes() == final_path.read_bytes()
+            altered = dict(final, releaseHash="b" * 64)
+            provider.write_json(final_path, altered)
+            try:
+                provider.adopt_seed_final_release(CYBERTELLER_CONFIG_APP_ID, final_path)
+            except provider.ProviderError as exc:
+                assert "seed-final-release-context-or-claim-mismatch" in str(exc)
+            else:
+                raise AssertionError("foreign governed seed final claim was accepted")
+
+
 def test_frozen_nested_app_uses_component_metadata_not_repo_root():
     """Named positive/negative: Fineract is nested under an unrelated root app."""
     with tempfile.TemporaryDirectory() as temp:

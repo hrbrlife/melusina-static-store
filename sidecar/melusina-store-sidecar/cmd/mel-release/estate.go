@@ -40,8 +40,9 @@ type estateBinding struct {
 	// PublisherKeys and PublisherThreshold are releaseTrust: the publishers
 	// the owners enrolled. approve admits a ReleaseEntry only when one of
 	// these keys signed it (see releaseEntryTrust).
-	PublisherKeys      []string // releaseTrust.publisherKeys (lowercase hex)
-	PublisherThreshold uint32   // releaseTrust.threshold
+	PublisherKeys      []string                    // releaseTrust.publisherKeys (lowercase hex)
+	PublisherThreshold uint32                      // releaseTrust.threshold
+	OwnerPolicy        estateprofile.OwnerPolicyV1 // current owner-signed threshold policy
 	// GenesisHash and Cluster are network.genesisHash and network.label: the
 	// chain MEL_RELEASE_RPC_URL must serve (estate_chain.go).
 	GenesisHash string
@@ -258,6 +259,7 @@ func estateBindingOf(profile estateprofile.EstateProfileV1, digest string) (esta
 		},
 		PublisherKeys:      append([]string(nil), profile.ReleaseTrust.PublisherKeys...),
 		PublisherThreshold: profile.ReleaseTrust.Threshold,
+		OwnerPolicy:        profile.OwnerPolicy,
 		GenesisHash:        profile.Network.GenesisHash,
 		Cluster:            profile.Network.Label,
 	}

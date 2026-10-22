@@ -35,7 +35,7 @@ import (
 )
 
 // Version is set via -ldflags at build time.
-var Version = "dev"
+var Version = "1.0.23"
 
 func main() {
 	// This is an offline, no-write preflight for the later owner-enrolled Store

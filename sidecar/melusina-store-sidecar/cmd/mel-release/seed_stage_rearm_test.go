@@ -166,6 +166,11 @@ func TestRejectedSeedStageRearmRefusesForeignStageInStore(t *testing.T) {
 
 func TestSeedStageLocalRuntimePrePostReconcile(t *testing.T) {
 	f := newRearmFixtureFor(t, "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h", "0.6.3")
+	refusalPath := filepath.Join(f.c.StateDir, f.appID+"-stage-a009.log")
+	if err := os.Rename(f.refusalPath, refusalPath); err != nil {
+		t.Fatal(err)
+	}
+	f.refusalPath = refusalPath
 	refusal := []byte("mel-release: signer-provider \"stage\" failed: exit status 1: mel-release-provider: command failed (go run): submit: check=runtime_contract: $schema must be \"urn:melusina:runtime-contract:v1\"\nexit status 1\n")
 	if err := os.WriteFile(f.refusalPath, refusal, 0o600); err != nil {
 		t.Fatal(err)

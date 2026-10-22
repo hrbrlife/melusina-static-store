@@ -141,7 +141,11 @@ func reconcileRejectedSeedStage(c Config, appID, version, intentDigest,
 	if refusalKind == "" || strings.Contains(string(refusal), "STAGE_SEED_OK") {
 		return "", errors.New("seed-stage-rearm-not-preflight-refusal")
 	}
-	if !strings.Contains(filepath.Base(refusalPath), appID) || !strings.HasSuffix(filepath.Base(refusalPath), "-stage.log") ||
+	refusalSuffix := "-stage.log"
+	if refusalKind == "local-mermail-runtime-contract-pre-post" {
+		refusalSuffix = "-stage-a009.log"
+	}
+	if !strings.Contains(filepath.Base(refusalPath), appID) || !strings.HasSuffix(filepath.Base(refusalPath), refusalSuffix) ||
 		scanPath != filepath.Join(c.appStateDir(appID), "provider", "scan-stage.json") {
 		return "", errors.New("seed-stage-rearm-foreign-evidence-path")
 	}

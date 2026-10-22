@@ -166,7 +166,7 @@ func runPrepareSidecarClasses(o options, requestBytes []byte, stdout io.Writer) 
 	if err != nil {
 		return err
 	}
-	client, err := privateClassTransport(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
+	client, err := storeClient(o)
 	if err != nil {
 		return err
 	}

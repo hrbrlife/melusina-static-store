@@ -26,6 +26,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/hrbrlife/melusina-store-sidecar/internal/publishclient"
 )
 
 const defaultReleaseOpTimeoutSecs = 480
@@ -56,12 +59,13 @@ type Config struct {
 
 	// Estate-derived settings. A wrapper may repeat the profile's value in the
 	// named variable; any other value is refused.
-	StoreURL      string // "https://" + store.rootDomain       (MEL_RELEASE_STORE_URL)
-	StoreDomain   string // store.rootDomain                    (MEL_RELEASE_STORE_DOMAIN)
-	StoreID       string // store.storeId                       (MEL_RELEASE_STORE_ID)
-	BundleOrigin  string // the Store origin                    (MEL_RELEASE_BUNDLE_ORIGIN)
-	ProgramID     string // programs.license-registry.programId (MEL_RELEASE_PROGRAM_ID, MEL_PROGRAM_ID)
-	MasterNftMint string // anchors.masterMint                  (MEL_RELEASE_MASTER_NFT_MINT)
+	StoreURL          string // "https://" + store.rootDomain       (MEL_RELEASE_STORE_URL)
+	PrivateStoreRoute string // MEL_RELEASE_PRIVATE_STORE_ROUTE, finalized owner-signed transport
+	StoreDomain       string // store.rootDomain                    (MEL_RELEASE_STORE_DOMAIN)
+	StoreID           string // store.storeId                       (MEL_RELEASE_STORE_ID)
+	BundleOrigin      string // the Store origin                    (MEL_RELEASE_BUNDLE_ORIGIN)
+	ProgramID         string // programs.license-registry.programId (MEL_RELEASE_PROGRAM_ID, MEL_PROGRAM_ID)
+	MasterNftMint     string // anchors.masterMint                  (MEL_RELEASE_MASTER_NFT_MINT)
 
 	// ReleasePublisherKeys and ReleasePublisherThreshold are the profile's
 	// releaseTrust. They have no variable at all: approve admits a
@@ -109,6 +113,7 @@ func loadConfigForMutation(needsMutationInputs bool) (Config, error) {
 		SquadsVault:           os.Getenv("MEL_RELEASE_SQUADS_VAULT"),
 		SquadsProgramID:       os.Getenv("MEL_RELEASE_SQUADS_PROGRAM_ID"),
 		SignerProvider:        os.Getenv("MEL_RELEASE_SIGNER_PROVIDER"),
+		PrivateStoreRoute:     strings.TrimSpace(os.Getenv("MEL_RELEASE_PRIVATE_STORE_ROUTE")),
 		StorePubkey:           os.Getenv("MEL_RELEASE_STORE_PUBKEY"),
 		StoreLicenseMint:      os.Getenv("MEL_RELEASE_STORE_LICENSE_MINT"),
 		Channel:               envOr("MEL_RELEASE_CHANNEL", "dev"),
@@ -187,6 +192,11 @@ func loadConfigForMutation(needsMutationInputs bool) (Config, error) {
 	c.MasterNftMint = estate.MasterNftMint
 	c.ReleasePublisherKeys = estate.PublisherKeys
 	c.ReleasePublisherThreshold = estate.PublisherThreshold
+	if c.PrivateStoreRoute != "" && needsMutationInputs {
+		if _, err := publishclient.LoadPrivateRoute(c.PrivateStoreRoute, c.EstateProfile, c.EstateProfileSHA256, c.StoreURL, time.Now().UTC()); err != nil {
+			return Config{}, fmt.Errorf("MEL_RELEASE_PRIVATE_STORE_ROUTE: %w", err)
+		}
+	}
 
 	dir := os.Getenv("MEL_RELEASE_STATE_DIR")
 	if strings.TrimSpace(dir) == "" {

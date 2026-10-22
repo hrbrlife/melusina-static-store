@@ -277,6 +277,16 @@ func validateOptions(opts options) error {
 }
 
 func prepare(opts options) (ceremonyReport, error) {
+	// Validate all external public bytes before ensureShards creates any
+	// secret material. A bad chain must leave a truly empty first-prep state.
+	binaryHash, err := sha256OfFile(opts.binaryPath)
+	if err != nil {
+		return ceremonyReport{}, fmt.Errorf("binary_hash: %w", err)
+	}
+	tlsFingerprint, caHash, err := certHashesForDomain(opts.tlsCertPath, opts.caChainPath, opts.domain)
+	if err != nil {
+		return ceremonyReport{}, err
+	}
 	keyVersion := uint32(opts.keyVersion)
 	licenseMint, _ := primitives.PubkeyFromBase58(opts.licenseMint)
 	programID, _ := primitives.PubkeyFromBase58(opts.programID)
@@ -335,14 +345,6 @@ func prepare(opts options) (ceremonyReport, error) {
 		return ceremonyReport{}, err
 	}
 
-	binaryHash, err := sha256OfFile(opts.binaryPath)
-	if err != nil {
-		return ceremonyReport{}, fmt.Errorf("binary_hash: %w", err)
-	}
-	tlsFingerprint, caHash, err := certHashesForDomain(opts.tlsCertPath, opts.caChainPath, opts.domain)
-	if err != nil {
-		return ceremonyReport{}, err
-	}
 	domainHash := primitives.StoreDomainHash(opts.domain)
 
 	return ceremonyReport{

@@ -107,7 +107,16 @@ func seedDigest(a seedAuthorization) (string, error) {
 		buf = append(buf, raw...)
 	}
 	word := func(s string) { write([]byte(s)) }
-	write([]byte("MELUSINA_SEED_CATALOGUE_AUTHORIZATION_V1\n"))
+	switch a.Schema {
+	case "SeedCatalogueAuthorizationV1":
+		// Historical vectors remain readable, but executable adoption below
+		// requires V2, which signs the owner roster itself.
+		write([]byte("MELUSINA_SEED_CATALOGUE_AUTHORIZATION_V1\n"))
+	case "SeedCatalogueAuthorizationV2":
+		write([]byte("MELUSINA_SEED_CATALOGUE_AUTHORIZATION_V2\n"))
+	default:
+		return "", errors.New("seed-authorization-schema-unsupported")
+	}
 	for _, s := range []string{a.Schema, a.Kind, a.EstateID, a.GenesisHash, a.CoreMultisig,
 		a.MasterNFTMint, a.ExpiresAt, a.OwnerPolicy.PolicyID} {
 		word(s)
@@ -115,6 +124,18 @@ func seedDigest(a seedAuthorization) (string, error) {
 	var u [4]byte
 	binary.LittleEndian.PutUint32(u[:], a.OwnerPolicy.Threshold)
 	buf = append(buf, u[:]...)
+	if a.Schema == "SeedCatalogueAuthorizationV2" {
+		binary.LittleEndian.PutUint32(u[:], uint32(len(a.OwnerPolicy.Signers)))
+		buf = append(buf, u[:]...)
+		for _, signer := range a.OwnerPolicy.Signers {
+			word(signer.KeyID)
+			key, err := hex.DecodeString(signer.PublicKey)
+			if err != nil || len(key) != ed25519.PublicKeySize {
+				return "", errors.New("seed-owner-roster-key-invalid")
+			}
+			buf = append(buf, key...)
+		}
+	}
 	binary.LittleEndian.PutUint32(u[:], uint32(len(a.Entries)))
 	buf = append(buf, u[:]...)
 	for _, entry := range a.Entries {
@@ -193,7 +214,7 @@ func verifySeedAdoptionProof(c Config, app App, rec *walReceipt) error {
 	if _, err := readNativeJSON(p.Authorization.Path, &auth); err != nil {
 		return err
 	}
-	if auth.Schema != "SeedCatalogueAuthorizationV1" || auth.Kind != "seed-catalogue" ||
+	if auth.Schema != "SeedCatalogueAuthorizationV2" || auth.Kind != "seed-catalogue" ||
 		auth.EstateID != c.estate.EstateID || auth.GenesisHash != c.estate.GenesisHash ||
 		auth.CoreMultisig != c.SquadsVault || auth.MasterNFTMint != c.MasterNftMint ||
 		len(auth.Entries) != 14 {

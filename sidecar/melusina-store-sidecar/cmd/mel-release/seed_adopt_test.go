@@ -64,6 +64,35 @@ func TestGovernedSeedAuthorizationRefusesOneOwner(t *testing.T) {
 	}
 }
 
+func TestSeedCatalogueV2DigestBindsOwnerRoster(t *testing.T) {
+	raw, err := os.ReadFile("testdata/seed-adoption-auth-vector.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var a seedAuthorization
+	if err := json.Unmarshal(raw, &a); err != nil {
+		t.Fatal(err)
+	}
+	a.Schema = "SeedCatalogueAuthorizationV2"
+	original, err := seedDigest(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Independent Contracts V2 producer at f39113b3 over this public vector.
+	const contractsV2Digest = "048b5844fe96114b7d219b15bdfb874e0ca503a82341a33c5aa7a7f393f28a6c"
+	if original != contractsV2Digest {
+		t.Fatalf("Contracts V2 seed digest mismatch: %s", original)
+	}
+	a.OwnerPolicy.Signers[0].KeyID += "-foreign"
+	changed, err := seedDigest(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed == original {
+		t.Fatal("V2 owner roster was omitted from authorization digest")
+	}
+}
+
 func TestSeededCandidateNeverInventsRegisterProposal(t *testing.T) {
 	c := Config{SquadsMultisig: "reviewed-multisig", SquadsVault: "reviewed-vault"}
 	app := App{AppID: "seed-app", PublishSlug: "seed-app", CatalogName: "Seed App"}
@@ -129,7 +158,7 @@ func TestGovernedSeedProofAdmitsExactFrozenRowAndRefusesMutatedRows(t *testing.T
 			"runtimeContractSha256": artifactHash, "spkPath": "/test/app.spk",
 			"metadataPath": "/test/metadata.json", "runtimeContractPath": "/test/runtime.json"})
 	}
-	authDoc := map[string]any{"schema": "SeedCatalogueAuthorizationV1", "kind": "seed-catalogue",
+	authDoc := map[string]any{"schema": "SeedCatalogueAuthorizationV2", "kind": "seed-catalogue",
 		"estateId": c.estate.EstateID, "genesisHash": author, "coreMultisig": author,
 		"masterNftMint": author, "expiresAt": "2030-01-01T00:00:00Z",
 		"ownerPolicy": map[string]any{"policyId": policy.PolicyID, "threshold": 2,

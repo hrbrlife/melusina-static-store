@@ -9,8 +9,10 @@ For each frozen app, complete these product steps in order:
 
 1. From the immutable Store preflight receipt, derive a nonce and release hash
    `SHA256(appHash || version || nonce)`. Bind both to the owner-signed
-   `SeedCatalogueAuthorizationV1` and the `firstdrop-cohort-review.v1` input
-   before the owner signs. Contracts `seed-catalogue-rows.mjs` signs the exact
+   `SeedCatalogueAuthorizationV2` and the `firstdrop-cohort-review.v1` input
+   before the owner signs. V2 includes the complete ordered owner signer
+   roster in its digest; legacy V1 is refused for live adoption. Contracts
+   `seed-catalogue-rows.mjs` signs the exact
    ReleaseEntry payload through the primary trusted publisher.
 2. Execute Contracts `seed-catalogue-execute.mjs` for Global, Reseller and
    ReleaseEntry. Read back each Active account. Then run

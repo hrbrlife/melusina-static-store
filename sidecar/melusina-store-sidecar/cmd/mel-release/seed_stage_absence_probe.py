@@ -22,11 +22,32 @@ import json, os, re, stat, sys
 app_id, pid = sys.argv[1:]
 if not re.fullmatch(r"[a-z0-9]{52}", app_id) or not re.fullmatch(r"[1-9][0-9]*", pid):
     raise SystemExit("stage-absence-arguments-refused")
-comm = open("/proc/" + pid + "/comm", encoding="utf-8").read().strip()
-cmdline = open("/proc/" + pid + "/cmdline", "rb").read()
-if not comm.startswith("melusina-store-") or b"/etc/melusina/store/store.config.json" not in cmdline:
+proc_root = "/proc"
+# /release-info reports the sidecar's PID in its container namespace. QGA
+# executes in the outer guest, where that process has a different PID.
+sidecar_hosts = []
+for entry in os.scandir(proc_root):
+    if not entry.name.isdecimal():
+        continue
+    process = proc_root + "/" + entry.name
+    try:
+        status = open(process + "/status", encoding="utf-8").read()
+        namespace_lines = [line.split()[1:] for line in status.splitlines()
+                           if line.startswith("NSpid:")]
+        if len(namespace_lines) != 1 or not namespace_lines[0] or \
+                namespace_lines[0][0] != entry.name or namespace_lines[0][-1] != pid or \
+                not all(item.isdecimal() for item in namespace_lines[0]):
+            continue
+        comm = open(process + "/comm", encoding="utf-8").read().strip()
+        cmdline = open(process + "/cmdline", "rb").read()
+    except OSError:
+        continue
+    if comm.startswith("melusina-store-") and \
+            b"/etc/melusina/store/store.config.json" in cmdline:
+        sidecar_hosts.append(entry.name)
+if len(sidecar_hosts) != 1:
     raise SystemExit("stage-absence-sidecar-identity-refused")
-root = "/proc/" + pid + "/root/var/lib/melusina-store/private-app-candidates"
+root = proc_root + "/" + sidecar_hosts[0] + "/root/var/lib/melusina-store/private-app-candidates"
 if not os.path.isdir(root):
     raise SystemExit("stage-absence-root-missing")
 manifests = 0

@@ -44,7 +44,7 @@ func run(args []string, out io.Writer) error {
 	if response.StatusCode == http.StatusNotFound && *requestPath != "/apps/index.json" {
 		return nil
 	}
-	if response.StatusCode != http.StatusOK || response.Header.Get("X-Store-Catalog-Gate") != "verified" {
+	if !admitCatalogReadback(response.StatusCode, response.Header.Get("X-Store-Catalog-Gate")) {
 		return errors.New("publisher_store_catalog_not_verified")
 	}
 	raw, err := io.ReadAll(io.LimitReader(response.Body, 1<<20+1))
@@ -53,6 +53,14 @@ func run(args []string, out io.Writer) error {
 	}
 	_, err = out.Write(raw)
 	return err
+}
+
+// Before StoreReleaseListing bootstrap the Store deliberately serves its
+// static, ReleaseEntry-gated catalog without this optional projection header.
+// The caller has already pinned the owner-signed private IP, HTTPS hostname
+// and exact Store leaf; a foreign nonempty gate marker remains a refusal.
+func admitCatalogReadback(status int, gate string) bool {
+	return status == http.StatusOK && (gate == "" || gate == "verified")
 }
 
 func main() {

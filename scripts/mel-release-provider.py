@@ -4021,7 +4021,7 @@ def direct_app_publish(app_id: str, operation: str, receipt_out: Path) -> None:
 
 
 def wait_for_store_scan_clock_margin(scan_raw: str) -> None:
-    """Allow the signed scanner time to precede a Store clock up to 3 s behind.
+    """Allow the signed scanner time to precede a Store clock up to 5 s behind.
 
     Store rejects a scan dated even one second in its future with the same
     ``scan-report-expired`` error as a genuinely old report. The signed bytes
@@ -4033,12 +4033,12 @@ def wait_for_store_scan_clock_margin(scan_raw: str) -> None:
         raise ProviderError("direct-app-publish-scan-clock-invalid") from exc
     if type(scanned_at) is not int or scanned_at <= 0:
         raise ProviderError("direct-app-publish-scan-clock-invalid")
-    delay = scanned_at + 3 - time.time()
+    delay = scanned_at + 5 - time.time()
     if delay > 5:
         raise ProviderError("direct-app-publish-scan-clock-future-refused")
     if delay > 0:
         time.sleep(delay)
-    if time.time() < scanned_at + 3:
+    if time.time() < scanned_at + 5:
         raise ProviderError("direct-app-publish-scan-clock-margin-refused")
 
 

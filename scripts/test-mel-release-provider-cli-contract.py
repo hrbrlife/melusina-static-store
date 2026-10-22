@@ -3485,8 +3485,8 @@ def test_pre_pilot_scan_clock_margin_admits_one_second_slow_store():
     with patch.object(provider.time, "time", side_effect=lambda: clock[0]), \
          patch.object(provider.time, "sleep", side_effect=sleep):
         provider.wait_for_store_scan_clock_margin('{"scannedAtUnix":1000}')
-    assert len(observed) == 1 and 2.8 < observed[0] < 3.0
-    assert clock[0] >= 1003
+    assert len(observed) == 1 and 4.8 < observed[0] < 5.0
+    assert clock[0] >= 1005
 
 
 def test_pre_pilot_scan_clock_margin_refuses_future_or_malformed_report():

@@ -2771,6 +2771,20 @@ def stage_private_candidate_catalog(source: Path, built_spk: Path, catalog: Path
     return {**manifest, "sha256": artifact_sha}
 
 
+def frozen_build_component_path(source: Path, build_source: Path) -> Path:
+    """Select the same nested app component in a reviewed build checkout."""
+    source_git_root = Path(run(["git", "-C", str(source), "rev-parse", "--show-toplevel"]).strip())
+    try:
+        component_relative = source.relative_to(source_git_root)
+    except ValueError as exc:
+        raise ProviderError("selected app is outside its source repository") from exc
+    build_component = build_source / component_relative
+    if (build_component.is_symlink() or not build_component.is_dir() or
+            build_component.resolve() != build_component):
+        raise ProviderError("frozen A/B build component is missing or escapes its checkout")
+    return build_component
+
+
 def frozen_ab_package_input(
     app_id: str, source: Path, spec: dict[str, str], requested_version: str,
     *, require_frozen: bool = True,
@@ -2937,13 +2951,17 @@ def frozen_ab_package_input(
             if (not original_in_build or changed != [relative_metadata] or
                     parent_metadata != current_metadata):
                 raise ProviderError("frozen A/B build commit is not in the selected dev-publish lineage")
-    source_meta = read_json(source_metadata_path(app_id, build_source))
+    # The selected app may be a nested component of a larger repository.
+    # Resolve the same component path in the frozen build checkout, rather
+    # than reading an unrelated metadata.json at that repository's root.
+    build_component = frozen_build_component_path(source, build_source)
+    source_meta = read_json(source_metadata_path(app_id, build_component))
     require_catalog_metadata_identity(spec, source_meta)
     manifest = verified_spk_manifest(a)
     if (manifest["appId"] != app_id or manifest["packageId"] != pin["package_id"] or
             manifest["version"] != requested_version or
             manifest["versionNumber"] != pin["app_version"] or
-            not source_version_matches_spk(build_source, app_id, source_meta, manifest)):
+        not source_version_matches_spk(build_component, app_id, source_meta, manifest)):
         raise ProviderError("frozen A/B source metadata and verified SPK identity differ")
     receipt_doc = {
         "schema": "melusina-frozen-ab-source-build-v1", "appId": app_id,

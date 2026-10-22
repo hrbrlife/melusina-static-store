@@ -3502,11 +3502,42 @@ def test_pre_pilot_direct_publish_refuses_missing_scanner_before_submit():
                 raise AssertionError("missing scanner identity was accepted")
 
 
+def test_frozen_nested_app_uses_component_metadata_not_repo_root():
+    """Named positive/negative: Fineract is nested under an unrelated root app."""
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        selected = root / "selected"
+        build = root / "build"
+        (selected / "fineract-sidecar").mkdir(parents=True)
+        (build / "fineract-sidecar").mkdir(parents=True)
+        (build / "metadata.json").write_text('{"name":"popaye"}')
+        (build / "fineract-sidecar/metadata.json").write_text('{"name":"Fineract Configurator"}')
+        with patch.object(provider, "run", return_value=str(selected)):
+            component = provider.frozen_build_component_path(selected / "fineract-sidecar", build)
+            assert component == build / "fineract-sidecar"
+            assert provider.read_json(component / "metadata.json")["name"] == "Fineract Configurator"
+            try:
+                provider.frozen_build_component_path(root / "foreign-app", build)
+            except provider.ProviderError as exc:
+                assert "outside its source repository" in str(exc)
+            else:
+                raise AssertionError("foreign component was admitted")
+            (build / "outside-link").symlink_to(root)
+            (selected / "outside-link").mkdir()
+            try:
+                provider.frozen_build_component_path(selected / "outside-link", build)
+            except provider.ProviderError as exc:
+                assert "missing or escapes" in str(exc)
+            else:
+                raise AssertionError("symlink component was admitted")
+
+
 if __name__ == "__main__":
     test_provider_helpers_rebuild_from_current_source_not_ignored_module_bin()
     test_finalize_uses_only_supported_flags()
     test_pre_pilot_direct_publish_uses_scanned_product_client()
     test_pre_pilot_direct_publish_refuses_missing_scanner_before_submit()
+    test_frozen_nested_app_uses_component_metadata_not_repo_root()
     test_propose_uses_only_supported_flags()
     test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state()
     test_propose_register_resumes_the_exact_state_without_advancing_index()

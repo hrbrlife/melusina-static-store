@@ -3588,11 +3588,30 @@ def read_account(pda: str, commitment: str) -> dict[str, Any] | None:
         data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo", "params": [pda, {"encoding": "base64", "commitment": commitment}]}).encode(),
         headers={"Content-Type": "application/json"},
     )
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            reply = json.loads(response.read())
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ProviderError(f"read ReleaseEntry {pda}: {exc}") from exc
+    # Devnet may throttle a read while the preceding registration is already
+    # finalized. Retry only this idempotent getAccountInfo, for at most one
+    # minute; no transaction submission passes through this function.
+    deadline = time.monotonic() + 60
+    delay = 1.0
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ProviderError(f"read ReleaseEntry {pda}: HTTP 429 persisted for 60s")
+        try:
+            with urllib.request.urlopen(request, timeout=min(30, remaining)) as response:
+                reply = json.loads(response.read())
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code != 429:
+                raise ProviderError(f"read ReleaseEntry {pda}: {exc}") from exc
+            exc.close()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ProviderError(f"read ReleaseEntry {pda}: HTTP 429 persisted for 60s") from exc
+            time.sleep(min(delay, remaining))
+            delay = min(delay * 2, 8.0)
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ProviderError(f"read ReleaseEntry {pda}: {exc}") from exc
     if reply.get("error"):
         raise ProviderError(f"read ReleaseEntry {pda}: {reply['error']}")
     result = reply.get("result")

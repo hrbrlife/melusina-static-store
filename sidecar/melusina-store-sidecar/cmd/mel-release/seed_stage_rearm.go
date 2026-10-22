@@ -37,6 +37,7 @@ type rejectedStageAbsence struct {
 type rejectedStageRearmReceipt struct {
 	Schema         string               `json:"schema"`
 	Outcome        string               `json:"outcome"`
+	RefusalKind    string               `json:"refusalKind"`
 	AppID          string               `json:"appId"`
 	Version        string               `json:"version"`
 	IntentSHA256   string               `json:"intentSha256"`
@@ -127,8 +128,17 @@ func reconcileRejectedSeedStage(c Config, appID, version, intentDigest,
 	if err != nil {
 		return "", err
 	}
-	if !strings.Contains(string(refusal), "HTTP 401: check=scan_report: scan-report-expired") ||
-		strings.Contains(string(refusal), "STAGE_SEED_OK") {
+	refusalKind := ""
+	if strings.Contains(string(refusal), "HTTP 401: check=scan_report: scan-report-expired") {
+		refusalKind = "store-scan-preflight-401"
+	} else if appID == "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h" && version == "0.6.3" &&
+		strings.Contains(string(refusal), "mel-release-provider: command failed (go run): submit: check=runtime_contract: $schema must be \"urn:melusina:runtime-contract:v1\"") &&
+		!strings.Contains(string(refusal), "Store HTTP") {
+		// submit validates this contract before its first Store POST.
+		// See cmd/submit/main.go:465-467 and :539-545.
+		refusalKind = "local-mermail-runtime-contract-pre-post"
+	}
+	if refusalKind == "" || strings.Contains(string(refusal), "STAGE_SEED_OK") {
 		return "", errors.New("seed-stage-rearm-not-preflight-refusal")
 	}
 	if !strings.Contains(filepath.Base(refusalPath), appID) || !strings.HasSuffix(filepath.Base(refusalPath), "-stage.log") ||
@@ -179,8 +189,9 @@ func reconcileRejectedSeedStage(c Config, appID, version, intentDigest,
 		return "", err
 	}
 	receipt := rejectedStageRearmReceipt{Schema: rejectedStageRearmSchema,
-		Outcome: "rearmed-after-authenticated-preflight-refusal-no-store-stage",
-		AppID:   appID, Version: version, IntentSHA256: intentDigest,
+		Outcome:     "rearmed-after-authenticated-preflight-refusal-no-store-stage",
+		RefusalKind: refusalKind,
+		AppID:       appID, Version: version, IntentSHA256: intentDigest,
 		RefusalSHA256: refusalDigest, ScanSHA256: scanDigest, StoreRead: read,
 		ArchivedIntent: archivePath, RearmedAtUnix: time.Now().UTC().Unix()}
 	raw, err := json.MarshalIndent(receipt, "", "  ")

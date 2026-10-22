@@ -20,9 +20,12 @@ type rearmFixture struct {
 }
 
 func newRearmFixture(t *testing.T) rearmFixture {
+	return newRearmFixtureFor(t, strings.Repeat("a", 52), "0.1.38")
+}
+
+func newRearmFixtureFor(t *testing.T, appID, version string) rearmFixture {
 	t.Helper()
 	c := Config{StateDir: t.TempDir()}
-	appID, version := strings.Repeat("a", 52), "0.1.38"
 	if err := os.MkdirAll(c.appStateDir(appID), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -158,5 +161,48 @@ func TestRejectedSeedStageRearmRefusesForeignStageInStore(t *testing.T) {
 	}
 	if _, err := os.Stat(f.intentPath); err != nil {
 		t.Fatal("intent moved despite existing Store candidate", err)
+	}
+}
+
+func TestSeedStageLocalRuntimePrePostReconcile(t *testing.T) {
+	f := newRearmFixtureFor(t, "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h", "0.6.3")
+	refusal := []byte("mel-release: signer-provider \"stage\" failed: exit status 1: mel-release-provider: command failed (go run): submit: check=runtime_contract: $schema must be \"urn:melusina:runtime-contract:v1\"\nexit status 1\n")
+	if err := os.WriteFile(f.refusalPath, refusal, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f.refusalSHA = sha256Hex(refusal)
+	mockRearmProbe(t, func(app string, _ rejectedStageProbeArgs) (rejectedStageAbsence, error) {
+		return goodRearmRead(app), nil
+	})
+	path, err := f.execute()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var receipt rejectedStageRearmReceipt
+	if _, err := readNativeJSON(path, &receipt); err != nil ||
+		receipt.RefusalKind != "local-mermail-runtime-contract-pre-post" {
+		t.Fatalf("local MerMail refusal was not reconciled: %+v %v", receipt, err)
+	}
+	if _, err := os.Stat(f.intentPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("intent was not archived: %v", err)
+	}
+}
+
+func TestSeedStageTransportUnknownNeverRearms(t *testing.T) {
+	f := newRearmFixtureFor(t, "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h", "0.6.3")
+	unknown := []byte("mel-release: signer-provider stage failed: Store transport outcome unknown\n")
+	if err := os.WriteFile(f.refusalPath, unknown, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f.refusalSHA = sha256Hex(unknown)
+	mockRearmProbe(t, func(string, rejectedStageProbeArgs) (rejectedStageAbsence, error) {
+		t.Fatal("Store probe must not follow an unknown transport result")
+		return rejectedStageAbsence{}, nil
+	})
+	if _, err := f.execute(); err == nil || !strings.Contains(err.Error(), "not-preflight-refusal") {
+		t.Fatalf("unknown transport was rearmed: %v", err)
+	}
+	if _, err := os.Stat(f.intentPath); err != nil {
+		t.Fatal("intent moved after unknown transport", err)
 	}
 }

@@ -145,6 +145,7 @@ func (c *rpcFailoverChainReader) fetchMultipleAccounts(ctx context.Context, addr
 		return nil, errors.New("chain reader does not support batched account reads")
 	}
 	var transientFailures int
+	var lastTransient error
 	for readerIndex, reader := range c.multiReaders {
 		for attempt := 0; attempt < c.attempts; attempt++ {
 			if err := ctx.Err(); err != nil {
@@ -158,6 +159,7 @@ func (c *rpcFailoverChainReader) fetchMultipleAccounts(ctx context.Context, addr
 				return nil, err
 			}
 			transientFailures++
+			lastTransient = err
 			if attempt+1 < c.attempts || readerIndex+1 < len(c.multiReaders) {
 				if err := waitForRPCRetry(ctx, c.delay); err != nil {
 					return nil, err
@@ -165,5 +167,5 @@ func (c *rpcFailoverChainReader) fetchMultipleAccounts(ctx context.Context, addr
 			}
 		}
 	}
-	return nil, fmt.Errorf("%w: all configured RPC attempts failed (%d transport failure(s))", verify.ErrRPCUnreachable, transientFailures)
+	return nil, fmt.Errorf("%w: all configured RPC attempts failed (%d transport failure(s)); last cause: %v", verify.ErrRPCUnreachable, transientFailures, lastTransient)
 }

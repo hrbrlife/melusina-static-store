@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -28,6 +29,50 @@ func writeRPCAccountResponse(t *testing.T, w http.ResponseWriter, data []byte) {
 		},
 	}); err != nil {
 		t.Fatalf("encode RPC response: %v", err)
+	}
+}
+
+func TestConfiguredRPCReader_ExhaustionPreservesLastProviderStatus(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		http.Error(w, "rate limited", http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	reader := newConfiguredStoreRPCReader(Config{RPCURL: server.URL, RPCAttempts: 2}).(*rpcFailoverChainReader)
+	reader.delay = 0
+	checks := []struct {
+		name string
+		read func() error
+	}{
+		{"operator authorization", func() error {
+			_, _, _, _, _, err := reader.FetchStoreOperatorAuthz(context.Background(), "operator-authz")
+			return err
+		}},
+		{"raw account", func() error {
+			_, _, err := reader.fetchRawAccount(context.Background(), "cascade-account")
+			return err
+		}},
+		{"batched accounts", func() error {
+			_, err := reader.fetchMultipleAccounts(context.Background(), []string{"first-account"})
+			return err
+		}},
+	}
+	for _, check := range checks {
+		t.Run(check.name, func(t *testing.T) {
+			before := calls.Load()
+			err := check.read()
+			if !errors.Is(err, verify.ErrRPCUnreachable) ||
+				!strings.Contains(err.Error(), "2 transport failure(s)") ||
+				!strings.Contains(err.Error(), "HTTP 429") ||
+				!strings.Contains(err.Error(), "rate limited") {
+				t.Fatalf("exhausted RPC error = %v, want sentinel, bounded attempts and last HTTP 429 cause", err)
+			}
+			if got := calls.Load() - before; got != 2 {
+				t.Fatalf("RPC attempts = %d, want 2", got)
+			}
+		})
 	}
 }
 

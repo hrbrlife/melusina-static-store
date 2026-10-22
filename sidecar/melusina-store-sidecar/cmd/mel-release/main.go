@@ -211,6 +211,32 @@ func run(args []string) error {
 		fmt.Printf("STAGE_SEED_OK receipt=%s\n", path)
 		return nil
 
+	case "rearm-rejected-seed-stage":
+		fs := flag.NewFlagSet("rearm-rejected-seed-stage", flag.ContinueOnError)
+		app := fs.String("app", "", "exact immutable seed appId")
+		version := fs.String("version", "", "exact frozen seed version")
+		intentSHA := fs.String("intent-sha256", "", "reviewed local Stage intent SHA-256")
+		refusal := fs.String("refusal-log", "", "root-only product preflight 401 log")
+		refusalSHA := fs.String("refusal-sha256", "", "reviewed refusal log SHA-256")
+		scan := fs.String("scan-report", "", "signed scanner report from the refused request")
+		scanSHA := fs.String("scan-sha256", "", "reviewed scanner report SHA-256")
+		sshKey := fs.String("outer-ssh-key", "", "pinned outer guest operator key")
+		knownHosts := fs.String("outer-known-hosts", "", "pinned outer guest host keys")
+		sshPort := fs.Int("outer-ssh-port", 0, "outer guest SSH port")
+		sidecarPID := fs.Int("sidecar-pid", 0, "observed inner Store sidecar process")
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		path, err := runRejectedSeedStageRearm(cfg, catalog, *app, *version,
+			*intentSHA, *refusal, *refusalSHA, *scan, *scanSHA,
+			rejectedStageProbeArgs{SSHKey: *sshKey, KnownHosts: *knownHosts,
+				SSHPort: *sshPort, SidecarPID: *sidecarPID})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("REARM_REJECTED_SEED_STAGE_OK receipt=%s\n", path)
+		return nil
+
 	case "approve":
 		fs := flag.NewFlagSet("approve", flag.ContinueOnError)
 		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
@@ -299,7 +325,7 @@ func run(args []string) error {
 	case "-h", "--help", "help":
 		return usageErr()
 	default:
-		return fmt.Errorf("unknown subcommand %q (want preflight|publish|stage-seed|adopt-seed|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed)", sub)
+		return fmt.Errorf("unknown subcommand %q (want preflight|publish|stage-seed|rearm-rejected-seed-stage|adopt-seed|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed)", sub)
 	}
 }
 
@@ -357,5 +383,5 @@ func typedDocumentFlags(args []string) ([]string, []string, error) {
 }
 
 func usageErr() error {
-	return fmt.Errorf("usage: mel-release preflight|publish --app <appId|slug|name> --version <v> | stage-seed|adopt-seed --app <appId> --version <v> --build-receipt <path> --authorization <path> --rows <path> --review <path> [adopt-seed: --stage-receipt <path>] | approve|repair-catalog|abandon-init|reject-proposed --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
+	return fmt.Errorf("usage: mel-release preflight|publish --app <appId|slug|name> --version <v> | stage-seed|adopt-seed --app <appId> --version <v> --build-receipt <path> --authorization <path> --rows <path> --review <path> [adopt-seed: --stage-receipt <path>] | rearm-rejected-seed-stage --app <appId> --version <v> --intent-sha256 <sha> --refusal-log <path> --refusal-sha256 <sha> --scan-report <path> --scan-sha256 <sha> --outer-ssh-key <path> --outer-known-hosts <path> --outer-ssh-port <port> --sidecar-pid <pid> | approve|repair-catalog|abandon-init|reject-proposed --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
 }

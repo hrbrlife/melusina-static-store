@@ -40,6 +40,12 @@ class PendingMarkerProducerTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "evidence-pack-pending-install-id-invalid"):
                 producer.derive("Tenant/A", Path("/signed/profile.json"), "b" * 64,
                                 Path("/reviewed/verifier"), Path(temp) / "invalid.json")
+            with self.assertRaisesRegex(ValueError, "evidence-pack-pending-install-id-invalid"):
+                producer.derive("store-tenant-a", Path("/signed/profile.json"), "b" * 64,
+                                Path("/reviewed/verifier"), Path(temp) / "reserved.json")
+            with self.assertRaisesRegex(ValueError, "evidence-pack-pending-install-id-invalid"):
+                producer.derive("tenant-" + "a" * 64, Path("/signed/profile.json"), "b" * 64,
+                                Path("/reviewed/verifier"), Path(temp) / "oversized.json")
             with mock.patch.object(producer, "verified_profile", side_effect=ValueError("profile-signature-invalid")):
                 with self.assertRaisesRegex(ValueError, "profile-signature-invalid"):
                     producer.derive("rehearsal-80efbaf5fe37edf7", Path("/unsigned/profile.json"),

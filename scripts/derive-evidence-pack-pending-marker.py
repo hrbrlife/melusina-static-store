@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 PENDING_SCHEMA = "melusina.evidence-pack-roster-pending.v1"
-INSTALL_ID = re.compile(r"^[a-z][a-z0-9-]{0,127}$")
+INSTALL_ID = re.compile(r"^[a-z][a-z0-9-]{1,62}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -30,7 +30,7 @@ def verified_profile(profile: Path, digest: str, verifier: Path) -> dict:
 
 def derive(install_id: str, estate_profile: Path, profile_digest: str,
            estate_verifier: Path, output: Path) -> bytes:
-    if not INSTALL_ID.fullmatch(install_id):
+    if not INSTALL_ID.fullmatch(install_id) or install_id == "store" or install_id.startswith("store-"):
         raise ValueError("evidence-pack-pending-install-id-invalid")
     if not HEX64.fullmatch(profile_digest):
         raise ValueError("evidence-pack-pending-profile-digest-invalid")

@@ -2505,6 +2505,22 @@ def ensure_bin(name: str, command: str) -> Path:
 
 def current_pointer(app_id: str) -> dict[str, Any] | None:
     """Read a served pointer with the catalog rail's bounded acceptance window."""
+    private_route = env("MEL_RELEASE_PRIVATE_STORE_ROUTE")
+    if private_route:
+        raw = run(["go", "run", "./cmd/store-catalog-read", "-store", store_origin(),
+                   "-private-route", private_route,
+                   "-estate-profile", env("MEL_RELEASE_ESTATE_PROFILE", required=True),
+                   "-estate-profile-sha256", env("MEL_RELEASE_ESTATE_PROFILE_SHA256", required=True),
+                   "-path", f"/apps/pointers/{app_id}.json"], cwd=MODULE)
+        if not raw:
+            return None
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ProviderError("read served pointer: invalid verified Store JSON") from exc
+        if not isinstance(value, dict):
+            raise ProviderError("served pointer is not an object")
+        return value
     url = store_origin() + f"/apps/pointers/{app_id}.json"
     try:
         with urllib.request.urlopen(url, timeout=STORE_READ_TIMEOUT_SECONDS) as response:

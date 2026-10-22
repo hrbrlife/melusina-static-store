@@ -83,6 +83,9 @@ type options struct {
 	classTableOut     string
 	connectAddress    string
 	tlsLeaf           string
+	privateRoute      string
+	estateProfile     string
+	estateProfileSHA  string
 }
 
 func main() {
@@ -110,6 +113,9 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.classTableOut, "class-table-out", "", "new output path for the signed sidecar class table")
 	fs.StringVar(&o.connectAddress, "connect-address", "", "private Store backend host:port; HTTPS name and certificate remain bound to --store")
 	fs.StringVar(&o.tlsLeaf, "store-tls-leaf", "", "exact PEM Store serving leaf pinned for private publication")
+	fs.StringVar(&o.privateRoute, "private-route", "", "finalized owner-signed private Store route")
+	fs.StringVar(&o.estateProfile, "estate-profile", "", "owner-signed estate profile")
+	fs.StringVar(&o.estateProfileSHA, "estate-profile-sha256", "", "reviewed estate profile digest")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -137,6 +143,12 @@ func parseFlags(args []string) (options, error) {
 	}
 	if o.timeout <= 0 {
 		return o, errors.New("--timeout must be positive")
+	}
+	if o.privateRoute != "" && (o.estateProfile == "" || o.estateProfileSHA == "" || o.connectAddress != "" || o.tlsLeaf != "" || o.envelopeOut != "") {
+		return o, errors.New("publisher_private_route_arguments_refused")
+	}
+	if o.privateRoute == "" && (o.estateProfile != "" || o.estateProfileSHA != "") {
+		return o, errors.New("publisher_private_route_arguments_refused")
 	}
 	if o.classTablePrepare && (o.classTableOut == "" || o.carryForward || o.generationOut != "" || o.envelopeOut != "") {
 		return o, errors.New("class-table-prepare requires --class-table-out and excludes generation/carry-forward/envelope output")
@@ -235,7 +247,7 @@ func run(args []string, stdout io.Writer) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), o.timeout)
 	defer cancel()
-	client, err := publishclient.NewClient(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
+	client, err := storeClient(o)
 	if err != nil {
 		return err
 	}
@@ -271,6 +283,17 @@ func run(args []string, stdout io.Writer) error {
 		"verifiedStoreId":      o.storeID,
 		"verifiedBundleOrigin": doc.BundleOrigin,
 	})
+}
+
+func storeClient(o options) (*http.Client, error) {
+	if o.privateRoute != "" {
+		route, err := publishclient.LoadPrivateRoute(o.privateRoute, o.estateProfile, o.estateProfileSHA, o.store, time.Now().UTC())
+		if err != nil {
+			return nil, err
+		}
+		return publishclient.NewClientPEM(o.store, route.ConnectAddress, route.TLSLeafPEM, o.timeout)
+	}
+	return publishclient.NewClient(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
 }
 
 func postPromote(ctx context.Context, client *http.Client, store string, signed envelope.Signed, requestBytes []byte) (generationPromoteResult, error) {

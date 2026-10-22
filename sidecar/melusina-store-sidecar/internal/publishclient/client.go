@@ -20,6 +20,22 @@ import (
 )
 
 func NewClient(storeURL, connectAddress, leafPath string, timeout time.Duration) (*http.Client, error) {
+	var leafPEM string
+	if leafPath != "" {
+		info, err := os.Lstat(leafPath)
+		if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > 64<<10 {
+			return nil, errors.New("publisher_tls_pin_invalid")
+		}
+		raw, err := os.ReadFile(leafPath)
+		if err != nil {
+			return nil, errors.New("publisher_tls_pin_invalid")
+		}
+		leafPEM = string(raw)
+	}
+	return NewClientPEM(storeURL, connectAddress, leafPEM, timeout)
+}
+
+func NewClientPEM(storeURL, connectAddress, leafPEM string, timeout time.Duration) (*http.Client, error) {
 	origin, err := url.Parse(storeURL)
 	if err != nil || origin.Scheme != "https" || origin.Hostname() == "" || origin.User != nil ||
 		origin.Path != "" && origin.Path != "/" || origin.RawQuery != "" || origin.Fragment != "" {
@@ -34,7 +50,7 @@ func NewClient(storeURL, connectAddress, leafPath string, timeout time.Duration)
 		if err != nil || ipErr != nil || !ip.Is4() || !ip.IsPrivate() || port != "18443" {
 			return nil, errors.New("publisher_private_connect_refused")
 		}
-		if leafPath == "" {
+		if leafPEM == "" {
 			return nil, errors.New("publisher_tls_pin_required")
 		}
 	}
@@ -42,16 +58,8 @@ func NewClient(storeURL, connectAddress, leafPath string, timeout time.Duration)
 	transport.Proxy = nil
 	transport.ForceAttemptHTTP2 = false
 	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS13, ServerName: origin.Hostname()}
-	if leafPath != "" {
-		info, err := os.Lstat(leafPath)
-		if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > 64<<10 {
-			return nil, errors.New("publisher_tls_pin_invalid")
-		}
-		raw, err := os.ReadFile(leafPath)
-		if err != nil {
-			return nil, errors.New("publisher_tls_pin_invalid")
-		}
-		block, rest := pem.Decode(raw)
+	if leafPEM != "" {
+		block, rest := pem.Decode([]byte(leafPEM))
 		if block == nil || block.Type != "CERTIFICATE" || len(bytes.TrimSpace(rest)) != 0 {
 			return nil, errors.New("publisher_tls_pin_invalid")
 		}

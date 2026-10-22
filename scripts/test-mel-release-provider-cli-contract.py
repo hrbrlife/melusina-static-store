@@ -3402,7 +3402,7 @@ def test_staged_metadata_preserves_authored_bytes_while_deriving_package_identit
 
 
 def test_pre_pilot_direct_publish_uses_scanned_product_client():
-    """Named positive: both phases use scan-app then cmd/submit, with no raw HTTP."""
+    """Named positive: scan, clock margin, then signed submit in both phases."""
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp)
         for name in ("app.spk", "metadata.json", "RUNTIME-CONTRACT.json", "scanner.key"):
@@ -3432,11 +3432,15 @@ def test_pre_pilot_direct_publish_uses_scanned_product_client():
                   "MEL_RELEASE_CATALOG_DEVELOPER": "dev", "MEL_RELEASE_CATALOG_REPO": "repo",
                   "MEL_RELEASE_CATALOG_SLUG": "slug"}
         commands = []
+        events = []
         def fake_run(command, **_kwargs):
             commands.append(command)
             if "./cmd/scan-app" in command:
-                return '{"signed":"scan"}\n'
+                events.append("scan")
+                return '{"scannedAtUnix":1000,"signed":"scan"}\n'
             if "./cmd/submit" in command:
+                assert events[-1] == "clock-margin"
+                events.append("submit")
                 Path(command[command.index("--receipt-out") + 1]).write_text('{"signed":"receipt"}\n')
                 return ""
             raise AssertionError(command)
@@ -3452,6 +3456,8 @@ def test_pre_pilot_direct_publish_uses_scanned_product_client():
                    patch.object(provider, "submit_timeout", return_value="600s"),
                    patch.object(provider, "submit_transport_env", return_value={}),
                    patch.object(provider, "rewrite_release", side_effect=fake_rewrite),
+                   patch.object(provider, "wait_for_store_scan_clock_margin",
+                                side_effect=lambda _raw: events.append("clock-margin")),
                    patch.object(provider, "run", side_effect=fake_run)]
         with contextlib.ExitStack() as stack:
             for item in patches:
@@ -3466,6 +3472,47 @@ def test_pre_pilot_direct_publish_uses_scanned_product_client():
             provider.direct_app_publish(CYBERTELLER_CONFIG_APP_ID, "promote", root / "promote-receipt.json")
             assert commands[2][commands[2].index("--target") + 1] == "/publish"
             assert "--stage" not in commands[3] and (root / "promote-receipt.json").is_file()
+            assert events == ["scan", "clock-margin", "submit"] * 2
+
+
+def test_pre_pilot_scan_clock_margin_admits_one_second_slow_store():
+    """Named positive: a valid signed scan is old enough for a one-second slow Store."""
+    observed = []
+    clock = [1000.1]
+    def sleep(seconds):
+        observed.append(seconds)
+        clock[0] += seconds
+    with patch.object(provider.time, "time", side_effect=lambda: clock[0]), \
+         patch.object(provider.time, "sleep", side_effect=sleep):
+        provider.wait_for_store_scan_clock_margin('{"scannedAtUnix":1000}')
+    assert len(observed) == 1 and 2.8 < observed[0] < 3.0
+    assert clock[0] >= 1003
+
+
+def test_pre_pilot_scan_clock_margin_refuses_future_or_malformed_report():
+    """Named negatives: no unbounded sleep or malformed scanner timestamp."""
+    with patch.object(provider.time, "time", return_value=1000.0), \
+         patch.object(provider.time, "sleep", side_effect=AssertionError("unexpected sleep")):
+        for raw, name in (("{}", "direct-app-publish-scan-clock-invalid"),
+                          ('{"scannedAtUnix":1010}', "direct-app-publish-scan-clock-future-refused")):
+            try:
+                provider.wait_for_store_scan_clock_margin(raw)
+            except provider.ProviderError as exc:
+                assert name in str(exc)
+            else:
+                raise AssertionError("invalid scan clock admitted")
+
+
+def test_pre_pilot_scan_clock_margin_refuses_sleep_that_did_not_advance_clock():
+    """Named negative: an interrupted/nonadvancing wait cannot send to Store."""
+    with patch.object(provider.time, "time", return_value=1000.0), \
+         patch.object(provider.time, "sleep", return_value=None):
+        try:
+            provider.wait_for_store_scan_clock_margin('{"scannedAtUnix":1000}')
+        except provider.ProviderError as exc:
+            assert "direct-app-publish-scan-clock-margin-refused" in str(exc)
+        else:
+            raise AssertionError("nonadvancing scan clock admitted")
 
 
 def test_pre_pilot_direct_publish_refuses_missing_scanner_before_submit():
@@ -3574,6 +3621,9 @@ if __name__ == "__main__":
     test_provider_helpers_rebuild_from_current_source_not_ignored_module_bin()
     test_finalize_uses_only_supported_flags()
     test_pre_pilot_direct_publish_uses_scanned_product_client()
+    test_pre_pilot_scan_clock_margin_admits_one_second_slow_store()
+    test_pre_pilot_scan_clock_margin_refuses_future_or_malformed_report()
+    test_pre_pilot_scan_clock_margin_refuses_sleep_that_did_not_advance_clock()
     test_pre_pilot_direct_publish_refuses_missing_scanner_before_submit()
     test_frozen_nested_app_uses_component_metadata_not_repo_root()
     test_propose_uses_only_supported_flags()

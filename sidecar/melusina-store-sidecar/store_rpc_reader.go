@@ -77,6 +77,7 @@ func newConfiguredStoreRPCReader(cfg Config) chainReader {
 
 func (c *rpcFailoverChainReader) call(ctx context.Context, invoke func(context.Context, chainReader) error) error {
 	var transientFailures int
+	var lastTransient error
 	for readerIndex, reader := range c.readers {
 		for attempt := 0; attempt < c.attempts; attempt++ {
 			if err := ctx.Err(); err != nil {
@@ -90,6 +91,7 @@ func (c *rpcFailoverChainReader) call(ctx context.Context, invoke func(context.C
 				return err
 			}
 			transientFailures++
+			lastTransient = err
 			if attempt+1 < c.attempts || readerIndex+1 < len(c.readers) {
 				if err := waitForRPCRetry(ctx, c.delay); err != nil {
 					return err
@@ -97,7 +99,7 @@ func (c *rpcFailoverChainReader) call(ctx context.Context, invoke func(context.C
 			}
 		}
 	}
-	return fmt.Errorf("%w: all configured RPC attempts failed (%d transport failure(s))", verify.ErrRPCUnreachable, transientFailures)
+	return fmt.Errorf("%w: all configured RPC attempts failed (%d transport failure(s)); last cause: %v", verify.ErrRPCUnreachable, transientFailures, lastTransient)
 }
 
 func waitForRPCRetry(ctx context.Context, delay time.Duration) error {
@@ -219,6 +221,7 @@ func (c *rpcFailoverChainReader) fetchRawAccount(ctx context.Context, addr strin
 		return nil, "", errors.New("chain reader does not support the raw cascade reads required by require_active_sidecar_cascade")
 	}
 	var transientFailures int
+	var lastTransient error
 	for readerIndex, reader := range c.rawReaders {
 		for attempt := 0; attempt < c.attempts; attempt++ {
 			if err := ctx.Err(); err != nil {
@@ -232,6 +235,7 @@ func (c *rpcFailoverChainReader) fetchRawAccount(ctx context.Context, addr strin
 				return nil, "", err
 			}
 			transientFailures++
+			lastTransient = err
 			if attempt+1 < c.attempts || readerIndex+1 < len(c.rawReaders) {
 				if err := waitForRPCRetry(ctx, c.delay); err != nil {
 					return nil, "", err
@@ -239,7 +243,7 @@ func (c *rpcFailoverChainReader) fetchRawAccount(ctx context.Context, addr strin
 			}
 		}
 	}
-	return nil, "", fmt.Errorf("%w: all configured RPC attempts failed (%d transport failure(s))", verify.ErrRPCUnreachable, transientFailures)
+	return nil, "", fmt.Errorf("%w: all configured RPC attempts failed (%d transport failure(s)); last cause: %v", verify.ErrRPCUnreachable, transientFailures, lastTransient)
 }
 
 func (c *storeRPCReader) FetchReleaseEntryMeta(ctx context.Context, addr string) (releaseEntryMeta, error) {

@@ -2548,6 +2548,22 @@ def materialize_runtime_contract(source: Path, destination: Path, app_id: str, v
     contract_rel = str(source_contract.relative_to(source))
     run(["git", "-C", str(source), "ls-files", "--error-unmatch", contract_rel])
     contract = read_json(source_contract)
+    schema_url = contract.get("$schema")
+    current_url = "urn:melusina:runtime-contract:v1"
+    legacy_mermail_url = "https://bazaar.melusina-os.org/schemas/melusina-app-runtime-contract-v1.schema.json"
+    if schema_url == legacy_mermail_url:
+        # The reviewed 0.6.3 MerMail source predates the protocol's canonical
+        # URI. Its tracked template is pinned byte-for-byte; only this URI is
+        # migrated before the ordinary build substitutions below.
+        if (app_id != "wfy0c4706yw6rp70t4a4pse8c2spm0d4hdasya6vkc4fdhhyw86h"
+                or run(["git", "-C", str(source), "rev-parse", "HEAD"]).strip()
+                != "de81b0f40783938ae1b1b64ed8e556f62fe45c28"
+                or hex_sha(source_contract)
+                != "2c656049f2f75b815409684299b2b7040e13a8c09f68592610aa3db713825554"):
+            raise ProviderError("legacy MerMail runtime schema source mismatch")
+        contract["$schema"] = current_url
+    elif schema_url != current_url:
+        raise ProviderError("source runtime contract $schema is unsupported")
     if contract.get("schema") != "melusina-app-runtime-contract-v1":
         raise ProviderError("source runtime contract has the wrong schema")
     app = contract.get("app")

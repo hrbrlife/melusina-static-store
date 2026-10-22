@@ -61,3 +61,39 @@ func TestValidFirstPrepReportsCreated(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRerunReportsExistingShards(t *testing.T) {
+	dir := t.TempDir()
+	shardsDir := filepath.Join(dir, "shards")
+	binaryPath := filepath.Join(dir, "bin")
+	if err := os.WriteFile(binaryPath, []byte("test binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	certPath, _ := writeTestCert(t, dir, "store.example.org")
+	args := []string{"-chain-id", testChainID, "-shards-dir", shardsDir,
+		"-license-mint", randPubkeyB58(t), "-domain", "store.example.org",
+		"-sidecar-id", "store", "-program-id", testProgramID,
+		"-binary", binaryPath, "-tls-cert", certPath}
+	var first, second bytes.Buffer
+	if err := run(args, &first); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(filepath.Join(shardsDir, "author.shard"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := run(args, &second); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(filepath.Join(shardsDir, "author.shard"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var firstReport, secondReport ceremonyReport
+	if json.Unmarshal(first.Bytes(), &firstReport) != nil || json.Unmarshal(second.Bytes(), &secondReport) != nil {
+		t.Fatal("first or second prep report is invalid")
+	}
+	if !firstReport.Shards.Created || secondReport.Shards.Created || !bytes.Equal(before, after) {
+		t.Fatal("rerun failed to reuse the exact first-prep shards")
+	}
+}

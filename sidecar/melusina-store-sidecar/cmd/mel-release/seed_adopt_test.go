@@ -115,6 +115,34 @@ func TestSeedAdoptionRefusesMissingProofBeforeAnyRead(t *testing.T) {
 	}
 }
 
+func TestSeedStageIntentRefusesBlindResendAfterMissingReceipt(t *testing.T) {
+	root := t.TempDir()
+	intentPath := filepath.Join(root, "intent.json")
+	stagePath := filepath.Join(root, "stage.json")
+	intent := seedStageIntent{Schema: "melusina-governed-seed-stage-intent-v1",
+		AppID: "seed-app", Version: "0.0.108", AppHash: strings.Repeat("a", 64),
+		ReleaseHash: strings.Repeat("b", 64), ReleaseNonce: strings.Repeat("c", 32)}
+	if resumed, err := priorSeedStage(intentPath, stagePath, intent); err != nil || resumed {
+		t.Fatalf("unused stage intent refused before first send: resumed=%v err=%v", resumed, err)
+	}
+	raw, err := json.Marshal(intent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeExclusive(intentPath, raw); err != nil {
+		t.Fatal(err)
+	}
+	if resumed, err := priorSeedStage(intentPath, stagePath, intent); resumed || err == nil ||
+		!strings.Contains(err.Error(), "seed-stage-outcome-unknown-refuse-resend") {
+		t.Fatalf("unknown Store stage outcome retried: resumed=%v err=%v", resumed, err)
+	}
+	intent.ReleaseHash = strings.Repeat("d", 64)
+	if resumed, err := priorSeedStage(intentPath, stagePath, intent); resumed || err == nil ||
+		!strings.Contains(err.Error(), "seed-stage-existing-intent-differs") {
+		t.Fatalf("changed stage intent admitted: resumed=%v err=%v", resumed, err)
+	}
+}
+
 func TestGovernedSeedProofAdmitsExactFrozenRowAndRefusesMutatedRows(t *testing.T) {
 	const appID = "app-00"
 	const version = "0.0.108"

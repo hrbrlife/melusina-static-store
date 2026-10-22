@@ -193,6 +193,24 @@ func run(args []string) error {
 		fmt.Printf("ADOPT_SEED_OK candidate=%s\n", path)
 		return nil
 
+	case "stage-seed":
+		fs := flag.NewFlagSet("stage-seed", flag.ContinueOnError)
+		app := fs.String("app", "", "app selector from the reviewed Store catalog")
+		version := fs.String("version", "", "frozen seed release version")
+		build := fs.String("build-receipt", "", "absolute path to product preflight build receipt")
+		authorization := fs.String("authorization", "", "absolute path to V2 owner-signed seed authorization")
+		rows := fs.String("rows", "", "absolute path to publisher-signed seed execution rows")
+		review := fs.String("review", "", "absolute path to reviewed firstdrop cohort release intent")
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		path, err := runSeedStage(cfg, catalog, *app, *version, *build, *authorization, *rows, *review)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("STAGE_SEED_OK receipt=%s\n", path)
+		return nil
+
 	case "approve":
 		fs := flag.NewFlagSet("approve", flag.ContinueOnError)
 		app := fs.String("app", "", "app selector: immutable appId (preferred), publish slug, or name (required)")
@@ -281,7 +299,7 @@ func run(args []string) error {
 	case "-h", "--help", "help":
 		return usageErr()
 	default:
-		return fmt.Errorf("unknown subcommand %q (want preflight|publish|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed)", sub)
+		return fmt.Errorf("unknown subcommand %q (want preflight|publish|stage-seed|adopt-seed|approve|manifest|repair-catalog|recover-live|abandon-init|reject-proposed)", sub)
 	}
 }
 
@@ -339,5 +357,5 @@ func typedDocumentFlags(args []string) ([]string, []string, error) {
 }
 
 func usageErr() error {
-	return fmt.Errorf("usage: mel-release preflight|publish --app <appId|slug|name> --version <v> | adopt-seed --app <appId> --version <v> --build-receipt <path> --stage-receipt <path> --authorization <path> --rows <path> --review <path> | approve|repair-catalog|abandon-init|reject-proposed --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
+	return fmt.Errorf("usage: mel-release preflight|publish --app <appId|slug|name> --version <v> | stage-seed|adopt-seed --app <appId> --version <v> --build-receipt <path> --authorization <path> --rows <path> --review <path> [adopt-seed: --stage-receipt <path>] | approve|repair-catalog|abandon-init|reject-proposed --app <appId|slug|name> | recover-live --app <appId|slug|name> --spk <absolute-path> --metadata <absolute-path> | manifest --out <absolute-path>")
 }

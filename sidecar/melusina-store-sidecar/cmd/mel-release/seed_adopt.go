@@ -77,25 +77,27 @@ type seedRows struct {
 }
 
 type seedReview struct {
-	Schema   string `json:"schema"`
-	EstateID string `json:"estateId"`
-	Apps     []struct {
-		AppID                 string `json:"appId"`
-		Version               string `json:"version"`
-		SourceCommit          string `json:"sourceCommit"`
-		AuthorKey             string `json:"authorKey"`
-		ReleaseHash           string `json:"releaseHash"`
-		PrimaryPublisher      string `json:"primaryPublisher"`
-		SecondPublisher       string `json:"secondPublisher"`
-		AppHash               string `json:"appHash"`
-		ReleaseNonce          string `json:"releaseNonce"`
-		SPKSHA256             string `json:"spkSha256"`
-		MetadataSHA256        string `json:"metadataSha256"`
-		RuntimeContractSHA256 string `json:"runtimeContractSha256"`
-		SPKPath               string `json:"spkPath"`
-		MetadataPath          string `json:"metadataPath"`
-		RuntimeContractPath   string `json:"runtimeContractPath"`
-	} `json:"apps"`
+	Schema   string          `json:"schema"`
+	EstateID string          `json:"estateId"`
+	Apps     []seedReviewApp `json:"apps"`
+}
+
+type seedReviewApp struct {
+	AppID                 string `json:"appId"`
+	Version               string `json:"version"`
+	SourceCommit          string `json:"sourceCommit"`
+	AuthorKey             string `json:"authorKey"`
+	ReleaseHash           string `json:"releaseHash"`
+	PrimaryPublisher      string `json:"primaryPublisher"`
+	SecondPublisher       string `json:"secondPublisher"`
+	AppHash               string `json:"appHash"`
+	ReleaseNonce          string `json:"releaseNonce"`
+	SPKSHA256             string `json:"spkSha256"`
+	MetadataSHA256        string `json:"metadataSha256"`
+	RuntimeContractSHA256 string `json:"runtimeContractSha256"`
+	SPKPath               string `json:"spkPath"`
+	MetadataPath          string `json:"metadataPath"`
+	RuntimeContractPath   string `json:"runtimeContractPath"`
 }
 
 func seedDigest(a seedAuthorization) (string, error) {
@@ -315,6 +317,54 @@ func seedAuthorizationStillLive(path string) error {
 	return nil
 }
 
+// A signed seed row is only a plan. The Store stage and local adoption both
+// require its exact ReleaseEntry to be Active in the pinned registry.
+func verifySeedActiveRelease(c Config, provider SignerProvider, app App, b buildReceipt,
+	selected *seedReviewApp, rows seedRows) error {
+	pda, err := deriveReleasePDA(c.MasterNftMint, b.AppHash, c.ProgramID)
+	if err != nil {
+		return err
+	}
+	active, err := provider.ActiveReleases(app.AppID)
+	if err != nil {
+		return err
+	}
+	count := 0
+	for _, release := range active {
+		if release.PDA == pda && release.AppHash == b.AppHash && release.Version == selected.Version {
+			count++
+		}
+	}
+	if count != 1 {
+		return errors.New("seed-active-release-entry-not-exact")
+	}
+	account, err := provider.ReleaseEntryAccount(pda)
+	if err != nil {
+		return err
+	}
+	if !account.Present || account.Owner != c.ProgramID {
+		return errors.New("seed-release-entry-owner-or-presence-refused")
+	}
+	entry, err := releaseentry.Decode(account.Data)
+	if err != nil {
+		return err
+	}
+	var primarySignature string
+	var primaryPublisher string
+	for _, row := range rows.ReleaseRows {
+		if row.AppID == app.AppID {
+			primarySignature, primaryPublisher = row.PublisherSignature, row.Publisher
+		}
+	}
+	if entry.Status.String() != "Active" || hex.EncodeToString(entry.AppHash[:]) != b.AppHash ||
+		hex.EncodeToString(entry.ReleaseHash[:]) != selected.ReleaseHash || entry.Version != selected.Version ||
+		hex.EncodeToString(entry.Signature[:]) != primarySignature ||
+		hex.EncodeToString(entry.PublisherEd25519Pubkey[:]) != primaryPublisher {
+		return errors.New("seed-active-chain-row-differs-from-signed-seed")
+	}
+	return nil
+}
+
 // runSeedAdopt records an already staged, council-registered seed release as
 // a distinct immutable candidate. No Solana instruction or Store POST occurs.
 // The ordinary approve command then revalidates this proof and uses the same
@@ -344,23 +394,7 @@ func runSeedAdopt(c Config, catalog *Catalog, selector, version,
 	if review.Schema != "melusina.firstdrop-cohort-review.v1" || review.EstateID != c.estate.EstateID {
 		return "", errors.New("seed-adopt-review-estate-mismatch")
 	}
-	var selected *struct {
-		AppID                 string `json:"appId"`
-		Version               string `json:"version"`
-		SourceCommit          string `json:"sourceCommit"`
-		AuthorKey             string `json:"authorKey"`
-		ReleaseHash           string `json:"releaseHash"`
-		PrimaryPublisher      string `json:"primaryPublisher"`
-		SecondPublisher       string `json:"secondPublisher"`
-		AppHash               string `json:"appHash"`
-		ReleaseNonce          string `json:"releaseNonce"`
-		SPKSHA256             string `json:"spkSha256"`
-		MetadataSHA256        string `json:"metadataSha256"`
-		RuntimeContractSHA256 string `json:"runtimeContractSha256"`
-		SPKPath               string `json:"spkPath"`
-		MetadataPath          string `json:"metadataPath"`
-		RuntimeContractPath   string `json:"runtimeContractPath"`
-	}
+	var selected *seedReviewApp
 	for i := range review.Apps {
 		if review.Apps[i].AppID == app.AppID {
 			if selected != nil {
@@ -431,45 +465,26 @@ func runSeedAdopt(c Config, catalog *Catalog, selector, version,
 	if err := verifySeedAdoptionProof(c, app, &rec); err != nil {
 		return "", err
 	}
+	canonicalStage := c.receiptPath(app.AppID, "seed-stage-"+safeSegment(version)+".json")
+	if stagePath != canonicalStage {
+		return "", errors.New("seed-adopt-stage-receipt-not-product-path")
+	}
+	stageIntent := seedStageIntent{Schema: "melusina-governed-seed-stage-intent-v1",
+		AppID: app.AppID, Version: version, AppHash: b.AppHash,
+		ReleaseHash: selected.ReleaseHash, ReleaseNonce: selected.ReleaseNonce,
+		Build: buildRef, Proof: rec.SeedAdoption}
+	staged, err := priorSeedStage(c.receiptPath(app.AppID, "seed-stage-intent-"+safeSegment(version)+".json"),
+		stagePath, stageIntent)
+	if err != nil {
+		return "", err
+	}
+	if !staged {
+		return "", errors.New("seed-adopt-product-stage-intent-missing")
+	}
 	// The seed registration is already Active; a missing or different account
 	// cannot be turned into a local PROPOSED candidate.
-	provider := newExecProvider(c)
-	active, err := provider.ActiveReleases(app.AppID)
-	if err != nil {
+	if err := verifySeedActiveRelease(c, newExecProvider(c), app, b, selected, rows); err != nil {
 		return "", err
-	}
-	count := 0
-	for _, release := range active {
-		if release.PDA == pda && release.AppHash == b.AppHash && release.Version == version {
-			count++
-		}
-	}
-	if count != 1 {
-		return "", errors.New("seed-adopt-active-release-entry-not-exact")
-	}
-	account, err := provider.ReleaseEntryAccount(pda)
-	if err != nil {
-		return "", err
-	}
-	if !account.Present || account.Owner != c.ProgramID {
-		return "", errors.New("seed-adopt-release-entry-owner-or-presence-refused")
-	}
-	entry, err := releaseentry.Decode(account.Data)
-	if err != nil {
-		return "", err
-	}
-	var primarySignature string
-	var primaryPublisher string
-	for _, row := range rows.ReleaseRows {
-		if row.AppID == app.AppID {
-			primarySignature, primaryPublisher = row.PublisherSignature, row.Publisher
-		}
-	}
-	if entry.Status.String() != "Active" || hex.EncodeToString(entry.AppHash[:]) != b.AppHash ||
-		hex.EncodeToString(entry.ReleaseHash[:]) != selected.ReleaseHash || entry.Version != version ||
-		hex.EncodeToString(entry.Signature[:]) != primarySignature ||
-		hex.EncodeToString(entry.PublisherEd25519Pubkey[:]) != primaryPublisher {
-		return "", errors.New("seed-adopt-active-chain-row-differs-from-signed-seed")
 	}
 	walPath := c.walPath(app.AppID)
 	prior, exists, err := readWAL(walPath)

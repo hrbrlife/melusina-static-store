@@ -18,10 +18,12 @@ For each frozen app, complete these product steps in order:
    ReleaseEntry. Read back each Active account. Then run
    `seed-app-clearances-run.mjs` and read back App and Author Clear. Both are
    prerequisites to a private Store stage.
-3. Run the catalog provider's `stage` operation with the seed appHash, version,
-   release hash and nonce. It uses `scan-app` and `cmd/submit`, which sign and
-   submit to the Store private route. Retain and verify the Store-signed stage
-   receipt. Never invoke the HTTP endpoint directly.
+3. Run `mel-release stage-seed --app APP_ID --version VERSION --build-receipt
+   ABSOLUTE --authorization ABSOLUTE --rows ABSOLUTE --review ABSOLUTE`.
+   It verifies the frozen build and V2 owner proof, then uses the canonical
+   provider's `scan-app` and `cmd/submit` to stage through the Store private
+   route. Its durable intent refuses a blind second send if the response is
+   lost. Retain its Store-signed stage receipt. Never invoke HTTP directly.
 4. Run `mel-release adopt-seed --app APP_ID --version VERSION --build-receipt
    ABSOLUTE --stage-receipt ABSOLUTE --authorization ABSOLUTE --rows ABSOLUTE
    --review ABSOLUTE`. This is a local WAL/candidate operation. It verifies the

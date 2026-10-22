@@ -213,6 +213,9 @@ type options struct {
 	store               string
 	connectAddress      string
 	tlsLeaf             string
+	privateRoute        string
+	estateProfile       string
+	estateProfileSHA256 string
 	spkPath             string
 	metadataPath        string
 	releasePath         string
@@ -249,6 +252,9 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.store, "store", "", "store sidecar base URL, e.g. https://store.example.org (required)")
 	fs.StringVar(&o.connectAddress, "connect-address", "", "private Store ingress IP:18443; keep --store as the signed HTTPS audience")
 	fs.StringVar(&o.tlsLeaf, "store-tls-leaf", "", "exact PEM Store serving leaf pinned for private publication")
+	fs.StringVar(&o.privateRoute, "private-route", "", "finalized owner-signed Store transport JSON")
+	fs.StringVar(&o.estateProfile, "estate-profile", "", "owner-signed estate profile for private route")
+	fs.StringVar(&o.estateProfileSHA256, "estate-profile-sha256", "", "reviewed estate profile digest")
 	fs.StringVar(&o.spkPath, "spk", "", "path to the .spk package bytes (required)")
 	fs.StringVar(&o.metadataPath, "metadata", "", "path to the app metadata.json (required; bound into the on-chain appHash)")
 	fs.StringVar(&o.releasePath, "release", "", "path to the canonical RELEASE.json (required)")
@@ -290,10 +296,16 @@ func parseFlags(args []string) (options, error) {
 	var missing []string
 	verifyMode := o.verifyReceiptPath != ""
 	requestMode := o.requestOut != "" || o.controlDossier != ""
+	if o.privateRoute != "" && (o.estateProfile == "" || o.estateProfileSHA256 == "" || o.connectAddress != "" || o.tlsLeaf != "") {
+		return o, errors.New("publisher_private_route_arguments_refused")
+	}
+	if o.privateRoute == "" && (o.estateProfile != "" || o.estateProfileSHA256 != "") {
+		return o, errors.New("publisher_private_route_arguments_refused")
+	}
 	if o.connectAddress != "" && o.tlsLeaf == "" {
 		return o, errors.New("publisher_tls_pin_required")
 	}
-	if (verifyMode || requestMode || o.prepareOut != "") && (o.connectAddress != "" || o.tlsLeaf != "") {
+	if (verifyMode || requestMode || o.prepareOut != "") && (o.connectAddress != "" || o.tlsLeaf != "" || o.privateRoute != "") {
 		return o, errors.New("private Store transport requires direct app publication")
 	}
 	if verifyMode {
@@ -912,7 +924,16 @@ func postDirectPublish(ctx context.Context, o options, endpoint string, sig enve
 	}
 	req.Header.Set("X-Melusina-Publisher-Envelope", base64.RawURLEncoding.EncodeToString(headerEnvelope))
 	client := &http.Client{Timeout: o.timeout}
-	if o.connectAddress != "" || o.tlsLeaf != "" {
+	if o.privateRoute != "" {
+		route, routeErr := publishclient.LoadPrivateRoute(o.privateRoute, o.estateProfile, o.estateProfileSHA256, o.store, time.Now().UTC())
+		if routeErr != nil {
+			return nil, 0, routeErr
+		}
+		client, err = publishclient.NewClientPEM(o.store, route.ConnectAddress, route.TLSLeafPEM, o.timeout)
+		if err != nil {
+			return nil, 0, err
+		}
+	} else if o.connectAddress != "" || o.tlsLeaf != "" {
 		client, err = publishclient.NewClient(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
 		if err != nil {
 			return nil, 0, err

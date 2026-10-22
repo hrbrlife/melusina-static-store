@@ -93,6 +93,17 @@ run_go_cmd() { # a source command in this exact sidecar module, never an unknown
   (cd "$PROVIDER_ROOT" && go run "$cmd" "$@")
 }
 submit_cmd() { run_go_cmd "$PROVIDER_ROOT/cmd/submit" "$@"; }
+private_store_args() {
+  PRIVATE_STORE_ARGS=()
+  if [[ -n "${MEL_RELEASE_PRIVATE_STORE_ROUTE:-}" ]]; then
+    need_file MEL_RELEASE_PRIVATE_STORE_ROUTE
+    need_file MEL_RELEASE_ESTATE_PROFILE
+    need MEL_RELEASE_ESTATE_PROFILE_SHA256
+    PRIVATE_STORE_ARGS=(--private-route "$MEL_RELEASE_PRIVATE_STORE_ROUTE"
+      --estate-profile "$MEL_RELEASE_ESTATE_PROFILE"
+      --estate-profile-sha256 "$MEL_RELEASE_ESTATE_PROFILE_SHA256")
+  fi
+}
 
 catalog_slot_args() {
   local developer="${MEL_RELEASE_CATALOG_DEVELOPER:-}"
@@ -288,7 +299,8 @@ doc={"$schema":"melusina-release-v1","appHash":apphash,"releaseHash":rhash,"vers
 with open(out,"w",encoding="utf-8") as f: json.dump(doc,f,sort_keys=True);f.write("\n")
 os.chmod(out,0o600)
 PY
-  catalog_slot_args
+	  catalog_slot_args
+	  private_store_args
   scan_for_submit /publish/stage "$state" "$release" "$scan"
   local runtime_args=()
   if [[ -f "$state/material/RUNTIME-CONTRACT.json" && ! -L "$state/material/RUNTIME-CONTRACT.json" ]]; then
@@ -298,7 +310,7 @@ PY
     --release "$release" --publisher-key "$MEL_RELEASE_PUBLISHER_KEY" --store-pubkey "$MEL_RELEASE_STORE_PUBKEY" \
     --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
     --program-id "$MEL_PROGRAM_ID" --scan-report "$scan" "${runtime_args[@]}" \
-    "${SUBMIT_CATALOG_SLOT_ARGS[@]}" --stage --receipt-out "$MEL_STAGE_RECEIPT_OUT"
+	    "${SUBMIT_CATALOG_SLOT_ARGS[@]}" "${PRIVATE_STORE_ARGS[@]}" --stage --receipt-out "$MEL_STAGE_RECEIPT_OUT"
 }
 
 active_releases() {
@@ -444,11 +456,30 @@ PY
 
 served_app_hash() {
   need MEL_APP_ID; need MEL_RELEASE_STORE_URL
+  if [[ -n "${MEL_RELEASE_PRIVATE_STORE_ROUTE:-}" ]]; then
+    private_store_args
+    run_go_cmd "$PROVIDER_ROOT/cmd/store-catalog-read" --store "$MEL_RELEASE_STORE_URL" "${PRIVATE_STORE_ARGS[@]}" |
+      python3 -c '
+import json, sys
+doc = json.load(sys.stdin)
+items = doc if isinstance(doc, list) else doc.get("apps", []) if isinstance(doc, dict) else []
+if not isinstance(items, list): raise SystemExit("invalid catalog apps")
+hits = [x for x in items if isinstance(x, dict) and x.get("appId") == sys.argv[1]]
+if len(hits) > 1: raise SystemExit("ambiguous catalog appId")
+if hits:
+    item = hits[0]
+    value = item.get("appHash", "")
+    if not value and isinstance(item.get("attest"), dict): value = item["attest"].get("appHash", "")
+    print(value)
+      ' "$MEL_APP_ID"
+    return
+  fi
   python3 - "$MEL_RELEASE_STORE_URL" "$MEL_APP_ID" <<'PY'
 import json, sys, urllib.request
 url, app = sys.argv[1].rstrip("/") + "/apps/index.json", sys.argv[2]
 with urllib.request.urlopen(url, timeout=20) as r: doc = json.load(r)
-items = doc.get("apps", doc if isinstance(doc, list) else [])
+items = doc if isinstance(doc, list) else doc.get("apps", []) if isinstance(doc, dict) else []
+if not isinstance(items, list): raise SystemExit("invalid catalog apps")
 hits = [x for x in items if isinstance(x, dict) and x.get("appId") == app]
 if len(hits) > 1: raise SystemExit("ambiguous catalog appId")
 if hits:
@@ -607,7 +638,8 @@ promote() {
   [[ -f "$state/material/app.spk" && -f "$state/material/metadata.json" && -f "$release" ]] || die "promotion material or finalized release JSON is missing"
   [[ "$(json_get "$release" appHash)" = "$MEL_NEW_APP_HASH" ]] || die "final release appHash differs from promotion request"
   [[ "$(json_get "$release" releaseHash)" = "$MEL_RELEASE_HASH" ]] || die "final release hash differs from promotion request"
-  catalog_slot_args
+	  catalog_slot_args
+	  private_store_args
   scan_for_submit /publish "$state" "$release" "$scan"
   local runtime_args=()
   if [[ -f "$state/material/RUNTIME-CONTRACT.json" && ! -L "$state/material/RUNTIME-CONTRACT.json" ]]; then
@@ -617,7 +649,7 @@ promote() {
     --release "$release" --publisher-key "$MEL_RELEASE_PUBLISHER_KEY" --store-pubkey "$MEL_RELEASE_STORE_PUBKEY" \
     --license-mint "$MEL_RELEASE_STORE_LICENSE_MINT" --domain "$MEL_RELEASE_STORE_DOMAIN" --rpc-url "$MEL_RELEASE_RPC_URL" \
     --program-id "$MEL_PROGRAM_ID" --scan-report "$scan" "${runtime_args[@]}" \
-    "${SUBMIT_CATALOG_SLOT_ARGS[@]}" --receipt-out "$MEL_PROMOTE_RECEIPT_OUT"
+	    "${SUBMIT_CATALOG_SLOT_ARGS[@]}" "${PRIVATE_STORE_ARGS[@]}" --receipt-out "$MEL_PROMOTE_RECEIPT_OUT"
 }
 
 case "$OP" in

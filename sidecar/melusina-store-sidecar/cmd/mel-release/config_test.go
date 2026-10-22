@@ -65,3 +65,17 @@ func TestExecProviderForwardsStoreLicenseMint(t *testing.T) {
 		t.Fatalf("provider Store license mint = %q", provider.env["MEL_RELEASE_STORE_LICENSE_MINT"])
 	}
 }
+
+func TestExecProviderForwardsVerifiedPrivateStoreRouteInputs(t *testing.T) {
+	provider := newExecProvider(Config{PrivateStoreRoute: "/signed/route.json",
+		EstateProfile: "/signed/profile.json", EstateProfileSHA256: strings.Repeat("a", 64)})
+	for key, want := range map[string]string{
+		"MEL_RELEASE_PRIVATE_STORE_ROUTE":   "/signed/route.json",
+		"MEL_RELEASE_ESTATE_PROFILE":        "/signed/profile.json",
+		"MEL_RELEASE_ESTATE_PROFILE_SHA256": strings.Repeat("a", 64),
+	} {
+		if provider.env[key] != want {
+			t.Fatalf("%s lost before provider request: got %q, want %q", key, provider.env[key], want)
+		}
+	}
+}

@@ -3401,25 +3401,112 @@ def test_staged_metadata_preserves_authored_bytes_while_deriving_package_identit
         assert json.loads(destination.read_text(encoding="utf-8")) == staged
 
 
-def test_direct_app_publish_operations_retired():
-    old_argv = provider.sys.argv
-    try:
-        for operation in ("stage", "promote"):
-            provider.sys.argv = [str(HERE / "mel-release-provider.py"), operation]
+def test_pre_pilot_direct_publish_uses_scanned_product_client():
+    """Named positive: both phases use scan-app then cmd/submit, with no raw HTTP."""
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        for name in ("app.spk", "metadata.json", "RUNTIME-CONTRACT.json", "scanner.key"):
+            (root / name).write_text(name)
+        for name in ("db", "scan-work"):
+            (root / name).mkdir()
+        nonce = "n" * 32
+        app_hash = "a" * 64
+        version = "0.0.108"
+        release_hash = provider.hashlib.sha256((app_hash + version + nonce).encode()).hexdigest()
+        release = root / "RELEASE.json"
+        context = {"appId": CYBERTELLER_CONFIG_APP_ID, "releasePath": str(release),
+                   "spkPath": str(root / "app.spk"), "metadataPath": str(root / "metadata.json"),
+                   "runtimeContractPath": str(root / "RUNTIME-CONTRACT.json")}
+        values = {"MEL_NEW_APP_HASH": app_hash, "MEL_RELEASE_HASH": release_hash,
+                  "MEL_NEW_VERSION": version, "MEL_RELEASE_NONCE": nonce,
+                  "MEL_RELEASE_SCANNER_SIGNING_KEY": str(root / "scanner.key"),
+                  "MEL_RELEASE_CLAMAV_DATABASE": str(root / "db"),
+                  "MEL_RELEASE_SCAN_WORK_DIR": str(root / "scan-work"),
+                  "MEL_RELEASE_PUBLISHER_KEY": str(root / "publisher.key"),
+                  "MEL_RELEASE_STORE_PUBKEY": str(root / "store-public.json"),
+                  "MEL_RELEASE_STORE_LICENSE_MINT": "mint", "MEL_RELEASE_RPC_URL": "rpc",
+                  "MEL_PROGRAM_ID": "program", "MEL_STAGE_ID": "stage-1",
+                  "MEL_RELEASE_PRIVATE_STORE_ROUTE": str(root / "private-route.json"),
+                  "MEL_RELEASE_ESTATE_PROFILE": str(root / "profile.json"),
+                  "MEL_RELEASE_ESTATE_PROFILE_SHA256": "f" * 64,
+                  "MEL_RELEASE_CATALOG_DEVELOPER": "dev", "MEL_RELEASE_CATALOG_REPO": "repo",
+                  "MEL_RELEASE_CATALOG_SLUG": "slug"}
+        commands = []
+        def fake_run(command, **_kwargs):
+            commands.append(command)
+            if "./cmd/scan-app" in command:
+                return '{"signed":"scan"}\n'
+            if "./cmd/submit" in command:
+                Path(command[command.index("--receipt-out") + 1]).write_text('{"signed":"receipt"}\n')
+                return ""
+            raise AssertionError(command)
+        def fake_rewrite(_context, _app_id, _hash, _release_hash, _version, _nonce):
+            provider.write_json(release, {"appHash": app_hash, "releaseHash": release_hash,
+                                          "version": version,
+                                          "runtimeContractSha256": provider.hex_sha(root / "RUNTIME-CONTRACT.json")})
+        patches = [patch.object(provider, "require_context", return_value=context),
+                   patch.object(provider, "env", side_effect=lambda name, required=False, default="": values.get(name, default)),
+                   patch.object(provider, "state_root", return_value=root),
+                   patch.object(provider, "store_origin", return_value=TEST_STORE_ORIGIN),
+                   patch.object(provider, "store_domain", return_value=TEST_STORE_DOMAIN),
+                   patch.object(provider, "submit_timeout", return_value="600s"),
+                   patch.object(provider, "submit_transport_env", return_value={}),
+                   patch.object(provider, "rewrite_release", side_effect=fake_rewrite),
+                   patch.object(provider, "run", side_effect=fake_run)]
+        with contextlib.ExitStack() as stack:
+            for item in patches:
+                stack.enter_context(item)
+            provider.direct_app_publish(CYBERTELLER_CONFIG_APP_ID, "stage", root / "stage-receipt.json")
+            assert commands[0][commands[0].index("--target") + 1] == "/publish/stage"
+            assert "--stage" in commands[1] and "--private-route" in commands[1]
+            assert "--developer" in commands[1] and (root / "stage-receipt.json").is_file()
+            release_doc = provider.read_json(release)
+            release_doc.update({"releaseEntryPda": "PDA", "authorSig": "signature"})
+            provider.write_json(release, release_doc)
+            provider.direct_app_publish(CYBERTELLER_CONFIG_APP_ID, "promote", root / "promote-receipt.json")
+            assert commands[2][commands[2].index("--target") + 1] == "/publish"
+            assert "--stage" not in commands[3] and (root / "promote-receipt.json").is_file()
+
+
+def test_pre_pilot_direct_publish_refuses_missing_scanner_before_submit():
+    """Named negative: no scan identity means no Store operation."""
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        for name in ("app.spk", "metadata.json", "RUNTIME-CONTRACT.json"):
+            (root / name).write_text(name)
+        version = "0.0.108"
+        app_hash = "a" * 64
+        nonce = "n" * 32
+        release_hash = provider.hashlib.sha256((app_hash + version + nonce).encode()).hexdigest()
+        release = root / "RELEASE.json"
+        provider.write_json(release, {"appHash": app_hash, "releaseHash": release_hash,
+                                      "version": version,
+                                      "runtimeContractSha256": provider.hex_sha(root / "RUNTIME-CONTRACT.json")})
+        context = {"appId": CYBERTELLER_CONFIG_APP_ID, "releasePath": str(release),
+                   "spkPath": str(root / "app.spk"), "metadataPath": str(root / "metadata.json"),
+                   "runtimeContractPath": str(root / "RUNTIME-CONTRACT.json")}
+        values = {"MEL_NEW_APP_HASH": app_hash, "MEL_RELEASE_HASH": release_hash,
+                  "MEL_NEW_VERSION": version, "MEL_RELEASE_NONCE": nonce,
+                  "MEL_RELEASE_SCANNER_SIGNING_KEY": str(root / "missing.key"),
+                  "MEL_RELEASE_CLAMAV_DATABASE": str(root / "missing-db"),
+                  "MEL_RELEASE_SCAN_WORK_DIR": str(root / "missing-work")}
+        with patch.object(provider, "require_context", return_value=context), \
+             patch.object(provider, "env", side_effect=lambda name, required=False, default="": values.get(name, default)), \
+             patch.object(provider, "rewrite_release", return_value=release), \
+             patch.object(provider, "run", side_effect=AssertionError("Store operation attempted")):
             try:
-                provider.main()
+                provider.direct_app_publish(CYBERTELLER_CONFIG_APP_ID, "stage", root / "receipt.json")
             except provider.ProviderError as exc:
-                assert "direct-app-publish-retired" in str(exc), (operation, exc)
+                assert "direct-app-publish-scanner-input-invalid" in str(exc)
             else:
-                raise AssertionError(f"direct-app-publish-retired: {operation} was accepted")
-    finally:
-        provider.sys.argv = old_argv
+                raise AssertionError("missing scanner identity was accepted")
 
 
 if __name__ == "__main__":
     test_provider_helpers_rebuild_from_current_source_not_ignored_module_bin()
     test_finalize_uses_only_supported_flags()
-    test_direct_app_publish_operations_retired()
+    test_pre_pilot_direct_publish_uses_scanned_product_client()
+    test_pre_pilot_direct_publish_refuses_missing_scanner_before_submit()
     test_propose_uses_only_supported_flags()
     test_resumed_proposal_reuses_only_an_exact_persisted_ceremony_state()
     test_propose_register_resumes_the_exact_state_without_advancing_index()

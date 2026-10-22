@@ -4,8 +4,9 @@
 The Go CLI owns the durable two-command state machine. This provider builds an
 SPK from a committed app tree, creates an *unexecuted* Squads ReleaseEntry
 proposal, and reads the ReleaseEntry account back for mel-release to admit.
-Bazaar Control owns the private Store prepare and publish operations; this
-provider refuses the retired direct stage and promote operations. It binds the
+Until a selected Store completes the Bazaar Control pilot and turns on its
+governed cutover policy, this provider stages and promotes through cmd/submit,
+which enforces the Store's signed scan and publisher gates. It binds the
 candidate RELEASE.json to the admitted entry and revokes only declared stale
 ReleaseEntries. It never approves or executes a
 register proposal: the owner-authorized runner registers every ReleaseEntry.
@@ -3917,10 +3918,93 @@ def revoke(pda: str, receipt_out: Path) -> None:
     write_json(receipt_out, {"schema": "melusina-revoke-release-receipt-v1", "releaseEntryPda": pda, "status": "Revoked", "transactionSignature": result.get("signature", "")})
 
 
+def direct_app_publish(app_id: str, operation: str, receipt_out: Path) -> None:
+    """Use the Store's existing two-phase publisher client before Pearl cutover.
+
+    The selected Store itself refuses this route after its governed Bazaar
+    Control cutover.  This producer only restores the missing source-aware
+    adapter for the direct route while the live policy still permits it.
+    """
+    if operation not in {"stage", "promote"}:
+        raise ProviderError("direct-app-publish-operation-invalid")
+    context = require_context(app_id)
+    if context.get("appId") != app_id:
+        raise ProviderError("direct-app-publish-context-app-id-mismatch")
+    app_hash = env("MEL_NEW_APP_HASH", required=True)
+    release_hash = env("MEL_RELEASE_HASH", required=True)
+    version = env("MEL_NEW_VERSION", required=True)
+    release_path = clean_abs(str(context["releasePath"]), "provider releasePath")
+    spk = clean_abs(str(context["spkPath"]), "provider spkPath")
+    metadata = clean_abs(str(context["metadataPath"]), "provider metadataPath")
+    runtime = clean_abs(str(context["runtimeContractPath"]), "provider runtimeContractPath")
+    for name, path in (("SPK", spk), ("metadata", metadata), ("runtime contract", runtime)):
+        if path.is_symlink() or not path.is_file():
+            raise ProviderError(f"direct-app-publish-{name}-missing-or-symlink")
+    if operation == "stage":
+        nonce = env("MEL_RELEASE_NONCE", required=True)
+        if hashlib.sha256((app_hash + version + nonce).encode()).hexdigest() != release_hash:
+            raise ProviderError("direct-app-publish-release-hash-mismatch")
+        rewrite_release(context, app_id, app_hash, release_hash, version, nonce)
+    release = read_json(release_path)
+    if any(release.get(key) != value for key, value in
+           (("appHash", app_hash), ("releaseHash", release_hash), ("version", version))):
+        raise ProviderError("direct-app-publish-release-mismatch")
+    if operation == "promote":
+        if not env("MEL_STAGE_ID", required=True):
+            raise ProviderError("direct-app-publish-stage-id-missing")
+        if not release.get("releaseEntryPda") or not release.get("authorSig"):
+            raise ProviderError("direct-app-publish-final-release-missing")
+    if not runtime.is_file() or release.get("runtimeContractSha256") != hex_sha(runtime):
+        raise ProviderError("direct-app-publish-runtime-contract-mismatch")
+    scan_key = clean_abs(env("MEL_RELEASE_SCANNER_SIGNING_KEY", required=True), "MEL_RELEASE_SCANNER_SIGNING_KEY")
+    scan_db = clean_abs(env("MEL_RELEASE_CLAMAV_DATABASE", required=True), "MEL_RELEASE_CLAMAV_DATABASE")
+    scan_work = clean_abs(env("MEL_RELEASE_SCAN_WORK_DIR", required=True), "MEL_RELEASE_SCAN_WORK_DIR")
+    if scan_key.is_symlink() or not scan_key.is_file() or scan_db.is_symlink() or not scan_db.is_dir() or scan_work.is_symlink() or not scan_work.is_dir():
+        raise ProviderError("direct-app-publish-scanner-input-invalid")
+    target = "/publish/stage" if operation == "stage" else "/publish"
+    scan_path = state_root(app_id) / f"scan-{operation}.json"
+    scan_raw = run(["go", "run", "./cmd/scan-app", "scan", "--spk", str(spk),
+                    "--metadata", str(metadata), "--release", str(release_path),
+                    "--target", target, "--signing-key", str(scan_key),
+                    "--database", str(scan_db), "--work-dir", str(scan_work),
+                    "--runtime-contract", str(runtime)], cwd=MODULE)
+    # Preserve the scanner's signed bytes, rather than decoding and rewriting.
+    scan_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    scan_tmp = scan_path.with_name(scan_path.name + ".tmp")
+    scan_tmp.write_text(scan_raw, encoding="utf-8")
+    os.chmod(scan_tmp, 0o600)
+    os.replace(scan_tmp, scan_path)
+    private = []
+    if env("MEL_RELEASE_PRIVATE_STORE_ROUTE"):
+        private = ["--private-route", str(clean_abs(env("MEL_RELEASE_PRIVATE_STORE_ROUTE", required=True), "MEL_RELEASE_PRIVATE_STORE_ROUTE")),
+                   "--estate-profile", str(clean_abs(env("MEL_RELEASE_ESTATE_PROFILE", required=True), "MEL_RELEASE_ESTATE_PROFILE")),
+                   "--estate-profile-sha256", env("MEL_RELEASE_ESTATE_PROFILE_SHA256", required=True)]
+    slot_values = [env(name) for name in ("MEL_RELEASE_CATALOG_DEVELOPER", "MEL_RELEASE_CATALOG_REPO", "MEL_RELEASE_CATALOG_SLUG")]
+    if any(slot_values) and not all(slot_values):
+        raise ProviderError("direct-app-publish-catalog-slot-incomplete")
+    slot = (["--developer", slot_values[0], "--repo", slot_values[1], "--slug", slot_values[2]]
+            if all(slot_values) else [])
+    submit = ["go", "run", "./cmd/submit", "--store", store_origin(),
+              "--spk", str(spk), "--metadata", str(metadata), "--release", str(release_path),
+              "--runtime-contract", str(runtime), "--scan-report", str(scan_path),
+              "--publisher-key", env("MEL_RELEASE_PUBLISHER_KEY", required=True),
+              "--store-pubkey", env("MEL_RELEASE_STORE_PUBKEY", required=True),
+              "--license-mint", env("MEL_RELEASE_STORE_LICENSE_MINT", required=True),
+              "--domain", store_domain(), "--rpc-url", env("MEL_RELEASE_RPC_URL", required=True),
+              "--program-id", env("MEL_PROGRAM_ID", required=True),
+              "--timeout", submit_timeout(), *private, *slot,
+              "--receipt-out", str(receipt_out)]
+    if operation == "stage":
+        submit.append("--stage")
+    run(submit, cwd=MODULE, extra_env=submit_transport_env())
+    if not receipt_out.is_file() or receipt_out.is_symlink():
+        raise ProviderError("direct-app-publish-verified-receipt-missing")
+
+
 PROVIDER_OPERATIONS = (
     "estate-scan", "audit-cohort", "audit-msb-cohort", "build", "active-releases", "release-status",
     "release-entry-account", "served-app-hash", "propose-register", "finalize-release",
-    "reject-register", "revoke",
+    "reject-register", "revoke", "stage", "promote",
 )
 
 
@@ -3928,8 +4012,6 @@ def main() -> None:
     if len(sys.argv) != 2:
         raise ProviderError(f"usage: mel-release-provider.py <{'|'.join(PROVIDER_OPERATIONS)}>")
     op = sys.argv[1]
-    if op in {"stage", "promote"}:
-        raise ProviderError("direct-app-publish-retired: Bazaar Control owns prepare and publish")
     if op not in PROVIDER_OPERATIONS:
         raise ProviderError(f"unknown provider operation {op!r}")
     # The catalog is validated and estate-scanned before any operation
@@ -3937,7 +4019,7 @@ def main() -> None:
     # again: no operation runs under a manifest of the retiring estate.
     catalog_config()
     app_id = env("MEL_APP_ID")
-    if op in {"build", "propose-register", "finalize-release"}:
+    if op in {"build", "stage", "promote", "propose-register", "finalize-release"}:
         app_id = env("MEL_APP_ID", required=True)
         require_release_ready(app_id)
     if op == "estate-scan":
@@ -3963,6 +4045,10 @@ def main() -> None:
             raise ProviderError("MSB scoped source cohort is not reconciled; see MEL_COHORT_AUDIT_OUT")
     elif op == "build":
         build(app_id, env("MEL_NEW_VERSION", required=True), clean_abs(env("MEL_CANDIDATE_RECEIPT_OUT", required=True), "MEL_CANDIDATE_RECEIPT_OUT"))
+    elif op == "stage":
+        direct_app_publish(app_id, "stage", clean_abs(env("MEL_STAGE_RECEIPT_OUT", required=True), "MEL_STAGE_RECEIPT_OUT"))
+    elif op == "promote":
+        direct_app_publish(app_id, "promote", clean_abs(env("MEL_PROMOTE_RECEIPT_OUT", required=True), "MEL_PROMOTE_RECEIPT_OUT"))
     elif op == "active-releases":
         active_releases(app_id)
     elif op == "release-status":

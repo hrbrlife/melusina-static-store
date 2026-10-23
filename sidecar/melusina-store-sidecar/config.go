@@ -350,13 +350,19 @@ func defaultConfig() Config {
 
 // LoadConfig reads and validates the operator config.
 func LoadConfig(path string) (Config, error) {
-	cfg := defaultConfig()
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return cfg, fmt.Errorf("read config %s: %w", path, err)
+		return defaultConfig(), fmt.Errorf("read config %s: %w", path, err)
 	}
+	return loadConfigBytes(b, path)
+}
+
+// loadConfigBytes keeps a caller's verified raw config and the parsed config
+// bound to the same bytes. Owner readback uses this after checking its SHA.
+func loadConfigBytes(b []byte, source string) (Config, error) {
+	cfg := defaultConfig()
 	if err := json.Unmarshal(b, &cfg); err != nil {
-		return cfg, fmt.Errorf("parse config %s: %w", path, err)
+		return cfg, fmt.Errorf("parse config %s: %w", source, err)
 	}
 	if cfg.Domain == "" {
 		return cfg, fmt.Errorf("config: domain is required")

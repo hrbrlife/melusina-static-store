@@ -78,7 +78,7 @@ func storeControlPolicyReadbackCommand(args []string) error {
 	if configSHA != strings.TrimSpace(*expectedSHA) {
 		return errors.New("signed Store config SHA-256 differs")
 	}
-	cfg, err := LoadConfig(*configPath)
+	cfg, err := loadConfigBytes(configRaw, *configPath)
 	if err != nil {
 		return err
 	}

@@ -38,6 +38,12 @@ import (
 var Version = "dev"
 
 func main() {
+	// Read-only owner evidence from the configured pinned chain reader. This
+	// command never opens the private control listener or loads operator keys.
+	if len(os.Args) > 1 && os.Args[1] == "store-control-policy-readback" {
+		runStoreControlPolicyReadbackSubcommand(os.Args[2:])
+		return
+	}
 	// This is an offline, no-write preflight for the later owner-enrolled Store
 	// ceremony.  It deliberately does not make a profile file an accepted
 	// runtime identity: only estate-enroll may persist that decision.

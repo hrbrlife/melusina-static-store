@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrbrlife/melusina-attest/pda"
 	primitives "github.com/melusina-os/melusina-solana-primitives"
@@ -13,6 +15,7 @@ import (
 
 func TestPrivateControlPolicyReturnsOnlyActiveConfiguredStorePolicy(t *testing.T) {
 	cfg, _ := testConfig(t)
+	cfg.RPCURL = "https://chain.test"
 	cfg.ProgramID = programID.Base58()
 	op := newTestIdentity(t, "policy-snapshot-store", cfg.LicenseNFTMint, cfg.Domain)
 	cfg.StoreAuthority = op.Public().SignPubkeyB58
@@ -33,7 +36,12 @@ func TestPrivateControlPolicyReturnsOnlyActiveConfiguredStorePolicy(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	chain.rawAccounts[policyPDA.Base58()] = controlPolicyBlob(license, primitives.StoreDomainHash(cfg.Domain), authority, authz, [32]byte{1}, [32]byte{2}, 7)
+	pearlKey, humanKey := [32]byte{1}, [32]byte{2}
+	chain.rawAccounts[policyPDA.Base58()] = controlPolicyBlob(license, primitives.StoreDomainHash(cfg.Domain), authority, authz, pearlKey, humanKey, 7)
+	readback, err := currentStoreControlPolicyReadback(t.Context(), cfg, chain, strings.Repeat("a", 64), time.Date(2026, 10, 23, 0, 0, 0, 0, time.UTC))
+	if err != nil || readback.StorePolicy != policyPDA.Base58() || readback.PolicyEpoch != 7 || readback.PearlCommandPublicKey != base64.RawURLEncoding.EncodeToString(pearlKey[:]) || readback.HumanApprovalPublicKey != base64.RawURLEncoding.EncodeToString(humanKey[:]) {
+		t.Fatalf("independent chain readback differs from active verified policy: %#v %v", readback, err)
+	}
 	svc := newTestService(t, cfg, chain, op)
 	handler := newControlReleaseRouter(svc)
 

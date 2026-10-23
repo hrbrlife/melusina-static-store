@@ -153,13 +153,21 @@ type Config struct {
 	// failure from an earlier endpoint; they never turn a missing, revoked, or
 	// malformed on-chain record into a success.
 	RPCFallbackURLs []string `json:"rpc_fallback_urls,omitempty"`
+	// RPCTLSSPKISHA256 pins the TLS public key for the primary and each
+	// fallback, in that exact order. A populated list must cover every origin.
+	RPCTLSSPKISHA256 []string `json:"rpc_tls_spki_sha256,omitempty"`
 	// RPCAttempts is the bounded number of attempts per configured endpoint when
 	// the failure is transport-level.  Zero uses the conservative default of two.
 	// It is deliberately capped so an unavailable chain cannot hold a package
 	// request open without bound.
-	RPCAttempts int    `json:"rpc_attempts,omitempty"`
-	ListenAddr  string `json:"listen_addr"`
-	DistDir     string `json:"dist_dir"`
+	RPCAttempts int `json:"rpc_attempts,omitempty"`
+	// RPCBackoffMillis is the signed base for capped exponential retry delay.
+	RPCBackoffMillis int `json:"rpc_backoff_millis,omitempty"`
+	// CatalogVerifiedRowTTLSeconds bounds positive catalog-row reuse. Zero
+	// keeps the historical per-request verification behavior.
+	CatalogVerifiedRowTTLSeconds int    `json:"catalog_verified_row_ttl_seconds,omitempty"`
+	ListenAddr                   string `json:"listen_addr"`
+	DistDir                      string `json:"dist_dir"`
 	// PrivateStageDir is the non-public, content-addressed candidate store used by
 	// the two-phase app release path. Candidate bytes land here before any chain
 	// mutation and are promoted only after the matching ReleaseEntry is Active.
@@ -537,9 +545,18 @@ func (cfg *Config) normalizeRPCEndpoints() error {
 	if cfg.RPCAttempts < 1 || cfg.RPCAttempts > maxRPCAttempts {
 		return fmt.Errorf("config: rpc_attempts must be between 1 and %d", maxRPCAttempts)
 	}
+	if cfg.RPCBackoffMillis == 0 {
+		cfg.RPCBackoffMillis = 100
+	}
+	if cfg.RPCBackoffMillis < 50 || cfg.RPCBackoffMillis > 1000 {
+		return fmt.Errorf("config: rpc_backoff_millis must be between 50 and 1000")
+	}
+	if cfg.CatalogVerifiedRowTTLSeconds < 0 || cfg.CatalogVerifiedRowTTLSeconds > 30 {
+		return fmt.Errorf("config: catalog_verified_row_ttl_seconds must be between 0 and 30")
+	}
 	if cfg.RPCURL == "" {
-		if len(cfg.RPCFallbackURLs) != 0 {
-			return fmt.Errorf("config: rpc_fallback_urls requires rpc_url")
+		if len(cfg.RPCFallbackURLs) != 0 || len(cfg.RPCTLSSPKISHA256) != 0 {
+			return fmt.Errorf("config: rpc fallback and TLS pins require rpc_url")
 		}
 		return nil
 	}
@@ -564,6 +581,23 @@ func (cfg *Config) normalizeRPCEndpoints() error {
 		fallBacks = append(fallBacks, normalized)
 	}
 	cfg.RPCFallbackURLs = fallBacks
+	if len(cfg.RPCTLSSPKISHA256) != 0 {
+		if len(cfg.RPCTLSSPKISHA256) != 1+len(fallBacks) {
+			return fmt.Errorf("config: rpc_tls_spki_sha256 must pin every configured origin")
+		}
+		for index, pin := range cfg.RPCTLSSPKISHA256 {
+			endpoint := cfg.RPCURL
+			if index > 0 {
+				endpoint = fallBacks[index-1]
+			}
+			if !strings.HasPrefix(endpoint, "https://") || len(pin) != 64 || strings.ToLower(pin) != pin {
+				return fmt.Errorf("config: rpc_tls_spki_sha256 requires HTTPS and lowercase SHA-256 pins")
+			}
+			if _, err := hex.DecodeString(pin); err != nil {
+				return fmt.Errorf("config: rpc_tls_spki_sha256 contains an invalid SHA-256 pin")
+			}
+		}
+	}
 	return nil
 }
 

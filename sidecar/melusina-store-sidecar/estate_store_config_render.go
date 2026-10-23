@@ -72,17 +72,20 @@ var errStoreConfigRenderOutputExists = errors.New("store-config-render-output-ex
 // key field: those facts must come from the verified profile rather than a
 // command-line document someone can quietly edit.
 type storeConfigRenderInput struct {
-	Schema          string
-	Kind            string
-	ProfileSHA256   string
-	LicenseNFTMint  string
-	RPCURL          string
-	RPCFallbackURLs []string
-	RPCAttempts     int
-	ChainID         string
-	OperatorDomain  string
-	KeyVersion      uint32
-	SecurityProfile storesecurity.Profile
+	Schema                       string
+	Kind                         string
+	ProfileSHA256                string
+	LicenseNFTMint               string
+	RPCURL                       string
+	RPCFallbackURLs              []string
+	RPCAttempts                  int
+	RPCTLSSPKISHA256             []string
+	RPCBackoffMillis             int
+	CatalogVerifiedRowTTLSeconds int
+	ChainID                      string
+	OperatorDomain               string
+	KeyVersion                   uint32
+	SecurityProfile              storesecurity.Profile
 }
 
 type estateStoreConfigRenderOptions struct {
@@ -241,7 +244,7 @@ func renderEstateStoreConfig(opts estateStoreConfigRenderOptions) (storeConfigRe
 			"externalPrograms.squads-v4.programId", "roles.store-release", "releaseTrust.publisherKeys",
 		},
 		OperatorInputFields: []string{
-			"licenseNftMint", "rpcUrl", "rpcFallbackUrls", "rpcAttempts", "chainId", "operatorDomain", "keyVersion",
+			"licenseNftMint", "rpcUrl", "rpcFallbackUrls", "rpcTlsSpkiSha256", "rpcAttempts", "rpcBackoffMillis", "catalogVerifiedRowTtlSeconds", "chainId", "operatorDomain", "keyVersion",
 		},
 		DoesNotEstablish: []string{
 			"an enrolled Store or persistent enrollment state",
@@ -300,7 +303,7 @@ func loadStoreConfigRenderInput(path string) (storeConfigRenderInput, error) {
 	}
 	known := map[string]struct{}{
 		"schema": {}, "kind": {}, "profileSha256": {}, "licenseNftMint": {}, "rpcUrl": {},
-		"rpcFallbackUrls": {}, "rpcAttempts": {}, "chainId": {}, "operatorDomain": {}, "keyVersion": {}, "securityProfile": {},
+		"rpcFallbackUrls": {}, "rpcAttempts": {}, "rpcTlsSpkiSha256": {}, "rpcBackoffMillis": {}, "catalogVerifiedRowTtlSeconds": {}, "chainId": {}, "operatorDomain": {}, "keyVersion": {}, "securityProfile": {},
 	}
 	for field := range fields {
 		if _, ok := known[field]; !ok {
@@ -335,6 +338,21 @@ func loadStoreConfigRenderInput(path string) (storeConfigRenderInput, error) {
 	if input.RPCAttempts, err = storeConfigRenderRequiredPositiveInt(fields, "rpcAttempts"); err != nil {
 		return input, err
 	}
+	if _, ok := fields["rpcTlsSpkiSha256"]; ok {
+		if input.RPCTLSSPKISHA256, err = storeConfigRenderStringArray(fields, "rpcTlsSpkiSha256"); err != nil {
+			return input, err
+		}
+	}
+	if _, ok := fields["rpcBackoffMillis"]; ok {
+		if input.RPCBackoffMillis, err = storeConfigRenderRequiredPositiveInt(fields, "rpcBackoffMillis"); err != nil {
+			return input, err
+		}
+	}
+	if _, ok := fields["catalogVerifiedRowTtlSeconds"]; ok {
+		if input.CatalogVerifiedRowTTLSeconds, err = storeConfigRenderRequiredPositiveInt(fields, "catalogVerifiedRowTtlSeconds"); err != nil {
+			return input, err
+		}
+	}
 	if input.ChainID, err = storeConfigRenderRequiredOpaqueString(fields, "chainId"); err != nil {
 		return input, err
 	}
@@ -356,7 +374,13 @@ func loadStoreConfigRenderInput(path string) (storeConfigRenderInput, error) {
 		return input, err
 	}
 
-	endpointConfig := Config{RPCURL: input.RPCURL, RPCFallbackURLs: input.RPCFallbackURLs, RPCAttempts: input.RPCAttempts}
+	for _, endpoint := range append([]string{input.RPCURL}, input.RPCFallbackURLs...) {
+		parsed, parseErr := url.ParseRequestURI(strings.TrimSpace(endpoint))
+		if parseErr == nil && parsed.Scheme == "http" && parsed.Host != "" {
+			return input, errors.New("store-config-render-input-rpc-must-use-https")
+		}
+	}
+	endpointConfig := Config{RPCURL: input.RPCURL, RPCFallbackURLs: input.RPCFallbackURLs, RPCAttempts: input.RPCAttempts, RPCTLSSPKISHA256: input.RPCTLSSPKISHA256, RPCBackoffMillis: input.RPCBackoffMillis, CatalogVerifiedRowTTLSeconds: input.CatalogVerifiedRowTTLSeconds}
 	if err := endpointConfig.normalizeRPCEndpoints(); err != nil {
 		return input, fmt.Errorf("store-config-render-input-rpc: %w", err)
 	}
@@ -371,6 +395,9 @@ func loadStoreConfigRenderInput(path string) (storeConfigRenderInput, error) {
 	input.RPCURL = endpointConfig.RPCURL
 	input.RPCFallbackURLs = endpointConfig.RPCFallbackURLs
 	input.RPCAttempts = endpointConfig.RPCAttempts
+	input.RPCTLSSPKISHA256 = endpointConfig.RPCTLSSPKISHA256
+	input.RPCBackoffMillis = endpointConfig.RPCBackoffMillis
+	input.CatalogVerifiedRowTTLSeconds = endpointConfig.CatalogVerifiedRowTTLSeconds
 	return input, nil
 }
 
@@ -513,17 +540,20 @@ func buildStoreConfigRenderCandidate(profile estateprofile.EstateProfileV1, inpu
 			// binary re-retires the direct route by rendering true.
 			RequirePearlControlForAppPublish: false,
 		},
-		RPCURL:                   input.RPCURL,
-		RPCFallbackURLs:          append([]string(nil), input.RPCFallbackURLs...),
-		RPCAttempts:              input.RPCAttempts,
-		ListenAddr:               ":8443",
-		DistDir:                  "/var/lib/melusina-store/dist-publish",
-		PrivateStageDir:          "/var/lib/melusina-store/private-app-candidates",
-		CatalogGenerationRoot:    "/var/lib/melusina-store/app-catalog-generations",
-		CatalogMigrationStateDir: "/var/lib/melusina-store/migrations",
-		CatalogRepoRoot:          "/var/lib/melusina-store/catalog-source",
-		ServedSnapshotDir:        storeConfigRenderServedSnapshotDir,
-		ListingSignerSocket:      storeConfigRenderListingSigner,
+		RPCURL:                       input.RPCURL,
+		RPCFallbackURLs:              append([]string(nil), input.RPCFallbackURLs...),
+		RPCAttempts:                  input.RPCAttempts,
+		RPCTLSSPKISHA256:             append([]string(nil), input.RPCTLSSPKISHA256...),
+		RPCBackoffMillis:             input.RPCBackoffMillis,
+		CatalogVerifiedRowTTLSeconds: input.CatalogVerifiedRowTTLSeconds,
+		ListenAddr:                   ":8443",
+		DistDir:                      "/var/lib/melusina-store/dist-publish",
+		PrivateStageDir:              "/var/lib/melusina-store/private-app-candidates",
+		CatalogGenerationRoot:        "/var/lib/melusina-store/app-catalog-generations",
+		CatalogMigrationStateDir:     "/var/lib/melusina-store/migrations",
+		CatalogRepoRoot:              "/var/lib/melusina-store/catalog-source",
+		ServedSnapshotDir:            storeConfigRenderServedSnapshotDir,
+		ListingSignerSocket:          storeConfigRenderListingSigner,
 		StoreLinkControlMTLS: StoreLinkControlMTLSConfig{
 			ListenAddr:                input.SecurityProfile.ControlListenAddr,
 			CertPath:                  storeConfigRenderControlCert,

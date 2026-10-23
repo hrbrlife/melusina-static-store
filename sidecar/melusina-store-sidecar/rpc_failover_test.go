@@ -3,7 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -11,9 +14,111 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/hrbrlife/melusina-identity-gate/verify"
 )
+
+func TestConfiguredRPCReader_BoundedSignedBackoffAndFiveAttempts(t *testing.T) {
+	for _, check := range []struct {
+		failures int
+		want     time.Duration
+	}{
+		{1, 250 * time.Millisecond}, {2, 500 * time.Millisecond}, {3, time.Second},
+		{4, 2 * time.Second}, {5, 2 * time.Second},
+	} {
+		if got := boundedRPCBackoff(250*time.Millisecond, check.failures); got != check.want {
+			t.Fatalf("backoff after %d failures = %s, want %s", check.failures, got, check.want)
+		}
+	}
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		http.Error(w, "rate limited", http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+	reader := newConfiguredStoreRPCReader(Config{RPCURL: server.URL, RPCAttempts: 5, RPCBackoffMillis: 250}).(*rpcFailoverChainReader)
+	if reader.delay != 250*time.Millisecond {
+		t.Fatalf("signed backoff = %s", reader.delay)
+	}
+	reader.delay = 0 // isolate the attempt bound from wall-clock waiting
+	_, _, err := reader.fetchRawAccount(context.Background(), "account")
+	if !errors.Is(err, verify.ErrRPCUnreachable) || calls.Load() != 5 {
+		t.Fatalf("bounded five-attempt retry = (%v, %d calls)", err, calls.Load())
+	}
+}
+
+func TestConfiguredRPCReader_RefusesWrongOriginTLSPin(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		writeRPCAccountResponse(t, w, []byte("pinned-account"))
+	}))
+	defer server.Close()
+	pool := x509.NewCertPool()
+	pool.AddCert(server.Certificate())
+	good := sha256.Sum256(server.Certificate().RawSubjectPublicKeyInfo)
+	for _, check := range []struct {
+		name, pin string
+		allowed   bool
+	}{
+		{"correct pin", hex.EncodeToString(good[:]), true},
+		{"wrong pin", strings.Repeat("0", 64), false},
+	} {
+		t.Run(check.name, func(t *testing.T) {
+			reader := newStoreRPCReader(server.URL, check.pin)
+			reader.HTTPClient.Transport.(*http.Transport).TLSClientConfig.RootCAs = pool
+			data, _, err := reader.fetchRawAccount(context.Background(), "account")
+			if check.allowed && (err != nil || !bytes.Equal(data, []byte("pinned-account"))) {
+				t.Fatalf("correct pinned origin refused: data=%q err=%v", data, err)
+			}
+			if !check.allowed && (!errors.Is(err, verify.ErrRPCUnreachable) || !strings.Contains(err.Error(), "rpc-tls-spki-pin-mismatch")) {
+				t.Fatalf("wrong pinned origin accepted: data=%q err=%v", data, err)
+			}
+		})
+	}
+}
+
+func TestConfiguredRPCReader_OrderedFallbackUsesItsOwnTLSPin(t *testing.T) {
+	var primaryCalls, fallbackCalls atomic.Int32
+	primary := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		primaryCalls.Add(1)
+		http.Error(w, "rate limited", http.StatusTooManyRequests)
+	}))
+	defer primary.Close()
+	fallback := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fallbackCalls.Add(1)
+		writeRPCAccountResponse(t, w, []byte("fallback-account"))
+	}))
+	defer fallback.Close()
+	pool := x509.NewCertPool()
+	pool.AddCert(primary.Certificate())
+	pool.AddCert(fallback.Certificate())
+	primaryPin := sha256.Sum256(primary.Certificate().RawSubjectPublicKeyInfo)
+	fallbackPin := sha256.Sum256(fallback.Certificate().RawSubjectPublicKeyInfo)
+	makeReader := func(pins []string) *rpcFailoverChainReader {
+		reader := newConfiguredStoreRPCReader(Config{
+			RPCURL: primary.URL, RPCFallbackURLs: []string{fallback.URL},
+			RPCTLSSPKISHA256: pins, RPCAttempts: 1,
+		}).(*rpcFailoverChainReader)
+		reader.delay = 0
+		for _, raw := range reader.rawReaders {
+			raw.(*storeRPCReader).HTTPClient.Transport.(*http.Transport).TLSClientConfig.RootCAs = pool
+		}
+		return reader
+	}
+	reader := makeReader([]string{hex.EncodeToString(primaryPin[:]), hex.EncodeToString(fallbackPin[:])})
+	data, _, err := reader.fetchRawAccount(context.Background(), "account")
+	if err != nil || !bytes.Equal(data, []byte("fallback-account")) || primaryCalls.Load() != 1 || fallbackCalls.Load() != 1 {
+		t.Fatalf("ordered pinned fallback = (data=%q, err=%v, primary=%d, fallback=%d)", data, err, primaryCalls.Load(), fallbackCalls.Load())
+	}
+	reader = makeReader([]string{hex.EncodeToString(primaryPin[:]), strings.Repeat("0", 64)})
+	data, _, err = reader.fetchRawAccount(context.Background(), "account")
+	if !errors.Is(err, verify.ErrRPCUnreachable) || !strings.Contains(err.Error(), "rpc-tls-spki-pin-mismatch") || len(data) != 0 {
+		t.Fatalf("wrong fallback origin pin accepted: data=%q err=%v", data, err)
+	}
+	if primaryCalls.Load() != 2 || fallbackCalls.Load() != 1 {
+		t.Fatalf("wrong fallback pin reached HTTP handler: primary=%d fallback=%d", primaryCalls.Load(), fallbackCalls.Load())
+	}
+}
 
 func writeRPCAccountResponse(t *testing.T, w http.ResponseWriter, data []byte) {
 	t.Helper()

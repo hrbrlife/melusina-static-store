@@ -2811,7 +2811,7 @@ def frozen_ab_package_input(
     ``dev-publish`` remains the selected source head. Popaye's ordinary merge
     puts its older package commit behind that head. Both shapes are accepted
     only with exact remote ref, Git ancestry, clean recursive source, frozen
-    14-pin table/roster and byte-equal SPKs. The normal source-pack path stays
+    reviewed table/roster and byte-equal SPKs. The normal source-pack path stays
     unchanged when MEL_RELEASE_FROZEN_PINS is absent.
     """
     pin_path = clean_abs(env("MEL_RELEASE_FROZEN_PINS", required=True), "MEL_RELEASE_FROZEN_PINS")
@@ -2827,8 +2827,25 @@ def frozen_ab_package_input(
         if not reader.fieldnames or set(reader.fieldnames) != required:
             raise ProviderError("frozen A/B pins have the wrong columns")
         pins = list(reader)
-    if len(pins) != 14 or len({p["app_id"] for p in pins}) != 14 or len({p["app"] for p in pins}) != 14:
-        raise ProviderError("frozen A/B pins must name exactly 14 distinct apps")
+    # The original reviewed freeze is 14 apps. Genesis5 adds TeleScreen as a
+    # fifteenth app after the signed 14-app seed; require an explicit operator
+    # selection and exact agreement with the complete projected catalog.
+    frozen_size = env("MEL_RELEASE_FROZEN_SET_SIZE") or "14"
+    if frozen_size not in {"14", "15"}:
+        raise ProviderError("frozen A/B set size must be 14 or 15")
+    expected_count = int(frozen_size)
+    if (len(pins) != expected_count or
+            len({p["app_id"] for p in pins}) != expected_count or
+            len({p["app"] for p in pins}) != expected_count):
+        raise ProviderError(f"frozen A/B pins must name exactly {expected_count} distinct apps")
+    if expected_count == 15:
+        catalog = catalog_config()
+        if catalog.get("expected_live_app_count") != 15:
+            raise ProviderError("frozen 15-app set requires a 15-app projected catalog")
+        catalog_ids = {spec["appId"] for group in catalog["groups"].values()
+                       for spec in group["apps"].values()}
+        if {pin["app_id"] for pin in pins} != catalog_ids:
+            raise ProviderError("frozen 15-app pins differ from the projected catalog membership")
     pin = next((p for p in pins if p["app_id"] == app_id), None)
     if pin is None or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", pin["app"]):
         raise ProviderError("frozen A/B pins do not select the catalog app")
@@ -2895,8 +2912,8 @@ def frozen_ab_package_input(
                 if cells[2] in table:
                     raise ProviderError("frozen A/B table duplicates an app")
                 table[cells[2]] = cells
-        if len(table) != 14:
-            raise ProviderError("frozen A/B table does not contain 14 app rows")
+        if len(table) != expected_count:
+            raise ProviderError(f"frozen A/B table does not contain {expected_count} app rows")
         for row in pins:
             cells = table[row["app"]]
             if ([cells[3], cells[4], cells[5], cells[6], cells[7], cells[8], cells[9], cells[10]] !=
@@ -2909,8 +2926,9 @@ def frozen_ab_package_input(
             raise ProviderError("frozen A/B table does not bind unsigned roster bytes")
         with roster_path.open(newline="", encoding="utf-8") as handle:
             roster = list(csv.DictReader(handle, delimiter="\t"))
-        if len(roster) != 14 or {row.get("app") for row in roster} != {p["app"] for p in pins}:
-            raise ProviderError("frozen A/B roster does not name exactly the 14 pins")
+        if (len(roster) != expected_count or
+                {row.get("app") for row in roster} != {p["app"] for p in pins}):
+            raise ProviderError(f"frozen A/B roster does not name exactly the {expected_count} pins")
         for row in roster:
             matching = next(p for p in pins if p["app"] == row["app"])
             for field in ("marketing_version", "app_version", "app_id", "package_id",

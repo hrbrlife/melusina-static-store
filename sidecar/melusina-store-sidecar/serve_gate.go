@@ -68,6 +68,12 @@ type serveGate struct {
 	// entire HTTP handler or making every first load exceed the edge timeout.
 	catalogVerifyWorkers int
 	catalogVerifyTimeout time.Duration
+	// Positive catalog-row verdicts may be reused only for the signed-config
+	// TTL. Omitted, revoked, missing and failed rows are never cached.
+	catalogRowTTL     time.Duration
+	catalogRowMu      sync.Mutex
+	catalogRowVerdict map[string]time.Time
+	catalogRowFlights map[string]*catalogRowFlight
 
 	// now is the clock (injectable in tests for deterministic TTL expiry).
 	now func() time.Time
@@ -146,6 +152,9 @@ func newServeGate(cfg Config, cr chainReader, fileServer http.Handler, operators
 		releaseRefresh:       refresh,
 		catalogVerifyWorkers: catalogGateMaxConcurrent,
 		catalogVerifyTimeout: catalogGateRequestTimeout,
+		catalogRowTTL:        time.Duration(cfg.CatalogVerifiedRowTTLSeconds) * time.Second,
+		catalogRowVerdict:    make(map[string]time.Time),
+		catalogRowFlights:    make(map[string]*catalogRowFlight),
 		now:                  time.Now,
 		snapshots:            newServedSnapshotStore(cfg.ServedSnapshotDir),
 		transfer:             publicTransfer,
@@ -453,7 +462,15 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 	// entry, listing) from a single batched fetch. The prime degrades to the memo
 	// on any difficulty and never synthesises an answer.
 	catalogReader := chainReader(newMemoChainReader(g.cr))
-	catalogReader = primeCatalogAccounts(verifyCtx, g.cfg, catalogReader, g.cr, candidates)
+	needsRead := make([]catalogGateCandidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		if g.catalogRowNeedsRead(catalogRowKey(candidate)) {
+			needsRead = append(needsRead, candidate)
+		}
+	}
+	if len(needsRead) > 0 {
+		catalogReader = primeCatalogAccounts(verifyCtx, g.cfg, catalogReader, g.cr, needsRead)
+	}
 	results := make([]error, len(candidates))
 	jobs := make(chan int)
 	var wg sync.WaitGroup
@@ -471,7 +488,11 @@ func (g *serveGate) projectCatalog(ctx context.Context, r *http.Request) (storeC
 					if !ok {
 						return
 					}
-					err := g.gateWith(verifyCtx, catalogReader, candidates[index].app.rel.AppHash, metadataAppID(candidates[index].app.metadata), candidates[index].app.rel)
+					candidate := candidates[index]
+					key := catalogRowKey(candidate)
+					err := g.verifyCatalogRow(verifyCtx, key, func() error {
+						return g.gateWith(verifyCtx, catalogReader, candidate.app.rel.AppHash, metadataAppID(candidate.app.metadata), candidate.app.rel)
+					})
 					results[index] = err
 					if err != nil && !catalogOmission(err) {
 						failureOnce.Do(func() {

@@ -1062,13 +1062,20 @@ func listingCompactU16(value int) []byte {
 type listingBootstrapRPC struct {
 	endpoints []string
 	attempts  int
-	client    *http.Client
+	clients   []*http.Client
 	nextID    uint64
 }
 
 func newListingBootstrapRPC(cfg Config) *listingBootstrapRPC {
 	endpoints := append([]string{cfg.RPCURL}, cfg.RPCFallbackURLs...)
-	return &listingBootstrapRPC{endpoints: endpoints, attempts: cfg.RPCAttempts, client: &http.Client{Timeout: listingRPCTimeout}}
+	clients := make([]*http.Client, len(endpoints))
+	for index := range clients {
+		clients[index] = &http.Client{Timeout: listingRPCTimeout}
+		if index < len(cfg.RPCTLSSPKISHA256) {
+			clients[index] = pinnedRPCHTTPClient(cfg.RPCTLSSPKISHA256[index], listingRPCTimeout)
+		}
+	}
+	return &listingBootstrapRPC{endpoints: endpoints, attempts: cfg.RPCAttempts, clients: clients}
 }
 
 func (r *listingBootstrapRPC) call(ctx context.Context, method string, params any, out any) error {
@@ -1083,7 +1090,7 @@ func (r *listingBootstrapRPC) call(ctx context.Context, method string, params an
 		return err
 	}
 	var failures []string
-	for _, endpoint := range r.endpoints {
+	for endpointIndex, endpoint := range r.endpoints {
 		for attempt := 0; attempt < r.attempts; attempt++ {
 			r.nextID++
 			body, err := json.Marshal(struct {
@@ -1100,7 +1107,7 @@ func (r *listingBootstrapRPC) call(ctx context.Context, method string, params an
 				return err
 			}
 			req.Header.Set("Content-Type", "application/json")
-			response, err := r.client.Do(req)
+			response, err := r.clients[endpointIndex].Do(req)
 			if err != nil {
 				failures = append(failures, "transport")
 				continue

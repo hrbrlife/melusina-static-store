@@ -3,8 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,16 +26,40 @@ const releaseEntryAppIDOffset = verify.AccountDiscriminatorLen + 32 + 32
 
 const (
 	defaultRPCAttempts = 2
-	maxRPCAttempts     = 3
+	maxRPCAttempts     = 5
 	rpcRetryDelay      = 100 * time.Millisecond
+	maxRPCRetryDelay   = 2 * time.Second
 )
 
 type storeRPCReader struct {
 	*verify.RPCClient
 }
 
-func newStoreRPCReader(endpoint string) *storeRPCReader {
-	return &storeRPCReader{RPCClient: verify.NewRPCClient(endpoint)}
+func newStoreRPCReader(endpoint string, pin ...string) *storeRPCReader {
+	client := verify.NewRPCClient(endpoint)
+	if len(pin) > 0 && pin[0] != "" {
+		client.HTTPClient = pinnedRPCHTTPClient(pin[0], 10*time.Second)
+	}
+	return &storeRPCReader{RPCClient: client}
+}
+
+func pinnedRPCHTTPClient(pin string, timeout time.Duration) *http.Client {
+	want, _ := hex.DecodeString(pin) // normalized configuration validated it
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12, VerifyConnection: func(state tls.ConnectionState) error {
+		if len(state.PeerCertificates) == 0 || len(want) != sha256.Size {
+			return errors.New("rpc-tls-spki-pin-missing")
+		}
+		got := sha256.Sum256(state.PeerCertificates[0].RawSubjectPublicKeyInfo)
+		if subtle.ConstantTimeCompare(got[:], want) != 1 {
+			return errors.New("rpc-tls-spki-pin-mismatch")
+		}
+		return nil
+	}}
+	// A signed origin pin must not be bypassed by a cross-origin or HTTP redirect.
+	return &http.Client{Timeout: timeout, Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
 }
 
 // rpcFailoverChainReader keeps the existing verification semantics while
@@ -58,12 +86,18 @@ func newConfiguredStoreRPCReader(cfg Config) chainReader {
 	readers := make([]chainReader, 0, 1+len(cfg.RPCFallbackURLs))
 	rawReaders := make([]rawAccountReader, 0, 1+len(cfg.RPCFallbackURLs))
 	multiReaders := make([]multiAccountReader, 0, 1+len(cfg.RPCFallbackURLs))
-	primary := newStoreRPCReader(cfg.RPCURL)
+	pinFor := func(index int) string {
+		if index < len(cfg.RPCTLSSPKISHA256) {
+			return cfg.RPCTLSSPKISHA256[index]
+		}
+		return ""
+	}
+	primary := newStoreRPCReader(cfg.RPCURL, pinFor(0))
 	readers = append(readers, primary)
 	rawReaders = append(rawReaders, primary)
 	multiReaders = append(multiReaders, primary)
-	for _, endpoint := range cfg.RPCFallbackURLs {
-		reader := newStoreRPCReader(endpoint)
+	for index, endpoint := range cfg.RPCFallbackURLs {
+		reader := newStoreRPCReader(endpoint, pinFor(index+1))
 		readers = append(readers, reader)
 		rawReaders = append(rawReaders, reader)
 		multiReaders = append(multiReaders, reader)
@@ -72,7 +106,11 @@ func newConfiguredStoreRPCReader(cfg Config) chainReader {
 	if attempts == 0 {
 		attempts = defaultRPCAttempts
 	}
-	return &rpcFailoverChainReader{readers: readers, rawReaders: rawReaders, multiReaders: multiReaders, attempts: attempts, delay: rpcRetryDelay}
+	delay := rpcRetryDelay
+	if cfg.RPCBackoffMillis > 0 {
+		delay = time.Duration(cfg.RPCBackoffMillis) * time.Millisecond
+	}
+	return &rpcFailoverChainReader{readers: readers, rawReaders: rawReaders, multiReaders: multiReaders, attempts: attempts, delay: delay}
 }
 
 func (c *rpcFailoverChainReader) call(ctx context.Context, invoke func(context.Context, chainReader) error) error {
@@ -93,13 +131,27 @@ func (c *rpcFailoverChainReader) call(ctx context.Context, invoke func(context.C
 			transientFailures++
 			lastTransient = err
 			if attempt+1 < c.attempts || readerIndex+1 < len(c.readers) {
-				if err := waitForRPCRetry(ctx, c.delay); err != nil {
+				if err := waitForRPCRetry(ctx, boundedRPCBackoff(c.delay, transientFailures)); err != nil {
 					return err
 				}
 			}
 		}
 	}
 	return fmt.Errorf("%w: all configured RPC attempts failed (%d transport failure(s)); last cause: %v", verify.ErrRPCUnreachable, transientFailures, lastTransient)
+}
+
+func boundedRPCBackoff(base time.Duration, failures int) time.Duration {
+	if base <= 0 {
+		return 0
+	}
+	delay := base
+	for index := 1; index < failures && delay < maxRPCRetryDelay; index++ {
+		delay *= 2
+	}
+	if delay > maxRPCRetryDelay {
+		return maxRPCRetryDelay
+	}
+	return delay
 }
 
 func waitForRPCRetry(ctx context.Context, delay time.Duration) error {

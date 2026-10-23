@@ -38,16 +38,19 @@ func newStoreConfigRenderFixture(t *testing.T) (estateprofile.EstateProfileV1, s
 		t.Fatal(err)
 	}
 	input := map[string]any{
-		"schema":          storeConfigRenderInputSchema,
-		"kind":            storeConfigRenderInputKind,
-		"profileSha256":   digest,
-		"licenseNftMint":  profile.Anchors.MasterMint,
-		"rpcUrl":          "https://rpc.rehearsal.invalid/v1",
-		"rpcFallbackUrls": []string{"https://rpc-fallback.rehearsal.invalid/v1"},
-		"rpcAttempts":     2,
-		"chainId":         "solana:rehearsal",
-		"operatorDomain":  "operator.rehearsal.invalid",
-		"securityProfile": signedStoreSecurityFixture(t, profile, digest),
+		"schema":                       storeConfigRenderInputSchema,
+		"kind":                         storeConfigRenderInputKind,
+		"profileSha256":                digest,
+		"licenseNftMint":               profile.Anchors.MasterMint,
+		"rpcUrl":                       "https://rpc.rehearsal.invalid/v1",
+		"rpcFallbackUrls":              []string{"https://rpc-fallback.rehearsal.invalid/v1"},
+		"rpcTlsSpkiSha256":             []string{strings.Repeat("a", 64), strings.Repeat("b", 64)},
+		"rpcAttempts":                  5,
+		"rpcBackoffMillis":             250,
+		"catalogVerifiedRowTtlSeconds": 10,
+		"chainId":                      "solana:rehearsal",
+		"operatorDomain":               "operator.rehearsal.invalid",
+		"securityProfile":              signedStoreSecurityFixture(t, profile, digest),
 	}
 	return profile, profilePath, filepath.Join(dir, "store-render-input.json"), filepath.Join(dir, "store.config.json"), input
 }

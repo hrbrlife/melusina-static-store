@@ -140,7 +140,10 @@ func TestLoadConfig_NormalizesTrustedRPCEndpoints(t *testing.T) {
 		"domain":"store.example.org",
 		"rpc_url":" https://primary.example/rpc?api-key=secret ",
 		"rpc_fallback_urls":["https://fallback.example/rpc"],
-		"rpc_attempts":3
+		"rpc_tls_spki_sha256":["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+		"rpc_attempts":5,
+		"rpc_backoff_millis":250,
+		"catalog_verified_row_ttl_seconds":10
 	}`))
 	if err != nil {
 		t.Fatalf("LoadConfig: %v", err)
@@ -151,8 +154,8 @@ func TestLoadConfig_NormalizesTrustedRPCEndpoints(t *testing.T) {
 	if len(cfg.RPCFallbackURLs) != 1 || cfg.RPCFallbackURLs[0] != "https://fallback.example/rpc" {
 		t.Fatalf("fallback URLs = %#v", cfg.RPCFallbackURLs)
 	}
-	if cfg.RPCAttempts != 3 {
-		t.Fatalf("rpc_attempts = %d, want 3", cfg.RPCAttempts)
+	if cfg.RPCAttempts != 5 || cfg.RPCBackoffMillis != 250 || cfg.CatalogVerifiedRowTTLSeconds != 10 || len(cfg.RPCTLSSPKISHA256) != 2 {
+		t.Fatalf("bounded RPC settings changed: %+v", cfg)
 	}
 }
 
@@ -290,7 +293,10 @@ func TestLoadConfig_RejectsUnsafeOrAmbiguousRPCEndpoints(t *testing.T) {
 		"fallback_without_primary": `,"rpc_fallback_urls":["https://fallback.example"]`,
 		"duplicate":                `,"rpc_url":"https://primary.example","rpc_fallback_urls":["https://primary.example"]`,
 		"bad_scheme":               `,"rpc_url":"file:///tmp/not-rpc"`,
-		"unbounded_attempts":       `,"rpc_url":"https://primary.example","rpc_attempts":4`,
+		"unbounded_attempts":       `,"rpc_url":"https://primary.example","rpc_attempts":6`,
+		"unbounded_backoff":        `,"rpc_url":"https://primary.example","rpc_backoff_millis":1001`,
+		"unbounded_row_cache":      `,"rpc_url":"https://primary.example","catalog_verified_row_ttl_seconds":31`,
+		"missing_fallback_pin":     `,"rpc_url":"https://primary.example","rpc_fallback_urls":["https://fallback.example"],"rpc_tls_spki_sha256":["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := LoadConfig(writeTmpConfig(t, `{`+base+suffix+`}`)); err == nil {

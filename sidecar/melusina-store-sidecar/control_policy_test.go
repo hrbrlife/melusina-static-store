@@ -49,7 +49,8 @@ func TestPrivateControlPolicyReturnsOnlyActiveConfiguredStorePolicy(t *testing.T
 		t.Fatal(err)
 	}
 	expectedPearlKey := [32]byte{1}
-	if snapshot.Schema != controlPolicySnapshotSchema || snapshot.StoreID != cfg.StoreID || snapshot.StorePolicy != policyPDA.Base58() || snapshot.PolicyEpoch != 7 || snapshot.PearlCommandPublicKey != base64.RawURLEncoding.EncodeToString(expectedPearlKey[:]) {
+	expectedHumanKey := [32]byte{2}
+	if snapshot.Schema != controlPolicySnapshotSchema || snapshot.StoreID != cfg.StoreID || snapshot.StorePolicy != policyPDA.Base58() || snapshot.PolicyEpoch != 7 || snapshot.PearlCommandPublicKey != base64.RawURLEncoding.EncodeToString(expectedPearlKey[:]) || snapshot.HumanApprovalPublicKey != base64.RawURLEncoding.EncodeToString(expectedHumanKey[:]) {
 		t.Fatalf("policy snapshot does not bind configured policy: %+v", snapshot)
 	}
 }

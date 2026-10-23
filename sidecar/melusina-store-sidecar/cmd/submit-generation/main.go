@@ -77,6 +77,7 @@ type options struct {
 	verifiedSlot      uint64
 	timeout           time.Duration
 	generationOut     string
+	readCurrentOut    string
 	envelopeOut       string
 	carryForward      bool
 	classTablePrepare bool
@@ -107,6 +108,7 @@ func parseFlags(args []string) (options, error) {
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "publisher's verified chain slot (must be nonzero)")
 	fs.DurationVar(&o.timeout, "timeout", 60*time.Second, "promote plus read-back timeout")
 	fs.StringVar(&o.generationOut, "generation-out", "", "write verified raw served generation JSON atomically to this path")
+	fs.StringVar(&o.readCurrentOut, "read-current-generation-out", "", "read-only verified current generation through the signed private route; writes one new owner-only file")
 	fs.StringVar(&o.envelopeOut, "envelope-out", "", "write the signed POST body for /publish/generation atomically; do not contact the store")
 	fs.BoolVar(&o.carryForward, "carry-forward", false, "the request names no component: it carries the current components forward in the one generation that chains from a floor recorded by store-generation-floor (the store refuses it otherwise)")
 	fs.BoolVar(&o.classTablePrepare, "class-table-prepare", false, "prepare the first sidecar cohort's Store-signed class table from staged sidecar bytes; does not promote a generation")
@@ -118,6 +120,20 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.estateProfileSHA, "estate-profile-sha256", "", "reviewed estate profile digest")
 	if err := fs.Parse(args); err != nil {
 		return o, err
+	}
+	if o.readCurrentOut != "" {
+		if fs.NArg() != 0 || o.store == "" || o.storeID == "" || o.storePubkey == "" ||
+			o.privateRoute == "" || o.estateProfile == "" || o.estateProfileSHA == "" ||
+			o.requestPath != "" || o.publisherKey != "" || o.programID != "" ||
+			o.generationOut != "" || o.envelopeOut != "" || o.classTablePrepare ||
+			o.classTableOut != "" || o.carryForward || o.connectAddress != "" || o.tlsLeaf != "" ||
+			o.verifiedSlot != 1 || o.timeout <= 0 || !filepath.IsAbs(o.readCurrentOut) {
+			return o, errors.New("read-current-generation product mode requires exact read-only private-route inputs and a new absolute output")
+		}
+		if _, err := storeURL(o.store); err != nil {
+			return o, err
+		}
+		return o, nil
 	}
 	var missing []string
 	for name, value := range map[string]string{
@@ -163,6 +179,9 @@ func run(args []string, stdout io.Writer) error {
 	o, err := parseFlags(args)
 	if err != nil {
 		return err
+	}
+	if o.readCurrentOut != "" {
+		return runReadCurrentGeneration(o, stdout)
 	}
 	requestBytes, err := os.ReadFile(o.requestPath)
 	if err != nil {

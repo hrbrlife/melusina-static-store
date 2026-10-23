@@ -853,12 +853,15 @@ func (g *serveGate) gateSignedSidecarGeneration(ctx context.Context, class, name
 
 // gate returns nil iff an SPK whose served bytes recompute to appHash may be
 // served. A fresh cache avoids re-fetching the global ReleaseEntry and app
-// clearance facts, but it NEVER caches StoreReleaseListing visibility: an
-// explicit exact DELIST must take effect on the next request. appID is the
-// served release's Sandstorm appId (its metadata.json, inside appHash). The
-// caller guarantees g.cr != nil.
+// clearance facts. When the separately configured verified-row TTL is positive,
+// an exact positive listing verdict is also reused for at most that short
+// bound; a DELIST then takes effect no later than expiry. appID is the served
+// release's Sandstorm appId (its metadata.json, inside appHash). The caller
+// guarantees g.cr != nil.
 func (g *serveGate) gate(ctx context.Context, appHash string, appID string, rel ReleaseJSON) error {
-	return g.gateWith(ctx, g.cr, appHash, appID, rel)
+	return g.verifyCatalogRow(ctx, artifactRowKey(appHash, appID, rel), func() error {
+		return g.gateWith(ctx, g.cr, appHash, appID, rel)
+	})
 }
 
 // gateWith is gate against an explicit reader. The catalog path passes a

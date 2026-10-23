@@ -47,6 +47,42 @@ func TestServeCatalogIndex_VerifiedRowCacheSkipsRPCUntilExpiry(t *testing.T) {
 	}
 }
 
+func TestServePackage_VerifiedRowCacheSkipsRPCUntilExpiry(t *testing.T) {
+	cfg, chain, fixture, _, base := serveSetup(t)
+	pinReleaseActive(chain, fixture)
+	cfg.CatalogVerifiedRowTTLSeconds = 10
+	reader := &catalogRowCountingReader{chainReader: chain}
+	gate := newServeGate(cfg, reader, http.FileServer(http.Dir(cfg.DistDir)))
+	gate.verifyTTL = 0
+	now := time.Unix(100, 0)
+	gate.now = func() time.Time { return now }
+	for request := 1; request <= 2; request++ {
+		response := serveGet(t, gate, http.MethodGet, "/packages/"+base)
+		if response.Code != http.StatusOK {
+			t.Fatalf("package request %d = %d: %s", request, response.Code, response.Body.String())
+		}
+	}
+	if got := reader.listingReads.Load(); got != 1 {
+		t.Fatalf("warm exact package row caused %d listing RPC reads, want one", got)
+	}
+	listing := chain.storeListing[fixture.listingPDA]
+	listing.status = storeListingStatusDelisted
+	chain.storeListing[fixture.listingPDA] = listing
+	now = now.Add(9 * time.Second)
+	response := serveGet(t, gate, http.MethodGet, "/packages/"+base)
+	if response.Code != http.StatusOK || reader.listingReads.Load() != 1 {
+		t.Fatalf("unexpired positive row = %d with %d listing RPC reads", response.Code, reader.listingReads.Load())
+	}
+	now = now.Add(time.Second)
+	response = serveGet(t, gate, http.MethodGet, "/packages/"+base)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("expired delisted package request = %d: %s", response.Code, response.Body.String())
+	}
+	if got := reader.listingReads.Load(); got != 2 {
+		t.Fatalf("expired package row caused %d listing RPC reads, want two", got)
+	}
+}
+
 func TestCatalogRowCacheReusesOnlyExactPositiveVerdictWithinTTL(t *testing.T) {
 	now := time.Unix(100, 0)
 	g := &serveGate{catalogRowTTL: 10 * time.Second, now: func() time.Time { return now },

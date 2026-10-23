@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -18,6 +19,12 @@ func catalogRowKey(candidate catalogGateCandidate) string {
 	return strings.ToLower(candidate.app.rel.AppHash) + ":" + metadataAppID(candidate.app.metadata) + ":" + hex.EncodeToString(rowHash[:])
 }
 
+func artifactRowKey(appHash, appID string, rel ReleaseJSON) string {
+	raw, _ := json.Marshal(rel) // ReleaseJSON contains only fixed JSON-compatible fields.
+	rowHash := sha256.Sum256(raw)
+	return "artifact:" + strings.ToLower(strings.TrimSpace(appHash)) + ":" + appID + ":" + hex.EncodeToString(rowHash[:])
+}
+
 func (g *serveGate) catalogRowNeedsRead(key string) bool {
 	if g.catalogRowTTL <= 0 {
 		return true
@@ -30,9 +37,9 @@ func (g *serveGate) catalogRowNeedsRead(key string) bool {
 	return g.catalogRowFlights[key] == nil
 }
 
-// verifyCatalogRow shares an exact positive row verdict across pointer and
-// index requests for at most the configured short TTL. A changed row key,
-// refusal or expired verdict still reaches the full product chain gate.
+// verifyCatalogRow shares an exact positive row verdict across pointer, index
+// and package requests for at most the configured short TTL. A changed row
+// key, refusal or expired verdict still reaches the full product chain gate.
 func (g *serveGate) verifyCatalogRow(ctx context.Context, key string, verify func() error) error {
 	if g.catalogRowTTL <= 0 {
 		return verify()

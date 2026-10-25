@@ -166,6 +166,19 @@ func runPrepareSidecarClasses(o options, requestBytes []byte, stdout io.Writer) 
 	if err != nil {
 		return err
 	}
+	// The publisher signs off-host and gives the exact bound body to the
+	// rendered Store control. No Store contact or key transfer occurs here.
+	if o.envelopeOut != "" {
+		if err := atomicWrite(o.envelopeOut, wire); err != nil {
+			return fmt.Errorf("write class-table envelope: %w", err)
+		}
+		sum := sha256.Sum256(wire)
+		return json.NewEncoder(stdout).Encode(map[string]any{
+			"status": "SIGNED_SIDECAR_CLASSES_ENVELOPE_OK", "requestSha256": hashHex,
+			"envelopeSha256": hex.EncodeToString(sum[:]), "envelopePath": o.envelopeOut,
+			"rows": len(request.Rows), "target": classPreparePath,
+		})
+	}
 	client, err := storeClient(o)
 	if err != nil {
 		return err

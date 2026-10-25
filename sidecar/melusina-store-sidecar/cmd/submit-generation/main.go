@@ -150,8 +150,8 @@ func parseFlags(args []string) (options, error) {
 	if o.privateRoute == "" && (o.estateProfile != "" || o.estateProfileSHA != "") {
 		return o, errors.New("publisher_private_route_arguments_refused")
 	}
-	if o.classTablePrepare && (o.classTableOut == "" || o.carryForward || o.generationOut != "" || o.envelopeOut != "") {
-		return o, errors.New("class-table-prepare requires --class-table-out and excludes generation/carry-forward/envelope output")
+	if o.classTablePrepare && ((o.classTableOut == "") == (o.envelopeOut == "") || o.carryForward || o.generationOut != "") {
+		return o, errors.New("class-table-prepare requires exactly one of --class-table-out or --envelope-out and excludes generation/carry-forward output")
 	}
 	if !o.classTablePrepare && o.classTableOut != "" {
 		return o, errors.New("class-table options require --class-table-prepare")

@@ -131,6 +131,7 @@ func TestChainwatchV5ArchiveRejectsBadPinAndTrailingData(t *testing.T) {
 		{ArchiveSHA256: strings.Repeat("0", 64), ArchiveSize: pins.ArchiveSize, ExecutableSHA256: pins.ExecutableSHA256, ExecutableSize: pins.ExecutableSize},
 		{ArchiveSHA256: strings.Repeat("b", 64), ArchiveSize: pins.ArchiveSize, ExecutableSHA256: pins.ExecutableSHA256, ExecutableSize: pins.ExecutableSize},
 		{ArchiveSHA256: pins.ArchiveSHA256, ArchiveSize: pins.ArchiveSize + 1, ExecutableSHA256: pins.ExecutableSHA256, ExecutableSize: pins.ExecutableSize},
+		{ArchiveSHA256: pins.ArchiveSHA256, ArchiveSize: (256 << 20) + 1, ExecutableSHA256: pins.ExecutableSHA256, ExecutableSize: pins.ExecutableSize},
 		{ArchiveSHA256: pins.ArchiveSHA256, ArchiveSize: pins.ArchiveSize, ExecutableSHA256: strings.Repeat("b", 64), ExecutableSize: pins.ExecutableSize},
 		{ArchiveSHA256: pins.ArchiveSHA256, ArchiveSize: pins.ArchiveSize, ExecutableSHA256: pins.ExecutableSHA256, ExecutableSize: pins.ExecutableSize + 1},
 	} {

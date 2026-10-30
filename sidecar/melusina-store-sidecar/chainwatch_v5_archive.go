@@ -89,7 +89,7 @@ func (chainwatchV5ZeroWriter) Write(p []byte) (int, error) {
 // must open the Store's exact served regular file without following symlinks.
 // A valid template or self-declared digest is not executable provenance.
 func verifyChainwatchV5Archive(input io.Reader, pins chainwatchV5ArtifactPins) error {
-	if !validChainwatchV5SHA256(pins.ArchiveSHA256) || pins.ArchiveSize <= 0 || pins.ArchiveSize > 1<<31 {
+	if !validChainwatchV5SHA256(pins.ArchiveSHA256) || pins.ArchiveSize <= 0 || pins.ArchiveSize > 256<<20 {
 		return errors.New("chainwatch-v5-archive-pin-invalid")
 	}
 	expectedContract, err := chainwatchV5ExpectedContract(pins)

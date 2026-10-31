@@ -75,6 +75,9 @@ func (s *publishService) classesFromParentStagedRequest(ctx context.Context, req
 		if row.ID == "fineract" {
 			wantSidecarID = "fineract-v2"
 		}
+		if isChainwatchV5Parent(row) {
+			wantSidecarID = "chainwatch-v2"
+		}
 		if chain == nil || chain.Kind != row.Class || chain.Program != licenseRegistryProgramID().Base58() || chain.SidecarID != wantSidecarID || chain.IdentityPDA != "" && chain.Kind == componentrelease.AuthoritySidecarCascade {
 			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-chain-invalid:%s", row.ID)
 		}
@@ -144,6 +147,16 @@ func (s *publishService) classesFromParentStagedRequest(ctx context.Context, req
 	for _, check := range checks {
 		if err := checkSidecarParents(ctx, snapshot, check.view, check.hash); err != nil {
 			return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-parent-refused:%s: %w", check.componentID, err)
+		}
+	}
+	// The alias becomes available only for the exact complete archive the
+	// independently checked parents approved. This is a source-only class
+	// proof: full generation promotion still requires tenant Local/Identity.
+	for _, row := range req.Rows {
+		if isChainwatchV5Parent(row) {
+			if err := s.verifyApprovedChainwatchV5Parent(row); err != nil {
+				return sidecarClassTable{}, fmt.Errorf("sidecar-parent-prepare-v5-archive:%w", err)
+			}
 		}
 	}
 	return table, nil

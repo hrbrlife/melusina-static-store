@@ -147,7 +147,7 @@ func TestChainwatchV5ArchiveRejectsBadPinAndTrailingData(t *testing.T) {
 }
 
 func TestChainwatchV5EmbeddedContractMatchesReviewedProducer(t *testing.T) {
-	if got := chainwatchV5TestDigest(chainwatchV5ContractTemplate); got != "f1769920b8e99df51fd0ed366779c2588df738d3cf11aa749d224e7971352760" {
+	if got := chainwatchV5TestDigest(chainwatchV5ContractTemplate); got != "8d71e501db1000b3082f7875d645676643176e811a5bf8e224be5c4738c08ba3" {
 		t.Fatalf("v5 producer template differs: %s", got)
 	}
 	if got := chainwatchV5TestDigest(chainwatchV5Capabilities); got != "a59008a4efd41dade495512b9e0c4f24fcd300feac7201966eacc9b7010133e8" {
@@ -155,10 +155,9 @@ func TestChainwatchV5EmbeddedContractMatchesReviewedProducer(t *testing.T) {
 	}
 }
 
-// Even a synthetic archive with the canonical v5 layout and a matching
-// publisher-staged hash does not open the existing parent producer. This
-// stays refused until its exact successor/provenance verifier is connected.
-func TestChainwatchV5ParentProducerRemainsClosed(t *testing.T) {
+// The existing parent producer requires independent active approval of the
+// exact whole archive before its measured v5 alias can become a class proof.
+func TestChainwatchV5ParentProducerApprovedArchive(t *testing.T) {
 	f, request := parentPrepareFixture(t)
 	entries, pins := chainwatchV5TestFixture(t)
 	raw := chainwatchV5TestBundle(t, entries)
@@ -190,7 +189,12 @@ func TestChainwatchV5ParentProducerRemainsClosed(t *testing.T) {
 	row := &request.Rows[0]
 	row.ID, row.Class, row.KeyCustody = "chainwatch", componentrelease.AuthoritySidecarIdentity, "sidecar-held-identity"
 	row.ArtifactName, row.SHA256, row.SizeBytes, row.Chain = name, pins.ArchiveSHA256, pins.ArchiveSize, &chain
-	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err == nil || !strings.Contains(err.Error(), "sidecar-parent-prepare-chain-invalid") {
-		t.Fatalf("unproven v5 parent was not explicitly refused: %v", err)
+	delete(f.m.rawAccounts, local.Base58())
+	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err != nil {
+		t.Fatalf("independently approved exact v5 archive refused: %v", err)
+	}
+	delete(f.m.rawAccounts, global.Base58())
+	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), time.Now().UTC()); err == nil {
+		t.Fatal("self-declared v5 archive accepted without independent Global approval")
 	}
 }

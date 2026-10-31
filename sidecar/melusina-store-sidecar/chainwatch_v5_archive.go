@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// These bytes are generated from deployer commit e1675076 by its actual
+// These bytes are generated from deployer commit fb51cb3e6be9cc2700ff2d9ee66f2656c8e825c4 by its actual
 // ChainwatchIdentityV5RuntimeContract and MarshalSidecarRuntimeContract with
 // executable hash "a" repeated 64 times and size 123456789. They are NOT
 // evidence that an arbitrary executable implements the declared interface.
@@ -83,11 +83,11 @@ func (chainwatchV5ZeroWriter) Write(p []byte) (int, error) {
 }
 
 // verifyChainwatchV5Archive checks structure and exact bytes in ONE pass,
-// including trailer bytes. It is deliberately unregistered: pins MUST come
-// from an independently verified, owner/publisher-approved successor and
-// reviewed build provenance, never the staged request or browser. The caller
-// must open the Store's exact served regular file without following symlinks.
-// A valid template or self-declared digest is not executable provenance.
+// including trailer bytes. The parent producer calls this only after its
+// existing publisher-envelope gate and independent Global/Reseller approval
+// checks authenticate the complete archive hash. A child declaration alone
+// never authorizes an archive; the approved whole-file hash binds every byte.
+// The caller holds the Store's exact served file open without following links.
 func verifyChainwatchV5Archive(input io.Reader, pins chainwatchV5ArtifactPins) error {
 	if !validChainwatchV5SHA256(pins.ArchiveSHA256) || pins.ArchiveSize <= 0 || pins.ArchiveSize > 256<<20 {
 		return errors.New("chainwatch-v5-archive-pin-invalid")

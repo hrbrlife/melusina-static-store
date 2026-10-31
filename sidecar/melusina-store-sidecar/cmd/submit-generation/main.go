@@ -104,7 +104,7 @@ func parseFlags(args []string) (options, error) {
 	fs.Uint64Var(&o.verifiedSlot, "verified-slot", 1, "publisher's verified chain slot (must be nonzero)")
 	fs.DurationVar(&o.timeout, "timeout", 60*time.Second, "promote plus read-back timeout")
 	fs.StringVar(&o.generationOut, "generation-out", "", "write verified raw served generation JSON atomically to this path")
-	fs.StringVar(&o.envelopeOut, "envelope-out", "", "write the signed POST body for /publish/generation atomically; do not contact the store")
+	fs.StringVar(&o.envelopeOut, "envelope-out", "", "write the signed POST body for generation or class-table preparation atomically; do not contact the store")
 	fs.BoolVar(&o.carryForward, "carry-forward", false, "the request names no component: it carries the current components forward in the one generation that chains from a floor recorded by store-generation-floor (the store refuses it otherwise)")
 	fs.BoolVar(&o.classTablePrepare, "class-table-prepare", false, "prepare the first sidecar cohort's Store-signed class table from staged sidecar bytes; does not promote a generation")
 	fs.StringVar(&o.classTableOut, "class-table-out", "", "new output path for the signed sidecar class table")
@@ -138,8 +138,8 @@ func parseFlags(args []string) (options, error) {
 	if o.timeout <= 0 {
 		return o, errors.New("--timeout must be positive")
 	}
-	if o.classTablePrepare && (o.classTableOut == "" || o.carryForward || o.generationOut != "" || o.envelopeOut != "") {
-		return o, errors.New("class-table-prepare requires --class-table-out and excludes generation/carry-forward/envelope output")
+	if o.classTablePrepare && ((o.classTableOut == "") == (o.envelopeOut == "") || o.carryForward || o.generationOut != "") {
+		return o, errors.New("class-table-prepare requires exactly one of --class-table-out or --envelope-out and excludes generation/carry-forward")
 	}
 	if !o.classTablePrepare && o.classTableOut != "" {
 		return o, errors.New("class-table options require --class-table-prepare")

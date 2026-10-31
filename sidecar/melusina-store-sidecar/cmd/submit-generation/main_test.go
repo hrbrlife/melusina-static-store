@@ -257,3 +257,105 @@ func TestFetchAndVerifyGenerationPinsSignerAndStoreID(t *testing.T) {
 // testChainID is a chain id no estate uses: the command has no default chain
 // and takes the envelope's chain from the publisher key.
 const testChainID = "solana:submit-test"
+
+func TestClassTableEnvelopeOutUsesExistingSignerWithoutNetwork(t *testing.T) {
+	tmp := t.TempDir()
+	var publisherSign, publisherBox, storeSign, storeBox [32]byte
+	for i := range publisherSign {
+		publisherSign[i] = 0x11
+		publisherBox[i] = 0x22
+		storeSign[i] = 0x33
+		storeBox[i] = 0x44
+	}
+	publisherRef := identity.Ref{
+		Kind: identity.KindPearl, ChainID: testChainID, ProgramID: testProgramID,
+		LicenseMint: "publisher-license", Domain: "publisher.example", PDA: "publisher-pda",
+		PearlIDHash: strings.Repeat("a", 64), KeyVersion: 1,
+	}
+	publisher, err := identity.NewPrivate(publisherRef, publisherSign, publisherBox)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisherPath := filepath.Join(tmp, "publisher.json")
+	publisherRaw, err := json.Marshal(publisherKeyFile{
+		Ref: publisherRef, SignSeed: hex.EncodeToString(publisherSign[:]), BoxSeed: hex.EncodeToString(publisherBox[:]),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(publisherPath, publisherRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	storeRef := identity.Ref{
+		Kind: identity.KindSidecar, ChainID: testChainID, ProgramID: testProgramID,
+		LicenseMint: "store-license", Domain: "store.example", PDA: "store-pda", SidecarID: "rrs-store", KeyVersion: 1,
+	}
+	store, err := identity.NewPrivate(storeRef, storeSign, storeBox)
+	if err != nil {
+		t.Fatal(err)
+	}
+	storePath := filepath.Join(tmp, "store-public.json")
+	storeRaw, err := json.Marshal(store.Public())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(storePath, storeRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	request := []byte(`{"schema":"melusina.sidecar-classes-parent-prepare.v1","storeId":"rrs-store","rows":[{"id":"chainwatch","class":"sidecar_identity","keyCustody":"sidecar-held-identity"}]}`)
+	requestPath := filepath.Join(tmp, "request.json")
+	if err := os.WriteFile(requestPath, request, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	envelopePath := filepath.Join(tmp, "out", "signed-generation.json")
+	var stdout bytes.Buffer
+	// Deliberately unreachable: envelope-out must return before it attempts any
+	// HTTP request. The exact bound body is for a later authorized target POST.
+	err = run([]string{
+		"--store", "https://127.0.0.1:1", "--store-id", "rrs-store", "--request", requestPath,
+		"--publisher-key", publisherPath, "--store-pubkey", storePath, "--timeout", "1ms",
+		"--class-table-prepare", "--envelope-out", envelopePath, "--program-id", testProgramID,
+	}, &stdout)
+	if err != nil {
+		t.Fatalf("offline envelope output: %v", err)
+	}
+	var body generationPromoteBody
+	got, err := os.ReadFile(envelopePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(got, &body); err != nil {
+		t.Fatal(err)
+	}
+	if err := envelope.VerifySignature(body.Envelope, publisher.Public().SignPubkeyB58); err != nil {
+		t.Fatalf("offline signature invalid: %v", err)
+	}
+	if body.Envelope.Payload.Method != http.MethodPost || body.Envelope.Payload.Target != classPreparePath {
+		t.Fatalf("offline body lost route binding: %#v", body.Envelope.Payload)
+	}
+	if body.Envelope.Payload.Source.Digest() != publisher.Public().Digest() || body.Envelope.Payload.Destination.Digest() != store.Public().Digest() {
+		t.Fatal("offline body bound the wrong publisher or store identity")
+	}
+	decoded, err := base64.StdEncoding.DecodeString(body.RequestB64)
+	if err != nil || !bytes.Equal(decoded, request) {
+		t.Fatalf("offline body did not preserve exact request bytes: %q / %v", decoded, err)
+	}
+	if info, err := os.Stat(envelopePath); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("signed envelope must be atomically private: mode=%v err=%v", func() os.FileMode {
+			if info == nil {
+				return 0
+			}
+			return info.Mode().Perm()
+		}(), err)
+	}
+	if body.Envelope.Payload.ChainEvidence.ProgramID != testProgramID {
+		t.Fatalf("chain evidence names program %q, want the supplied %q", body.Envelope.Payload.ChainEvidence.ProgramID, testProgramID)
+	}
+	// The envelope's chain is the publisher key's own (K-TEN-03): no fallback.
+	if body.Envelope.Payload.ChainEvidence.ChainID != testChainID {
+		t.Fatalf("chain evidence names chain %q, want the publisher key's %q", body.Envelope.Payload.ChainEvidence.ChainID, testChainID)
+	}
+	if !strings.Contains(stdout.String(), "SIGNED_CLASS_TABLE_ENVELOPE_OK") {
+		t.Fatalf("unexpected offline result: %s", stdout.String())
+	}
+}

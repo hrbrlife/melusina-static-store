@@ -166,6 +166,12 @@ func runPrepareSidecarClasses(o options, requestBytes []byte, stdout io.Writer) 
 	if err != nil {
 		return err
 	}
+	if o.envelopeOut != "" {
+		if err := atomicWrite(o.envelopeOut, wire); err != nil {
+			return fmt.Errorf("write class-table envelope: %w", err)
+		}
+		return json.NewEncoder(stdout).Encode(map[string]any{"status": "SIGNED_CLASS_TABLE_ENVELOPE_OK", "requestSha256": hashHex, "envelopePath": o.envelopeOut})
+	}
 	client, err := privateClassTransport(o.store, o.connectAddress, o.tlsLeaf, o.timeout)
 	if err != nil {
 		return err

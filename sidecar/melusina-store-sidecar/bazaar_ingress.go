@@ -1,6 +1,6 @@
 package main
 
-// Optional, separately authorized Bazaar TLS listener. The fixed marker is
+// Optional, separately authorized public Store and Bazaar TLS listener. The fixed marker is
 // installed by the owner-authorized Store-edge delivery, not by an HTTP caller.
 // The existing Store listener, origin, boot identity and private leaf do not
 // change. Missing or bad alias inputs close only this optional listener.
@@ -31,6 +31,8 @@ const (
 	bazaarIngressMarkerPath = "/etc/melusina/store/bazaar-ingress.json"
 	bazaarIngressCertPath   = "/etc/melusina/store/bazaar-tls/current/cert.pem"
 	bazaarIngressKeyPath    = "/etc/melusina/store/bazaar-tls/current/key.pem"
+	canonicalPublicCertPath = "/etc/melusina/store/canonical-public-tls/current/cert.pem"
+	canonicalPublicKeyPath  = "/etc/melusina/store/canonical-public-tls/current/key.pem"
 	bazaarIngressAddr       = ":8447"
 	bazaarIngressSchema     = "melusina.store-bazaar-ingress.v1"
 	bazaarIngressPoll       = 5 * time.Second
@@ -246,19 +248,44 @@ func bazaarReadOnlyHandler(hostname string, next http.Handler) http.Handler {
 	})
 }
 
+// Both names share the listener but each request must use the same admitted
+// name in its TLS SNI and HTTP Host. The handler stays the same read-only
+// Store surface for either name.
+func twoNamesPublicReadOnlyHandler(canonical, bazaar string, next http.Handler) http.Handler {
+	canonicalHandler := bazaarReadOnlyHandler(canonical, next)
+	bazaarHandler := bazaarReadOnlyHandler(bazaar, next)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.TLS == nil {
+			http.NotFound(w, r)
+			return
+		}
+		switch strings.ToLower(r.TLS.ServerName) {
+		case canonical:
+			canonicalHandler.ServeHTTP(w, r)
+		case bazaar:
+			bazaarHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
 // bazaarIngressWorker is independent of the private Store server. It observes
-// the fixed marker and pair after startup, so verified edge delivery can add
-// Bazaar without restarting the Store. Removing or invalidating the marker
-// closes the listener; a bad renewed pair never replaces the last valid pair.
+// the fixed marker and separate pairs after startup, so verified edge delivery
+// can add either public hostname without restarting the Store. Removing or
+// invalidating the marker closes the listener; a bad renewed pair never
+// replaces the last valid pair for that name.
 type bazaarIngressWorker struct {
 	cfg                                 Config
 	handler                             http.Handler
 	markerPath, certPath, keyPath, addr string
+	canonicalCertPath, canonicalKeyPath string
 	roots                               *x509.CertPool
 	now                                 func() time.Time
 	readMarker                          func(string) ([]byte, error)
 	logf                                func(string, ...any)
 	current                             atomic.Pointer[tls.Certificate]
+	canonicalCurrent                    atomic.Pointer[tls.Certificate]
 	server                              *http.Server
 	done                                <-chan error
 	lastError                           string
@@ -271,6 +298,7 @@ func (b *bazaarIngressWorker) stop() {
 		b.done = nil
 	}
 	b.current.Store(nil)
+	b.canonicalCurrent.Store(nil)
 }
 func (b *bazaarIngressWorker) report(err error) {
 	message := ""
@@ -299,22 +327,33 @@ func (b *bazaarIngressWorker) tick() {
 		b.report(err)
 		return
 	}
-	certificate, err := readBazaarCertificate(b.certPath, b.keyPath, marker.BazaarHostname, b.cfg, b.roots, b.now())
-	if err == nil {
+	certificate, bazaarErr := readBazaarCertificate(b.certPath, b.keyPath, marker.BazaarHostname, b.cfg, b.roots, b.now())
+	if bazaarErr == nil {
 		b.current.Store(certificate)
 	}
-	b.report(err)
-	if b.current.Load() == nil {
+	canonical, canonicalErr := readBazaarCertificate(b.canonicalCertPath, b.canonicalKeyPath, marker.CanonicalHostname, b.cfg, b.roots, b.now())
+	if canonicalErr == nil {
+		b.canonicalCurrent.Store(canonical)
+	}
+	if b.current.Load() == nil && b.canonicalCurrent.Load() == nil {
+		b.report(errors.Join(bazaarErr, canonicalErr))
 		return
 	}
+	b.report(nil)
 	if b.server != nil {
 		return
 	}
-	srv := newPublicServer(b.addr, bazaarReadOnlyHandler(marker.BazaarHostname, b.handler))
+	srv := newPublicServer(b.addr, twoNamesPublicReadOnlyHandler(marker.CanonicalHostname, marker.BazaarHostname, b.handler))
 	srv.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12, GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-		current := b.current.Load()
-		if current == nil || current.Leaf == nil || strings.ToLower(hello.ServerName) != marker.BazaarHostname || b.now().Before(current.Leaf.NotBefore) || !b.now().Before(current.Leaf.NotAfter) {
-			return nil, errors.New("bazaar ingress certificate unavailable")
+		var current *tls.Certificate
+		switch strings.ToLower(hello.ServerName) {
+		case marker.CanonicalHostname:
+			current = b.canonicalCurrent.Load()
+		case marker.BazaarHostname:
+			current = b.current.Load()
+		}
+		if current == nil || current.Leaf == nil || b.now().Before(current.Leaf.NotBefore) || !b.now().Before(current.Leaf.NotAfter) {
+			return nil, errors.New("public Store certificate unavailable")
 		}
 		return current, nil
 	}}
@@ -354,6 +393,7 @@ func startBazaarIngress(ctx context.Context, cfg Config, handler http.Handler, l
 		return
 	}
 	worker := &bazaarIngressWorker{cfg: cfg, handler: handler, markerPath: bazaarIngressMarkerPath, certPath: bazaarIngressCertPath,
-		keyPath: bazaarIngressKeyPath, addr: bazaarIngressAddr, roots: roots, now: time.Now, logf: logf}
+		keyPath: bazaarIngressKeyPath, canonicalCertPath: canonicalPublicCertPath, canonicalKeyPath: canonicalPublicKeyPath,
+		addr: bazaarIngressAddr, roots: roots, now: time.Now, logf: logf}
 	go worker.run(ctx)
 }

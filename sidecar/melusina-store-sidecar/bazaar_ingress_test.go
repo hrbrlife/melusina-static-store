@@ -304,3 +304,136 @@ func (w *bazaarTestWriter) Write(p []byte) (int, error) {
 	}
 	return len(p), nil
 }
+
+func TestBazaarIngressDualNamesIndependentTLSReadinessAndRotation(t *testing.T) {
+	cfg, marker := bazaarTestFixture(t)
+	dir := t.TempDir()
+	cfg.TLS.CertPath, cfg.TLS.KeyPath = filepath.Join(dir, "private-cert"), filepath.Join(dir, "private-key")
+	now := time.Now()
+	root := newServedTLSTestRoot(t, "public root")
+	intermediate := root.intermediate(t, "intermediate", now.Add(-time.Hour), now.Add(time.Hour))
+	private := d41Leaf(t, intermediate, cfg.Domain).withIntermediates(intermediate)
+	writeServedTLSTestPair(t, cfg.TLS.CertPath, cfg.TLS.KeyPath, private)
+	privateBefore, err := os.ReadFile(cfg.TLS.CertPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonicalCert, canonicalKey := filepath.Join(dir, "canonical", "current", "cert.pem"), filepath.Join(dir, "canonical", "current", "key.pem")
+	bazaarCert, bazaarKey := filepath.Join(dir, "bazaar", "current", "cert.pem"), filepath.Join(dir, "bazaar", "current", "key.pem")
+	canonicalPair := d41Leaf(t, intermediate, marker.CanonicalHostname).withIntermediates(intermediate)
+	if err := publishPublicLeafPair(canonicalCert, canonicalKey, canonicalPair.certPEM(), canonicalPair.keyPEM(t)); err != nil {
+		t.Fatal(err)
+	}
+	markerPath := filepath.Join(dir, "marker")
+	if err := os.WriteFile(markerPath, markerJSON(t, marker), 0600); err != nil {
+		t.Fatal(err)
+	}
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := probe.Addr().String()
+	_ = probe.Close()
+	b := &bazaarIngressWorker{cfg: cfg, handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }),
+		markerPath: markerPath, certPath: bazaarCert, keyPath: bazaarKey, canonicalCertPath: canonicalCert, canonicalKeyPath: canonicalKey,
+		addr: addr, roots: root.pool(), now: time.Now, logf: func(string, ...any) {},
+		readMarker: func(p string) ([]byte, error) { return openBazaarMarkerOwned(p, uint32(os.Geteuid())) }}
+	defer b.stop()
+	b.tick()
+	if b.server == nil || b.canonicalCurrent.Load() == nil || b.current.Load() != nil {
+		t.Fatal("canonical leaf did not start independently")
+	}
+	request := func(sni, host string) (int, [32]byte, error) {
+		tr := &http.Transport{TLSClientConfig: &tls.Config{RootCAs: root.pool(), ServerName: sni, MinVersion: tls.VersionTLS12}, DisableKeepAlives: true,
+			DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, network, addr)
+			}}
+		defer tr.CloseIdleConnections()
+		req, e := http.NewRequest("GET", "https://"+host+"/apps/index.json", nil)
+		if e != nil {
+			return 0, [32]byte{}, e
+		}
+		client := &http.Client{Transport: tr, Timeout: time.Second}
+		res, e := client.Do(req)
+		if e != nil {
+			return 0, [32]byte{}, e
+		}
+		defer res.Body.Close()
+		_, _ = io.Copy(io.Discard, res.Body)
+		return res.StatusCode, sha256.Sum256(res.TLS.PeerCertificates[0].Raw), nil
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		_, _, err = request(marker.CanonicalHostname, marker.CanonicalHostname)
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("canonical TLS unavailable: %v", err)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if _, _, err = request(marker.BazaarHostname, marker.BazaarHostname); err == nil {
+		t.Fatal("missing Bazaar pair served a certificate")
+	}
+	wrong := d41Leaf(t, intermediate, "wrong.example.test").withIntermediates(intermediate)
+	if err := publishPublicLeafPair(bazaarCert, bazaarKey, wrong.certPEM(), wrong.keyPEM(t)); err != nil {
+		t.Fatal(err)
+	}
+	b.tick()
+	if b.current.Load() != nil {
+		t.Fatal("wrong Bazaar name became ready")
+	}
+	if status, _, err := request(marker.CanonicalHostname, marker.CanonicalHostname); err != nil || status != 200 {
+		t.Fatalf("bad Bazaar disrupted canonical: status %d error %v", status, err)
+	}
+	bazaarPair := d41Leaf(t, intermediate, marker.BazaarHostname).withIntermediates(intermediate)
+	if err := publishPublicLeafPair(bazaarCert, bazaarKey, bazaarPair.certPEM(), bazaarPair.keyPEM(t)); err != nil {
+		t.Fatal(err)
+	}
+	b.tick()
+	status, canonicalBefore, err := request(marker.CanonicalHostname, marker.CanonicalHostname)
+	if err != nil || status != 200 {
+		t.Fatalf("canonical: %d %v", status, err)
+	}
+	status, bazaarBefore, err := request(marker.BazaarHostname, marker.BazaarHostname)
+	if err != nil || status != 200 {
+		t.Fatalf("Bazaar: %d %v", status, err)
+	}
+	if canonicalBefore == bazaarBefore {
+		t.Fatal("names shared a public leaf")
+	}
+	if status, _, err := request(marker.CanonicalHostname, marker.BazaarHostname); err != nil || status != 404 {
+		t.Fatalf("cross-name Host accepted: %d %v", status, err)
+	}
+	if status, _, err := request(marker.BazaarHostname, marker.CanonicalHostname); err != nil || status != 404 {
+		t.Fatalf("cross-name Host accepted: %d %v", status, err)
+	}
+	if err := publishPublicLeafPair(canonicalCert, canonicalKey, wrong.certPEM(), wrong.keyPEM(t)); err != nil {
+		t.Fatal(err)
+	}
+	bazaarNext := d41Leaf(t, intermediate, marker.BazaarHostname).withIntermediates(intermediate)
+	if err := publishPublicLeafPair(bazaarCert, bazaarKey, bazaarNext.certPEM(), bazaarNext.keyPEM(t)); err != nil {
+		t.Fatal(err)
+	}
+	b.tick()
+	status, canonicalAfter, err := request(marker.CanonicalHostname, marker.CanonicalHostname)
+	if err != nil || status != 200 || canonicalAfter != canonicalBefore {
+		t.Fatal("invalid canonical rotation displaced valid leaf")
+	}
+	status, bazaarAfter, err := request(marker.BazaarHostname, marker.BazaarHostname)
+	if err != nil || status != 200 || bazaarAfter == bazaarBefore {
+		t.Fatal("Bazaar rotation did not proceed independently")
+	}
+	privateAfter, err := os.ReadFile(cfg.TLS.CertPath)
+	if err != nil || !bytes.Equal(privateBefore, privateAfter) {
+		t.Fatal("private pinned certificate changed")
+	}
+	if err := os.Remove(markerPath); err != nil {
+		t.Fatal(err)
+	}
+	b.tick()
+	if b.current.Load() != nil || b.canonicalCurrent.Load() != nil || b.server != nil {
+		t.Fatal("marker removal left public names enabled")
+	}
+}

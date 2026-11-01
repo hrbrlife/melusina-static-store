@@ -396,6 +396,7 @@ func main() {
 	log.Printf("served snapshots: %s (created=%t, mode 0700, disk-backed); at most %d bytes held at once, %d per artifact", cfg.ServedSnapshotDir, snapshotsCreated, int64(servedSnapshotBudgetBytes), int64(maxServedArtifactBytes))
 
 	publicHandler, controlHandler := newGovernedRouterSurfaces(cfg, operator, cr, mirror, catalogState, true)
+	startBazaarIngress(ctxRoot, cfg, publicHandler, log.Printf)
 	srv := newPublicServer(cfg.ListenAddr, publicHandler)
 	log.Printf("public listener limits: read %s (the largest request body at %d bytes/s, plus %s), write %s (the largest artifact at the same rate, plus %s), idle %s, read-header %s", srv.ReadTimeout, publicTransferFloorBytesPerSecond, publicTransferSlack/2, srv.WriteTimeout, publicTransferSlack, srv.IdleTimeout, srv.ReadHeaderTimeout)
 	// The served certificate is re-read while the Store runs; a renewed pair

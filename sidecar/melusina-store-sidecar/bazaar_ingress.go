@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
+	primitives "github.com/melusina-os/melusina-solana-primitives"
 )
 
 const (
@@ -178,7 +179,9 @@ func readBazaarCertificate(certPath, keyPath, hostname string, cfg Config, roots
 }
 
 // bazaarPublicPath is intentionally the same narrow public browser, catalog,
-// package and update allowlist used by the Store alias ingress producer.
+// package and update allowlist used by the Store alias ingress producer. Its
+// one signatures path is the exact signatures/<appId>/metadata.json the Shell
+// fetches to recompute a verified app's on-chain AppHash.
 func bazaarPublicPath(r *http.Request) bool {
 	if r == nil || r.URL == nil {
 		return false
@@ -208,6 +211,10 @@ func bazaarPublicPath(r *http.Request) bool {
 	}
 	if len(parts) == 3 && parts[0] == "apps" && parts[1] == "pointers" {
 		return strings.HasSuffix(parts[2], ".json") && len(strings.TrimSuffix(parts[2], ".json")) >= 32
+	}
+	if len(parts) == 3 && parts[0] == "signatures" {
+		_, err := primitives.DecodeSandstormAppID(parts[1])
+		return err == nil && parts[2] == "metadata.json"
 	}
 	if len(parts) == 3 && parts[0] == "releases" {
 		switch parts[1] {

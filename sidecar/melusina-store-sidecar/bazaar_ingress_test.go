@@ -5,18 +5,22 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/hrbrlife/melusina-store-sidecar/internal/apphash"
 	"github.com/hrbrlife/melusina-store-sidecar/internal/estateprofile"
 )
 
@@ -229,7 +233,13 @@ func TestBazaarIngressTLSAndBoundedPublicRoutes(t *testing.T) {
 	if got := do("GET", "/control/v1/private"); got != 404 {
 		t.Fatalf("control: %d", got)
 	}
-	if calls.Load() != 1 {
+	if got := do("GET", "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.json"); got != 200 {
+		t.Fatalf("app metadata: %d", got)
+	}
+	if got := do("GET", "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/RELEASE.json"); got != 404 {
+		t.Fatalf("other signatures member: %d", got)
+	}
+	if calls.Load() != 2 {
 		t.Fatalf("restricted route reached backend %d times", calls.Load())
 	}
 	old := sha256.Sum256(b.current.Load().Certificate[0])
@@ -435,5 +445,150 @@ func TestBazaarIngressDualNamesIndependentTLSReadinessAndRotation(t *testing.T) 
 	b.tick()
 	if b.current.Load() != nil || b.canonicalCurrent.Load() != nil || b.server != nil {
 		t.Fatal("marker removal left public names enabled")
+	}
+}
+
+// storePublicPathVectorsSHA256 pins testdata/store-public-path-vectors.json.
+// The deployer's internal/storepublic test pins the same digest over a
+// byte-identical copy, so a verdict changed in one repository shows in both.
+const storePublicPathVectorsSHA256 = "b1d5c4810b8e7939499765ad845e3517ba95093152bee65f86f9c16b205a24de"
+
+func TestBazaarPublicPathMatchesDeployerVectors(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("testdata", "store-public-path-vectors.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sum := sha256.Sum256(raw); hex.EncodeToString(sum[:]) != storePublicPathVectorsSHA256 {
+		t.Fatalf("public path vectors changed: sha256 %x", sum)
+	}
+	var doc struct {
+		Schema  string `json:"schema"`
+		Vectors []struct {
+			Method string `json:"method"`
+			Path   string `json:"path"`
+			Allow  bool   `json:"allow"`
+			Note   string `json:"note"`
+		} `json:"vectors"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil || doc.Schema != "melusina.store-public-path-vectors.v1" || len(doc.Vectors) == 0 {
+		t.Fatalf("public path vectors unreadable: %v", err)
+	}
+	const name = "bazaar.example.test"
+	h := bazaarReadOnlyHandler(name, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	for _, vector := range doc.Vectors {
+		r, err := http.NewRequest(vector.Method, "https://"+name+vector.Path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.TLS = &tls.ConnectionState{ServerName: name}
+		w := &bazaarTestWriter{header: make(http.Header)}
+		h.ServeHTTP(w, r)
+		if (w.code == http.StatusOK) != vector.Allow {
+			t.Fatalf("%s %s (%s): got %d, allow %v", vector.Method, vector.Path, vector.Note, w.code, vector.Allow)
+		}
+	}
+}
+
+// Every app the Bazaar presents has its Shell metadata path open, and no
+// other member under its signatures directory.
+func TestBazaarPublicPathAllowsExactAppMetadataOnly(t *testing.T) {
+	raw, err := os.ReadFile("../../src/app-icon-map.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := regexp.MustCompile(`"([0-9a-z]{52})"`).FindAllStringSubmatch(string(raw), -1)
+	seen := make(map[string]bool)
+	for _, match := range ids {
+		seen[match[1]] = true
+	}
+	if len(seen) != 30 || !seen["uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510"] {
+		t.Fatalf("catalog app IDs changed: %d", len(seen))
+	}
+	allowed := func(target string) bool {
+		r, err := http.NewRequest(http.MethodGet, "https://bazaar.example.test"+target, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return bazaarPublicPath(r)
+	}
+	for id := range seen {
+		if !allowed("/signatures/" + id + "/metadata.json") {
+			t.Fatalf("app %s metadata refused", id)
+		}
+		for _, other := range []string{"/signatures/" + id, "/signatures/" + id + "/RELEASE.json", "/signatures/" + id + "/metadata.json.sig", "/attest/" + id + "/RELEASE.json"} {
+			if allowed(other) {
+				t.Fatalf("%s allowed", other)
+			}
+		}
+	}
+}
+
+// The public path serves the bytes of the active immutable catalog generation,
+// and those are the bytes the Shell's AppHash check needs.
+func TestBazaarPublicMetadataServesCatalogBytesAndAppHash(t *testing.T) {
+	cfg, _ := testConfig(t)
+	root := t.TempDir()
+	flat := filepath.Join(root, "dist")
+	generationRoot := filepath.Join(root, "generations")
+	cleanupImmutableCatalog(t, generationRoot)
+	writeHTTPGenerationFixture(t, flat, "index", "pointer")
+	f := buildValidFixture(t, cfg, randPubkeyB58(t))
+	signatures := filepath.Join(flat, "signatures", f.appIDText)
+	if err := os.MkdirAll(signatures, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string][]byte{"metadata.json": f.metadata, "RELEASE.json": []byte("{}")} {
+		if err := os.WriteFile(filepath.Join(signatures, name), body, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	store := AppCatalogGenerationStore{Root: generationRoot}
+	if _, err := store.BootstrapFromFlat(flat, nil); err != nil {
+		t.Fatal(err)
+	}
+	// Edits to the mutable flat tree after the generation is sealed must not
+	// reach the public path.
+	if err := os.WriteFile(filepath.Join(signatures, "metadata.json"), []byte(`{"appId":"tampered"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg.DistDir = flat
+	inner := newGenerationHTTP(store, newServeGate(cfg, newMockChainReader(), requestScopedStatic{flat: http.FileServer(http.Dir(flat))}))
+	public := twoNamesPublicReadOnlyHandler("store.example.test", "bazaar.example.test", inner)
+	serve := func(h http.Handler, method, sni, host, target string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, "https://"+host+target, nil)
+		r.Host = host
+		r.TLS = &tls.ConnectionState{ServerName: sni}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	metadataPath := "/signatures/" + f.appIDText + "/metadata.json"
+	for _, name := range []string{"store.example.test", "bazaar.example.test"} {
+		w := serve(public, http.MethodGet, name, name, metadataPath)
+		if w.Code != http.StatusOK || !bytes.Equal(w.Body.Bytes(), f.metadata) {
+			t.Fatalf("%s metadata: %d %q", name, w.Code, w.Body.String())
+		}
+		appHash, err := apphash.Canonical(bytes.NewReader(f.spk), w.Body.Bytes())
+		if err != nil || appHash != hex.EncodeToString(f.appHashBytes[:]) {
+			t.Fatalf("%s served metadata does not reproduce the release AppHash: %v", name, err)
+		}
+	}
+	tampered, err := apphash.Canonical(bytes.NewReader(f.spk), []byte(`{"appId":"tampered"}`))
+	if err != nil || tampered == hex.EncodeToString(f.appHashBytes[:]) {
+		t.Fatal("tampered metadata reproduced the release AppHash")
+	}
+	if w := serve(public, http.MethodGet, "bazaar.example.test", "store.example.test", metadataPath); w.Code != http.StatusNotFound {
+		t.Fatalf("SNI and Host disagree: %d", w.Code)
+	}
+	if w := serve(public, http.MethodPost, "bazaar.example.test", "bazaar.example.test", metadataPath); w.Code != http.StatusNotFound {
+		t.Fatalf("POST: %d", w.Code)
+	}
+	// The other member exists in the generation; only the public gate refuses it.
+	releasePath := "/signatures/" + f.appIDText + "/RELEASE.json"
+	if w := serve(inner, http.MethodGet, "bazaar.example.test", "bazaar.example.test", releasePath); w.Code != http.StatusOK {
+		t.Fatalf("control: generation member not served behind the gate: %d", w.Code)
+	}
+	if w := serve(public, http.MethodGet, "bazaar.example.test", "bazaar.example.test", releasePath); w.Code != http.StatusNotFound {
+		t.Fatalf("other signatures member: %d", w.Code)
 	}
 }

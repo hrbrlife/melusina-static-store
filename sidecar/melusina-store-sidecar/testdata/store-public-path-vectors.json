@@ -1,0 +1,216 @@
+{
+  "schema": "melusina.store-public-path-vectors.v1",
+  "note": "Each request is built as METHOD https://<admitted name><path> with the same name in TLS SNI and Host. allow is the verdict of the read-only public Store gate: GET or HEAD and an allowed path. The Store's bazaarPublicPath and the deployer's internal/storepublic.AllowPath must agree on every vector.",
+  "vectors": [
+    {
+      "method": "GET",
+      "path": "/",
+      "allow": true,
+      "note": "SPA root"
+    },
+    {
+      "method": "GET",
+      "path": "/apps/index.json",
+      "allow": true,
+      "note": "catalog index"
+    },
+    {
+      "method": "HEAD",
+      "path": "/apps/index.json",
+      "allow": true,
+      "note": "catalog index HEAD"
+    },
+    {
+      "method": "GET",
+      "path": "/apps/pointers/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510.json",
+      "allow": true,
+      "note": "Popaye catalog pointer"
+    },
+    {
+      "method": "GET",
+      "path": "/packages/2ac4da7bee4ff1cf1324a822173aae9d",
+      "allow": true,
+      "note": "Popaye package"
+    },
+    {
+      "method": "GET",
+      "path": "/update/generation.json",
+      "allow": true,
+      "note": "signed generation"
+    },
+    {
+      "method": "GET",
+      "path": "/releases/data/melusina-authzsign-runtime.tar",
+      "allow": true,
+      "note": "release data artifact"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/app.js",
+      "allow": true,
+      "note": "SPA asset"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.json",
+      "allow": true,
+      "note": "Popaye metadata the Shell fetches"
+    },
+    {
+      "method": "HEAD",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.json",
+      "allow": true,
+      "note": "Popaye metadata HEAD"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/8kea8reanvm5cw7awrxj8udguh5hf3yfcns01fmq7vq42ps2hvuh/metadata.json",
+      "allow": true,
+      "note": "second real app metadata"
+    },
+    {
+      "method": "POST",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.json",
+      "allow": false,
+      "note": "write method"
+    },
+    {
+      "method": "POST",
+      "path": "/apps/index.json",
+      "allow": false,
+      "note": "write method"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510",
+      "allow": false,
+      "note": "app directory"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/",
+      "allow": false,
+      "note": "app directory with slash"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/RELEASE.json",
+      "allow": false,
+      "note": "other signatures member"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.json/x",
+      "allow": false,
+      "note": "member below metadata"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.JSON",
+      "allow": false,
+      "note": "case of the member name"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/.metadata.json",
+      "allow": false,
+      "note": "dot member"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.json?x=1",
+      "allow": false,
+      "note": "query"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/UW0UKGM06584V9GGJQQQT4DQWY6R2KERGQAJGG6Q1RT398DH2510/metadata.json",
+      "allow": false,
+      "note": "upper-case appId"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh251/metadata.json",
+      "allow": false,
+      "note": "51-character appId"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh25100/metadata.json",
+      "allow": false,
+      "note": "53-character appId"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/bw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.json",
+      "allow": false,
+      "note": "letter b is outside the Sandstorm alphabet"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/iw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.json",
+      "allow": false,
+      "note": "letter i is outside the Sandstorm alphabet"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/lw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.json",
+      "allow": false,
+      "note": "letter l is outside the Sandstorm alphabet"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/ow0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/metadata.json",
+      "allow": false,
+      "note": "letter o is outside the Sandstorm alphabet"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2511/metadata.json",
+      "allow": false,
+      "note": "non-zero padding bits (non-canonical appId)"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures//metadata.json",
+      "allow": false,
+      "note": "empty appId"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/../apps/index.json",
+      "allow": false,
+      "note": "dot segment"
+    },
+    {
+      "method": "GET",
+      "path": "/signatures/%2e%2e/apps/index.json",
+      "allow": false,
+      "note": "escaped dot segment"
+    },
+    {
+      "method": "GET",
+      "path": "/attest/uw0ukgm06584v9ggjqqqt4dqwy6r2kergqajgg6q1rt398dh2510/RELEASE.json",
+      "allow": false,
+      "note": "private attestation"
+    },
+    {
+      "method": "GET",
+      "path": "/release-info",
+      "allow": false,
+      "note": "private release info"
+    },
+    {
+      "method": "GET",
+      "path": "/control/v1/status",
+      "allow": false,
+      "note": "private control"
+    },
+    {
+      "method": "GET",
+      "path": "/publish",
+      "allow": false,
+      "note": "publisher route"
+    }
+  ]
+}

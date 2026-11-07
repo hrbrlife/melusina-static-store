@@ -154,7 +154,31 @@ func TestPrepareClassTableRefusesAlreadyClassifiedSignedGeneration(t *testing.T)
 	if _, err := svc.promoteGeneration(promoteReq(0, component), now); err != nil {
 		t.Fatalf("SIGNED_CLASSIFICATION_SETUP_REFUSED: %v", err)
 	}
-	if _, err := svc.classesFromStagedRequest(request, strings.Repeat("e", 64), now.Add(time.Minute)); err == nil || !strings.Contains(err.Error(), "sidecar-class-prepare-already-classified") {
-		t.Fatalf("ALREADY_CLASSIFIED_SIDECAR_PREPARE_ACCEPTED: %v", err)
+	// The served component itself may be restated; the table still names the
+	// generation's class for it.
+	table, err := svc.classesFromStagedRequest(request, strings.Repeat("e", 64), now.Add(time.Minute))
+	if err != nil || len(table.Rows) != 1 || table.Rows[0].Class != componentrelease.AuthoritySidecarIdentity {
+		t.Fatalf("EXACT_CLASSIFIED_SIDECAR_PREPARE_REFUSED: %v %+v", err, table.Rows)
+	}
+	other := []byte("a different staged build of the classified sidecar")
+	otherHash := sha256.Sum256(other)
+	writeReleaseArtifact(t, svc.cfg.DistDir, "sidecar", "already-classified-other.bin", other)
+	for name, mutate := range map[string]func(*stagedSidecarClassRow){
+		"class": func(row *stagedSidecarClassRow) {
+			row.Class, row.KeyCustody = componentrelease.AuthoritySidecarCascade, "none"
+		},
+		"bytes": func(row *stagedSidecarClassRow) {
+			row.ArtifactName, row.SHA256, row.SizeBytes = "already-classified-other.bin", hex.EncodeToString(otherHash[:]), int64(len(other))
+		},
+		"size": func(row *stagedSidecarClassRow) { row.SizeBytes++ },
+	} {
+		t.Run(name, func(t *testing.T) {
+			changed := request
+			changed.Rows = append([]stagedSidecarClassRow(nil), request.Rows...)
+			mutate(&changed.Rows[0])
+			if _, err := svc.classesFromStagedRequest(changed, strings.Repeat("e", 64), now.Add(time.Minute)); err == nil || !strings.Contains(err.Error(), "sidecar-class-prepare-already-classified") {
+				t.Fatalf("ALREADY_CLASSIFIED_SIDECAR_PREPARE_ACCEPTED: %v", err)
+			}
+		})
 	}
 }

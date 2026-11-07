@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -174,5 +175,101 @@ func TestParentPreparedSidecarRefusesMissingOrChangedParentAndForeignPins(t *tes
 				t.Fatal("parent preparation accepted a missing parent or foreign pin")
 			}
 		})
+	}
+}
+
+// After a generation promotes a parent-prepared sidecar, a later publisher
+// plan prepares the same two-row parent table again. Only the exact served
+// component is restated; any other class, bytes or chain authority for that
+// ID still refuses before the parents are read.
+func TestParentPrepareAllowsExactClassifiedRow(t *testing.T) {
+	f, request := parentPrepareFixture(t)
+	now := time.Unix(1794028135, 0)
+	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("a", 64), now); err != nil {
+		t.Fatalf("first parent preparation refused: %v", err)
+	}
+	if _, err := f.svc.promoteGeneration(promoteReq(0, f.component), now); err != nil {
+		t.Fatalf("promotion setup refused: %v", err)
+	}
+	table, err := f.svc.classesFromParentStagedRequest(context.Background(), request, strings.Repeat("b", 64), now.Add(time.Minute))
+	if err != nil || len(table.Rows) != 1 || table.Rows[0].Class != componentrelease.AuthoritySidecarCascade ||
+		table.Rows[0].Source != "staged:"+strings.Repeat("b", 64) {
+		t.Fatalf("exact classified row was not prepared again: %v %+v", err, table.Rows)
+	}
+	releasePDA := request
+	releasePDA.Rows = append([]stagedSidecarClassRow(nil), request.Rows...)
+	chain := *request.Rows[0].Chain
+	chain.ReleasePDA = f.globalPDA
+	releasePDA.Rows[0].Chain = &chain
+	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), releasePDA, strings.Repeat("b", 64), now.Add(time.Minute)); err != nil {
+		t.Fatalf("a release PDA, which no sidecar authority uses, changed the verdict: %v", err)
+	}
+	for name, mutate := range map[string]func(*stagedSidecarClassRow){
+		"sha":  func(row *stagedSidecarClassRow) { row.SHA256 = strings.Repeat("b", 64) },
+		"size": func(row *stagedSidecarClassRow) { row.SizeBytes++ },
+		"name": func(row *stagedSidecarClassRow) { row.ArtifactName = "mermail-other.tar.zst" },
+		"class": func(row *stagedSidecarClassRow) {
+			row.Class, row.KeyCustody = componentrelease.AuthoritySidecarIdentity, "sidecar-held-identity"
+		},
+		"licence":  func(row *stagedSidecarClassRow) { row.Chain.LicenseNftMint = testStoreOwnReseller().Base58() },
+		"local":    func(row *stagedSidecarClassRow) { row.Chain.LocalApprovalPDA = f.globalPDA },
+		"global":   func(row *stagedSidecarClassRow) { row.Chain.GlobalApprovalPDA = f.localPDA },
+		"master":   func(row *stagedSidecarClassRow) { row.Chain.MasterNftMint = testStoreOwnReseller().Base58() },
+		"sidecar":  func(row *stagedSidecarClassRow) { row.Chain.SidecarID = "mermail-v2" },
+		"identity": func(row *stagedSidecarClassRow) { row.Chain.IdentityPDA = f.localPDA },
+	} {
+		t.Run(name, func(t *testing.T) {
+			changed := request
+			changed.Rows = append([]stagedSidecarClassRow(nil), request.Rows...)
+			chain := *request.Rows[0].Chain
+			changed.Rows[0].Chain = &chain
+			mutate(&changed.Rows[0])
+			if _, err := f.svc.classesFromParentStagedRequest(context.Background(), changed, strings.Repeat("c", 64), now.Add(time.Minute)); err == nil ||
+				!strings.Contains(err.Error(), "sidecar-class-prepare-already-classified") {
+				t.Fatalf("changed classified row was prepared again: %v", err)
+			}
+		})
+	}
+	// An unclassified ID cannot borrow the classified component's authority.
+	renamed := request
+	renamed.Rows = append([]stagedSidecarClassRow(nil), request.Rows...)
+	renamed.Rows[0].ID = "mermail-copy"
+	if _, err := f.svc.classesFromParentStagedRequest(context.Background(), renamed, strings.Repeat("d", 64), now.Add(time.Minute)); err == nil {
+		t.Fatal("unclassified ID was prepared with a classified component's authority")
+	}
+}
+
+// The C62 publisher plan's real parent rows (install-spec.canonical.json, the
+// ChainWatch and WolfDog services' parentPreparation request) decode into the
+// Store's row type and are restated only for components carrying exactly
+// their authority, including ChainWatch's identity fields.
+func TestClassifiedRestatementUsesRealParentRowShape(t *testing.T) {
+	const c62 = `{"rows":[{"artifactName":"451d4940ded118d1aa4f58fc0d3d66ee543ddfb42236e5001cfb847510539ee0-chainwatch.tar","chain":{"globalApprovalPda":"4QPVQVSbVt7avGeEjTGDbF2DaCiEchYL2B8ooQPXmaUy","identityPda":"FjM7Pgr2kVhVQF6r8rVAANic53ocuS8yeFX5hGdQY7jv","keyVersion":1,"kind":"sidecar_identity","licenseNftMint":"DevK8BZpeTtB4EhZ4xkQzBuFecR28mHhxtV9xf8GcUid","localApprovalPda":"BnYXe4QkDvyyxe1Q4374aYH5V6kTiGkqz3b7XuFZsYgC","masterNftMint":"3ypHeb1hsEvdGs8u3smJiyvs4D48KH7fcv7GeN4sshZb","program":"2AeyZAgFDmqoA3Lter3WnG6GcXyjNfzAA7xgmPEuPq6L","sidecarId":"chainwatch-v2"},"class":"sidecar_identity","id":"chainwatch","keyCustody":"sidecar-held-identity","sha256":"451d4940ded118d1aa4f58fc0d3d66ee543ddfb42236e5001cfb847510539ee0","sizeBytes":8792576},{"artifactName":"72ec7c86b1396f7eaf035841e0c7e0e5d4f89cd9a44fe69c7c51d2ef3b00b1d1-wolfdog.tar","chain":{"globalApprovalPda":"5YKt7ZTKW6VrB9nbBaPFeuv88mpkQs74Yp8QicJshG1Y","kind":"sidecar_cascade","licenseNftMint":"DevK8BZpeTtB4EhZ4xkQzBuFecR28mHhxtV9xf8GcUid","localApprovalPda":"8dcnJc5xDx61QwqsrL3cG82Boxx51Xidj6axgskJPHdh","masterNftMint":"3ypHeb1hsEvdGs8u3smJiyvs4D48KH7fcv7GeN4sshZb","program":"2AeyZAgFDmqoA3Lter3WnG6GcXyjNfzAA7xgmPEuPq6L","sidecarId":"wolfdog-v2"},"class":"sidecar_cascade","id":"wolfdog-v2","keyCustody":"none","sha256":"72ec7c86b1396f7eaf035841e0c7e0e5d4f89cd9a44fe69c7c51d2ef3b00b1d1","sizeBytes":8759808}],"schema":"melusina.sidecar-classes-parent-prepare.v1","storeId":"melusina-os-root-store"}`
+	var request stagedSidecarClassRequest
+	decoder := json.NewDecoder(strings.NewReader(c62))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&request); err != nil || len(request.Rows) != 2 {
+		t.Fatalf("real C62 parent request no longer decodes: %v", err)
+	}
+	for _, row := range request.Rows {
+		served := componentrelease.ComponentRelease{ComponentID: row.ID, ComponentClass: componentrelease.ClassSidecar,
+			ArtifactName: row.ArtifactName, SHA256: row.SHA256, SizeBytes: row.SizeBytes, Chain: *row.Chain}
+		if !sameClassifiedSidecar(served, row) {
+			t.Fatalf("%s: exact served component refused", row.ID)
+		}
+		for name, mutate := range map[string]func(*componentrelease.ChainAuthority){
+			"keyVersion": func(c *componentrelease.ChainAuthority) { c.KeyVersion++ },
+			"identityPda": func(c *componentrelease.ChainAuthority) {
+				c.IdentityPDA = "8dcnJc5xDx61QwqsrL3cG82Boxx51Xidj6axgskJPHdh"
+			},
+			"program": func(c *componentrelease.ChainAuthority) { c.Program = "7anRCW8U" },
+			"kind":    func(c *componentrelease.ChainAuthority) { c.Kind = componentrelease.AuthorityInstallerRelease },
+		} {
+			changed := served
+			mutate(&changed.Chain)
+			if sameClassifiedSidecar(changed, row) {
+				t.Fatalf("%s: served component with changed %s restated", row.ID, name)
+			}
+		}
 	}
 }

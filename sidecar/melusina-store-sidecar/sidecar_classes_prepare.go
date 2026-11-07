@@ -201,12 +201,13 @@ func (s *publishService) classesFromStagedRequest(req stagedSidecarClassRequest,
 		return sidecarClassTable{}, err
 	}
 	// A prepared table can add first-cohort classifications only. Once a
-	// signed generation classifies an ID, its served class table is authoritative.
-	classified := make(map[string]bool)
+	// signed generation classifies an ID, its served class table is
+	// authoritative, and a prepared row may only restate that exact component.
+	classified := make(map[string]componentrelease.ComponentRelease)
 	if current, _, err := s.loadVerifiedDesiredGeneration(); err == nil {
 		for _, component := range current.Components {
 			if component.ComponentClass == componentrelease.ClassSidecar {
-				classified[component.ComponentID] = true
+				classified[component.ComponentID] = component
 			}
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -220,7 +221,7 @@ func (s *publishService) classesFromStagedRequest(req stagedSidecarClassRequest,
 		if !stagedClassComponentID.MatchString(row.ID) {
 			return sidecarClassTable{}, fmt.Errorf("sidecar-class-prepare-id-invalid:%s", row.ID)
 		}
-		if classified[row.ID] {
+		if current, ok := classified[row.ID]; ok && !sameClassifiedSidecar(current, row) {
 			return sidecarClassTable{}, fmt.Errorf("sidecar-class-prepare-already-classified:%s", row.ID)
 		}
 		if row.ID <= previous || row.SizeBytes <= 0 || row.SizeBytes > 1<<31 ||
@@ -250,6 +251,23 @@ func (s *publishService) classesFromStagedRequest(req stagedSidecarClassRequest,
 	}
 	table.OperatorSignature = primitives.EncodeBase58(s.operator.Sign(message))
 	return table, nil
+}
+
+// sameClassifiedSidecar admits a classified ID again only for the component the
+// current signed generation already serves: the same class, bytes and name.
+// A parent row also names its chain authority, which must be the served one
+// apart from ReleasePDA, a field no sidecar authority uses.
+func sameClassifiedSidecar(current componentrelease.ComponentRelease, row stagedSidecarClassRow) bool {
+	if current.Chain.Kind != row.Class || current.SHA256 != row.SHA256 ||
+		current.SizeBytes != row.SizeBytes || current.ArtifactName != row.ArtifactName {
+		return false
+	}
+	if row.Chain == nil {
+		return true
+	}
+	chain := *row.Chain
+	chain.ReleasePDA = current.Chain.ReleasePDA
+	return chain == current.Chain
 }
 
 // POST uses the same publisher envelope and on-chain Store-operator check as

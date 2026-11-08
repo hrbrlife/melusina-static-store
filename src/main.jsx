@@ -1180,7 +1180,7 @@ function StarRating({ rating, size = 14 }) {
 
 const APP_FAQ = {
   _common: [
-    { q: 'How do I install this app?', a: 'Click the **CONNECT** button in the header and enter your Melusina server URL. Then click the **INSTALL** button on the app detail page. The app will be deployed to your server automatically.' },
+    { q: 'How do I install this app?', a: 'Click the **CONNECT** button in the header and enter your Melusina server URL. Then click the **INSTALL** button on the app detail page. Confirm the installation in your development Shell, then create a new pearl.' },
     { q: 'Is my data private?', a: 'Yes. All data stays on your Melusina server. There is no telemetry, analytics, or external data transmission. Each app Pearl is sandboxed and isolated.' },
     { q: 'How do I share access with others?', a: "Use Melusina's built-in sharing system. Click the sharing icon in your Pearl's top bar and generate a sharing link with the appropriate permission level (Viewer, Editor, or Admin)." },
     { q: 'How do I update to the latest version?', a: 'Updates appear automatically in your Melusina admin panel. You can also revisit the App Bazaar and re-install to get the latest version.' },

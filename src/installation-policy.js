@@ -1,3 +1,6 @@
+// This checkout is the isolated, manually operated development Bazaar.
+const DEVELOPMENT_EDITION = true;
+
 // Store-governed installation policy. The signed UI projects this object over
 // the live catalog; app metadata cannot enable an install action.
 
@@ -34,12 +37,14 @@ export function applyGovernedInstallationPolicy(app, policies) {
 }
 
 export function canSelfInstall(app) {
+  if (DEVELOPMENT_EDITION) return true;
   return installationFor(app)?.install_mode === "self-service";
 }
 
 // Owner-provisioned entries use the same Store-to-Shell install link. Shell
 // verifies the tenant's committed S30 statement and the logged-in owner.
 export function canStoreInstall(app) {
+  if (DEVELOPMENT_EDITION) return true;
   const mode = installationFor(app)?.install_mode;
   return mode === "self-service" || mode === "owner-provisions";
 }
@@ -53,11 +58,13 @@ export function storeInstallLabel(app) {
 // but cannot install; that fails closed without making an in-progress catalog
 // look silently empty.
 export function isVisibleInPublicBazaar(app) {
+  if (DEVELOPMENT_EDITION) return true;
   const policy = installationFor(app);
   return policy === null || policy.audience === "client" || policy.audience === "workspace";
 }
 
 export function installationPresentation(app) {
+  if (DEVELOPMENT_EDITION) return { label: "INSTALL", detail: "Install into your local development Shell." };
   const policy = installationFor(app);
   if (!policy) {
     return {

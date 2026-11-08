@@ -32,6 +32,7 @@ import {
 import {
   DEVELOPMENT_EDITION,
   DEVELOPMENT_SHELL_ORIGIN,
+  DEVELOPMENT_PACKAGE_ORIGIN,
   applyGovernedInstallationPolicy,
   canSelfInstall,
   installationPresentation,
@@ -105,7 +106,7 @@ const shotCaption = (shot) =>
 const installUrl = (host, app) => {
   const h = sanitizeHost(host);
   if (!h || !app.packageId) return null;
-  const pkg = app.packageUrl || `${APP_INDEX_BASE}/packages/${app.packageId}`;
+  const pkg = app.packageUrl || `${DEVELOPMENT_EDITION ? DEVELOPMENT_PACKAGE_ORIGIN : APP_INDEX_BASE}/packages/${app.packageId}`;
   return `${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`;
 };
 
@@ -294,7 +295,7 @@ function InstallModal({ app, onClose }) {
       setInstallError(`Cannot install "${app.name || 'this app'}": package is missing from the catalog.`);
       return;
     }
-    const pkg = app.packageUrl || `${APP_INDEX_BASE}/packages/${app.packageId}`;
+    const pkg = app.packageUrl || `${DEVELOPMENT_EDITION ? DEVELOPMENT_PACKAGE_ORIGIN : APP_INDEX_BASE}/packages/${app.packageId}`;
     const opened = window.open(`${h}/install/${app.packageId}?url=${encodeURIComponent(pkg)}`, '_blank', 'noopener,noreferrer');
     if (opened) opened.opener = null;
     onClose();

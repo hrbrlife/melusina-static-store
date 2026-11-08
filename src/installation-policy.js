@@ -1,5 +1,6 @@
 // This checkout is the isolated, manually operated development Bazaar.
-const DEVELOPMENT_EDITION = true;
+export const DEVELOPMENT_EDITION = true;
+export const DEVELOPMENT_SHELL_ORIGIN = "http://local.sandstorm.io:6090";
 
 // Store-governed installation policy. The signed UI projects this object over
 // the live catalog; app metadata cannot enable an install action.

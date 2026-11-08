@@ -30,6 +30,8 @@ import {
   isExplicitlyIconless,
 } from "./app-icon-map.js";
 import {
+  DEVELOPMENT_EDITION,
+  DEVELOPMENT_SHELL_ORIGIN,
   applyGovernedInstallationPolicy,
   canStoreInstall,
   storeInstallLabel,
@@ -2352,7 +2354,13 @@ function App() {
   }, [selectedId]);
 
   const onInstall = useCallback((app) => {
-    if (canStoreInstall(app)) setInstallModalApp(app);
+    if (!canStoreInstall(app)) return;
+    if (DEVELOPMENT_EDITION) {
+      const url = installUrl(DEVELOPMENT_SHELL_ORIGIN, app);
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    setInstallModalApp(app);
   }, []);
 
   const categories = useMemo(() => {
@@ -2428,11 +2436,13 @@ function App() {
                 fontFamily: "'JetBrains Mono', monospace",
                 letterSpacing: ".12em", textTransform: "uppercase",
               }}>
-                APP BAZAAR
+                APP BAZAAR{DEVELOPMENT_EDITION ? ' · DEVELOPMENT' : ''}
               </span>
             </h1>
             {/* Get Melusina CTA */}
-            <button onClick={() => setShowGetMelusina(true)} style={{
+            <button onClick={() => DEVELOPMENT_EDITION
+              ? window.open(DEVELOPMENT_SHELL_ORIGIN, '_blank', 'noopener,noreferrer')
+              : setShowGetMelusina(true)} style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '8px 16px', borderRadius: 3,
               background: `linear-gradient(135deg, ${T.green}18, ${T.cyan}12)`,
@@ -2444,7 +2454,7 @@ function App() {
             }}
               onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 15px ${T.greenGlow}`; e.currentTarget.style.borderColor = T.green + '88'; }}
               onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = T.green + '55'; }}
-            >GET MELUSINA</button>
+            >{DEVELOPMENT_EDITION ? 'OPEN SHELL' : 'GET MELUSINA'}</button>
           </div>
 
           {/* Search */}

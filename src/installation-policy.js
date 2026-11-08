@@ -1,6 +1,9 @@
 // This checkout is the isolated, manually operated development Bazaar.
 export const DEVELOPMENT_EDITION = true;
-export const DEVELOPMENT_SHELL_ORIGIN = "http://local.sandstorm.io:6090";
+import { developmentOrigins } from "./development-origins.js";
+const developmentTargets = developmentOrigins(import.meta.env?.VITE_DEVELOPMENT_PROFILE);
+export const DEVELOPMENT_SHELL_ORIGIN = developmentTargets.shell;
+export const DEVELOPMENT_PACKAGE_ORIGIN = developmentTargets.packages;
 
 // Store-governed installation policy. The signed UI projects this object over
 // the live catalog; app metadata cannot enable an install action.
@@ -65,7 +68,7 @@ export function isVisibleInPublicBazaar(app) {
 }
 
 export function installationPresentation(app) {
-  if (DEVELOPMENT_EDITION) return { label: "INSTALL", detail: "Install into your local development Shell." };
+  if (DEVELOPMENT_EDITION) return { label: "INSTALL", detail: "Install into the development Shell." };
   const policy = installationFor(app);
   if (!policy) {
     return {
